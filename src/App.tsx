@@ -1,5 +1,16 @@
-import { PlatformShell, MenuBar, MenuBarItem, PalettePicker, TerminalPanel, OutputPanel } from "substrate-platform-ui";
-import type { PanelDef } from "substrate-platform-ui";
+import { useState } from "react";
+import {
+  PlatformShell,
+  MenuBar,
+  MenuBarItem,
+  TerminalPanel,
+  OutputPanel,
+  IconButton,
+  IconSettings,
+  SettingsWindow,
+  AppearanceSettings,
+} from "substrate-platform-ui";
+import type { PanelDef, SettingsSection } from "substrate-platform-ui";
 
 import { Designer } from "./panels/Designer";
 import { Toolbox } from "./panels/Toolbox";
@@ -9,9 +20,10 @@ import { Properties } from "./panels/Properties";
 import "./App.css";
 
 // Everything below is Yog-IDLE-specific: which panels exist, where they
-// start docked, and what the menu contains. The shell itself (theme,
-// docking, drag-to-redock/float, the generic Terminal/Output panels) lives
-// in substrate-platform-ui — Yog-IDLE only adds its own content on top.
+// start docked, and what the menu/settings contain. The shell itself
+// (theme, docking, drag-to-redock/float, the generic Terminal/Output
+// panels, the Settings window chrome) lives in substrate-platform-ui —
+// Yog-IDLE only adds its own content on top.
 
 const mainPanel: PanelDef = { id: "designer", title: "Designer", component: Designer };
 
@@ -29,9 +41,18 @@ const toolWindows = {
 
 const MENU_ITEMS = ["File", "Edit", "View", "Build", "Debug", "Help"];
 
-function Menu() {
+const SETTINGS_SECTIONS: SettingsSection[] = [{ id: "appearance", label: "Appearance", content: <AppearanceSettings /> }];
+
+function Menu({ onOpenSettings }: { onOpenSettings: () => void }) {
   return (
-    <MenuBar title="Yog-IDLE" actions={<PalettePicker />}>
+    <MenuBar
+      title="Yog IDLE"
+      actions={
+        <IconButton size={22} aria-label="Options" onClick={onOpenSettings}>
+          <IconSettings size={15} />
+        </IconButton>
+      }
+    >
       {MENU_ITEMS.map((label) => (
         <MenuBarItem key={label} label={label} />
       ))}
@@ -40,9 +61,12 @@ function Menu() {
 }
 
 function App() {
+  const [settingsOpen, setSettingsOpen] = useState(false);
+
   return (
     <main className="app-root">
-      <PlatformShell main={mainPanel} toolWindows={toolWindows} menu={<Menu />} />
+      <PlatformShell main={mainPanel} toolWindows={toolWindows} menu={<Menu onOpenSettings={() => setSettingsOpen(true)} />} />
+      {settingsOpen && <SettingsWindow sections={SETTINGS_SECTIONS} onClose={() => setSettingsOpen(false)} />}
     </main>
   );
 }
