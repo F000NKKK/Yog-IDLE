@@ -3,17 +3,29 @@
 A visual UI editor for [Yog](https://github.com/F000NKKK/Yog-Mod-Loader)
 Minecraft mods — design `yog-ui` screens with a Visual Studio–style
 layout (Toolbox, Solution Explorer, Properties, a central Designer canvas,
-Output log) and preview them live in a running game client, with no
-restart required.
+Output log, integrated Terminal) and preview them live in a running game
+client, with no restart required.
 
-Built on [Substrate Platform](https://github.com/F000NKKK/Substrate-Platform),
-a brand-neutral IDE shell core — Yog-IDLE is its first product.
+Built with [Tauri](https://tauri.app/) (Rust backend, web frontend) on top
+of [Substrate Platform](https://github.com/F000NKKK/Substrate-Platform), a
+brand-neutral IDE core (task runner, log sink, generic project/build
+plumbing) — Yog-IDLE is its first product. Docking uses
+[dockview](https://dockview.dev/) and the terminal uses
+[xterm.js](https://xtermjs.org/) (backed by a real PTY via
+`portable-pty` on the Rust side) — the same terminal tech VS Code itself
+uses.
+
+## Development
+
+```sh
+npm install
+npm run tauri dev
+```
 
 ## Status
 
-Early scaffold: the dock layout renders with placeholder panels. See the
-project plan for the intended architecture (widget-tree editing, the
-`yog-ui-spec` wire format, and the live TCP protocol to a running game).
+Early scaffold (default Tauri + React + TypeScript template). Docking,
+terminal, and the `yog-ui-spec` widget editor are not wired up yet.
 
 ## License
 
