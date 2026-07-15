@@ -1,4 +1,15 @@
-import { PlatformShell, PalettePicker, TerminalPanel, OutputPanel } from "substrate-platform-ui";
+import {
+  PlatformShell,
+  PalettePicker,
+  TerminalPanel,
+  OutputPanel,
+  IconWindow,
+  IconGrid,
+  IconFolder,
+  IconSliders,
+  IconList,
+  IconTerminal,
+} from "substrate-platform-ui";
 import type { PanelDef } from "substrate-platform-ui";
 
 import { Designer } from "./panels/Designer";
@@ -13,17 +24,17 @@ import "./App.css";
 // generic Terminal/Output panels) lives in substrate-platform-ui — Yog-IDLE
 // only adds its own content on top.
 
-const mainPanel: PanelDef = { id: "designer", title: "Designer", icon: "\u{1F5BC}", component: Designer };
+const mainPanel: PanelDef = { id: "designer", title: "Designer", icon: <IconWindow />, component: Designer };
 
 const toolWindows = {
-  left: [{ id: "toolbox", title: "Toolbox", icon: "\u{1F9F0}", component: Toolbox } satisfies PanelDef],
+  left: [{ id: "toolbox", title: "Toolbox", icon: <IconGrid />, component: Toolbox } satisfies PanelDef],
   right: [
-    { id: "solutionExplorer", title: "Solution Explorer", icon: "\u{1F4C1}", component: SolutionExplorer } satisfies PanelDef,
-    { id: "properties", title: "Properties", icon: "\u{1F527}", component: Properties } satisfies PanelDef,
+    { id: "solutionExplorer", title: "Solution Explorer", icon: <IconFolder />, component: SolutionExplorer } satisfies PanelDef,
+    { id: "properties", title: "Properties", icon: <IconSliders />, component: Properties } satisfies PanelDef,
   ],
   bottom: [
-    { id: "output", title: "Output", icon: "\u{1F4CB}", component: OutputPanel } satisfies PanelDef,
-    { id: "terminal", title: "Terminal", icon: "\u{2328}\u{FE0F}", component: TerminalPanel } satisfies PanelDef,
+    { id: "output", title: "Output", icon: <IconList />, component: OutputPanel } satisfies PanelDef,
+    { id: "terminal", title: "Terminal", icon: <IconTerminal />, component: TerminalPanel } satisfies PanelDef,
   ],
 };
 
