@@ -1,15 +1,4 @@
-import {
-  PlatformShell,
-  PalettePicker,
-  TerminalPanel,
-  OutputPanel,
-  IconWindow,
-  IconGrid,
-  IconFolder,
-  IconSliders,
-  IconList,
-  IconTerminal,
-} from "substrate-platform-ui";
+import { PlatformShell, MenuBar, MenuBarItem, PalettePicker, TerminalPanel, OutputPanel } from "substrate-platform-ui";
 import type { PanelDef } from "substrate-platform-ui";
 
 import { Designer } from "./panels/Designer";
@@ -19,32 +8,34 @@ import { Properties } from "./panels/Properties";
 
 import "./App.css";
 
-// Everything below is Yog-IDLE-specific: which panels exist and where they
-// sit. The shell itself (theme, docking, collapsible tool windows, the
-// generic Terminal/Output panels) lives in substrate-platform-ui — Yog-IDLE
-// only adds its own content on top.
+// Everything below is Yog-IDLE-specific: which panels exist, where they
+// start docked, and what the menu contains. The shell itself (theme,
+// docking, drag-to-redock/float, the generic Terminal/Output panels) lives
+// in substrate-platform-ui — Yog-IDLE only adds its own content on top.
 
-const mainPanel: PanelDef = { id: "designer", title: "Designer", icon: <IconWindow />, component: Designer };
+const mainPanel: PanelDef = { id: "designer", title: "Designer", component: Designer };
 
 const toolWindows = {
-  left: [{ id: "toolbox", title: "Toolbox", icon: <IconGrid />, component: Toolbox } satisfies PanelDef],
+  left: [{ id: "toolbox", title: "Toolbox", component: Toolbox } satisfies PanelDef],
   right: [
-    { id: "solutionExplorer", title: "Solution Explorer", icon: <IconFolder />, component: SolutionExplorer } satisfies PanelDef,
-    { id: "properties", title: "Properties", icon: <IconSliders />, component: Properties } satisfies PanelDef,
+    { id: "solutionExplorer", title: "Solution Explorer", component: SolutionExplorer } satisfies PanelDef,
+    { id: "properties", title: "Properties", component: Properties } satisfies PanelDef,
   ],
   bottom: [
-    { id: "output", title: "Output", icon: <IconList />, component: OutputPanel } satisfies PanelDef,
-    { id: "terminal", title: "Terminal", icon: <IconTerminal />, component: TerminalPanel } satisfies PanelDef,
+    { id: "output", title: "Output", component: OutputPanel } satisfies PanelDef,
+    { id: "terminal", title: "Terminal", component: TerminalPanel } satisfies PanelDef,
   ],
 };
 
+const MENU_ITEMS = ["File", "Edit", "View", "Build", "Debug", "Help"];
+
 function Menu() {
   return (
-    <div className="app-menu">
-      <span className="app-menu-title">Yog-IDLE</span>
-      <div className="app-menu-spacer" />
-      <PalettePicker />
-    </div>
+    <MenuBar title="Yog-IDLE" actions={<PalettePicker />}>
+      {MENU_ITEMS.map((label) => (
+        <MenuBarItem key={label} label={label} />
+      ))}
+    </MenuBar>
   );
 }
 
