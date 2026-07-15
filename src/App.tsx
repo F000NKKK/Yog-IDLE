@@ -1,15 +1,5 @@
 import { useState } from "react";
-import {
-  PlatformShell,
-  MenuBar,
-  MenuBarItem,
-  TerminalPanel,
-  OutputPanel,
-  IconButton,
-  IconSettings,
-  SettingsWindow,
-  AppearanceSettings,
-} from "substrate-platform-ui";
+import { PlatformShell, MenuBar, MenuBarItem, TerminalPanel, OutputPanel, SettingsWindow, AppearanceSettings } from "substrate-platform-ui";
 import type { PanelDef, SettingsSection } from "substrate-platform-ui";
 
 import { Designer } from "./panels/Designer";
@@ -39,23 +29,18 @@ const toolWindows = {
   ],
 };
 
-const MENU_ITEMS = ["File", "Edit", "View", "Build", "Debug", "Help"];
+const MENU_ITEMS = ["File", "Edit", "View", "Build", "Debug"];
 
 const SETTINGS_SECTIONS: SettingsSection[] = [{ id: "appearance", label: "Appearance", content: <AppearanceSettings /> }];
 
 function Menu({ onOpenSettings }: { onOpenSettings: () => void }) {
   return (
-    <MenuBar
-      title="Yog IDLE"
-      actions={
-        <IconButton size={22} aria-label="Options" onClick={onOpenSettings}>
-          <IconSettings size={15} />
-        </IconButton>
-      }
-    >
+    <MenuBar title="Yog IDLE">
       {MENU_ITEMS.map((label) => (
         <MenuBarItem key={label} label={label} />
       ))}
+      <MenuBarItem label="Tools" items={[{ label: "Options...", onClick: onOpenSettings }]} />
+      <MenuBarItem label="Help" />
     </MenuBar>
   );
 }
