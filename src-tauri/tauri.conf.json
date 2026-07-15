@@ -12,9 +12,9 @@
   "app": {
     "windows": [
       {
-        "title": "yog-idle-tauri",
-        "width": 800,
-        "height": 600
+        "title": "Yog IDLE",
+        "width": 1280,
+        "height": 800
       }
     ],
     "security": {
