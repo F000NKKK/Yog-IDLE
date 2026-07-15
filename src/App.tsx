@@ -1,73 +1,48 @@
-import { DockviewReact, DockviewReadyEvent } from "dockview-react";
-import "dockview-react/dist/styles/dockview.css";
+import { PlatformShell, PalettePicker, TerminalPanel, OutputPanel } from "substrate-platform-ui";
+import type { PanelDef } from "substrate-platform-ui";
 
 import { Designer } from "./panels/Designer";
 import { Toolbox } from "./panels/Toolbox";
 import { SolutionExplorer } from "./panels/SolutionExplorer";
 import { Properties } from "./panels/Properties";
-import { Output } from "./panels/Output";
-import { Terminal } from "./panels/Terminal";
 
 import "./App.css";
 
-// Panel layout is modeled after Visual Studio: a Toolbox on the left, a
-// Solution Explorer + Properties stack on the right, an Output + Terminal
-// pair along the bottom, and the Designer canvas filling the center.
+// Everything below is Yog-IDLE-specific: which panels exist and where they
+// sit. The shell itself (theme, docking, collapsible tool windows, the
+// generic Terminal/Output panels) lives in substrate-platform-ui — Yog-IDLE
+// only adds its own content on top.
 
-const components = {
-    designer: Designer,
-    toolbox: Toolbox,
-    solutionExplorer: SolutionExplorer,
-    properties: Properties,
-    output: Output,
-    terminal: Terminal,
+const mainPanel: PanelDef = { id: "designer", title: "Designer", icon: "\u{1F5BC}", component: Designer };
+
+const toolWindows = {
+  left: [{ id: "toolbox", title: "Toolbox", icon: "\u{1F9F0}", component: Toolbox } satisfies PanelDef],
+  right: [
+    { id: "solutionExplorer", title: "Solution Explorer", icon: "\u{1F4C1}", component: SolutionExplorer } satisfies PanelDef,
+    { id: "properties", title: "Properties", icon: "\u{1F527}", component: Properties } satisfies PanelDef,
+  ],
+  bottom: [
+    { id: "output", title: "Output", icon: "\u{1F4CB}", component: OutputPanel } satisfies PanelDef,
+    { id: "terminal", title: "Terminal", icon: "\u{2328}\u{FE0F}", component: TerminalPanel } satisfies PanelDef,
+  ],
 };
 
-function onReady(event: DockviewReadyEvent) {
-    const api = event.api;
-
-    api.addPanel({ id: "designer", component: "designer", title: "Designer" });
-    api.addPanel({
-        id: "toolbox",
-        component: "toolbox",
-        title: "Toolbox",
-        position: { referencePanel: "designer", direction: "left" },
-        initialWidth: 220,
-    });
-    api.addPanel({
-        id: "solutionExplorer",
-        component: "solutionExplorer",
-        title: "Solution Explorer",
-        position: { referencePanel: "designer", direction: "right" },
-        initialWidth: 280,
-    });
-    api.addPanel({
-        id: "properties",
-        component: "properties",
-        title: "Properties",
-        position: { referencePanel: "solutionExplorer", direction: "below" },
-    });
-    api.addPanel({
-        id: "output",
-        component: "output",
-        title: "Output",
-        position: { referencePanel: "designer", direction: "below" },
-        initialHeight: 220,
-    });
-    api.addPanel({
-        id: "terminal",
-        component: "terminal",
-        title: "Terminal",
-        position: { referencePanel: "output", direction: "within" },
-    });
+function Menu() {
+  return (
+    <div className="app-menu">
+      <span className="app-menu-title">Yog-IDLE</span>
+      <div className="app-menu-spacer" />
+      <PalettePicker />
+    </div>
+  );
 }
 
 function App() {
-    return (
-        <main className="app-root">
-            <DockviewReact className="dockview-theme-vs" components={components} onReady={onReady} />
-        </main>
-    );
+  return (
+    <main className="app-root">
+      <PlatformShell main={mainPanel} toolWindows={toolWindows} menu={<Menu />} />
+    </main>
+  );
 }
 
 export default App;

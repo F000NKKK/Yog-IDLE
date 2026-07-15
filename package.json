@@ -12,12 +12,9 @@
   "dependencies": {
     "@tauri-apps/api": "^2",
     "@tauri-apps/plugin-opener": "^2",
-    "@xterm/addon-fit": "^0.11.0",
-    "@xterm/xterm": "^6.0.0",
-    "dockview": "^7.0.2",
-    "dockview-react": "^7.0.2",
     "react": "^19.1.0",
-    "react-dom": "^19.1.0"
+    "react-dom": "^19.1.0",
+    "substrate-platform-ui": "file:../Substrate-Platform/ui"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2",
