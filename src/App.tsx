@@ -1,5 +1,14 @@
 import { useState } from "react";
-import { PlatformShell, MenuBar, MenuBarItem, TerminalPanel, OutputPanel, SettingsWindow, AppearanceSettings } from "substrate-platform-ui";
+import {
+  PlatformShell,
+  MenuBar,
+  MenuBarItem,
+  TerminalPanel,
+  OutputPanel,
+  SettingsWindow,
+  AppearanceSettings,
+  WindowControls,
+} from "substrate-platform-ui";
 import type { PanelDef, SettingsSection } from "substrate-platform-ui";
 
 import { Designer } from "./panels/Designer";
@@ -35,7 +44,7 @@ const SETTINGS_SECTIONS: SettingsSection[] = [{ id: "appearance", label: "Appear
 
 function Menu({ onOpenSettings }: { onOpenSettings: () => void }) {
   return (
-    <MenuBar title="Yog IDLE">
+    <MenuBar title="Yog IDLE" windowControls={<WindowControls />}>
       {MENU_ITEMS.map((label) => (
         <MenuBarItem key={label} label={label} />
       ))}

@@ -15,7 +15,10 @@
         "title": "Yog IDLE",
         "width": 1280,
         "height": 800,
-        "devtools": true
+        "minWidth": 960,
+        "minHeight": 600,
+        "devtools": true,
+        "decorations": false
       }
     ],
     "security": {
