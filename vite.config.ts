@@ -31,5 +31,13 @@ export default defineConfig(async () => ({
       // 3. tell Vite to ignore watching `src-tauri`
       ignored: ["**/src-tauri/**"],
     },
+    // 4. WebKitGTK's on-disk HTTP cache has repeatedly served stale modules
+    // across `tauri dev` restarts during development (a hook's return shape
+    // changing, a component's JSX not reflecting recent edits) even after
+    // clearing Vite's own cache — force every dev response uncached so the
+    // webview can never serve anything but what's on disk right now.
+    headers: {
+      "Cache-Control": "no-store",
+    },
   },
 }));
