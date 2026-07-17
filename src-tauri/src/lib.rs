@@ -341,3 +341,20 @@ pub fn run() {
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// `cargo check` only validates that `YOG_RUST_MOD_WORKFLOW` is a valid
+    /// `&str` constant — it never actually parses the embedded TOML, so a
+    /// malformed bundled default would otherwise only surface the first time
+    /// someone opens the Build menu.
+    #[test]
+    fn bundled_yog_rust_mod_workflow_parses() {
+        let file = WorkflowFile::parse(YOG_RUST_MOD_WORKFLOW).expect("bundled workflow.toml should parse");
+        for name in ["restore", "build", "run-fabric-client", "test", "clean", "publish-fabric"] {
+            assert!(file.workflow.contains_key(name), "missing workflow: {name}");
+        }
+    }
+}
