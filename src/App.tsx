@@ -59,7 +59,12 @@ function App() {
 
   return (
     <main className="app-root">
-      <PlatformShell main={mainPanel} toolWindows={toolWindows} menu={<Menu onOpenSettings={() => setSettingsOpen(true)} />} />
+      <PlatformShell
+        main={mainPanel}
+        toolWindows={toolWindows}
+        persistKey="yog-idle"
+        menu={<Menu onOpenSettings={() => setSettingsOpen(true)} />}
+      />
       {settingsOpen && <SettingsWindow sections={SETTINGS_SECTIONS} onClose={() => setSettingsOpen(false)} />}
     </main>
   );

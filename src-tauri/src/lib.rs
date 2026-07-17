@@ -5,6 +5,22 @@ use serde::Serialize;
 use substrate_platform::PtySession;
 use tauri::{AppHandle, Emitter, State};
 
+/// A shell available to spawn, serialized for the frontend's "new terminal" menu.
+#[derive(Clone, Serialize)]
+struct ShellInfo {
+    id: String,
+    label: String,
+    command: String,
+}
+
+#[tauri::command]
+fn list_shells() -> Vec<ShellInfo> {
+    substrate_platform::detect_shells()
+        .into_iter()
+        .map(|s| ShellInfo { id: s.id, label: s.label, command: s.command })
+        .collect()
+}
+
 /// Every open integrated terminal, keyed by a frontend-chosen id, so the UI
 /// can run several at once (VS-Code style) and address each independently.
 #[derive(Default)]
@@ -25,13 +41,13 @@ struct PtyExit {
 }
 
 #[tauri::command]
-fn pty_spawn(app: AppHandle, state: State<PtyState>, id: String, cols: u16, rows: u16) -> Result<(), String> {
+fn pty_spawn(app: AppHandle, state: State<PtyState>, id: String, cols: u16, rows: u16, shell: Option<String>) -> Result<(), String> {
     let out_app = app.clone();
     let out_id = id.clone();
     let exit_app = app.clone();
     let exit_id = id.clone();
     let session = PtySession::spawn(
-        None,
+        shell,
         None,
         cols,
         rows,
@@ -77,7 +93,7 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .manage(PtyState::default())
-        .invoke_handler(tauri::generate_handler![pty_spawn, pty_write, pty_resize, pty_kill])
+        .invoke_handler(tauri::generate_handler![pty_spawn, pty_write, pty_resize, pty_kill, list_shells])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

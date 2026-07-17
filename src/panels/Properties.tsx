@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { DataGrid, type DataGridColumn } from "substrate-platform-ui";
 
 interface PropertyRow {
@@ -20,17 +21,41 @@ const PROPERTIES: PropertyRow[] = [
   { id: "p10", category: "Behavior", name: "Tab Index", value: "3" },
 ];
 
-const columns: DataGridColumn<PropertyRow>[] = [
-  { key: "category", header: "Category", width: 110, sortable: true, sortValue: (r) => r.category },
-  { key: "name", header: "Name", width: 140, sortable: true, sortValue: (r) => r.name },
-  { key: "value", header: "Value", width: 140 },
-];
-
 /** Placeholder wiring for substrate-platform-ui's DataGrid — swap PROPERTIES for the selected widget's real style fields once selection exists. */
 export function Properties() {
+  const [rows, setRows] = useState<PropertyRow[]>(PROPERTIES);
+
+  const columns: DataGridColumn<PropertyRow>[] = [
+    // Already the default grouping column — sorting it independently of the
+    // grouping wouldn't do anything useful, so its own sort toggle is locked.
+    { key: "category", header: "Category", width: 110, sortable: true, lockSort: true, sortValue: (r) => r.category },
+    // The row's identity — hiding it would leave a value with no label.
+    { key: "name", header: "Name", width: 140, sortable: true, hideable: false, sortValue: (r) => r.name },
+    {
+      key: "value",
+      header: "Value",
+      width: 140,
+      editable: true,
+      // Grouping by a free-form value column would produce a near-useless,
+      // mostly-singleton grouping — not a meaningful axis here.
+      lockGroup: true,
+      editValue: (r) => r.value,
+      onCellEdit: (row, _key, newValue) => {
+        setRows((prev) => prev.map((r) => (r.id === row.id ? { ...r, value: newValue } : r)));
+      },
+    },
+  ];
+
   return (
     <div style={{ height: "100%", padding: "var(--sp-space-xs)", boxSizing: "border-box" }}>
-      <DataGrid columns={columns} rows={PROPERTIES} getRowId={(r) => r.id} defaultGroupBy={["category"]} filterRow={false} />
+      <DataGrid
+        columns={columns}
+        rows={rows}
+        getRowId={(r) => r.id}
+        defaultGroupBy={["category"]}
+        filterRow={false}
+        persistKey="properties"
+      />
     </div>
   );
 }
