@@ -1,9 +1,236 @@
 use std::collections::HashMap;
+use std::path::{Path, PathBuf};
 use std::sync::Mutex;
+use std::time::Duration;
 
 use serde::Serialize;
-use substrate_platform::PtySession;
+use substrate_platform::{EntryKind, Level, LogLine, LogSink, Project, ProjectStandard, PtySession, Solution, WorkflowFile};
 use tauri::{AppHandle, Emitter, State};
+
+/// Every path a `dir_*`/workflow command may touch must resolve under one of
+/// these — populated by `solution_open`. An IDE should never read/write
+/// outside a project the user actually opened; this boundary is deliberately
+/// enforced here rather than in `substrate-platform`, which stays
+/// path-policy-agnostic.
+#[derive(Default)]
+struct AppState {
+    project_roots: Mutex<Vec<PathBuf>>,
+}
+
+/// Walks up to the nearest existing ancestor of `path` (so this also covers
+/// not-yet-created paths — a new file/folder, or a rename's destination),
+/// canonicalizes it, and checks it falls under an open project root.
+fn validate_within_roots(state: &State<AppState>, path: &Path) -> Result<(), String> {
+    let roots = state.project_roots.lock().unwrap();
+    if roots.is_empty() {
+        return Err("no project is open".to_string());
+    }
+    let mut candidate = path.to_path_buf();
+    let canonical = loop {
+        if let Ok(resolved) = candidate.canonicalize() {
+            break resolved;
+        }
+        match candidate.parent() {
+            Some(parent) if !parent.as_os_str().is_empty() => candidate = parent.to_path_buf(),
+            _ => return Err(format!("path '{}' does not resolve to anything on disk", path.display())),
+        }
+    };
+    if roots.iter().any(|root| canonical.starts_with(root)) {
+        Ok(())
+    } else {
+        Err(format!("path '{}' is outside any open project", path.display()))
+    }
+}
+
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct DirEntryOut {
+    name: String,
+    path: String,
+    kind: &'static str,
+}
+
+impl From<substrate_platform::DirEntryInfo> for DirEntryOut {
+    fn from(entry: substrate_platform::DirEntryInfo) -> Self {
+        DirEntryOut {
+            name: entry.name,
+            path: entry.path.to_string_lossy().into_owned(),
+            kind: match entry.kind {
+                EntryKind::Dir => "dir",
+                EntryKind::File => "file",
+            },
+        }
+    }
+}
+
+#[tauri::command]
+fn dir_list(state: State<AppState>, path: String) -> Result<Vec<DirEntryOut>, String> {
+    let target = PathBuf::from(&path);
+    validate_within_roots(&state, &target)?;
+    substrate_platform::dir::list_dir(&target)
+        .map_err(|e| e.to_string())
+        .map(|entries| entries.into_iter().map(DirEntryOut::from).collect())
+}
+
+#[tauri::command]
+fn dir_create_file(state: State<AppState>, path: String) -> Result<(), String> {
+    let target = PathBuf::from(&path);
+    validate_within_roots(&state, &target)?;
+    substrate_platform::dir::create_file(&target).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn dir_create_dir(state: State<AppState>, path: String) -> Result<(), String> {
+    let target = PathBuf::from(&path);
+    validate_within_roots(&state, &target)?;
+    substrate_platform::dir::create_dir(&target).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn dir_rename(state: State<AppState>, from: String, to: String) -> Result<(), String> {
+    let from_path = PathBuf::from(&from);
+    let to_path = PathBuf::from(&to);
+    validate_within_roots(&state, &from_path)?;
+    validate_within_roots(&state, &to_path)?;
+    substrate_platform::dir::rename(&from_path, &to_path).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn dir_remove(state: State<AppState>, path: String) -> Result<(), String> {
+    let target = PathBuf::from(&path);
+    validate_within_roots(&state, &target)?;
+    substrate_platform::dir::remove(&target).map_err(|e| e.to_string())
+}
+
+/// Yog-IDLE's own project standards — `substrate-platform` ships none of
+/// these, only the generic `ProjectStandard`/detection machinery.
+fn built_in_standards() -> Vec<ProjectStandard> {
+    vec![ProjectStandard {
+        id: "yog-rust-mod".to_string(),
+        detect_files: vec!["build.sh".to_string(), "version.properties".to_string()],
+    }]
+}
+
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ProjectOut {
+    name: String,
+    root: String,
+    kind: Option<String>,
+}
+
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct SolutionOut {
+    name: String,
+    projects: Vec<ProjectOut>,
+}
+
+/// Opens `path` as a solution — a `.yogsln` file loads as-is; a bare folder
+/// is auto-detected against `built_in_standards()` and wrapped as a
+/// single-project solution in memory (nothing is written to disk unless the
+/// user later saves a `.yogsln`). Every project's root becomes an allowed
+/// path boundary for `dir_*`/workflow commands.
+#[tauri::command]
+fn solution_open(state: State<AppState>, path: String) -> Result<SolutionOut, String> {
+    let requested = PathBuf::from(&path);
+    let canonical = requested.canonicalize().map_err(|e| e.to_string())?;
+
+    let solution = if canonical.extension().is_some_and(|ext| ext == "yogsln") {
+        Solution::load(&canonical).map_err(|e| e.to_string())?
+    } else {
+        let kind = ProjectStandard::detect(&canonical, &built_in_standards());
+        let name = canonical.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_else(|| "Solution".to_string());
+        Solution { name: name.clone(), projects: vec![Project { name, root: canonical.clone(), kind }] }
+    };
+
+    {
+        let mut roots = state.project_roots.lock().unwrap();
+        for project in &solution.projects {
+            if let Ok(canon) = project.root.canonicalize() {
+                if !roots.contains(&canon) {
+                    roots.push(canon);
+                }
+            }
+        }
+    }
+
+    Ok(SolutionOut {
+        name: solution.name,
+        projects: solution
+            .projects
+            .into_iter()
+            .map(|p| ProjectOut { name: p.name, root: p.root.to_string_lossy().into_owned(), kind: p.kind })
+            .collect(),
+    })
+}
+
+/// Bundled default workflow set for the "yog-rust-mod" standard — used
+/// whenever an opened project of that kind has no `workflow.toml` of its own.
+const YOG_RUST_MOD_WORKFLOW: &str = include_str!("standards/yog_rust_mod.toml");
+
+fn resolve_workflow_file(project_root: &Path, kind: Option<&str>) -> Result<WorkflowFile, String> {
+    let project_workflow = project_root.join("workflow.toml");
+    let contents = if project_workflow.exists() {
+        std::fs::read_to_string(&project_workflow).map_err(|e| e.to_string())?
+    } else if kind == Some("yog-rust-mod") {
+        YOG_RUST_MOD_WORKFLOW.to_string()
+    } else {
+        return Err("this project has no workflow.toml and no built-in default for its kind".to_string());
+    };
+    WorkflowFile::parse(&contents).map_err(|e| e.to_string())
+}
+
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct WorkflowSummary {
+    name: String,
+    description: Option<String>,
+}
+
+#[tauri::command]
+fn workflow_list(project_root: String, kind: Option<String>) -> Result<Vec<WorkflowSummary>, String> {
+    let file = resolve_workflow_file(&PathBuf::from(project_root), kind.as_deref())?;
+    let mut list: Vec<WorkflowSummary> =
+        file.workflow.into_iter().map(|(name, def)| WorkflowSummary { name, description: def.description }).collect();
+    list.sort_by(|a, b| a.name.cmp(&b.name));
+    Ok(list)
+}
+
+fn format_log_line(line: &LogLine) -> String {
+    match line.level {
+        Level::Info => line.text.clone(),
+        Level::Warn => format!("[warn] {}", line.text),
+        Level::Error => format!("[error] {}", line.text),
+    }
+}
+
+/// Runs `name` in the background (non-blocking) — output streams live via
+/// the `workflow-output` event (one plain-string line each, same contract
+/// `OutputPanel` already listens for) and a `workflow-exit` event fires once
+/// every step has finished, mirroring the existing `pty-output`/`pty-exit`
+/// pattern.
+#[tauri::command]
+fn workflow_run(app: AppHandle, project_root: String, kind: Option<String>, name: String, vars: HashMap<String, String>) -> Result<(), String> {
+    let root = PathBuf::from(project_root);
+    let file = resolve_workflow_file(&root, kind.as_deref())?;
+
+    let sink = LogSink::new();
+    let out_app = app.clone();
+    sink.on_push(move |line| {
+        let _ = out_app.emit("workflow-output", format_log_line(line));
+    });
+
+    let handle = substrate_platform::run_workflow(file, name, vars, root, sink);
+    std::thread::spawn(move || {
+        while handle.is_running() {
+            std::thread::sleep(Duration::from_millis(50));
+        }
+        let _ = app.emit("workflow-exit", ());
+    });
+
+    Ok(())
+}
 
 /// A shell available to spawn, serialized for the frontend's "new terminal" menu.
 #[derive(Clone, Serialize)]
@@ -95,7 +322,22 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .manage(PtyState::default())
-        .invoke_handler(tauri::generate_handler![pty_spawn, pty_write, pty_resize, pty_kill, list_shells])
+        .manage(AppState::default())
+        .invoke_handler(tauri::generate_handler![
+            pty_spawn,
+            pty_write,
+            pty_resize,
+            pty_kill,
+            list_shells,
+            dir_list,
+            dir_create_file,
+            dir_create_dir,
+            dir_rename,
+            dir_remove,
+            solution_open,
+            workflow_list,
+            workflow_run,
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
