@@ -9,6 +9,14 @@ export default defineConfig(async () => ({
   plugins: [react()],
   resolve: {
     preserveSymlinks: true,
+    // `substrate-platform-ui` is symlinked in via `file:`, and (despite
+    // declaring react/react-dom as peerDependencies only) has its own
+    // installed copies under its real (symlink-target) node_modules.
+    // `preserveSymlinks` makes Vite resolve its imports against that real
+    // location, so without this, its code can end up calling hooks against
+    // a different React module instance than the one actually rendering —
+    // "Invalid hook call" despite both copies being the same version.
+    dedupe: ["react", "react-dom"],
   },
 
   // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
