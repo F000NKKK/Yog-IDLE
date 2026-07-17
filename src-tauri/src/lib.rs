@@ -7,17 +7,19 @@ use tauri::{AppHandle, Emitter, State};
 
 /// A shell available to spawn, serialized for the frontend's "new terminal" menu.
 #[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 struct ShellInfo {
     id: String,
     label: String,
     command: String,
+    clear_command: String,
 }
 
 #[tauri::command]
 fn list_shells() -> Vec<ShellInfo> {
     substrate_platform::detect_shells()
         .into_iter()
-        .map(|s| ShellInfo { id: s.id, label: s.label, command: s.command })
+        .map(|s| ShellInfo { id: s.id, label: s.label, command: s.command, clear_command: s.clear_command })
         .collect()
 }
 
