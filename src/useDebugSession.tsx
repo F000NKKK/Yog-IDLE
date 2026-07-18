@@ -51,6 +51,7 @@ export function useDebugSession() {
   }, []);
 
   const start = useCallback((projectRoot: string, configName: string) => {
+    lastRef.current = { projectRoot, configName };
     setAttaching(true);
     setError(null);
     invoke("debug_start", { projectRoot, configName }).catch((err) => {
@@ -60,11 +61,17 @@ export function useDebugSession() {
   }, []);
 
   const stop = useCallback(() => {
-    invoke("debug_stop").finally(() => {
+    return invoke("debug_stop").finally(() => {
       setDebugging(false);
       setStopped(null);
     });
   }, []);
+
+  const restart = useCallback(() => {
+    const last = lastRef.current;
+    if (!last) return;
+    stop().finally(() => start(last.projectRoot, last.configName));
+  }, [stop, start]);
 
   const continue_ = useCallback(() => {
     invoke("debug_continue").catch((err) => setError(String(err)));
@@ -74,5 +81,5 @@ export function useDebugSession() {
     invoke("debug_step").catch((err) => setError(String(err)));
   }, []);
 
-  return { attaching, debugging, error, stopped, start, stop, continue_, step };
+  return { attaching, debugging, error, stopped, start, stop, restart, continue_, step };
 }
