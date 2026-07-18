@@ -4,7 +4,7 @@ import { listen } from "@tauri-apps/api/event";
 const MAX_LINES = 500;
 
 interface GameStatusEvent {
-  stage: "starting" | "ready";
+  stage: "starting" | "ready" | "exited";
   pid: number | null;
   mods: { id: string; name: string; version: string }[];
 }
@@ -45,6 +45,10 @@ export function useGameStatus() {
         if (e.payload.stage === "starting") {
           setText("Starting…");
           setBusy(true);
+        } else if (e.payload.stage === "exited") {
+          setText("Idle");
+          setBusy(false);
+          pushLine("game process exited");
         } else {
           const modCount = e.payload.mods.length;
           setText(`Running — pid ${e.payload.pid} (${modCount} mod${modCount === 1 ? "" : "s"})`);
