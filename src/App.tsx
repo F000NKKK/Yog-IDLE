@@ -10,7 +10,9 @@ import {
   SettingsWindow,
   AppearanceSettings,
   WindowControls,
+  Toolbar,
   useWorkflowRunner,
+  type ToolbarSection,
 } from "substrate-platform-ui";
 import type { PanelDef, SettingsSection } from "substrate-platform-ui";
 
@@ -148,8 +150,36 @@ function Menu({ onOpenSettings, onOpenPublish }: { onOpenSettings: () => void; o
   );
 }
 
+/**
+ * The editor action toolbar — Save is real (saves every dirty open file);
+ * Undo/Redo/Format/Toggle Comment are disabled placeholders for now (wiring
+ * them needs a way to reach "whichever editor is currently focused", which
+ * doesn't exist yet), and Hot Reload/Restart/Stop Debugging are disabled
+ * because there's no debugger/hot-reload backend yet (see the loader's
+ * planned `yog-debugger`/`yog-hot-reload` crates) — visible so the toolbar
+ * reads as VS-complete, not wired to real behavior yet.
+ */
+function editorToolbarSections(hasDirty: boolean, onSaveAll: () => void): ToolbarSection[] {
+  return [
+    [{ icon: "save", label: "Save All", disabled: !hasDirty, onClick: onSaveAll }],
+    [
+      { icon: "undo", label: "Undo", disabled: true },
+      { icon: "redo", label: "Redo", disabled: true },
+    ],
+    [
+      { icon: "format", label: "Format Document", disabled: true },
+      { icon: "comment", label: "Toggle Comment", disabled: true },
+    ],
+    [
+      { icon: "hotReload", label: "Hot Reload", disabled: true },
+      { icon: "restart", label: "Restart", disabled: true },
+      { icon: "stop", label: "Stop Debugging", disabled: true },
+    ],
+  ];
+}
+
 function Shell({ onOpenSettings, onOpenPublish }: { onOpenSettings: () => void; onOpenPublish: () => void }) {
-  const { panels, closeTab } = useOpenFiles();
+  const { panels, closeTab, hasDirty, saveAll } = useOpenFiles();
   return (
     <PlatformShell
       main={mainPanel}
@@ -160,7 +190,7 @@ function Shell({ onOpenSettings, onOpenPublish }: { onOpenSettings: () => void; 
       menu={
         <>
           <Menu onOpenSettings={onOpenSettings} onOpenPublish={onOpenPublish} />
-          <RunToolbar />
+          <Toolbar leading={<RunToolbar />} sections={EditorToolbarSections({ hasDirty, onSaveAll: saveAll })} />
         </>
       }
     />
