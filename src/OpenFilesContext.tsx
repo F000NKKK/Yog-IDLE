@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ComponentType, type ReactNode } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { resolveEditor, type PanelDef } from "substrate-platform-ui";
+import { resolveEditor, type CodeEditorProps, type PanelDef } from "substrate-platform-ui";
+import { useBreakpoints } from "./BreakpointsContext";
 import { onOpenFileRequest } from "./fileOpenBus";
 
 interface FileTab {
@@ -88,10 +89,28 @@ export function OpenFilesProvider({ children }: { children: ReactNode }) {
     if (!component) {
       component = function FileEditorPanel() {
         const { tabs, updateContent } = useOpenFiles();
+        const { forFile, toggle } = useBreakpoints();
         const tab = tabs.find((t) => t.id === tabId);
         if (!tab) return null;
         const EditorComponent = resolveEditor(tab.name);
-        return <EditorComponent path={tab.path} content={tab.content} onChange={(next) => updateContent(tab.id, next)} />;
+        const onChange = (next: string) => updateContent(tab.id, next);
+        // Only Rust source is actually debuggable (see the debugger backend —
+        // it resolves breakpoints against a mod's own compiled native), so
+        // only `.rs` files get wired to `CodeEditorProps`'s breakpoint gutter
+        // — every other file kind's own props simply have no such field.
+        if (tab.name.toLowerCase().endsWith(".rs")) {
+          const CodeComponent = EditorComponent as ComponentType<CodeEditorProps>;
+          return (
+            <CodeComponent
+              path={tab.path}
+              content={tab.content}
+              onChange={onChange}
+              breakpoints={forFile(tab.path)}
+              onToggleBreakpoint={(line) => toggle(tab.path, line)}
+            />
+          );
+        }
+        return <EditorComponent path={tab.path} content={tab.content} onChange={onChange} />;
       };
       componentCache.current.set(tabId, component);
     }
