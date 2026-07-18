@@ -1,5 +1,5 @@
 import { RunBar, useWorkflowRunner } from "substrate-platform-ui";
-import { useProject, type ProjectInfo } from "../ProjectContext";
+import { useProject } from "../ProjectContext";
 import { useModRunTargets } from "../useModRunTargets";
 
 /**
@@ -24,6 +24,3 @@ function WorkflowRunToolbar({ root }: { root: string }) {
   const runner = useWorkflowRunner(root);
   return <RunBar targets={runner.workflows} running={runner.running} onRun={runner.run} />;
 }
-
-// Kept for backward reference by App.tsx's import — see `ProjectContext` for the shared project shape.
-export type { ProjectInfo };
