@@ -205,7 +205,7 @@ pub fn debug_start(app: AppHandle, state: State<DebugState>, project_root: Strin
         let _ = breakpoints.set(&mut debugger, &mod_id, generation, module_base, &symbols, &file, line);
     }
 
-    *state.0.lock().unwrap() = Some(DebugSession { wrapper: child, debugger, symbols, module_base, mod_id, generation, breakpoints });
+    *state.inner().0.lock().unwrap() = Some(DebugSession { wrapper: child, debugger, symbols, module_base, mod_id, generation, breakpoints });
 
     let _ = app.emit("debug-attached", real_pid.as_raw());
     Ok(())
@@ -218,7 +218,7 @@ static PENDING_BREAKPOINTS: Mutex<Vec<(String, u32)>> = Mutex::new(Vec::new());
 
 #[tauri::command]
 pub fn debug_set_breakpoint(state: State<DebugState>, file: String, line: u32) -> Result<(), String> {
-    let mut guard = state.0.lock().unwrap();
+    let mut guard = state.inner().0.lock().unwrap();
     match guard.as_mut() {
         Some(session) => session
             .breakpoints
@@ -233,7 +233,7 @@ pub fn debug_set_breakpoint(state: State<DebugState>, file: String, line: u32) -
 
 #[tauri::command]
 pub fn debug_clear_breakpoint(state: State<DebugState>, file: String, line: u32) -> Result<(), String> {
-    let mut guard = state.0.lock().unwrap();
+    let mut guard = state.inner().0.lock().unwrap();
     match guard.as_mut() {
         Some(session) => session.breakpoints.clear(&mut session.debugger, &session.mod_id, &file, line).map_err(|e| e.to_string()),
         None => {
@@ -273,7 +273,7 @@ fn emit_stop(app: &AppHandle, session: &DebugSession, reason: StopReason) {
 
 #[tauri::command]
 pub fn debug_continue(app: AppHandle, state: State<DebugState>) -> Result<(), String> {
-    let mut guard = state.0.lock().unwrap();
+    let mut guard = state.inner().0.lock().unwrap();
     let session = guard.as_mut().ok_or("no active debug session")?;
     let reason = session.debugger.continue_().map_err(|e| e.to_string())?;
     emit_stop(&app, session, reason);
@@ -282,7 +282,7 @@ pub fn debug_continue(app: AppHandle, state: State<DebugState>) -> Result<(), St
 
 #[tauri::command]
 pub fn debug_step(app: AppHandle, state: State<DebugState>) -> Result<(), String> {
-    let mut guard = state.0.lock().unwrap();
+    let mut guard = state.inner().0.lock().unwrap();
     let session = guard.as_mut().ok_or("no active debug session")?;
     let reason = session.debugger.single_step().map_err(|e| e.to_string())?;
     emit_stop(&app, session, reason);
@@ -300,7 +300,7 @@ pub fn debug_step(app: AppHandle, state: State<DebugState>) -> Result<(), String
 /// is the user's own tool for that, out of scope here).
 #[tauri::command]
 pub fn debug_stop(state: State<DebugState>) -> Result<(), String> {
-    let Some(mut session) = state.0.lock().unwrap().take() else {
+    let Some(mut session) = state.inner().0.lock().unwrap().take() else {
         return Ok(());
     };
     let real_pid = session.debugger.pid();
