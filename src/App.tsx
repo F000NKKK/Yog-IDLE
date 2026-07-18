@@ -191,4 +191,4 @@ function AppWithProviders() {
   );
 }
 
-export default App;
+export default AppWithProviders;
