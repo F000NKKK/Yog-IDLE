@@ -27,3 +27,10 @@ serde_json = "1"
 toml = "1"
 substrate-platform = { path = "../../Substrate-Platform" }
 
+# Debugger integration (Linux-only, matching yog-debugger's own scope) —
+# ordinary crates.io deps, no path/git coupling to the Yog-Mod-Loader repo.
+yog-symbols = "0.1"
+yog-debugger = "0.1"
+yog-hot-reload = "0.1"
+nix = { version = "0.31", features = ["ptrace", "signal", "process"] }
+
