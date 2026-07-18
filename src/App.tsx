@@ -16,7 +16,7 @@ import type { PanelDef, SettingsSection } from "substrate-platform-ui";
 
 import { EmptyEditorState } from "./panels/EmptyEditorState";
 import { Toolbox } from "./panels/Toolbox";
-import { SolutionExplorer } from "./panels/SolutionExplorer";
+import { ProjectExplorer } from "./panels/ProjectExplorer";
 import { Properties } from "./panels/Properties";
 import { RunToolbar } from "./panels/RunToolbar";
 import { PublishWindow } from "./panels/PublishWindow";
@@ -46,7 +46,7 @@ function BuildOutputPanel() {
 const toolWindows = {
   left: [{ id: "toolbox", title: "Toolbox", component: Toolbox } satisfies PanelDef],
   right: [
-    { id: "solutionExplorer", title: "Solution Explorer", component: SolutionExplorer } satisfies PanelDef,
+    { id: "projectExplorer", title: "Project Explorer", component: ProjectExplorer } satisfies PanelDef,
     { id: "properties", title: "Properties", component: Properties } satisfies PanelDef,
   ],
   bottom: [
