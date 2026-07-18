@@ -154,13 +154,14 @@ function Menu({ onOpenSettings, onOpenPublish }: { onOpenSettings: () => void; o
  * The editor action toolbar — Save is real (saves every dirty open file);
  * Undo/Redo/Format/Toggle Comment are disabled placeholders for now (wiring
  * them needs a way to reach "whichever editor is currently focused", which
- * doesn't exist yet), and Hot Reload/Restart/Stop Debugging are disabled
- * because there's no debugger/hot-reload backend yet (see the loader's
- * planned `yog-debugger`/`yog-hot-reload` crates) — visible so the toolbar
- * reads as VS-complete, not wired to real behavior yet.
+ * doesn't exist yet). Hot Reload/Restart/Stop only appear once something is
+ * actually running/debugging (there's no debugger/hot-reload backend yet —
+ * see the loader's planned `yog-debugger`/`yog-hot-reload` crates — so they
+ * stay disabled placeholders for now too, but shouldn't clutter the bar
+ * while nothing is running).
  */
-function editorToolbarSections(hasDirty: boolean, onSaveAll: () => void): ToolbarSection[] {
-  return [
+function editorToolbarSections(hasDirty: boolean, onSaveAll: () => void, running: boolean): ToolbarSection[] {
+  const sections: ToolbarSection[] = [
     [{ icon: "save", label: "Save All", disabled: !hasDirty, onClick: onSaveAll }],
     [
       { icon: "undo", label: "Undo", disabled: true },
@@ -170,16 +171,20 @@ function editorToolbarSections(hasDirty: boolean, onSaveAll: () => void): Toolba
       { icon: "format", label: "Format Document", disabled: true },
       { icon: "comment", label: "Toggle Comment", disabled: true },
     ],
-    [
+  ];
+  if (running) {
+    sections.push([
       { icon: "hotReload", label: "Hot Reload", disabled: true },
       { icon: "restart", label: "Restart", disabled: true },
       { icon: "stop", label: "Stop Debugging", disabled: true },
-    ],
-  ];
+    ]);
+  }
+  return sections;
 }
 
 function Shell({ onOpenSettings, onOpenPublish }: { onOpenSettings: () => void; onOpenPublish: () => void }) {
   const { panels, closeTab, hasDirty, saveAll } = useOpenFiles();
+  const [running, setRunning] = useState(false);
   return (
     <PlatformShell
       main={mainPanel}
@@ -190,7 +195,7 @@ function Shell({ onOpenSettings, onOpenPublish }: { onOpenSettings: () => void; 
       menu={
         <>
           <Menu onOpenSettings={onOpenSettings} onOpenPublish={onOpenPublish} />
-          <Toolbar leading={<RunToolbar />} sections={editorToolbarSections(hasDirty, saveAll)} />
+          <Toolbar leading={<RunToolbar onRunningChange={setRunning} />} sections={editorToolbarSections(hasDirty, saveAll, running)} />
         </>
       }
     />

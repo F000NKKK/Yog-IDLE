@@ -270,6 +270,7 @@ fn single_step_workflow(program: &str, args: Vec<String>) -> WorkflowFile {
 #[serde(rename_all = "camelCase")]
 struct ModRunTarget {
     name: String,
+    display_name: Option<String>,
     description: Option<String>,
 }
 
@@ -286,12 +287,12 @@ struct ModRunTarget {
 // itself does with the same file.
 fn parse_mod_run_targets(contents: &str) -> Vec<ModRunTarget> {
     let mut targets: Vec<ModRunTarget> = Vec::new();
-    let mut current: Option<(String, Option<String>, Vec<String>)> = None;
+    let mut current: Option<(String, Option<String>, Option<String>, Vec<String>)> = None;
 
-    fn flush(current: Option<(String, Option<String>, Vec<String>)>, targets: &mut Vec<ModRunTarget>) {
-        if let Some((name, command, args)) = current {
+    fn flush(current: Option<(String, Option<String>, Option<String>, Vec<String>)>, targets: &mut Vec<ModRunTarget>) {
+        if let Some((name, display_name, command, args)) = current {
             let description = command.map(|c| if args.is_empty() { c } else { format!("{c} {}", args.join(" ")) });
-            targets.push(ModRunTarget { name, description });
+            targets.push(ModRunTarget { name, display_name, description });
         }
     }
 
@@ -303,11 +304,13 @@ fn parse_mod_run_targets(contents: &str) -> Vec<ModRunTarget> {
         if line.starts_with('[') && line.ends_with(']') {
             flush(current.take(), &mut targets);
             let section = &line[1..line.len() - 1];
-            current = section.strip_prefix("run.").map(|name| (name.to_string(), None, Vec::new()));
+            current = section.strip_prefix("run.").map(|name| (name.to_string(), None, None, Vec::new()));
             continue;
         }
-        let Some((_, command, args)) = current.as_mut() else { continue };
-        if let Some(value) = line.strip_prefix("command").and_then(|rest| rest.trim_start().strip_prefix('=')) {
+        let Some((_, display_name, command, args)) = current.as_mut() else { continue };
+        if let Some(value) = line.strip_prefix("name").and_then(|rest| rest.trim_start().strip_prefix('=')) {
+            *display_name = Some(value.trim().trim_matches('"').to_string());
+        } else if let Some(value) = line.strip_prefix("command").and_then(|rest| rest.trim_start().strip_prefix('=')) {
             *command = Some(value.trim().trim_matches('"').to_string());
         } else if let Some(value) = line.strip_prefix("args").and_then(|rest| rest.trim_start().strip_prefix('=')) {
             *args = value
