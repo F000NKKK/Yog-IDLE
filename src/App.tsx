@@ -199,6 +199,7 @@ function editorToolbarSections(
 function Shell({ onOpenSettings, onOpenPublish }: { onOpenSettings: () => void; onOpenPublish: () => void }) {
   const { panels, closeTab, hasDirty, saveAll } = useOpenFiles();
   const { debugging, restart, stop } = useDebugSessionContext();
+  const gameStatus = useGameStatus();
   const [running, setRunning] = useState(false);
   return (
     <PlatformShell
@@ -216,6 +217,7 @@ function Shell({ onOpenSettings, onOpenPublish }: { onOpenSettings: () => void; 
           />
         </>
       }
+      statusBar={<StatusBar text={gameStatus.text} busy={gameStatus.busy} detail={gameStatus.lines} />}
     />
   );
 }

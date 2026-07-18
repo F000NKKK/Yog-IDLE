@@ -4,12 +4,18 @@ import { requestOpenFile } from "../fileOpenBus";
 
 /** The Debug tool window: call stack from the last stop, plus Continue/Step — the counterpart to Output/Terminal, docked alongside them. */
 export function DebugPanel() {
-  const { debugging, stopped, error, continue_, step } = useDebugSessionContext();
+  const { debugging, stopped, error, continue_, step, grantPtraceAccess } = useDebugSessionContext();
 
   if (!debugging) {
+    const isPermissionError = !!error && /permission denied|EPERM/i.test(error);
     return (
-      <div style={{ padding: "var(--sp-space-sm)", color: "var(--sp-text-muted)" }}>
-        {error ? `Attach failed: ${error}` : "Start Debugging to see the call stack here."}
+      <div style={{ padding: "var(--sp-space-sm)", color: "var(--sp-text-muted)", display: "flex", flexDirection: "column", gap: "var(--sp-space-sm)" }}>
+        <div>{error ? `Attach failed: ${error}` : "Pick Debug mode next to the run target, then press Start."}</div>
+        {isPermissionError && (
+          <Button variant="ghost" onClick={() => grantPtraceAccess().catch((err) => alert(String(err)))} style={{ alignSelf: "flex-start" }}>
+            Grant ptrace access…
+          </Button>
+        )}
       </div>
     );
   }
