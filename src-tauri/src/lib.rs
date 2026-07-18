@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use std::time::Duration;
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use substrate_platform::{EntryKind, Level, LogLine, LogSink, Project, ProjectStandard, PtySession, Solution, WorkflowFile};
 use tauri::{AppHandle, Emitter, State};
 
@@ -135,10 +135,17 @@ fn allow_path(state: State<AppState>, path: String) -> Result<(), String> {
 /// Yog-IDLE's own project standards — `substrate-platform` ships none of
 /// these, only the generic `ProjectStandard`/detection machinery.
 fn built_in_standards() -> Vec<ProjectStandard> {
-    vec![ProjectStandard {
-        id: "yog-rust-mod".to_string(),
-        detect_files: vec!["build.sh".to_string(), "version.properties".to_string()],
-    }]
+    vec![
+        // The universal, primary case: a mod project built with `yog-cli`
+        // (`yog.toml` at its root) — Yog-IDLE targets mod authors generally,
+        // not any one loader specifically.
+        ProjectStandard { id: "yog-mod".to_string(), detect_files: vec!["yog.toml".to_string()] },
+        // Secondary: Yog-Mod-Loader's own source tree (its build.sh/workflow.toml).
+        ProjectStandard {
+            id: "yog-rust-mod".to_string(),
+            detect_files: vec!["build.sh".to_string(), "version.properties".to_string()],
+        },
+    ]
 }
 
 #[derive(Clone, Serialize)]
@@ -235,16 +242,11 @@ fn format_log_line(line: &LogLine) -> String {
     }
 }
 
-/// Runs `name` in the background (non-blocking) — output streams live via
-/// the `workflow-output` event (one plain-string line each, same contract
-/// `OutputPanel` already listens for) and a `workflow-exit` event fires once
-/// every step has finished, mirroring the existing `pty-output`/`pty-exit`
-/// pattern.
-#[tauri::command]
-fn workflow_run(app: AppHandle, project_root: String, kind: Option<String>, name: String, vars: HashMap<String, String>) -> Result<(), String> {
-    let root = PathBuf::from(project_root);
-    let file = resolve_workflow_file(&root, kind.as_deref())?;
-
+/// Shared "run this workflow's named entry, stream its output live, fire
+/// `workflow-exit` when done" body — `workflow_run`, `mod_run`, and
+/// `publish_run` all funnel through this instead of each re-wiring the
+/// sink/event plumbing themselves.
+fn run_and_stream(app: AppHandle, file: WorkflowFile, name: String, vars: HashMap<String, String>, root: PathBuf) {
     let sink = LogSink::new();
     let out_app = app.clone();
     sink.on_push(move |line| {
@@ -258,7 +260,172 @@ fn workflow_run(app: AppHandle, project_root: String, kind: Option<String>, name
         }
         let _ = app.emit("workflow-exit", ());
     });
+}
 
+/// Runs `name` in the background (non-blocking) — output streams live via
+/// the `workflow-output` event (one plain-string line each, same contract
+/// `OutputPanel` already listens for) and a `workflow-exit` event fires once
+/// every step has finished, mirroring the existing `pty-output`/`pty-exit`
+/// pattern.
+#[tauri::command]
+fn workflow_run(app: AppHandle, project_root: String, kind: Option<String>, name: String, vars: HashMap<String, String>) -> Result<(), String> {
+    let root = PathBuf::from(project_root);
+    let file = resolve_workflow_file(&root, kind.as_deref())?;
+    run_and_stream(app, file, name, vars, root);
+    Ok(())
+}
+
+/// Builds a one-step `WorkflowFile` at runtime (a single named entry called
+/// "run") — for commands (`yog run <name>`, `yog build`, `yog publish
+/// exports`) that don't need a whole `workflow.toml` of their own, just the
+/// engine's existing process-streaming plumbing.
+fn single_step_workflow(program: &str, args: Vec<String>) -> WorkflowFile {
+    let mut workflow = HashMap::new();
+    workflow.insert(
+        "run".to_string(),
+        substrate_platform::WorkflowDef {
+            description: None,
+            steps: vec![substrate_platform::WorkflowStep::Run { run: program.to_string(), args, cwd: None, env: HashMap::new() }],
+        },
+    );
+    WorkflowFile { workflow }
+}
+
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ModRunTarget {
+    name: String,
+    description: Option<String>,
+}
+
+/// Reads `yog.toml`'s `[run.<name>]` sections — plain named script-invocation
+/// configs (like VS Code's `tasks.json`), not loader/Minecraft-version
+/// settings. `yog run <name>` (yog-cli's own command) does the actual
+/// build+export+launch; this only lists what's available.
+#[tauri::command]
+fn mod_run_targets(project_root: String) -> Result<Vec<ModRunTarget>, String> {
+    let path = PathBuf::from(&project_root).join("yog.toml");
+    let contents = std::fs::read_to_string(&path).map_err(|e| e.to_string())?;
+    let value: toml::Value = contents.parse().map_err(|e: toml::de::Error| e.to_string())?;
+
+    let mut targets = Vec::new();
+    if let Some(run) = value.get("run").and_then(|v| v.as_table()) {
+        for (name, cfg) in run {
+            let description = cfg.get("command").and_then(|c| c.as_str()).map(|command| {
+                let args: Vec<String> = cfg
+                    .get("args")
+                    .and_then(|a| a.as_array())
+                    .map(|arr| arr.iter().filter_map(|v| v.as_str().map(String::from)).collect())
+                    .unwrap_or_default();
+                format!("{command} {}", args.join(" "))
+            });
+            targets.push(ModRunTarget { name: name.clone(), description });
+        }
+    }
+    targets.sort_by(|a, b| a.name.cmp(&b.name));
+    Ok(targets)
+}
+
+/// Runs a `[run.<name>]` target via `yog run <name>`.
+#[tauri::command]
+fn mod_run(app: AppHandle, project_root: String, name: String) -> Result<(), String> {
+    let root = PathBuf::from(project_root);
+    let file = single_step_workflow("yog", vec!["run".to_string(), name.clone()]);
+    run_and_stream(app, file, "run".to_string(), HashMap::new(), root);
+    Ok(())
+}
+
+#[derive(Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct PublishProfile {
+    id: String,
+    name: String,
+    /// "package" — `yog build` (produces `artifacts/<id>.yog`); "exports" — `yog publish exports`.
+    mode: String,
+    /// Only meaningful for `mode: "exports"`.
+    dry_run: bool,
+}
+
+fn publish_profiles_dir(project_root: &Path) -> PathBuf {
+    project_root.join(".yog-idle").join("publish-profiles")
+}
+
+/// Adds `.yog-idle/` to the project's `.gitignore` the first time a profile
+/// is saved — publish profiles are local developer configuration (the same
+/// reason people gitignore Visual Studio's own PublishProfiles), not
+/// something that belongs in version control by default.
+fn ensure_gitignored(project_root: &Path) {
+    let gitignore_path = project_root.join(".gitignore");
+    let entry = ".yog-idle/";
+    let existing = std::fs::read_to_string(&gitignore_path).unwrap_or_default();
+    if existing.lines().any(|line| line.trim() == entry) {
+        return;
+    }
+    let mut updated = existing;
+    if !updated.is_empty() && !updated.ends_with('\n') {
+        updated.push('\n');
+    }
+    updated.push_str(entry);
+    updated.push('\n');
+    let _ = std::fs::write(&gitignore_path, updated);
+}
+
+#[tauri::command]
+fn publish_profiles_list(project_root: String) -> Result<Vec<PublishProfile>, String> {
+    let dir = publish_profiles_dir(&PathBuf::from(project_root));
+    if !dir.exists() {
+        return Ok(Vec::new());
+    }
+    let mut profiles = Vec::new();
+    for entry in std::fs::read_dir(&dir).map_err(|e| e.to_string())? {
+        let entry = entry.map_err(|e| e.to_string())?;
+        if entry.path().extension().is_some_and(|ext| ext == "json") {
+            let contents = std::fs::read_to_string(entry.path()).map_err(|e| e.to_string())?;
+            if let Ok(profile) = serde_json::from_str::<PublishProfile>(&contents) {
+                profiles.push(profile);
+            }
+        }
+    }
+    profiles.sort_by(|a, b| a.name.cmp(&b.name));
+    Ok(profiles)
+}
+
+#[tauri::command]
+fn publish_profile_save(project_root: String, profile: PublishProfile) -> Result<(), String> {
+    let root = PathBuf::from(&project_root);
+    let dir = publish_profiles_dir(&root);
+    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    let path = dir.join(format!("{}.json", profile.id));
+    let json = serde_json::to_string_pretty(&profile).map_err(|e| e.to_string())?;
+    std::fs::write(path, json).map_err(|e| e.to_string())?;
+    ensure_gitignored(&root);
+    Ok(())
+}
+
+#[tauri::command]
+fn publish_profile_delete(project_root: String, id: String) -> Result<(), String> {
+    let path = publish_profiles_dir(&PathBuf::from(project_root)).join(format!("{id}.json"));
+    if path.exists() {
+        std::fs::remove_file(path).map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
+fn publish_run(app: AppHandle, project_root: String, profile: PublishProfile) -> Result<(), String> {
+    let root = PathBuf::from(project_root);
+    let (program, args) = match profile.mode.as_str() {
+        "exports" => {
+            let mut args = vec!["publish".to_string(), "exports".to_string()];
+            if profile.dry_run {
+                args.push("--dry-run".to_string());
+            }
+            ("yog".to_string(), args)
+        }
+        _ => ("yog".to_string(), vec!["build".to_string()]),
+    };
+    let file = single_step_workflow(&program, args);
+    run_and_stream(app, file, "run".to_string(), HashMap::new(), root);
     Ok(())
 }
 
