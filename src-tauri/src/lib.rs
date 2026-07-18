@@ -135,17 +135,11 @@ fn allow_path(state: State<AppState>, path: String) -> Result<(), String> {
 /// Yog-IDLE's own project standards — `substrate-platform` ships none of
 /// these, only the generic `ProjectStandard`/detection machinery.
 fn built_in_standards() -> Vec<ProjectStandard> {
-    vec![
-        // The universal, primary case: a mod project built with `yog-cli`
-        // (`yog.toml` at its root) — Yog-IDLE targets mod authors generally,
-        // not any one loader specifically.
-        ProjectStandard { id: "yog-mod".to_string(), detect_files: vec!["yog.toml".to_string()] },
-        // Secondary: Yog-Mod-Loader's own source tree (its build.sh/workflow.toml).
-        ProjectStandard {
-            id: "yog-rust-mod".to_string(),
-            detect_files: vec!["build.sh".to_string(), "version.properties".to_string()],
-        },
-    ]
+    // The one project standard: a mod built with `yog-cli` (`yog.toml` at
+    // its root) — Yog-IDLE targets mod authors generally, not any one
+    // loader. Yog-Mod-Loader itself is a build dependency mod projects pull
+    // in, not something opened as its own project here.
+    vec![ProjectStandard { id: "yog-mod".to_string(), detect_files: vec!["yog.toml".to_string()] }]
 }
 
 #[derive(Clone, Serialize)]
@@ -202,19 +196,16 @@ fn solution_open(state: State<AppState>, path: String) -> Result<SolutionOut, St
     })
 }
 
-/// Bundled default workflow set for the "yog-rust-mod" standard — used
-/// whenever an opened project of that kind has no `workflow.toml` of its own.
-const YOG_RUST_MOD_WORKFLOW: &str = include_str!("standards/yog_rust_mod.toml");
-
-fn resolve_workflow_file(project_root: &Path, kind: Option<&str>) -> Result<WorkflowFile, String> {
+/// A generic escape hatch open to any project (regardless of `kind`): if it
+/// happens to define its own `workflow.toml`, its named entries can be run —
+/// no built-in default ships anymore now that Yog-Mod-Loader isn't a project
+/// standard here.
+fn resolve_workflow_file(project_root: &Path) -> Result<WorkflowFile, String> {
     let project_workflow = project_root.join("workflow.toml");
-    let contents = if project_workflow.exists() {
-        std::fs::read_to_string(&project_workflow).map_err(|e| e.to_string())?
-    } else if kind == Some("yog-rust-mod") {
-        YOG_RUST_MOD_WORKFLOW.to_string()
-    } else {
-        return Err("this project has no workflow.toml and no built-in default for its kind".to_string());
-    };
+    if !project_workflow.exists() {
+        return Err("this project has no workflow.toml".to_string());
+    }
+    let contents = std::fs::read_to_string(&project_workflow).map_err(|e| e.to_string())?;
     WorkflowFile::parse(&contents).map_err(|e| e.to_string())
 }
 
@@ -226,8 +217,8 @@ struct WorkflowSummary {
 }
 
 #[tauri::command]
-fn workflow_list(project_root: String, kind: Option<String>) -> Result<Vec<WorkflowSummary>, String> {
-    let file = resolve_workflow_file(&PathBuf::from(project_root), kind.as_deref())?;
+fn workflow_list(project_root: String) -> Result<Vec<WorkflowSummary>, String> {
+    let file = resolve_workflow_file(&PathBuf::from(project_root))?;
     let mut list: Vec<WorkflowSummary> =
         file.workflow.into_iter().map(|(name, def)| WorkflowSummary { name, description: def.description }).collect();
     list.sort_by(|a, b| a.name.cmp(&b.name));
@@ -268,9 +259,9 @@ fn run_and_stream(app: AppHandle, file: WorkflowFile, name: String, vars: HashMa
 /// every step has finished, mirroring the existing `pty-output`/`pty-exit`
 /// pattern.
 #[tauri::command]
-fn workflow_run(app: AppHandle, project_root: String, kind: Option<String>, name: String, vars: HashMap<String, String>) -> Result<(), String> {
+fn workflow_run(app: AppHandle, project_root: String, name: String, vars: HashMap<String, String>) -> Result<(), String> {
     let root = PathBuf::from(project_root);
-    let file = resolve_workflow_file(&root, kind.as_deref())?;
+    let file = resolve_workflow_file(&root)?;
     run_and_stream(app, file, name, vars, root);
     Ok(())
 }
