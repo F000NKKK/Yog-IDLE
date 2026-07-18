@@ -1624,6 +1624,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "iced-x86"
+version = "1.21.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7c447cff8c7f384a7d4f741cfcff32f75f3ad02b406432e8d6c878d56b1edf6b"
+dependencies = [
+ "lazy_static",
+]
+
+[[package]]
 name = "ico"
 version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5069,10 +5078,11 @@ dependencies = [
 
 [[package]]
 name = "yog-debugger"
-version = "0.5.0"
+version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f990443319a38c2c0867a325072f582fba8da553f30b9094b79b69559884a540"
+checksum = "b9bec57655846a395c1626b228a18fa0d937022d6fa3798b0723a567d10ae636"
 dependencies = [
+ "iced-x86",
  "nix 0.31.3",
  "serde_json",
  "yog-hot-reload",

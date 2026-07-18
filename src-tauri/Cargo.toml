@@ -31,6 +31,6 @@ substrate-platform = { path = "../../Substrate-Platform" }
 # ordinary crates.io deps, no path/git coupling to the Yog-Mod-Loader repo.
 [target.'cfg(target_os = "linux")'.dependencies]
 yog-symbols = "0.2"
-yog-debugger = "0.5"
+yog-debugger = "0.6"
 yog-hot-reload = "0.2"
 nix = { version = "0.31", features = ["ptrace", "signal", "process"] }
