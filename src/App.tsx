@@ -19,6 +19,7 @@ import { Toolbox } from "./panels/Toolbox";
 import { SolutionExplorer } from "./panels/SolutionExplorer";
 import { Properties } from "./panels/Properties";
 import { RunToolbar } from "./panels/RunToolbar";
+import { PublishWindow } from "./panels/PublishWindow";
 import { ProjectProvider, useProject } from "./ProjectContext";
 import { OpenFilesProvider, useOpenFiles } from "./OpenFilesContext";
 import { requestOpenFile } from "./fileOpenBus";
