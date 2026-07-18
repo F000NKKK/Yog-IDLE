@@ -29,19 +29,9 @@ substrate-platform = { path = "../../Substrate-Platform" }
 
 # Debugger integration (Linux-only, matching yog-debugger's own scope) —
 # ordinary crates.io deps, no path/git coupling to the Yog-Mod-Loader repo.
+[target.'cfg(target_os = "linux")'.dependencies]
 yog-symbols = "0.1"
 yog-debugger = "0.3"
 yog-hot-reload = "0.2"
 nix = { version = "0.31", features = ["ptrace", "signal", "process"] }
-
-# TEMPORARY local-dev override: this pass adds `discovery`/
-# `find_module_base_by_prefix`/`is_retiring`/`all_active` to yog-debugger and
-# yog-hot-reload, none of which are in the crates.io 0.1.0 releases yet.
-# Remove this [patch] once matching versions are published (see the sibling
-# Yog-Mod-Loader/rust checkout's own release.sh) — until then this pins to
-# the local checkout so Yog-IDLE actually builds against the new code.
-[patch.crates-io]
-yog-debugger = { path = "../../Yog-Mod-Loader/rust/crates/yog-debugger" }
-yog-hot-reload = { path = "../../Yog-Mod-Loader/rust/crates/yog-hot-reload" }
-yog-symbols = { path = "../../Yog-Mod-Loader/rust/crates/yog-symbols" }
 

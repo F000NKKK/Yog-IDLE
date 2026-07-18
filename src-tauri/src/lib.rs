@@ -538,36 +538,73 @@ fn pty_kill(state: State<PtyState>, id: String) -> Result<(), String> {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
+    let builder = tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .manage(PtyState::default())
-        .manage(AppState::default())
-        .invoke_handler(tauri::generate_handler![
-            pty_spawn,
-            pty_write,
-            pty_resize,
-            pty_kill,
-            list_shells,
-            dir_list,
-            dir_create_file,
-            dir_create_dir,
-            dir_rename,
-            dir_remove,
-            file_read,
-            file_write,
-            allow_path,
-            project_open,
-            workflow_list,
-            workflow_run,
-            mod_run_targets,
-            mod_run,
-            mod_build,
-            publish_profiles_list,
-            publish_profile_save,
-            publish_profile_delete,
-            publish_run,
-        ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .manage(AppState::default());
+
+    #[cfg(target_os = "linux")]
+    let builder = builder.manage(debugger::DebugState::default());
+
+    #[cfg(target_os = "linux")]
+    let builder = builder.invoke_handler(tauri::generate_handler![
+        pty_spawn,
+        pty_write,
+        pty_resize,
+        pty_kill,
+        list_shells,
+        dir_list,
+        dir_create_file,
+        dir_create_dir,
+        dir_rename,
+        dir_remove,
+        file_read,
+        file_write,
+        allow_path,
+        project_open,
+        workflow_list,
+        workflow_run,
+        mod_run_targets,
+        mod_run,
+        mod_build,
+        publish_profiles_list,
+        publish_profile_save,
+        publish_profile_delete,
+        publish_run,
+        debugger::debug_start,
+        debugger::debug_stop,
+        debugger::debug_set_breakpoint,
+        debugger::debug_clear_breakpoint,
+        debugger::debug_continue,
+        debugger::debug_step,
+    ]);
+    #[cfg(not(target_os = "linux"))]
+    let builder = builder.invoke_handler(tauri::generate_handler![
+        pty_spawn,
+        pty_write,
+        pty_resize,
+        pty_kill,
+        list_shells,
+        dir_list,
+        dir_create_file,
+        dir_create_dir,
+        dir_rename,
+        dir_remove,
+        file_read,
+        file_write,
+        allow_path,
+        project_open,
+        workflow_list,
+        workflow_run,
+        mod_run_targets,
+        mod_run,
+        mod_build,
+        publish_profiles_list,
+        publish_profile_save,
+        publish_profile_delete,
+        publish_run,
+    ]);
+
+    builder.run(tauri::generate_context!()).expect("error while running tauri application");
 }
