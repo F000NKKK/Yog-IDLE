@@ -5069,30 +5069,17 @@ dependencies = [
 
 [[package]]
 name = "yog-debugger"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9d5692d95d0a7d3275d6b37ee09e253dc318996093787caf2d5c8e0b5dcd58a1"
+version = "0.3.0"
 dependencies = [
  "nix 0.31.3",
  "serde_json",
- "yog-hot-reload 0.2.0",
+ "yog-hot-reload",
  "yog-symbols",
 ]
 
 [[package]]
 name = "yog-hot-reload"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cad6d1afcc93d612aa4e205c622103c9c9c9536db22ca7e04a9e561767cc9e0f"
-dependencies = [
- "libloading 0.9.0",
-]
-
-[[package]]
-name = "yog-hot-reload"
 version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "acd0741d36982ae4daf9e8a22329982a4b8ffeb1d66e89017af236f29645cacd"
 dependencies = [
  "libloading 0.9.0",
 ]
@@ -5111,15 +5098,13 @@ dependencies = [
  "tauri-plugin-opener",
  "toml 1.1.3+spec-1.1.0",
  "yog-debugger",
- "yog-hot-reload 0.1.0",
+ "yog-hot-reload",
  "yog-symbols",
 ]
 
 [[package]]
 name = "yog-symbols"
 version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1ca3d0531e7013ead27aa01c2549546987498d6978452e39177f2c6fc7cd599b"
 dependencies = [
  "addr2line",
  "gimli",

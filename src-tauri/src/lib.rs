@@ -7,6 +7,9 @@ use serde::{Deserialize, Serialize};
 use substrate_platform::{EntryKind, Level, LogLine, LogSink, ProjectStandard, PtySession, WorkflowFile};
 use tauri::{AppHandle, Emitter, State};
 
+#[cfg(target_os = "linux")]
+mod debugger;
+
 /// Every path a `dir_*`/workflow command may touch must resolve under one of
 /// these — populated by `project_open`. An IDE should never read/write
 /// outside a project the user actually opened; this boundary is deliberately
