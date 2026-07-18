@@ -501,12 +501,12 @@ pub fn debug_step(app: AppHandle, state: State<DebugState>) -> Result<(), String
 /// step (a lingering Gradle daemon itself is not something this can or
 /// should tear down — `gradlew --stop` is the user's own tool for that).
 #[tauri::command]
-pub fn debug_stop(state: State<DebugState>) -> Result<(), String> {
+pub fn debug_stop(app: AppHandle, state: State<DebugState>) -> Result<(), String> {
     if let Some(pid) = ACTIVE_PID.lock().unwrap().take() {
         let _ = nix::sys::signal::kill(nix::unistd::Pid::from_raw(pid), nix::sys::signal::Signal::SIGKILL);
     }
 
-    if let Some(mut session) = state.inner().0.lock().unwrap().take() {
+    let had_session = state.inner().0.lock().unwrap().take().map(|mut session| {
         if let Some(mut bits) = session.debug.take() {
             let _ = bits.debugger.detach();
         }
@@ -516,6 +516,11 @@ pub fn debug_stop(state: State<DebugState>) -> Result<(), String> {
         let _ = Command::new("pkill").args(["-P", &session.wrapper.id().to_string()]).status();
         let _ = session.wrapper.kill();
         let _ = session.wrapper.wait();
+    });
+
+    if had_session.is_some() {
+        let _ = app.emit("game-status", GameStatus { stage: "exited", pid: None, mods: Vec::new() });
+        let _ = app.emit("debug-stopped", DebugStoppedEvent { reason: "exited".to_string(), stack_trace: Vec::new() });
     }
     Ok(())
 }
