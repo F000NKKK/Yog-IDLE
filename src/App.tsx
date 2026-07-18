@@ -57,20 +57,39 @@ const toolWindows = {
 
 const SETTINGS_SECTIONS: SettingsSection[] = [{ id: "appearance", label: "Appearance", content: <AppearanceSettings /> }];
 
-/** Basic build operations only — Restore/Build/Test/Publish. "Run" targets live in the Run toolbar instead, and Clean isn't surfaced here. */
+/** Basic build operations only, for the generic workflow.toml fallback path — Restore/Build/Test/Publish. "Run" targets live in the Run toolbar instead, and Clean isn't surfaced here. */
 function isBasicBuildWorkflow(name: string): boolean {
   return /^(restore|build|test|publish)/i.test(name);
 }
 
-/** The "Build" menu's real dropdown — the opened project's Restore/Build/Test/Publish workflows, each running via `workflow_run` with output landing in `BuildOutputPanel`. Only rendered once a project is actually open. */
-function BuildMenu() {
+/**
+ * The "Build" menu — for a `yog-mod` project (the universal case) this is
+ * just two fixed actions: Build (`yog build`) and Publish (opens the
+ * `PublishWindow` configurator, since publishing has its own profile/mode
+ * settings, not a single command to just run). Anything else falls back to
+ * whatever workflows a project's own `workflow.toml` happens to define.
+ */
+function BuildMenu({ onOpenPublish }: { onOpenPublish: () => void }) {
   const { project } = useProject();
   if (!project) return <MenuBarItem label="Build" />;
-  return <BuildMenuItems root={project.root} kind={project.kind} />;
+  if (project.kind === "yog-mod") return <ModBuildMenu root={project.root} onOpenPublish={onOpenPublish} />;
+  return <WorkflowBuildMenu root={project.root} />;
 }
 
-function BuildMenuItems({ root, kind }: { root: string; kind: string | null }) {
-  const runner = useWorkflowRunner(root, kind ?? undefined);
+function ModBuildMenu({ root, onOpenPublish }: { root: string; onOpenPublish: () => void }) {
+  return (
+    <MenuBarItem
+      label="Build"
+      items={[
+        { label: "Build", onClick: () => invoke("mod_build", { projectRoot: root }) },
+        { label: "Publish...", onClick: onOpenPublish },
+      ]}
+    />
+  );
+}
+
+function WorkflowBuildMenu({ root }: { root: string }) {
+  const runner = useWorkflowRunner(root);
   const items = runner.workflows.filter((w) => isBasicBuildWorkflow(w.name)).map((w) => ({ label: w.name, onClick: () => runner.run(w.name) }));
   return <MenuBarItem label="Build" items={items} />;
 }
@@ -115,13 +134,13 @@ function FileMenu() {
   );
 }
 
-function Menu({ onOpenSettings }: { onOpenSettings: () => void }) {
+function Menu({ onOpenSettings, onOpenPublish }: { onOpenSettings: () => void; onOpenPublish: () => void }) {
   return (
     <MenuBar title="Yog IDLE" windowControls={<WindowControls />}>
       <FileMenu />
       <MenuBarItem label="Edit" />
       <MenuBarItem label="View" />
-      <BuildMenu />
+      <BuildMenu onOpenPublish={onOpenPublish} />
       <MenuBarItem label="Debug" />
       <MenuBarItem label="Tools" items={[{ label: "Options...", onClick: onOpenSettings }]} />
       <MenuBarItem label="Help" />
@@ -129,7 +148,7 @@ function Menu({ onOpenSettings }: { onOpenSettings: () => void }) {
   );
 }
 
-function Shell({ onOpenSettings }: { onOpenSettings: () => void }) {
+function Shell({ onOpenSettings, onOpenPublish }: { onOpenSettings: () => void; onOpenPublish: () => void }) {
   const { panels, closeTab } = useOpenFiles();
   return (
     <PlatformShell
@@ -140,7 +159,7 @@ function Shell({ onOpenSettings }: { onOpenSettings: () => void }) {
       onCloseDynamicPanel={closeTab}
       menu={
         <>
-          <Menu onOpenSettings={onOpenSettings} />
+          <Menu onOpenSettings={onOpenSettings} onOpenPublish={onOpenPublish} />
           <RunToolbar />
         </>
       }
@@ -150,16 +169,25 @@ function Shell({ onOpenSettings }: { onOpenSettings: () => void }) {
 
 function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [publishOpen, setPublishOpen] = useState(false);
+  const { project } = useProject();
 
   return (
     <main className="app-root">
-      <ProjectProvider>
-        <OpenFilesProvider>
-          <Shell onOpenSettings={() => setSettingsOpen(true)} />
-        </OpenFilesProvider>
-      </ProjectProvider>
+      <Shell onOpenSettings={() => setSettingsOpen(true)} onOpenPublish={() => setPublishOpen(true)} />
       {settingsOpen && <SettingsWindow sections={SETTINGS_SECTIONS} onClose={() => setSettingsOpen(false)} />}
+      {publishOpen && project && <PublishWindow projectRoot={project.root} onClose={() => setPublishOpen(false)} />}
     </main>
+  );
+}
+
+function AppWithProviders() {
+  return (
+    <ProjectProvider>
+      <OpenFilesProvider>
+        <App />
+      </OpenFilesProvider>
+    </ProjectProvider>
   );
 }
 
