@@ -119,9 +119,9 @@ fn file_write(state: State<AppState>, path: String, contents: String) -> Result<
 /// Expands the allowed-path boundary to cover `path` — used by "Open File...",
 /// where the user explicitly picked a file via a native OS dialog outside any
 /// currently open project. That deliberate picker interaction is itself the
-/// trust signal (same principle `solution_open` already relies on for
-/// whatever folder/`.yogsln` it's pointed at), unlike a path a script merely
-/// asked for on its own.
+/// trust signal (same principle `project_open` already relies on for
+/// whatever folder it's pointed at), unlike a path a script merely asked for
+/// on its own.
 #[tauri::command]
 fn allow_path(state: State<AppState>, path: String) -> Result<(), String> {
     let canonical = PathBuf::from(&path).canonicalize().map_err(|e| e.to_string())?;
