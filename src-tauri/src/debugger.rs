@@ -333,7 +333,8 @@ fn state_has_session(app: &AppHandle) -> bool {
 fn spawn_exit_watcher(app: AppHandle) {
     std::thread::spawn(move || loop {
         std::thread::sleep(Duration::from_secs(1));
-        let mut guard = app.state::<DebugState>().0.lock().unwrap();
+        let debug_state = app.state::<DebugState>();
+        let mut guard = debug_state.0.lock().unwrap();
         let Some(session) = guard.as_mut() else { return };
         match session.wrapper.try_wait() {
             Ok(Some(_)) => {
