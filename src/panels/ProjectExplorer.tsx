@@ -11,20 +11,20 @@ const dirCommands = {
   remove: (path: string) => invoke<void>("dir_remove", { path }),
 };
 
-export function SolutionExplorer() {
+export function ProjectExplorer() {
   const { project, error } = useProject();
 
   if (!project) {
     return (
       <div style={{ padding: "var(--sp-space-sm)", color: "var(--sp-text-muted)" }}>
-        {error ? `Failed to open solution: ${error}` : "Opening solution…"}
+        {error ? `Failed to open project: ${error}` : "Opening project…"}
       </div>
     );
   }
-  return <ProjectExplorer project={project} />;
+  return <ProjectExplorerTree project={project} />;
 }
 
-function ProjectExplorer({ project }: { project: ProjectInfo }) {
+function ProjectExplorerTree({ project }: { project: ProjectInfo }) {
   const tree = useDirectoryTree(project.root, project.name, dirCommands);
 
   function getMenuItems(node: FileTreeNode): FileTreeMenuItem[] {
