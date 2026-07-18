@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 
@@ -26,6 +26,7 @@ export function useDebugSession() {
   const [debugging, setDebugging] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [stopped, setStopped] = useState<DebugStoppedEvent | null>(null);
+  const lastRef = useRef<{ projectRoot: string; configName: string } | null>(null);
 
   useEffect(() => {
     const unlistenAttached = listen("debug-attached", () => {

@@ -22,7 +22,7 @@ use std::time::{Duration, Instant};
 
 use nix::unistd::Pid;
 use serde::Serialize;
-use tauri::{AppHandle, Emitter, State};
+use tauri::{AppHandle, Emitter, Manager, State};
 use yog_debugger::discovery::find_descendant_with_module;
 use yog_debugger::maps::find_module_base_by_prefix;
 use yog_debugger::{Debugger, SourceBreakpoints, StopReason};
