@@ -15,20 +15,33 @@ interface DebugStoppedEvent {
 }
 
 /**
- * Owns the "Start Debugging"/"Stop Debugging" lifecycle — thin wrapper
- * around the `debug_*` Tauri commands and their `debug-attached`/
- * `debug-attach-failed`/`debug-stopped` events (see `src-tauri/src/
- * debugger.rs`). Shaped like `useModRunTargets`/`useWorkflowRunner` so the
- * toolbar/menu can treat it the same way once attached.
+ * Tracks the live state of whatever `RunBar`'s Start button most recently
+ * launched (via `mod_run(root, name, mode)` — "debug" isn't a separately
+ * triggered action anymore, it's just a run mode, see `RunToolbar.tsx`) —
+ * `attaching`/`debugging`/`error`/`stopped` react to the `game-status`/
+ * `debug-attached`/`debug-attach-failed`/`debug-stopped` events the Rust
+ * side emits. `restart`/`stop` are still owned here since Stop/Restart
+ * live in the toolbar, not next to the target picker.
  */
 export function useDebugSession() {
   const [attaching, setAttaching] = useState(false);
   const [debugging, setDebugging] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [stopped, setStopped] = useState<DebugStoppedEvent | null>(null);
-  const lastRef = useRef<{ projectRoot: string; configName: string } | null>(null);
+  const lastRef = useRef<{ projectRoot: string; name: string; mode: string } | null>(null);
 
   useEffect(() => {
+    const unlistenStarting = listen<{ stage: string }>("game-status", (event) => {
+      if (event.payload.stage === "starting") {
+        setAttaching(true);
+        setError(null);
+      } else if (event.payload.stage === "exited") {
+        setAttaching(false);
+        setDebugging(false);
+      } else {
+        setAttaching(false);
+      }
+    });
     const unlistenAttached = listen("debug-attached", () => {
       setAttaching(false);
       setDebugging(true);
@@ -44,25 +57,22 @@ export function useDebugSession() {
       if (event.payload.reason === "exited") setDebugging(false);
     });
     return () => {
+      unlistenStarting.then((f) => f());
       unlistenAttached.then((f) => f());
       unlistenFailed.then((f) => f());
       unlistenStopped.then((f) => f());
     };
   }, []);
 
-  const start = useCallback((projectRoot: string, configName: string) => {
-    lastRef.current = { projectRoot, configName };
-    setAttaching(true);
-    setError(null);
-    invoke("debug_start", { projectRoot, configName }).catch((err) => {
-      setAttaching(false);
-      setError(String(err));
-    });
+  /** Called by `RunToolbar` right when its Start button fires `mod_run`, so `restart` knows what to relaunch. */
+  const notifyRun = useCallback((projectRoot: string, name: string, mode: string) => {
+    lastRef.current = { projectRoot, name, mode };
   }, []);
 
   const stop = useCallback(() => {
     return invoke("debug_stop").finally(() => {
       setDebugging(false);
+      setAttaching(false);
       setStopped(null);
     });
   }, []);
@@ -70,8 +80,8 @@ export function useDebugSession() {
   const restart = useCallback(() => {
     const last = lastRef.current;
     if (!last) return;
-    stop().finally(() => start(last.projectRoot, last.configName));
-  }, [stop, start]);
+    stop().finally(() => invoke("mod_run", last).catch((err) => setError(String(err))));
+  }, [stop]);
 
   const continue_ = useCallback(() => {
     invoke("debug_continue").catch((err) => setError(String(err)));
@@ -81,5 +91,9 @@ export function useDebugSession() {
     invoke("debug_step").catch((err) => setError(String(err)));
   }, []);
 
-  return { attaching, debugging, error, stopped, start, stop, restart, continue_, step };
+  const grantPtraceAccess = useCallback(() => {
+    return invoke("debug_grant_ptrace_capability");
+  }, []);
+
+  return { attaching, debugging, error, stopped, notifyRun, stop, restart, continue_, step, grantPtraceAccess };
 }

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { RunBar, useWorkflowRunner, type RunMode } from "substrate-platform-ui";
 import { useProject } from "../ProjectContext";
 import { useModRunTargets } from "../useModRunTargets";
+import { useDebugSessionContext } from "../DebugSessionContext";
 
 export interface RunToolbarProps {
   /** Reports the run-target source's live `running` state up to the shell, so it can conditionally show Restart/Stop instead of leaving them permanently visible-but-disabled. */
@@ -33,13 +34,17 @@ const MOD_RUN_MODES: RunMode[] = [
 
 function ModRunToolbar({ root, onRunningChange }: { root: string } & RunToolbarProps) {
   const { targets, running, run } = useModRunTargets(root);
+  const { notifyRun } = useDebugSessionContext();
   const [mode, setMode] = useState("release");
   useEffect(() => onRunningChange?.(running), [running, onRunningChange]);
   return (
     <RunBar
       targets={targets}
       running={running}
-      onRun={(name) => run(name, mode)}
+      onRun={(name) => {
+        notifyRun(root, name, mode);
+        run(name, mode);
+      }}
       modes={MOD_RUN_MODES}
       selectedMode={mode}
       onModeChange={setMode}
