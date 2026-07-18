@@ -201,6 +201,7 @@ function editorToolbarSections(
   onSaveAll: () => void,
   running: boolean,
   debugging: boolean,
+  onRestart: () => void,
   onStop: () => void
 ): ToolbarSection[] {
   const sections: ToolbarSection[] = [
@@ -217,7 +218,7 @@ function editorToolbarSections(
   if (running || debugging) {
     sections.push([
       { icon: "hotReload", label: "Hot Reload", disabled: true },
-      { icon: "restart", label: "Restart", disabled: true },
+      { icon: "restart", label: "Restart", disabled: !debugging, onClick: onRestart },
       { icon: "stop", label: "Stop Debugging", disabled: !debugging, onClick: onStop },
     ]);
   }
@@ -226,7 +227,7 @@ function editorToolbarSections(
 
 function Shell({ onOpenSettings, onOpenPublish }: { onOpenSettings: () => void; onOpenPublish: () => void }) {
   const { panels, closeTab, hasDirty, saveAll } = useOpenFiles();
-  const { debugging, stop } = useDebugSessionContext();
+  const { debugging, restart, stop } = useDebugSessionContext();
   const [running, setRunning] = useState(false);
   return (
     <PlatformShell
@@ -238,7 +239,10 @@ function Shell({ onOpenSettings, onOpenPublish }: { onOpenSettings: () => void; 
       menu={
         <>
           <Menu onOpenSettings={onOpenSettings} onOpenPublish={onOpenPublish} />
-          <Toolbar leading={<RunToolbar onRunningChange={setRunning} />} sections={editorToolbarSections(hasDirty, saveAll, running, debugging, stop)} />
+          <Toolbar
+            leading={<RunToolbar onRunningChange={setRunning} />}
+            sections={editorToolbarSections(hasDirty, saveAll, running, debugging, restart, stop)}
+          />
         </>
       }
     />
