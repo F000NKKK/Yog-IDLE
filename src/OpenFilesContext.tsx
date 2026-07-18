@@ -16,6 +16,8 @@ interface OpenFilesContextValue {
   updateContent: (id: string, content: string) => void;
   closeTab: (id: string) => void;
   save: (id: string) => Promise<void>;
+  saveAll: () => void;
+  hasDirty: boolean;
   /** One `PanelDef` per open tab, fed straight into `PlatformShell`'s `extraCenterPanels` — no wrapper "Editor" panel around them. Each panel's `component` keeps a stable identity across renders (cached per tab id) so CodeMirror's internal state (undo history, cursor) survives every keystroke instead of remounting. */
   panels: PanelDef[];
 }
@@ -62,20 +64,24 @@ export function OpenFilesProvider({ children }: { children: ReactNode }) {
     setTabs((prev) => prev.map((t) => (t.id === id ? { ...t, dirty: false } : t)));
   }, []);
 
-  // Ctrl+S saves every dirty tab rather than just "the active one" — the
-  // shell (not this provider) owns which center tab is currently active, so
-  // this avoids needing that wired out just for a keybinding, and it can
-  // never lose unsaved work in a tab the user forgot was dirty.
+  // Saves every dirty tab rather than just "the active one" — the shell
+  // (not this provider) owns which center tab is currently active, so this
+  // avoids needing that wired out just for a keybinding/toolbar button, and
+  // it can never lose unsaved work in a tab the user forgot was dirty.
+  const saveAll = useCallback(() => {
+    for (const tab of tabsRef.current) if (tab.dirty) save(tab.id);
+  }, [save]);
+
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
         e.preventDefault();
-        for (const tab of tabsRef.current) if (tab.dirty) save(tab.id);
+        saveAll();
       }
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [save]);
+  }, [saveAll]);
 
   function getComponent(tabId: string): ComponentType {
     let component = componentCache.current.get(tabId);
@@ -93,8 +99,13 @@ export function OpenFilesProvider({ children }: { children: ReactNode }) {
   }
 
   const panels: PanelDef[] = tabs.map((t) => ({ id: t.id, title: t.dirty ? `${t.name} •` : t.name, component: getComponent(t.id) }));
+  const hasDirty = tabs.some((t) => t.dirty);
 
-  return <OpenFilesContext.Provider value={{ tabs, updateContent, closeTab, save, panels }}>{children}</OpenFilesContext.Provider>;
+  return (
+    <OpenFilesContext.Provider value={{ tabs, updateContent, closeTab, save, saveAll, hasDirty, panels }}>
+      {children}
+    </OpenFilesContext.Provider>
+  );
 }
 
 export function useOpenFiles(): OpenFilesContextValue {
