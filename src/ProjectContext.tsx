@@ -11,7 +11,7 @@ export interface ProjectInfo {
 interface ProjectContextValue {
   project: ProjectInfo | null;
   error: string | null;
-  /** Opens a `.yogsln` file or a bare folder as the current project — used by both the initial dev default and the File menu's Open Folder/Open Project. */
+  /** Opens a folder as the current project — used by both the initial dev default and the File menu's Open Folder/Open Project. Yog-IDLE has no "solution" grouping concept, just a single project identified by `yog.toml`. */
   openPath: (path: string) => Promise<void>;
 }
 
@@ -19,7 +19,7 @@ const ProjectContext = createContext<ProjectContextValue | null>(null);
 
 /**
  * The single source of truth for "what project is currently open" — replaces
- * every panel independently calling `solution_open` with the same hardcoded
+ * every panel independently calling `project_open` with the same hardcoded
  * dev path. Solution Explorer, the Build menu, and the Run toolbar all read
  * from here, and the File menu's Open Folder/Open Project write to it.
  */
@@ -29,8 +29,8 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
 
   async function openPath(path: string) {
     try {
-      const solution = await invoke<{ name: string; projects: ProjectInfo[] }>("solution_open", { path });
-      setProject(solution.projects[0] ?? null);
+      const opened = await invoke<ProjectInfo>("project_open", { path });
+      setProject(opened);
       setError(null);
     } catch (err) {
       setError(String(err));

@@ -84,8 +84,14 @@ function FileMenu() {
   }
 
   async function openProject() {
-    const chosen = await open({ filters: [{ name: "Yog Solution", extensions: ["yogsln"] }] });
-    if (typeof chosen === "string") await openPath(chosen);
+    // Yog-IDLE has no "solution" file format — a project *is* a `yog.toml`.
+    // The native dialog can only filter by extension, not filename, so this
+    // guides the user toward picking one; we then use its parent folder as
+    // the project root.
+    const chosen = await open({ filters: [{ name: "Yog Project (yog.toml)", extensions: ["toml"] }] });
+    if (typeof chosen !== "string") return;
+    const dir = chosen.slice(0, Math.max(chosen.lastIndexOf("/"), chosen.lastIndexOf("\\")));
+    await openPath(dir);
   }
 
   async function openFile() {
