@@ -1,5 +1,5 @@
-import { useEffect } from "react";
-import { RunBar, useWorkflowRunner } from "substrate-platform-ui";
+import { useEffect, useState } from "react";
+import { RunBar, useWorkflowRunner, type RunMode } from "substrate-platform-ui";
 import { useProject } from "../ProjectContext";
 import { useModRunTargets } from "../useModRunTargets";
 
@@ -25,10 +25,26 @@ export function RunToolbar({ onRunningChange }: RunToolbarProps = {}) {
   );
 }
 
+/** "Debug"/"Release" aren't fixed by `RunBar` — this is where Yog-IDLE decides what they mean: a debug-mode run builds with debug symbols and attaches `yog-debugger` the moment the game reports its real pid (see `mod_run`/`debugger::run_with_mode` on the Rust side). */
+const MOD_RUN_MODES: RunMode[] = [
+  { name: "release", label: "Release" },
+  { name: "debug", label: "Debug" },
+];
+
 function ModRunToolbar({ root, onRunningChange }: { root: string } & RunToolbarProps) {
   const { targets, running, run } = useModRunTargets(root);
+  const [mode, setMode] = useState("release");
   useEffect(() => onRunningChange?.(running), [running, onRunningChange]);
-  return <RunBar targets={targets} running={running} onRun={run} />;
+  return (
+    <RunBar
+      targets={targets}
+      running={running}
+      onRun={(name) => run(name, mode)}
+      modes={MOD_RUN_MODES}
+      selectedMode={mode}
+      onModeChange={setMode}
+    />
+  );
 }
 
 function WorkflowRunToolbar({ root, onRunningChange }: { root: string } & RunToolbarProps) {

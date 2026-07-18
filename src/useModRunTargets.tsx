@@ -27,9 +27,9 @@ export function useModRunTargets(projectRoot: string) {
   }, []);
 
   const run = useCallback(
-    (name: string) => {
+    (name: string, mode: string) => {
       setRunning(true);
-      return invoke("mod_run", { projectRoot, name }).catch((err) => {
+      return invoke("mod_run", { projectRoot, name, mode }).catch((err) => {
         setRunning(false);
         throw err;
       });
