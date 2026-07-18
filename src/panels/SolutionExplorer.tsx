@@ -1,13 +1,7 @@
-import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { FileTree, useDirectoryTree, type DirEntry, type FileTreeMenuItem } from "substrate-platform-ui";
-import { DEV_SOLUTION_PATH } from "../devSolution";
-
-interface ProjectInfo {
-  name: string;
-  root: string;
-  kind: string | null;
-}
+import { FileTree, useDirectoryTree, type DirEntry, type FileTreeMenuItem, type FileTreeNode } from "substrate-platform-ui";
+import { useProject, type ProjectInfo } from "../ProjectContext";
+import { requestOpenFile } from "../fileOpenBus";
 
 const dirCommands = {
   list: (path: string) => invoke<DirEntry[]>("dir_list", { path }),
@@ -18,14 +12,7 @@ const dirCommands = {
 };
 
 export function SolutionExplorer() {
-  const [project, setProject] = useState<ProjectInfo | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    invoke<{ name: string; projects: ProjectInfo[] }>("solution_open", { path: DEV_SOLUTION_PATH })
-      .then((solution) => setProject(solution.projects[0] ?? null))
-      .catch((err) => setError(String(err)));
-  }, []);
+  const { project, error } = useProject();
 
   if (!project) {
     return (
@@ -40,7 +27,7 @@ export function SolutionExplorer() {
 function ProjectExplorer({ project }: { project: ProjectInfo }) {
   const tree = useDirectoryTree(project.root, project.name, dirCommands);
 
-  function getMenuItems(node: { id: string; name: string; kind: "file" | "folder" }): FileTreeMenuItem[] {
+  function getMenuItems(node: FileTreeNode): FileTreeMenuItem[] {
     const items: FileTreeMenuItem[] = [];
     if (node.kind === "folder") {
       items.push({
@@ -83,6 +70,7 @@ function ProjectExplorer({ project }: { project: ProjectInfo }) {
         nodes={tree.nodes}
         expandedIds={tree.expandedIds}
         onExpandedChange={tree.onExpandedChange}
+        onActivate={(node) => requestOpenFile({ path: node.id, name: node.name })}
         getMenuItems={getMenuItems}
       />
     </div>

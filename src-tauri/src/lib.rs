@@ -102,6 +102,36 @@ fn dir_remove(state: State<AppState>, path: String) -> Result<(), String> {
     substrate_platform::dir::remove(&target).map_err(|e| e.to_string())
 }
 
+#[tauri::command]
+fn file_read(state: State<AppState>, path: String) -> Result<String, String> {
+    let target = PathBuf::from(&path);
+    validate_within_roots(&state, &target)?;
+    substrate_platform::dir::read_file(&target).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn file_write(state: State<AppState>, path: String, contents: String) -> Result<(), String> {
+    let target = PathBuf::from(&path);
+    validate_within_roots(&state, &target)?;
+    substrate_platform::dir::write_file(&target, &contents).map_err(|e| e.to_string())
+}
+
+/// Expands the allowed-path boundary to cover `path` — used by "Open File...",
+/// where the user explicitly picked a file via a native OS dialog outside any
+/// currently open project. That deliberate picker interaction is itself the
+/// trust signal (same principle `solution_open` already relies on for
+/// whatever folder/`.yogsln` it's pointed at), unlike a path a script merely
+/// asked for on its own.
+#[tauri::command]
+fn allow_path(state: State<AppState>, path: String) -> Result<(), String> {
+    let canonical = PathBuf::from(&path).canonicalize().map_err(|e| e.to_string())?;
+    let mut roots = state.project_roots.lock().unwrap();
+    if !roots.iter().any(|root| canonical.starts_with(root)) {
+        roots.push(canonical);
+    }
+    Ok(())
+}
+
 /// Yog-IDLE's own project standards — `substrate-platform` ships none of
 /// these, only the generic `ProjectStandard`/detection machinery.
 fn built_in_standards() -> Vec<ProjectStandard> {
@@ -321,6 +351,7 @@ fn pty_kill(state: State<PtyState>, id: String) -> Result<(), String> {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_dialog::init())
         .manage(PtyState::default())
         .manage(AppState::default())
         .invoke_handler(tauri::generate_handler![
@@ -334,6 +365,9 @@ pub fn run() {
             dir_create_dir,
             dir_rename,
             dir_remove,
+            file_read,
+            file_write,
+            allow_path,
             solution_open,
             workflow_list,
             workflow_run,

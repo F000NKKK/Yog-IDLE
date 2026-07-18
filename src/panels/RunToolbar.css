@@ -1,0 +1,59 @@
+.sp-run-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-space-xs);
+  min-height: 30px;
+  padding: 3px var(--sp-space-sm);
+  border-bottom: 1px solid var(--sp-border);
+}
+
+/* Deliberately a hardcoded green, not the theme's accent color — Visual
+   Studio's own Start arrow is always green regardless of color theme, and
+   that fixed "go" association is the whole point of copying its convention. */
+.sp-run-toolbar-play {
+  color: #3fb950;
+}
+
+.sp-run-toolbar-play:hover {
+  background: rgba(63, 185, 80, 0.16);
+  color: #3fb950;
+}
+
+.sp-run-toolbar-play:disabled {
+  color: var(--sp-text-faint);
+}
+
+.sp-run-toolbar-target-anchor {
+  position: relative;
+}
+
+.sp-run-toolbar-target {
+  appearance: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 24px;
+  padding: 0 var(--sp-space-sm);
+  border: 1px solid var(--sp-border);
+  border-radius: var(--sp-radius-sm);
+  background: var(--sp-surface-1);
+  color: var(--sp-text);
+  font-family: var(--sp-font-ui);
+  font-size: var(--sp-font-size);
+  cursor: pointer;
+}
+
+.sp-run-toolbar-target:hover {
+  background: var(--sp-surface-2);
+}
+
+.sp-run-toolbar-target:disabled {
+  color: var(--sp-text-faint);
+  cursor: default;
+}
+
+.sp-run-toolbar-chevron {
+  transform: rotate(90deg);
+  flex: 0 0 auto;
+  color: var(--sp-text-faint);
+}
