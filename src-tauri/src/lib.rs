@@ -592,6 +592,7 @@ pub fn run() {
         debugger::debug_clear_breakpoint,
         debugger::debug_continue,
         debugger::debug_step,
+        debugger::debug_grant_ptrace_capability,
     ]);
     #[cfg(not(target_os = "linux"))]
     let builder = builder.invoke_handler(tauri::generate_handler![

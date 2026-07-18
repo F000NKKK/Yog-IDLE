@@ -538,3 +538,29 @@ pub fn debug_stop(app: AppHandle, state: State<DebugState>) -> Result<(), String
     }
     Ok(())
 }
+
+/// A capability can only be granted to a binary's on-disk file (checked at
+/// `exec()` time) by something already privileged — a running process can
+/// never grant *itself* one. So this is the one-time, user-initiated setup
+/// step for attaching without needing `ptrace_scope` set to 0 system-wide:
+/// `pkexec` (Polkit's graphical sudo-equivalent, standard on GNOME/KDE)
+/// prompts for elevation once, then `setcap` stamps `cap_sys_ptrace+ep`
+/// onto Yog-IDLE's own executable so every future launch already has it,
+/// no repeated prompts. Never called implicitly — only in direct response
+/// to the user asking for it (e.g. a "Grant ptrace access" action shown
+/// after an `EPERM` attach failure).
+#[tauri::command]
+pub fn debug_grant_ptrace_capability() -> Result<(), String> {
+    let exe = std::env::current_exe().map_err(|e| format!("couldn't determine Yog-IDLE's own executable path: {e}"))?;
+    let status = Command::new("pkexec")
+        .arg("setcap")
+        .arg("cap_sys_ptrace+ep")
+        .arg(&exe)
+        .status()
+        .map_err(|e| format!("failed to run pkexec (is Polkit installed?): {e}"))?;
+    if status.success() {
+        Ok(())
+    } else {
+        Err(format!("setcap exited with {status} — cancelled, or `setcap`/`pkexec` isn't available. You can also run this manually: sudo setcap cap_sys_ptrace+ep {}", exe.display()))
+    }
+}
