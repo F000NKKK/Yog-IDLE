@@ -3,7 +3,7 @@ name = "yog-idle-tauri"
 version = "0.1.0"
 description = "Visual UI editor for Yog mods — live preview into a running Minecraft client."
 authors = ["F000NK"]
-edition = "2021"
+edition = "2024"
 license = "AGPL-3.0-only"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
