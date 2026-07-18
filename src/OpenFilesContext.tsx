@@ -62,6 +62,21 @@ export function OpenFilesProvider({ children }: { children: ReactNode }) {
     setTabs((prev) => prev.map((t) => (t.id === id ? { ...t, dirty: false } : t)));
   }, []);
 
+  // Ctrl+S saves every dirty tab rather than just "the active one" — the
+  // shell (not this provider) owns which center tab is currently active, so
+  // this avoids needing that wired out just for a keybinding, and it can
+  // never lose unsaved work in a tab the user forgot was dirty.
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
+        e.preventDefault();
+        for (const tab of tabsRef.current) if (tab.dirty) save(tab.id);
+      }
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [save]);
+
   function getComponent(tabId: string): ComponentType {
     let component = componentCache.current.get(tabId);
     if (!component) {
