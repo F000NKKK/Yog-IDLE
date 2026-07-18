@@ -12,7 +12,15 @@ export function DebugPanel() {
       <div style={{ padding: "var(--sp-space-sm)", color: "var(--sp-text-muted)", display: "flex", flexDirection: "column", gap: "var(--sp-space-sm)" }}>
         <div>{error ? `Attach failed: ${error}` : "Pick Debug mode next to the run target, then press Start."}</div>
         {isPermissionError && (
-          <Button variant="ghost" onClick={() => grantPtraceAccess().catch((err) => alert(String(err)))} style={{ alignSelf: "flex-start" }}>
+          <Button
+            variant="ghost"
+            onClick={() =>
+              grantPtraceAccess()
+                .then(() => alert("Granted. This only takes effect for a *new* launch of Yog-IDLE — please restart the app, then try Start Debugging again."))
+                .catch((err) => alert(String(err)))
+            }
+            style={{ alignSelf: "flex-start" }}
+          >
             Grant ptrace access…
           </Button>
         )}

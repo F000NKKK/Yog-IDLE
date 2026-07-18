@@ -316,6 +316,12 @@ fn mark_exited(app: &AppHandle) {
     if had_session {
         let _ = app.emit("game-status", GameStatus { stage: "exited", pid: None, mods: Vec::new() });
         let _ = app.emit("debug-stopped", DebugStoppedEvent { reason: "exited".to_string(), stack_trace: Vec::new() });
+        // `useModRunTargets`'s `running` flag only ever resets on this
+        // event (a holdover from the old `run_and_stream`-based flow,
+        // which fired it automatically) — without it, `RunBar`'s Start
+        // button stays disabled forever after the game exits, since
+        // nothing in this newer control-socket flow ever emitted it.
+        let _ = app.emit("workflow-exit", ());
     }
 }
 
@@ -368,7 +374,9 @@ fn try_attach(app: &AppHandle, real_pid: i32, mod_id: &str, native_path: &Path) 
                  to attach to its own descendants by default — the game process the control socket found is very likely not \
                  a descendant of Yog-IDLE (e.g. an existing Gradle daemon reused across launches). Either run \
                  `echo 0 | sudo tee /proc/sys/kernel/yama/ptrace_scope` (session-only, resets on reboot) or grant Yog-IDLE's \
-                 own binary the capability directly: `sudo setcap cap_sys_ptrace+ep <path to the yog-idle binary>`."
+                 own binary the capability directly: `sudo setcap cap_sys_ptrace+ep <path to the yog-idle binary>` — either \
+                 way, a capability granted to the binary only takes effect the *next* time Yog-IDLE itself is launched, not \
+                 the currently-running instance, so restart it before trying again."
             )
         } else {
             format!("attaching to pid {real_pid}: {raw}")
@@ -535,6 +543,7 @@ pub fn debug_stop(app: AppHandle, state: State<DebugState>) -> Result<(), String
     if had_session.is_some() {
         let _ = app.emit("game-status", GameStatus { stage: "exited", pid: None, mods: Vec::new() });
         let _ = app.emit("debug-stopped", DebugStoppedEvent { reason: "exited".to_string(), stack_trace: Vec::new() });
+        let _ = app.emit("workflow-exit", ());
     }
     Ok(())
 }
