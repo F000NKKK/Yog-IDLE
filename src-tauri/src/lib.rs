@@ -4,7 +4,7 @@ use std::sync::Mutex;
 use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
-use substrate_platform::{EntryKind, Level, LogLine, LogSink, Project, ProjectStandard, PtySession, Solution, WorkflowFile};
+use substrate_platform::{EntryKind, Level, LogLine, LogSink, ProjectStandard, PtySession, WorkflowFile};
 use tauri::{AppHandle, Emitter, State};
 
 /// Every path a `dir_*`/workflow command may touch must resolve under one of
@@ -157,50 +157,27 @@ struct ProjectOut {
     kind: Option<String>,
 }
 
-#[derive(Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct SolutionOut {
-    name: String,
-    projects: Vec<ProjectOut>,
-}
-
-/// Opens `path` as a solution — a `.yogsln` file loads as-is; a bare folder
-/// is auto-detected against `built_in_standards()` and wrapped as a
-/// single-project solution in memory (nothing is written to disk unless the
-/// user later saves a `.yogsln`). Every project's root becomes an allowed
-/// path boundary for `dir_*`/workflow commands.
+/// Opens `path` (a folder) as the current project — Yog-IDLE has no
+/// "solution" grouping concept (that's an optional feature of the generic
+/// engine some *other* product might use; this one doesn't), just a single
+/// project identified by its root folder, auto-detected against
+/// `built_in_standards()` (in practice: does it have a `yog.toml`?). The
+/// root becomes an allowed path boundary for `dir_*`/workflow commands.
 #[tauri::command]
-fn solution_open(state: State<AppState>, path: String) -> Result<SolutionOut, String> {
+fn project_open(state: State<AppState>, path: String) -> Result<ProjectOut, String> {
     let requested = PathBuf::from(&path);
     let canonical = requested.canonicalize().map_err(|e| e.to_string())?;
-
-    let solution = if canonical.extension().is_some_and(|ext| ext == "yogsln") {
-        Solution::load(&canonical).map_err(|e| e.to_string())?
-    } else {
-        let kind = ProjectStandard::detect(&canonical, &built_in_standards());
-        let name = canonical.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_else(|| "Solution".to_string());
-        Solution { name: name.clone(), projects: vec![Project { name, root: canonical.clone(), kind }] }
-    };
+    let kind = ProjectStandard::detect(&canonical, &built_in_standards());
+    let name = canonical.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_else(|| "Project".to_string());
 
     {
         let mut roots = state.project_roots.lock().unwrap();
-        for project in &solution.projects {
-            if let Ok(canon) = project.root.canonicalize() {
-                if !roots.contains(&canon) {
-                    roots.push(canon);
-                }
-            }
+        if !roots.contains(&canonical) {
+            roots.push(canonical.clone());
         }
     }
 
-    Ok(SolutionOut {
-        name: solution.name,
-        projects: solution
-            .projects
-            .into_iter()
-            .map(|p| ProjectOut { name: p.name, root: p.root.to_string_lossy().into_owned(), kind: p.kind })
-            .collect(),
-    })
+    Ok(ProjectOut { name, root: canonical.to_string_lossy().into_owned(), kind })
 }
 
 /// A generic escape hatch open to any project (regardless of `kind`): if it

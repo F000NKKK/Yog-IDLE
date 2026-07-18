@@ -1,66 +1,29 @@
-import { useEffect, useState } from "react";
-import { IconButton, Icon, ContextMenu, useContextMenu, useWorkflowRunner } from "substrate-platform-ui";
+import { RunBar, useWorkflowRunner } from "substrate-platform-ui";
 import { useProject, type ProjectInfo } from "../ProjectContext";
-import "./RunToolbar.css";
+import { useModRunTargets } from "../useModRunTargets";
 
 /**
- * A Visual Studio-style run bar: pick a target (one of the project's
- * workflows — "Run Fabric Client", etc.) from a dropdown, then hit the solid
- * green Start arrow to launch it via the workflow engine. Sits below the
- * menu bar as its own row, mirroring VS's startup-item selector + Start button.
+ * Picks the right run-target source for the open project's kind and hands
+ * it to the generic `RunBar`: a `yog-mod` project's targets come from its
+ * own `yog.toml` (`[run.*]`, executed via `yog run <name>`); anything else
+ * falls back to the generic workflow engine, for a project that happens to
+ * define its own `workflow.toml`.
  */
 export function RunToolbar() {
   const { project } = useProject();
-  if (!project) return <div className="sp-run-toolbar" />;
-  return <RunToolbarContent project={project} />;
+  if (!project) return <RunBar targets={[]} running={false} onRun={() => {}} />;
+  return project.kind === "yog-mod" ? <ModRunToolbar root={project.root} /> : <WorkflowRunToolbar root={project.root} />;
 }
 
-function RunToolbarContent({ project }: { project: ProjectInfo }) {
-  const runner = useWorkflowRunner(project.root, project.kind ?? undefined);
-  const [selected, setSelected] = useState<string | null>(null);
-  const menu = useContextMenu<void>();
-
-  useEffect(() => {
-    if (selected || runner.workflows.length === 0) return;
-    // Prefer a "run"-named workflow as the default target, the same way VS
-    // defaults its Start button to the solution's startup project.
-    const preferred = runner.workflows.find((w) => w.name.toLowerCase().includes("run")) ?? runner.workflows[0];
-    setSelected(preferred.name);
-  }, [runner.workflows, selected]);
-
-  const selectedSummary = runner.workflows.find((w) => w.name === selected);
-
-  return (
-    <div className="sp-run-toolbar">
-      <IconButton
-        size={26}
-        title={selectedSummary ? `Run: ${selectedSummary.name}` : "Select a target first"}
-        disabled={!selected || runner.running}
-        className="sp-run-toolbar-play"
-        onClick={() => selected && runner.run(selected)}
-      >
-        <Icon name="play" size={15} />
-      </IconButton>
-      <div className="sp-run-toolbar-target-anchor">
-        <button
-          type="button"
-          className="sp-run-toolbar-target"
-          disabled={runner.workflows.length === 0}
-          onClick={() => menu.openAtAnchor()}
-        >
-          <span>{selectedSummary?.description ?? selectedSummary?.name ?? "No targets"}</span>
-          <Icon name="chevronRight" size={11} className="sp-run-toolbar-chevron" />
-        </button>
-        <ContextMenu
-          target={menu.target ? { mode: "anchor" } : null}
-          items={runner.workflows.map((w) => ({
-            label: w.description ?? w.name,
-            checked: w.name === selected,
-            onSelect: () => setSelected(w.name),
-          }))}
-          onClose={menu.close}
-        />
-      </div>
-    </div>
-  );
+function ModRunToolbar({ root }: { root: string }) {
+  const { targets, running, run } = useModRunTargets(root);
+  return <RunBar targets={targets} running={running} onRun={run} />;
 }
+
+function WorkflowRunToolbar({ root }: { root: string }) {
+  const runner = useWorkflowRunner(root);
+  return <RunBar targets={runner.workflows} running={runner.running} onRun={runner.run} />;
+}
+
+// Kept for backward reference by App.tsx's import — see `ProjectContext` for the shared project shape.
+export type { ProjectInfo };
