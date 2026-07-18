@@ -5069,9 +5069,9 @@ dependencies = [
 
 [[package]]
 name = "yog-debugger"
-version = "0.4.0"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "852c9be11d94de2842a8e9e10000202573d9ffd8c560b1107f3a2184b2077c34"
+checksum = "f990443319a38c2c0867a325072f582fba8da553f30b9094b79b69559884a540"
 dependencies = [
  "nix 0.31.3",
  "serde_json",
