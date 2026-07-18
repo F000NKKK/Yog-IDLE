@@ -333,6 +333,15 @@ fn mod_run(app: AppHandle, project_root: String, name: String) -> Result<(), Str
     Ok(())
 }
 
+/// The Build menu's plain "Build" action for a `yog-mod` project — `yog build`.
+#[tauri::command]
+fn mod_build(app: AppHandle, project_root: String) -> Result<(), String> {
+    let root = PathBuf::from(project_root);
+    let file = single_step_workflow("yog", vec!["build".to_string()]);
+    run_and_stream(app, file, "run".to_string(), HashMap::new(), root);
+    Ok(())
+}
+
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct PublishProfile {
