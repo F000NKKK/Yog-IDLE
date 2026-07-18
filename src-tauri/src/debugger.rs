@@ -233,10 +233,20 @@ fn try_attach(app: &AppHandle, child: Child, real_pid: Pid, mod_id: &str, native
 
     let session = DebugSession { wrapper: child, debugger, symbols, module_base, mod_id: mod_id.to_string(), generation, breakpoints };
     *app.state::<DebugState>().0.lock().unwrap() = Some(session);
+    *ACTIVE_PID.lock().unwrap() = Some(real_pid.as_raw());
 
     let _ = app.emit("debug-attached", real_pid.as_raw());
     Ok(())
 }
+
+/// The pid `debug_stop` signals directly, kept outside `DebugState`'s own
+/// mutex on purpose: `debug_continue`/`debug_step` hold that mutex (via
+/// `Option::take`) for as long as the tracee is actually running — which
+/// can be indefinite — so `debug_stop` needs a way to interrupt a running
+/// target that doesn't depend on acquiring the same lock. Killing the real
+/// process also naturally unblocks whatever `waitpid` call is in flight,
+/// which is what lets a "continue" in progress actually stop.
+static ACTIVE_PID: Mutex<Option<i32>> = Mutex::new(None);
 
 /// Breakpoints requested before a debug session is attached — applied the
 /// moment `debug_start` succeeds, same as any IDE lets you set breakpoints
@@ -298,22 +308,46 @@ fn emit_stop(app: &AppHandle, session: &DebugSession, reason: StopReason) {
     let _ = app.emit("debug-stopped", DebugStoppedEvent { reason: reason_str.to_string(), stack_trace });
 }
 
-#[tauri::command]
-pub fn debug_continue(app: AppHandle, state: State<DebugState>) -> Result<(), String> {
-    let mut guard = state.inner().0.lock().unwrap();
-    let session = guard.as_mut().ok_or("no active debug session")?;
-    let reason = session.debugger.continue_().map_err(|e| e.to_string())?;
-    emit_stop(&app, session, reason);
+/// Takes the session out of `DebugState` (so the mutex is free for
+/// `debug_stop`/`debug_set_breakpoint` to at least *observe* "nothing to
+/// act on" instead of deadlocking) and runs `op` — `Debugger::continue_` or
+/// `single_step`, both of which block on `waitpid` for as long as the
+/// tracee keeps running — on a background thread. The session goes back
+/// into `DebugState` afterward unless the tracee exited, mirroring
+/// `debug_start`'s fire-and-forget shape: the command returns immediately,
+/// the real result arrives later via `debug-stopped`.
+fn run_in_background(app: AppHandle, state: State<DebugState>, op: impl FnOnce(&mut Debugger) -> Result<StopReason, yog_debugger::DebugError> + Send + 'static) -> Result<(), String> {
+    let Some(session) = state.inner().0.lock().unwrap().take() else {
+        return Err("no active debug session".to_string());
+    };
+    std::thread::spawn(move || {
+        let mut session = session;
+        match op(&mut session.debugger) {
+            Ok(reason) => {
+                emit_stop(&app, &session, reason);
+                if !matches!(reason, StopReason::Exited(_) | StopReason::Killed(_)) {
+                    *ACTIVE_PID.lock().unwrap() = Some(session.debugger.pid().as_raw());
+                    *app.state::<DebugState>().0.lock().unwrap() = Some(session);
+                } else {
+                    *ACTIVE_PID.lock().unwrap() = None;
+                }
+            }
+            Err(e) => {
+                let _ = app.emit("debug-attach-failed", e.to_string());
+            }
+        }
+    });
     Ok(())
 }
 
 #[tauri::command]
+pub fn debug_continue(app: AppHandle, state: State<DebugState>) -> Result<(), String> {
+    run_in_background(app, state, |debugger| debugger.continue_())
+}
+
+#[tauri::command]
 pub fn debug_step(app: AppHandle, state: State<DebugState>) -> Result<(), String> {
-    let mut guard = state.inner().0.lock().unwrap();
-    let session = guard.as_mut().ok_or("no active debug session")?;
-    let reason = session.debugger.single_step().map_err(|e| e.to_string())?;
-    emit_stop(&app, session, reason);
-    Ok(())
+    run_in_background(app, state, |debugger| debugger.single_step())
 }
 
 /// Detaches (clearing every armed breakpoint first) and kills both the real
@@ -327,14 +361,25 @@ pub fn debug_step(app: AppHandle, state: State<DebugState>) -> Result<(), String
 /// is the user's own tool for that, out of scope here).
 #[tauri::command]
 pub fn debug_stop(state: State<DebugState>) -> Result<(), String> {
-    let Some(mut session) = state.inner().0.lock().unwrap().take() else {
-        return Ok(());
-    };
-    let real_pid = session.debugger.pid();
-    let _ = session.debugger.detach();
-    let _ = nix::sys::signal::kill(real_pid, nix::sys::signal::Signal::SIGKILL);
-    let _ = Command::new("pkill").args(["-P", &session.wrapper.id().to_string()]).status();
-    let _ = session.wrapper.kill();
-    let _ = session.wrapper.wait();
+    // Signal the real process directly first, and unconditionally — this is
+    // the only thing that can interrupt a `debug_continue`/`debug_step`
+    // currently blocked in `waitpid` on a background thread (which is
+    // holding the session out of `DebugState`'s mutex for as long as that
+    // blocks), so it must not depend on acquiring that same lock.
+    if let Some(pid) = ACTIVE_PID.lock().unwrap().take() {
+        let _ = nix::sys::signal::kill(nix::unistd::Pid::from_raw(pid), nix::sys::signal::Signal::SIGKILL);
+    }
+
+    // If the session isn't currently taken by an in-flight continue/step,
+    // clean it up fully here; otherwise the background thread's own
+    // `waitpid` will unblock (the kill above just made that happen),
+    // observe `Exited`/`Killed`, and simply not put the session back —
+    // equivalent cleanup, just on that thread instead of this one.
+    if let Some(mut session) = state.inner().0.lock().unwrap().take() {
+        let _ = session.debugger.detach();
+        let _ = Command::new("pkill").args(["-P", &session.wrapper.id().to_string()]).status();
+        let _ = session.wrapper.kill();
+        let _ = session.wrapper.wait();
+    }
     Ok(())
 }
