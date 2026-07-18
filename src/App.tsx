@@ -11,6 +11,7 @@ import {
   AppearanceSettings,
   WindowControls,
   Toolbar,
+  StatusBar,
   useWorkflowRunner,
   type ToolbarSection,
 } from "substrate-platform-ui";
@@ -27,7 +28,7 @@ import { ProjectProvider, useProject } from "./ProjectContext";
 import { OpenFilesProvider, useOpenFiles } from "./OpenFilesContext";
 import { BreakpointsProvider } from "./BreakpointsContext";
 import { DebugSessionProvider, useDebugSessionContext } from "./DebugSessionContext";
-import { useModRunTargets } from "./useModRunTargets";
+import { useGameStatus } from "./useGameStatus";
 import { requestOpenFile } from "./fileOpenBus";
 
 import "./App.css";
@@ -141,36 +142,6 @@ function FileMenu() {
   );
 }
 
-/**
- * "Start Debugging" needs a `[run.*]` target name the same way the Run
- * toolbar's Start button does, but `RunBar` keeps its own selection
- * internal — this picks the same "a target whose name contains 'run'"
- * default `RunBar` uses, independently, rather than threading that
- * selection out through `RunToolbar`'s props for one menu item's sake.
- */
-function DebugMenu() {
-  const { project } = useProject();
-  const { debugging, attaching, start, stop } = useDebugSessionContext();
-  const targets = useModRunTargets(project?.root ?? "").targets;
-
-  if (!project || project.kind !== "yog-mod") return <MenuBarItem label="Debug" />;
-
-  function startDebugging() {
-    const preferred = targets.find((t) => t.name.toLowerCase().includes("run")) ?? targets[0];
-    if (preferred) start(project!.root, preferred.name);
-  }
-
-  return (
-    <MenuBarItem
-      label="Debug"
-      items={[
-        { label: attaching ? "Attaching…" : "Start Debugging", onClick: startDebugging, disabled: attaching || debugging || targets.length === 0 },
-        { label: "Stop Debugging", onClick: stop, disabled: !debugging },
-      ]}
-    />
-  );
-}
-
 function Menu({ onOpenSettings, onOpenPublish }: { onOpenSettings: () => void; onOpenPublish: () => void }) {
   return (
     <MenuBar title="Yog IDLE" windowControls={<WindowControls />}>
@@ -178,7 +149,7 @@ function Menu({ onOpenSettings, onOpenPublish }: { onOpenSettings: () => void; o
       <MenuBarItem label="Edit" />
       <MenuBarItem label="View" />
       <BuildMenu onOpenPublish={onOpenPublish} />
-      <DebugMenu />
+      <MenuBarItem label="Debug" />
       <MenuBarItem label="Tools" items={[{ label: "Options...", onClick: onOpenSettings }]} />
       <MenuBarItem label="Help" />
     </MenuBar>
