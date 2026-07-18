@@ -22,8 +22,12 @@ import { ProjectExplorer } from "./panels/ProjectExplorer";
 import { Properties } from "./panels/Properties";
 import { RunToolbar } from "./panels/RunToolbar";
 import { PublishWindow } from "./panels/PublishWindow";
+import { DebugPanel } from "./panels/DebugPanel";
 import { ProjectProvider, useProject } from "./ProjectContext";
 import { OpenFilesProvider, useOpenFiles } from "./OpenFilesContext";
+import { BreakpointsProvider } from "./BreakpointsContext";
+import { DebugSessionProvider, useDebugSessionContext } from "./DebugSessionContext";
+import { useModRunTargets } from "./useModRunTargets";
 import { requestOpenFile } from "./fileOpenBus";
 
 import "./App.css";
@@ -54,6 +58,7 @@ const toolWindows = {
   bottom: [
     { id: "output", title: "Output", component: BuildOutputPanel } satisfies PanelDef,
     { id: "terminal", title: "Terminal", component: TerminalPanel } satisfies PanelDef,
+    { id: "debug", title: "Debug", component: DebugPanel } satisfies PanelDef,
   ],
 };
 
