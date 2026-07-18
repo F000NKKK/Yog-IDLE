@@ -190,7 +190,7 @@ function Shell({ onOpenSettings, onOpenPublish }: { onOpenSettings: () => void; 
       menu={
         <>
           <Menu onOpenSettings={onOpenSettings} onOpenPublish={onOpenPublish} />
-          <Toolbar leading={<RunToolbar />} sections={EditorToolbarSections({ hasDirty, onSaveAll: saveAll })} />
+          <Toolbar leading={<RunToolbar />} sections={editorToolbarSections(hasDirty, saveAll)} />
         </>
       }
     />
