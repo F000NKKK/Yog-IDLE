@@ -14,9 +14,10 @@ const BreakpointsContext = createContext<BreakpointsContextValue | null>(null);
 /**
  * Owns every breakpoint the user has set, keyed by absolute file path —
  * independent of whether a debug session is currently attached (an IDE
- * lets you set breakpoints before pressing Start, same as `debug_start`'s
- * "pending breakpoints" list on the Rust side handles). Toggling always
- * calls through to `debug_set_breakpoint`/`debug_clear_breakpoint`, which
+ * lets you set breakpoints before pressing Start, same as the Rust side's
+ * own "pending breakpoints" list, applied the moment attach succeeds — see
+ * `try_attach` in `src-tauri/src/debugger.rs`). Toggling always calls
+ * through to `debug_set_breakpoint`/`debug_clear_breakpoint`, which
  * itself decides whether to arm it immediately (session live) or just
  * remember it for later (no session yet).
  */
