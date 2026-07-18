@@ -23,7 +23,7 @@ use std::time::{Duration, Instant};
 use nix::unistd::Pid;
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager, State};
-use yog_debugger::discovery::find_descendant_with_module;
+use yog_debugger::discovery::{find_descendant_with_module, find_process_with_module};
 use yog_debugger::maps::find_module_base_by_prefix;
 use yog_debugger::{Debugger, SourceBreakpoints, StopReason};
 use yog_hot_reload::{GenerationAllocator, ModuleGeneration};
@@ -194,28 +194,50 @@ fn attach_in_background(app: AppHandle, mut child: Child, stderr: std::process::
 
     let Some(wrapper_pid) = wrapper_pid else {
         let _ = child.kill();
-        let _ = app.emit("debug-attach-failed", "yog run never printed its launched pid within 2 minutes — did the build fail or hang?");
+        emit_failed(&app, "yog run never printed its launched pid within 2 minutes — did the build fail or hang?");
         return;
     };
 
     // The wrapper (e.g. gradlew) may take a while to actually fork the real
-    // JVM — poll for it rather than assuming it's there immediately.
+    // JVM — poll for it rather than assuming it's there immediately. Spend
+    // the first half of the budget looking for a genuine descendant, then
+    // fall back to a system-wide scan: Gradle's daemon model means
+    // `./gradlew` commonly just talks to an already-running daemon over a
+    // socket, so the real JVM is often *not* a descendant of the process
+    // this session actually spawned at all (see `find_process_with_module`'s
+    // own doc comment).
+    let descendant_deadline = Instant::now() + Duration::from_secs(60);
     let discover_deadline = Instant::now() + Duration::from_secs(120);
     let real_pid = loop {
         if let Some(pid) = find_descendant_with_module(Pid::from_raw(wrapper_pid), "yog_runtime") {
             break pid;
         }
+        if Instant::now() >= descendant_deadline {
+            if let Some(pid) = find_process_with_module("yog_runtime") {
+                break pid;
+            }
+        }
         if Instant::now() >= discover_deadline {
             let _ = child.kill();
-            let _ = app.emit("debug-attach-failed", "timed out waiting for the game process to load yog-runtime");
+            emit_failed(&app, "timed out waiting for the game process to load yog-runtime — is `yog-mods/` populated and did the client actually start?");
             return;
         }
         std::thread::sleep(Duration::from_millis(200));
     };
 
     if let Err(e) = try_attach(&app, child, real_pid, &mod_id, &native_path) {
-        let _ = app.emit("debug-attach-failed", e);
+        emit_failed(&app, e);
     }
+}
+
+/// Reports a debug-lifecycle failure both as the dedicated event
+/// (`useDebugSession`/`DebugPanel` react to it) *and* as a `workflow-output`
+/// line, so it's visible in the Output panel too — that's far more likely
+/// to already be open than the Debug panel is at the point an attach fails.
+fn emit_failed(app: &AppHandle, message: impl Into<String>) {
+    let message = message.into();
+    let _ = app.emit("debug-attach-failed", message.clone());
+    let _ = app.emit("workflow-output", format!("[error] debug: {message}"));
 }
 
 fn try_attach(app: &AppHandle, child: Child, real_pid: Pid, mod_id: &str, native_path: &Path) -> Result<(), String> {
