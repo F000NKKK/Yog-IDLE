@@ -34,11 +34,3 @@ yog-symbols = "0.2"
 yog-debugger = "0.4"
 yog-hot-reload = "0.2"
 nix = { version = "0.31", features = ["ptrace", "signal", "process"] }
-
-# TEMPORARY local-dev override: this pass switches `SymbolTable`'s internal
-# reader from `Rc` to `Arc` (needed for `Send + Sync`, since it now lives
-# behind a Tauri-managed `Mutex`) — not in the crates.io 0.1.0 release yet.
-# Remove once a matching yog-symbols version is published.
-[patch.crates-io]
-yog-symbols = { path = "../../Yog-Mod-Loader/rust/crates/yog-symbols" }
-
