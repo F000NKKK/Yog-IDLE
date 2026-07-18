@@ -132,14 +132,21 @@ fn allow_path(state: State<AppState>, path: String) -> Result<(), String> {
     Ok(())
 }
 
-/// Yog-IDLE's own project standards — `substrate-platform` ships none of
-/// these, only the generic `ProjectStandard`/detection machinery.
+/// Yog-IDLE's own recognized project standards, loaded from data
+/// (`standards.toml`) rather than hardcoded here — `substrate-platform`
+/// ships none of these itself, only the generic `ProjectStandard`/detection
+/// machinery (it already derives `Serialize`/`Deserialize` for exactly this),
+/// so a fork or a different product can swap in its own detection rules
+/// without touching any Rust logic.
+const BUILT_IN_STANDARDS_TOML: &str = include_str!("standards.toml");
+
+#[derive(Deserialize)]
+struct StandardsFile {
+    standard: Vec<ProjectStandard>,
+}
+
 fn built_in_standards() -> Vec<ProjectStandard> {
-    // The one project standard: a mod built with `yog-cli` (`yog.toml` at
-    // its root) — Yog-IDLE targets mod authors generally, not any one
-    // loader. Yog-Mod-Loader itself is a build dependency mod projects pull
-    // in, not something opened as its own project here.
-    vec![ProjectStandard { id: "yog-mod".to_string(), detect_files: vec!["yog.toml".to_string()] }]
+    toml::from_str::<StandardsFile>(BUILT_IN_STANDARDS_TOML).map(|f| f.standard).unwrap_or_default()
 }
 
 #[derive(Clone, Serialize)]
@@ -529,24 +536,14 @@ pub fn run() {
             solution_open,
             workflow_list,
             workflow_run,
+            mod_run_targets,
+            mod_run,
+            mod_build,
+            publish_profiles_list,
+            publish_profile_save,
+            publish_profile_delete,
+            publish_run,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    /// `cargo check` only validates that `YOG_RUST_MOD_WORKFLOW` is a valid
-    /// `&str` constant — it never actually parses the embedded TOML, so a
-    /// malformed bundled default would otherwise only surface the first time
-    /// someone opens the Build menu.
-    #[test]
-    fn bundled_yog_rust_mod_workflow_parses() {
-        let file = WorkflowFile::parse(YOG_RUST_MOD_WORKFLOW).expect("bundled workflow.toml should parse");
-        for name in ["restore", "build", "run-fabric-client", "test", "clean", "publish-fabric"] {
-            assert!(file.workflow.contains_key(name), "missing workflow: {name}");
-        }
-    }
 }

@@ -1,0 +1,9 @@
+# Yog-IDLE's recognized project standards, as data rather than Rust code —
+# `substrate_platform::ProjectStandard` already derives Serialize/Deserialize
+# for exactly this: different products (or a fork of this one) can ship their
+# own set of detection rules just by editing this file, no recompiling any
+# detection logic.
+
+[[standard]]
+id = "yog-mod"
+detect_files = ["yog.toml"]
