@@ -190,12 +190,19 @@ function Menu({ onOpenSettings, onOpenPublish }: { onOpenSettings: () => void; o
  * Undo/Redo/Format/Toggle Comment are disabled placeholders for now (wiring
  * them needs a way to reach "whichever editor is currently focused", which
  * doesn't exist yet). Hot Reload/Restart/Stop only appear once something is
- * actually running/debugging (there's no debugger/hot-reload backend yet —
- * see the loader's planned `yog-debugger`/`yog-hot-reload` crates — so they
- * stay disabled placeholders for now too, but shouldn't clutter the bar
- * while nothing is running).
+ * actually running/debugging. Restart/Stop are real once a debug session is
+ * attached; Hot Reload stays a disabled placeholder even then — actually
+ * triggering `yog-runtime`'s `nativeHotReload` JNI export from outside the
+ * JVM needs either a JNI-attach from Yog-IDLE's own process or
+ * function-injection via `ptrace`, real work of its own not attempted here.
  */
-function editorToolbarSections(hasDirty: boolean, onSaveAll: () => void, running: boolean): ToolbarSection[] {
+function editorToolbarSections(
+  hasDirty: boolean,
+  onSaveAll: () => void,
+  running: boolean,
+  debugging: boolean,
+  onStop: () => void
+): ToolbarSection[] {
   const sections: ToolbarSection[] = [
     [{ icon: "save", label: "Save All", disabled: !hasDirty, onClick: onSaveAll }],
     [
@@ -207,11 +214,11 @@ function editorToolbarSections(hasDirty: boolean, onSaveAll: () => void, running
       { icon: "comment", label: "Toggle Comment", disabled: true },
     ],
   ];
-  if (running) {
+  if (running || debugging) {
     sections.push([
       { icon: "hotReload", label: "Hot Reload", disabled: true },
       { icon: "restart", label: "Restart", disabled: true },
-      { icon: "stop", label: "Stop Debugging", disabled: true },
+      { icon: "stop", label: "Stop Debugging", disabled: !debugging, onClick: onStop },
     ]);
   }
   return sections;
@@ -219,6 +226,7 @@ function editorToolbarSections(hasDirty: boolean, onSaveAll: () => void, running
 
 function Shell({ onOpenSettings, onOpenPublish }: { onOpenSettings: () => void; onOpenPublish: () => void }) {
   const { panels, closeTab, hasDirty, saveAll } = useOpenFiles();
+  const { debugging, stop } = useDebugSessionContext();
   const [running, setRunning] = useState(false);
   return (
     <PlatformShell
@@ -230,7 +238,7 @@ function Shell({ onOpenSettings, onOpenPublish }: { onOpenSettings: () => void; 
       menu={
         <>
           <Menu onOpenSettings={onOpenSettings} onOpenPublish={onOpenPublish} />
-          <Toolbar leading={<RunToolbar onRunningChange={setRunning} />} sections={editorToolbarSections(hasDirty, saveAll, running)} />
+          <Toolbar leading={<RunToolbar onRunningChange={setRunning} />} sections={editorToolbarSections(hasDirty, saveAll, running, debugging, stop)} />
         </>
       }
     />
@@ -255,7 +263,11 @@ function AppWithProviders() {
   return (
     <ProjectProvider>
       <OpenFilesProvider>
-        <App />
+        <BreakpointsProvider>
+          <DebugSessionProvider>
+            <App />
+          </DebugSessionProvider>
+        </BreakpointsProvider>
       </OpenFilesProvider>
     </ProjectProvider>
   );
