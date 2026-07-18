@@ -8,7 +8,7 @@ use substrate_platform::{EntryKind, Level, LogLine, LogSink, ProjectStandard, Pt
 use tauri::{AppHandle, Emitter, State};
 
 /// Every path a `dir_*`/workflow command may touch must resolve under one of
-/// these — populated by `solution_open`. An IDE should never read/write
+/// these — populated by `project_open`. An IDE should never read/write
 /// outside a project the user actually opened; this boundary is deliberately
 /// enforced here rather than in `substrate-platform`, which stays
 /// path-policy-agnostic.
@@ -519,7 +519,7 @@ pub fn run() {
             file_read,
             file_write,
             allow_path,
-            solution_open,
+            project_open,
             workflow_list,
             workflow_run,
             mod_run_targets,
