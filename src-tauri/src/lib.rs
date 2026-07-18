@@ -339,13 +339,28 @@ fn mod_run_targets(project_root: String) -> Result<Vec<ModRunTarget>, String> {
     Ok(parse_mod_run_targets(&contents))
 }
 
-/// Runs a `[run.<name>]` target via `yog run <name>`.
+/// Runs a `[run.<name>]` target via `yog run <name>` — `mode` is
+/// Yog-IDLE's own vocabulary (`"release"` | `"debug"`), opaque to
+/// `RunBar`/the generic run-target machinery. On Linux this always
+/// connects `yog-runtime`'s control socket for live status, and — for
+/// `mode == "debug"` — attaches `yog-debugger` the moment it reports the
+/// real pid (see `debugger::run_with_mode`). Other platforms fall back to
+/// the plain fire-and-forget run; the debugger stack is Linux-only there
+/// too (`ptrace`).
 #[tauri::command]
-fn mod_run(app: AppHandle, project_root: String, name: String) -> Result<(), String> {
-    let root = PathBuf::from(project_root);
-    let file = single_step_workflow("yog", vec!["run".to_string(), name.clone()]);
-    run_and_stream(app, file, "run".to_string(), HashMap::new(), root);
-    Ok(())
+fn mod_run(app: AppHandle, project_root: String, name: String, mode: String) -> Result<(), String> {
+    #[cfg(target_os = "linux")]
+    {
+        debugger::run_with_mode(app, project_root, name, mode)
+    }
+    #[cfg(not(target_os = "linux"))]
+    {
+        let _ = mode;
+        let root = PathBuf::from(project_root);
+        let file = single_step_workflow("yog", vec!["run".to_string(), name.clone()]);
+        run_and_stream(app, file, "run".to_string(), HashMap::new(), root);
+        Ok(())
+    }
 }
 
 /// The Build menu's plain "Build" action for a `yog-mod` project — `yog build`.
@@ -572,7 +587,6 @@ pub fn run() {
         publish_profile_save,
         publish_profile_delete,
         publish_run,
-        debugger::debug_start,
         debugger::debug_stop,
         debugger::debug_set_breakpoint,
         debugger::debug_clear_breakpoint,

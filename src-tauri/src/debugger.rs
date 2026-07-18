@@ -1,20 +1,20 @@
-//! "Start Debugging": builds a mod with debug symbols, launches it via
-//! `yog run <config> --debug`, finds the *real* game JVM process
-//! (the spawned process is very often a launcher wrapper — `./gradlew
-//! runClient` — that forks its own JVM as a child, not the process itself),
-//! and attaches `yog-debugger` to it.
+//! Runs a mod via `yog run <config> [--debug]` and, on Linux, connects to
+//! the control socket `yog-runtime` opens when `YOG_CONTROL_SOCKET` is set
+//! (see `Yog-Mod-Loader/rust/crates/yog-runtime/src/control_socket.rs`) —
+//! this is what actually tells Yog-IDLE the real game pid and what's
+//! happening inside it, replacing an earlier `/proc`-scanning discovery
+//! mechanism that was fundamentally unreliable (a launcher wrapper like
+//! `./gradlew` is often not even an ancestor of the real JVM once Gradle's
+//! daemon is involved).
 //!
-//! Linux-only, matching `yog-debugger`'s own scope (`ptrace`).
-//!
-//! Deliberately does not reuse `run_and_stream`/`substrate_platform::
-//! run_workflow`: that machinery only exposes "is it still running," not a
-//! killable/pid-bearing process handle, and this needs both (to find the
-//! wrapper's descendants, and to stop the whole tree on "Stop Debugging").
-//! So this spawns and streams its own child directly — a small, deliberate
-//! duplication of `spawn_streaming`'s shape, scoped to what debugging
-//! specifically needs.
+//! "Debug" isn't a separately-triggered action — it's a `mode` on the
+//! normal run flow (`"release"` | `"debug"`, Yog-IDLE's own vocabulary,
+//! opaque to `RunBar`): a debug-mode run additionally builds with debug
+//! symbols and attaches `yog-debugger` the moment the socket's `ready`
+//! message gives us a trustworthy pid.
 
-use std::io::{BufRead, BufReader};
+use std::io::{BufRead, BufReader, Write};
+use std::os::unix::net::UnixStream;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
 use std::sync::Mutex;
@@ -23,17 +23,12 @@ use std::time::{Duration, Instant};
 use nix::unistd::Pid;
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager, State};
-use yog_debugger::discovery::{find_descendant_with_module, find_process_with_module};
 use yog_debugger::maps::find_module_base_by_prefix;
 use yog_debugger::{Debugger, SourceBreakpoints, StopReason};
 use yog_hot_reload::{GenerationAllocator, ModuleGeneration};
 use yog_symbols::SymbolTable;
 
-pub struct DebugSession {
-    /// The originally-spawned process (often a launcher wrapper, e.g.
-    /// gradlew) — not what the debugger is attached to, but what "Stop
-    /// Debugging" kills to tear the whole instance down.
-    wrapper: Child,
+struct DebugBits {
     debugger: Debugger,
     symbols: SymbolTable,
     module_base: u64,
@@ -42,8 +37,17 @@ pub struct DebugSession {
     breakpoints: SourceBreakpoints,
 }
 
+/// One `yog run` launch — always present while the process is up, whether
+/// or not it's a debug-mode run. `debug` is only `Some` once a debug-mode
+/// run has actually attached.
+pub struct RunSession {
+    wrapper: Child,
+    real_pid: Option<i32>,
+    debug: Option<DebugBits>,
+}
+
 #[derive(Default)]
-pub struct DebugState(pub Mutex<Option<DebugSession>>);
+pub struct DebugState(pub Mutex<Option<RunSession>>);
 
 #[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -117,117 +121,179 @@ fn local_native_path(project_root: &Path, mod_id: &str) -> PathBuf {
     project_root.join("target").join(triple).join("release").join(lib)
 }
 
-/// Starts `yog run <config_name> --debug`, scans its output for
-/// the `"==> launched pid "` line (yog-cli emits this right after spawning),
-/// then hunts the spawned process's descendants for the one that actually
-/// has `yog_runtime` loaded — since the spawned process is commonly a
-/// launcher wrapper, not the game itself.
+fn control_socket_path() -> PathBuf {
+    std::env::temp_dir().join(format!("yog-idle-{}-{}.sock", std::process::id(), std::time::SystemTime::now().elapsed_or_zero_nanos()))
+}
+
+// `SystemTime` has no direct "nanos since some fixed point" accessor without
+// a fallible `duration_since` — this just makes the call site above read
+// cleanly instead of unwrapping inline.
+trait ElapsedOrZero {
+    fn elapsed_or_zero_nanos(&self) -> u128;
+}
+impl ElapsedOrZero for std::time::SystemTime {
+    fn elapsed_or_zero_nanos(&self) -> u128 {
+        self.duration_since(std::time::UNIX_EPOCH).map(|d| d.as_nanos()).unwrap_or(0)
+    }
+}
+
+/// Runs `name` (`yog run <name> [--debug]`), always connecting the control
+/// socket for live `game-status` events; if `mode == "debug"`, also
+/// attaches `yog-debugger` the moment the socket's `ready` message arrives.
 ///
-/// Returns as soon as the child is spawned — everything after that (waiting
-/// for the pid line, polling for the real JVM, attaching) happens on a
-/// background thread and reports back via `debug-attached`/
-/// `debug-attach-failed` events, the same fire-and-forget shape
-/// `run_and_stream` already uses for `mod_run`/`workflow_run`. A command
-/// that instead blocked here — e.g. on a `readline` that never arrives
-/// because the target never actually launches a client — would hang
-/// Tauri's invoke call (and, since its blocking-thread pool is bounded,
-/// eventually every *other* command too) for as long as that read blocks,
-/// which is exactly the freeze this is written to avoid.
-#[tauri::command]
-pub fn debug_start(app: AppHandle, project_root: String, config_name: String) -> Result<(), String> {
+/// Returns as soon as the child is spawned — everything after that runs on
+/// a background thread and reports back via `game-status`/`debug-attached`/
+/// `debug-attach-failed` events. A command that instead blocked here on a
+/// socket read that never arrives would hang Tauri's invoke call (and,
+/// since its blocking-thread pool is bounded, eventually every *other*
+/// command too) for as long as that read blocks.
+pub fn run_with_mode(app: AppHandle, project_root: String, config_name: String, mode: String) -> Result<(), String> {
     let root = PathBuf::from(&project_root);
     let yog_toml = std::fs::read_to_string(root.join("yog.toml")).map_err(|e| e.to_string())?;
     let mod_id = read_mod_id(&yog_toml).ok_or("yog.toml has no [mod]/[package] id")?;
+    let debug = mode == "debug";
     let native_path = local_native_path(&root, &mod_id);
+    let socket_path = control_socket_path();
+
+    let mut args = vec!["run".to_string(), config_name.clone()];
+    if debug {
+        args.push("--debug".to_string());
+    }
 
     let mut child = Command::new("yog")
-        .args(["run", &config_name, "--debug"])
+        .args(&args)
         .current_dir(&root)
+        .env("YOG_CONTROL_SOCKET", &socket_path)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
         .map_err(|e| format!("failed to launch `yog run {config_name}`: {e}"))?;
 
-    let stdout = child.stdout.take();
-    let stderr = child.stderr.take().expect("stderr was piped");
-
-    if let Some(stdout) = stdout {
+    for pipe_kind in ["stdout", "stderr"] {
         let out_app = app.clone();
-        std::thread::spawn(move || {
-            for line in BufReader::new(stdout).lines().map_while(Result::ok) {
-                let _ = out_app.emit("workflow-output", line);
+        if pipe_kind == "stdout" {
+            if let Some(stdout) = child.stdout.take() {
+                std::thread::spawn(move || {
+                    for line in BufReader::new(stdout).lines().map_while(Result::ok) {
+                        let _ = out_app.emit("workflow-output", line);
+                    }
+                });
             }
-        });
+        } else if let Some(stderr) = child.stderr.take() {
+            std::thread::spawn(move || {
+                for line in BufReader::new(stderr).lines().map_while(Result::ok) {
+                    let _ = out_app.emit("workflow-output", format!("[warn] {line}"));
+                }
+            });
+        }
     }
 
-    std::thread::spawn(move || attach_in_background(app, child, stderr, mod_id, native_path));
+    *app.state::<DebugState>().0.lock().unwrap() = Some(RunSession { wrapper: child, real_pid: None, debug: None });
+    let _ = app.emit("game-status", GameStatus { stage: "starting", pid: None, mods: Vec::new() });
+
+    std::thread::spawn(move || connect_and_watch(app, socket_path, mod_id, debug, native_path));
     Ok(())
 }
 
-/// A dedicated reader thread feeding lines through a channel is what makes
-/// the pid-line wait an actual, enforceable timeout — a plain "check
-/// `Instant::now()` between blocking reads" loop doesn't time out at all if
-/// a single `read` call itself never returns (nothing was written and the
-/// pipe never closed), since the deadline is only ever re-checked *after* a
-/// read completes.
-fn attach_in_background(app: AppHandle, mut child: Child, stderr: std::process::ChildStderr, mod_id: String, native_path: PathBuf) {
-    let (tx, rx) = std::sync::mpsc::channel::<String>();
-    let out_app = app.clone();
-    std::thread::spawn(move || {
-        for line in BufReader::new(stderr).lines().map_while(Result::ok) {
-            let _ = out_app.emit("workflow-output", format!("[warn] {line}"));
-            if tx.send(line).is_err() {
-                break;
-            }
-        }
-    });
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ModInfoOut {
+    id: String,
+    name: String,
+    version: String,
+}
 
-    let mut wrapper_pid: Option<i32> = None;
-    let deadline = Instant::now() + Duration::from_secs(120);
-    while let Ok(remaining) = deadline.checked_duration_since(Instant::now()).ok_or(()) {
-        let Ok(line) = rx.recv_timeout(remaining) else { break };
-        if let Some(pid_str) = line.strip_prefix("==> launched pid ") {
-            wrapper_pid = pid_str.trim().parse().ok();
-            break;
-        }
-    }
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct GameStatus {
+    stage: &'static str,
+    pid: Option<i32>,
+    mods: Vec<ModInfoOut>,
+}
 
-    let Some(wrapper_pid) = wrapper_pid else {
-        let _ = child.kill();
-        emit_failed(&app, "yog run never printed its launched pid within 2 minutes — did the build fail or hang?");
+/// Retries connecting to the control socket (the child needs a moment to
+/// reach `nativeInit`), reads the `ready` line for the real pid directly —
+/// no `/proc` walking at all — then keeps reading further event lines for
+/// the rest of the session, translating each into a `game-status` event.
+fn connect_and_watch(app: AppHandle, socket_path: PathBuf, mod_id: String, debug: bool, native_path: PathBuf) {
+    let connect_deadline = Instant::now() + Duration::from_secs(90);
+    let stream = loop {
+        match UnixStream::connect(&socket_path) {
+            Ok(s) => break Some(s),
+            Err(_) if Instant::now() < connect_deadline => std::thread::sleep(Duration::from_millis(200)),
+            Err(_) => break None,
+        }
+    };
+
+    let Some(mut stream) = stream else {
+        // Not fatal for a plain run — an older yog-runtime without socket
+        // support, or a mod that never got as far as `nativeInit`, just
+        // means no live status/attach for this session, not that the game
+        // itself failed to launch.
+        let _ = app.emit(
+            "workflow-output",
+            "[warn] control socket never connected — no live status or debugger attach available for this run".to_string(),
+        );
+        if debug {
+            emit_failed(&app, "control socket never connected — is this mod's yog-runtime new enough to support it?");
+        }
         return;
     };
 
-    // The wrapper (e.g. gradlew) may take a while to actually fork the real
-    // JVM — poll for it rather than assuming it's there immediately. Spend
-    // the first half of the budget looking for a genuine descendant, then
-    // fall back to a system-wide scan: Gradle's daemon model means
-    // `./gradlew` commonly just talks to an already-running daemon over a
-    // socket, so the real JVM is often *not* a descendant of the process
-    // this session actually spawned at all (see `find_process_with_module`'s
-    // own doc comment).
-    let descendant_deadline = Instant::now() + Duration::from_secs(60);
-    let discover_deadline = Instant::now() + Duration::from_secs(120);
-    let real_pid = loop {
-        if let Some(pid) = find_descendant_with_module(Pid::from_raw(wrapper_pid), "yog_runtime") {
-            break pid;
+    let mut reader = BufReader::new(match stream.try_clone() {
+        Ok(s) => s,
+        Err(_) => return,
+    });
+
+    let mut line = String::new();
+    if reader.read_line(&mut line).unwrap_or(0) == 0 {
+        return;
+    }
+    let Ok(ready) = serde_json::from_str::<serde_json::Value>(line.trim()) else { return };
+    let Some(real_pid) = ready.get("pid").and_then(|v| v.as_i64()).map(|v| v as i32) else { return };
+    let mods: Vec<ModInfoOut> = ready
+        .get("mods")
+        .and_then(|v| v.as_array())
+        .map(|arr| {
+            arr.iter()
+                .map(|m| ModInfoOut {
+                    id: m.get("id").and_then(|v| v.as_str()).unwrap_or_default().to_string(),
+                    name: m.get("name").and_then(|v| v.as_str()).unwrap_or_default().to_string(),
+                    version: m.get("version").and_then(|v| v.as_str()).unwrap_or_default().to_string(),
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+
+    if let Some(session) = app.state::<DebugState>().0.lock().unwrap().as_mut() {
+        session.real_pid = Some(real_pid);
+    }
+    *ACTIVE_PID.lock().unwrap() = Some(real_pid);
+    let _ = app.emit("game-status", GameStatus { stage: "ready", pid: Some(real_pid), mods });
+
+    if debug {
+        if let Err(e) = try_attach(&app, real_pid, &mod_id, &native_path) {
+            emit_failed(&app, e);
         }
-        if Instant::now() >= descendant_deadline {
-            if let Some(pid) = find_process_with_module("yog_runtime") {
-                break pid;
+    }
+
+    // Keep reading further event lines (hot-reload-done, ...) for the rest
+    // of the session — a plain forward into `game-status`, same shape as
+    // the `ready` handling above.
+    let mut line = String::new();
+    loop {
+        line.clear();
+        match reader.read_line(&mut line) {
+            Ok(0) | Err(_) => break,
+            Ok(_) => {
+                if let Ok(event) = serde_json::from_str::<serde_json::Value>(line.trim()) {
+                    let stage = event.get("event").and_then(|v| v.as_str()).unwrap_or("unknown");
+                    let _ = app.emit("workflow-output", format!("[control] {stage}: {line}", line = line.trim()));
+                }
             }
         }
-        if Instant::now() >= discover_deadline {
-            let _ = child.kill();
-            emit_failed(&app, "timed out waiting for the game process to load yog-runtime — is `yog-mods/` populated and did the client actually start?");
-            return;
-        }
-        std::thread::sleep(Duration::from_millis(200));
-    };
-
-    if let Err(e) = try_attach(&app, child, real_pid, &mod_id, &native_path) {
-        emit_failed(&app, e);
     }
+    let _ = stream.flush();
 }
 
 /// Reports a debug-lifecycle failure both as the dedicated event
@@ -240,12 +306,12 @@ fn emit_failed(app: &AppHandle, message: impl Into<String>) {
     let _ = app.emit("workflow-output", format!("[error] debug: {message}"));
 }
 
-fn try_attach(app: &AppHandle, child: Child, real_pid: Pid, mod_id: &str, native_path: &Path) -> Result<(), String> {
+fn try_attach(app: &AppHandle, real_pid: i32, mod_id: &str, native_path: &Path) -> Result<(), String> {
     let symbols = SymbolTable::load(native_path).map_err(|e| format!("loading symbols from {}: {e}", native_path.display()))?;
-    let mut debugger = Debugger::attach(real_pid.as_raw()).map_err(|e| format!("attaching to pid {}: {e}", real_pid.as_raw()))?;
+    let mut debugger = Debugger::attach(real_pid).map_err(|e| format!("attaching to pid {real_pid}: {e}"))?;
     let prefix = format!("yog-{mod_id}-");
-    let module_base = find_module_base_by_prefix(debugger.pid(), &prefix)
-        .ok_or_else(|| format!("couldn't locate {mod_id}'s native in pid {}'s memory map", real_pid.as_raw()))?;
+    let module_base =
+        find_module_base_by_prefix(debugger.pid(), &prefix).ok_or_else(|| format!("couldn't locate {mod_id}'s native in pid {real_pid}'s memory map"))?;
 
     let generation = GenerationAllocator::new().next();
     let mut breakpoints = SourceBreakpoints::new();
@@ -253,11 +319,12 @@ fn try_attach(app: &AppHandle, child: Child, real_pid: Pid, mod_id: &str, native
         let _ = breakpoints.set(&mut debugger, mod_id, generation, module_base, &symbols, &file, line);
     }
 
-    let session = DebugSession { wrapper: child, debugger, symbols, module_base, mod_id: mod_id.to_string(), generation, breakpoints };
-    *app.state::<DebugState>().0.lock().unwrap() = Some(session);
-    *ACTIVE_PID.lock().unwrap() = Some(real_pid.as_raw());
+    let debug_bits = DebugBits { debugger, symbols, module_base, mod_id: mod_id.to_string(), generation, breakpoints };
+    if let Some(session) = app.state::<DebugState>().0.lock().unwrap().as_mut() {
+        session.debug = Some(debug_bits);
+    }
 
-    let _ = app.emit("debug-attached", real_pid.as_raw());
+    let _ = app.emit("debug-attached", real_pid);
     Ok(())
 }
 
@@ -271,18 +338,15 @@ fn try_attach(app: &AppHandle, child: Child, real_pid: Pid, mod_id: &str, native
 static ACTIVE_PID: Mutex<Option<i32>> = Mutex::new(None);
 
 /// Breakpoints requested before a debug session is attached — applied the
-/// moment `debug_start` succeeds, same as any IDE lets you set breakpoints
-/// before pressing Start.
+/// moment attach succeeds, same as any IDE lets you set breakpoints before
+/// pressing Start.
 static PENDING_BREAKPOINTS: Mutex<Vec<(String, u32)>> = Mutex::new(Vec::new());
 
 #[tauri::command]
 pub fn debug_set_breakpoint(state: State<DebugState>, file: String, line: u32) -> Result<(), String> {
     let mut guard = state.inner().0.lock().unwrap();
-    match guard.as_mut() {
-        Some(session) => session
-            .breakpoints
-            .set(&mut session.debugger, &session.mod_id, session.generation, session.module_base, &session.symbols, &file, line)
-            .map_err(|e| e.to_string()),
+    match guard.as_mut().and_then(|s| s.debug.as_mut()) {
+        Some(bits) => bits.breakpoints.set(&mut bits.debugger, &bits.mod_id, bits.generation, bits.module_base, &bits.symbols, &file, line).map_err(|e| e.to_string()),
         None => {
             PENDING_BREAKPOINTS.lock().unwrap().push((file, line));
             Ok(())
@@ -293,8 +357,8 @@ pub fn debug_set_breakpoint(state: State<DebugState>, file: String, line: u32) -
 #[tauri::command]
 pub fn debug_clear_breakpoint(state: State<DebugState>, file: String, line: u32) -> Result<(), String> {
     let mut guard = state.inner().0.lock().unwrap();
-    match guard.as_mut() {
-        Some(session) => session.breakpoints.clear(&mut session.debugger, &session.mod_id, &file, line).map_err(|e| e.to_string()),
+    match guard.as_mut().and_then(|s| s.debug.as_mut()) {
+        Some(bits) => bits.breakpoints.clear(&mut bits.debugger, &bits.mod_id, &file, line).map_err(|e| e.to_string()),
         None => {
             PENDING_BREAKPOINTS.lock().unwrap().retain(|(f, l)| !(f == &file && *l == line));
             Ok(())
@@ -302,14 +366,14 @@ pub fn debug_clear_breakpoint(state: State<DebugState>, file: String, line: u32)
     }
 }
 
-fn stack_trace_of(session: &DebugSession) -> Vec<StackFrameOut> {
-    let Ok(addrs) = session.debugger.backtrace(64) else { return Vec::new() };
+fn stack_trace_of(bits: &DebugBits) -> Vec<StackFrameOut> {
+    let Ok(addrs) = bits.debugger.backtrace(64) else { return Vec::new() };
     addrs
         .into_iter()
         .enumerate()
         .filter_map(|(i, addr)| {
-            let offset = addr.checked_sub(session.module_base)?;
-            let location = session.symbols.resolve_addr(offset)?;
+            let offset = addr.checked_sub(bits.module_base)?;
+            let location = bits.symbols.resolve_addr(offset)?;
             Some(StackFrameOut {
                 id: i as i64,
                 name: location.function.unwrap_or_else(|| "<unknown>".to_string()),
@@ -320,43 +384,44 @@ fn stack_trace_of(session: &DebugSession) -> Vec<StackFrameOut> {
         .collect()
 }
 
-fn emit_stop(app: &AppHandle, session: &DebugSession, reason: StopReason) {
+fn emit_stop(app: &AppHandle, bits: &DebugBits, reason: StopReason) {
     let reason_str = match reason {
         StopReason::Breakpoint(_) => "breakpoint",
         StopReason::Signal(_) => "signal",
         StopReason::Exited(_) | StopReason::Killed(_) => "exited",
     };
-    let stack_trace = if reason_str == "exited" { Vec::new() } else { stack_trace_of(session) };
+    let stack_trace = if reason_str == "exited" { Vec::new() } else { stack_trace_of(bits) };
     let _ = app.emit("debug-stopped", DebugStoppedEvent { reason: reason_str.to_string(), stack_trace });
 }
 
-/// Takes the session out of `DebugState` (so the mutex is free for
-/// `debug_stop`/`debug_set_breakpoint` to at least *observe* "nothing to
-/// act on" instead of deadlocking) and runs `op` — `Debugger::continue_` or
-/// `single_step`, both of which block on `waitpid` for as long as the
+/// Takes the whole `RunSession` out of `DebugState` (so the mutex is free
+/// for `debug_stop`/`debug_set_breakpoint` to at least *observe* "nothing
+/// to act on" instead of deadlocking) and runs `op` — `Debugger::continue_`
+/// or `single_step`, both of which block on `waitpid` for as long as the
 /// tracee keeps running — on a background thread. The session goes back
-/// into `DebugState` afterward unless the tracee exited, mirroring
-/// `debug_start`'s fire-and-forget shape: the command returns immediately,
-/// the real result arrives later via `debug-stopped`.
+/// into `DebugState` afterward unless the tracee exited.
 fn run_in_background(app: AppHandle, state: State<DebugState>, op: impl FnOnce(&mut Debugger) -> Result<StopReason, yog_debugger::DebugError> + Send + 'static) -> Result<(), String> {
-    let Some(session) = state.inner().0.lock().unwrap().take() else {
+    let mut guard = state.inner().0.lock().unwrap();
+    if guard.as_ref().and_then(|s| s.debug.as_ref()).is_none() {
         return Err("no active debug session".to_string());
-    };
+    }
+    let mut session = guard.take().unwrap();
+    drop(guard);
     std::thread::spawn(move || {
-        let mut session = session;
-        match op(&mut session.debugger) {
+        let mut bits = session.debug.take().expect("checked above");
+        match op(&mut bits.debugger) {
             Ok(reason) => {
                 let exited = matches!(reason, StopReason::Exited(_) | StopReason::Killed(_));
-                emit_stop(&app, &session, reason);
+                emit_stop(&app, &bits, reason);
+                session.debug = if exited { None } else { Some(bits) };
                 if !exited {
-                    *ACTIVE_PID.lock().unwrap() = Some(session.debugger.pid().as_raw());
-                    *app.state::<DebugState>().0.lock().unwrap() = Some(session);
-                } else {
-                    *ACTIVE_PID.lock().unwrap() = None;
+                    *ACTIVE_PID.lock().unwrap() = Some(session.real_pid.unwrap_or_default());
                 }
+                *app.state::<DebugState>().0.lock().unwrap() = Some(session);
             }
             Err(e) => {
                 let _ = app.emit("debug-attach-failed", e.to_string());
+                *app.state::<DebugState>().0.lock().unwrap() = Some(session);
             }
         }
     });
@@ -373,33 +438,30 @@ pub fn debug_step(app: AppHandle, state: State<DebugState>) -> Result<(), String
     run_in_background(app, state, |debugger| debugger.single_step())
 }
 
-/// Detaches (clearing every armed breakpoint first) and kills both the real
-/// game process discovery found *and* the original wrapper — a plain
-/// `Child::kill()` on the wrapper alone would leave its forked JVM running
-/// orphaned; conversely a wrapper like Gradle can hand off to a persistent
-/// background daemon that outlives `./gradlew` by design, so killing only
-/// the process discovery found is the more reliable half of this, with the
-/// wrapper cleanup as a best-effort second step (a lingering Gradle daemon
-/// itself is not something this can or should tear down — `gradlew --stop`
-/// is the user's own tool for that, out of scope here).
+/// Kills the whole instance, whether or not it's a debug-mode run: signals
+/// the real pid directly (this is the only thing that can interrupt a
+/// `debug_continue`/`debug_step` currently blocked in `waitpid` on a
+/// background thread, which is why it doesn't depend on acquiring
+/// `DebugState`'s mutex), detaches cleanly if a debugger is attached, and
+/// kills the original wrapper process too — a wrapper like Gradle can hand
+/// off to a persistent background daemon that outlives `./gradlew` by
+/// design, so killing only the real pid discovery found is the more
+/// reliable half of this, with the wrapper cleanup as a best-effort second
+/// step (a lingering Gradle daemon itself is not something this can or
+/// should tear down — `gradlew --stop` is the user's own tool for that).
 #[tauri::command]
 pub fn debug_stop(state: State<DebugState>) -> Result<(), String> {
-    // Signal the real process directly first, and unconditionally — this is
-    // the only thing that can interrupt a `debug_continue`/`debug_step`
-    // currently blocked in `waitpid` on a background thread (which is
-    // holding the session out of `DebugState`'s mutex for as long as that
-    // blocks), so it must not depend on acquiring that same lock.
     if let Some(pid) = ACTIVE_PID.lock().unwrap().take() {
         let _ = nix::sys::signal::kill(nix::unistd::Pid::from_raw(pid), nix::sys::signal::Signal::SIGKILL);
     }
 
-    // If the session isn't currently taken by an in-flight continue/step,
-    // clean it up fully here; otherwise the background thread's own
-    // `waitpid` will unblock (the kill above just made that happen),
-    // observe `Exited`/`Killed`, and simply not put the session back —
-    // equivalent cleanup, just on that thread instead of this one.
     if let Some(mut session) = state.inner().0.lock().unwrap().take() {
-        let _ = session.debugger.detach();
+        if let Some(mut bits) = session.debug.take() {
+            let _ = bits.debugger.detach();
+        }
+        if let Some(pid) = session.real_pid {
+            let _ = nix::sys::signal::kill(Pid::from_raw(pid), nix::sys::signal::Signal::SIGKILL);
+        }
         let _ = Command::new("pkill").args(["-P", &session.wrapper.id().to_string()]).status();
         let _ = session.wrapper.kill();
         let _ = session.wrapper.wait();
