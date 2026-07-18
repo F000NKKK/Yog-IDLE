@@ -122,8 +122,19 @@ fn local_native_path(project_root: &Path, mod_id: &str) -> PathBuf {
 /// then hunts the spawned process's descendants for the one that actually
 /// has `yog_runtime` loaded — since the spawned process is commonly a
 /// launcher wrapper, not the game itself.
+///
+/// Returns as soon as the child is spawned — everything after that (waiting
+/// for the pid line, polling for the real JVM, attaching) happens on a
+/// background thread and reports back via `debug-attached`/
+/// `debug-attach-failed` events, the same fire-and-forget shape
+/// `run_and_stream` already uses for `mod_run`/`workflow_run`. A command
+/// that instead blocked here — e.g. on a `readline` that never arrives
+/// because the target never actually launches a client — would hang
+/// Tauri's invoke call (and, since its blocking-thread pool is bounded,
+/// eventually every *other* command too) for as long as that read blocks,
+/// which is exactly the freeze this is written to avoid.
 #[tauri::command]
-pub fn debug_start(app: AppHandle, state: State<DebugState>, project_root: String, config_name: String) -> Result<(), String> {
+pub fn debug_start(app: AppHandle, project_root: String, config_name: String) -> Result<(), String> {
     let root = PathBuf::from(&project_root);
     let yog_toml = std::fs::read_to_string(root.join("yog.toml")).map_err(|e| e.to_string())?;
     let mod_id = read_mod_id(&yog_toml).ok_or("yog.toml has no [mod]/[package] id")?;
@@ -138,10 +149,10 @@ pub fn debug_start(app: AppHandle, state: State<DebugState>, project_root: Strin
         .map_err(|e| format!("failed to launch `yog run {config_name}`: {e}"))?;
 
     let stdout = child.stdout.take();
-    let stderr = child.stderr.take();
-    let out_app = app.clone();
+    let stderr = child.stderr.take().expect("stderr was piped");
+
     if let Some(stdout) = stdout {
-        let out_app = out_app.clone();
+        let out_app = app.clone();
         std::thread::spawn(move || {
             for line in BufReader::new(stdout).lines().map_while(Result::ok) {
                 let _ = out_app.emit("workflow-output", line);
@@ -149,34 +160,42 @@ pub fn debug_start(app: AppHandle, state: State<DebugState>, project_root: Strin
         });
     }
 
-    // The pid line specifically — read on this thread (not the generic
-    // stdout-forwarding one above) so we can act on it before it's lost in
-    // the stream, and because yog-cli writes it to stderr.
-    let Some(stderr) = stderr else {
-        return Err("failed to capture yog run's output".to_string());
-    };
+    std::thread::spawn(move || attach_in_background(app, child, stderr, mod_id, native_path));
+    Ok(())
+}
+
+/// A dedicated reader thread feeding lines through a channel is what makes
+/// the pid-line wait an actual, enforceable timeout — a plain "check
+/// `Instant::now()` between blocking reads" loop doesn't time out at all if
+/// a single `read` call itself never returns (nothing was written and the
+/// pipe never closed), since the deadline is only ever re-checked *after* a
+/// read completes.
+fn attach_in_background(app: AppHandle, mut child: Child, stderr: std::process::ChildStderr, mod_id: String, native_path: PathBuf) {
+    let (tx, rx) = std::sync::mpsc::channel::<String>();
+    let out_app = app.clone();
+    std::thread::spawn(move || {
+        for line in BufReader::new(stderr).lines().map_while(Result::ok) {
+            let _ = out_app.emit("workflow-output", format!("[warn] {line}"));
+            if tx.send(line).is_err() {
+                break;
+            }
+        }
+    });
+
     let mut wrapper_pid: Option<i32> = None;
-    let mut lines = BufReader::new(stderr).lines();
     let deadline = Instant::now() + Duration::from_secs(120);
-    while Instant::now() < deadline {
-        let Some(Ok(line)) = lines.next() else { break };
-        let _ = app.emit("workflow-output", format!("[warn] {line}"));
+    while let Ok(remaining) = deadline.checked_duration_since(Instant::now()).ok_or(()) {
+        let Ok(line) = rx.recv_timeout(remaining) else { break };
         if let Some(pid_str) = line.strip_prefix("==> launched pid ") {
             wrapper_pid = pid_str.trim().parse().ok();
             break;
         }
     }
-    // Keep forwarding the rest of stderr in the background regardless of
-    // whether we found the pid line.
-    std::thread::spawn(move || {
-        for line in lines.map_while(Result::ok) {
-            let _ = out_app.emit("workflow-output", format!("[warn] {line}"));
-        }
-    });
 
     let Some(wrapper_pid) = wrapper_pid else {
         let _ = child.kill();
-        return Err("yog run never printed its launched pid — did the build fail?".to_string());
+        let _ = app.emit("debug-attach-failed", "yog run never printed its launched pid within 2 minutes — did the build fail or hang?");
+        return;
     };
 
     // The wrapper (e.g. gradlew) may take a while to actually fork the real
@@ -188,12 +207,19 @@ pub fn debug_start(app: AppHandle, state: State<DebugState>, project_root: Strin
         }
         if Instant::now() >= discover_deadline {
             let _ = child.kill();
-            return Err("timed out waiting for the game process to load yog-runtime".to_string());
+            let _ = app.emit("debug-attach-failed", "timed out waiting for the game process to load yog-runtime");
+            return;
         }
         std::thread::sleep(Duration::from_millis(200));
     };
 
-    let symbols = SymbolTable::load(&native_path).map_err(|e| format!("loading symbols from {}: {e}", native_path.display()))?;
+    if let Err(e) = try_attach(&app, child, real_pid, &mod_id, &native_path) {
+        let _ = app.emit("debug-attach-failed", e);
+    }
+}
+
+fn try_attach(app: &AppHandle, child: Child, real_pid: Pid, mod_id: &str, native_path: &Path) -> Result<(), String> {
+    let symbols = SymbolTable::load(native_path).map_err(|e| format!("loading symbols from {}: {e}", native_path.display()))?;
     let mut debugger = Debugger::attach(real_pid.as_raw()).map_err(|e| format!("attaching to pid {}: {e}", real_pid.as_raw()))?;
     let prefix = format!("yog-{mod_id}-");
     let module_base = find_module_base_by_prefix(debugger.pid(), &prefix)
@@ -202,10 +228,11 @@ pub fn debug_start(app: AppHandle, state: State<DebugState>, project_root: Strin
     let generation = GenerationAllocator::new().next();
     let mut breakpoints = SourceBreakpoints::new();
     for (file, line) in PENDING_BREAKPOINTS.lock().unwrap().iter().cloned().collect::<Vec<_>>() {
-        let _ = breakpoints.set(&mut debugger, &mod_id, generation, module_base, &symbols, &file, line);
+        let _ = breakpoints.set(&mut debugger, mod_id, generation, module_base, &symbols, &file, line);
     }
 
-    *state.inner().0.lock().unwrap() = Some(DebugSession { wrapper: child, debugger, symbols, module_base, mod_id, generation, breakpoints });
+    let session = DebugSession { wrapper: child, debugger, symbols, module_base, mod_id: mod_id.to_string(), generation, breakpoints };
+    *app.state::<DebugState>().0.lock().unwrap() = Some(session);
 
     let _ = app.emit("debug-attached", real_pid.as_raw());
     Ok(())
