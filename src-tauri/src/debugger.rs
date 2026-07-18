@@ -324,8 +324,9 @@ fn run_in_background(app: AppHandle, state: State<DebugState>, op: impl FnOnce(&
         let mut session = session;
         match op(&mut session.debugger) {
             Ok(reason) => {
+                let exited = matches!(reason, StopReason::Exited(_) | StopReason::Killed(_));
                 emit_stop(&app, &session, reason);
-                if !matches!(reason, StopReason::Exited(_) | StopReason::Killed(_)) {
+                if !exited {
                     *ACTIVE_PID.lock().unwrap() = Some(session.debugger.pid().as_raw());
                     *app.state::<DebugState>().0.lock().unwrap() = Some(session);
                 } else {
