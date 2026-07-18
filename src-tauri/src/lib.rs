@@ -277,28 +277,60 @@ struct ModRunTarget {
 /// configs (like VS Code's `tasks.json`), not loader/Minecraft-version
 /// settings. `yog run <name>` (yog-cli's own command) does the actual
 /// build+export+launch; this only lists what's available.
+// Deliberately NOT the `toml` crate here: `[run.forge-1.21.1]` is not valid
+// nested-table TOML in the strict sense (a spec-compliant parser splits on
+// every dot, turning "forge-1.21.1" into three levels of nested tables) —
+// but `yog-cli`'s own hand-rolled parser treats everything after "run." as
+// one literal name, and that's the name `yog run <name>` actually expects.
+// Parsing this the strict way would silently disagree with what yog-cli
+// itself does with the same file.
+fn parse_mod_run_targets(contents: &str) -> Vec<ModRunTarget> {
+    let mut targets: Vec<ModRunTarget> = Vec::new();
+    let mut current: Option<(String, Option<String>, Vec<String>)> = None;
+
+    fn flush(current: Option<(String, Option<String>, Vec<String>)>, targets: &mut Vec<ModRunTarget>) {
+        if let Some((name, command, args)) = current {
+            let description = command.map(|c| if args.is_empty() { c } else { format!("{c} {}", args.join(" ")) });
+            targets.push(ModRunTarget { name, description });
+        }
+    }
+
+    for raw in contents.lines() {
+        let line = raw.trim();
+        if line.starts_with('#') {
+            continue;
+        }
+        if line.starts_with('[') && line.ends_with(']') {
+            flush(current.take(), &mut targets);
+            let section = &line[1..line.len() - 1];
+            current = section.strip_prefix("run.").map(|name| (name.to_string(), None, Vec::new()));
+            continue;
+        }
+        let Some((_, command, args)) = current.as_mut() else { continue };
+        if let Some(value) = line.strip_prefix("command").and_then(|rest| rest.trim_start().strip_prefix('=')) {
+            *command = Some(value.trim().trim_matches('"').to_string());
+        } else if let Some(value) = line.strip_prefix("args").and_then(|rest| rest.trim_start().strip_prefix('=')) {
+            *args = value
+                .trim()
+                .trim_start_matches('[')
+                .trim_end_matches(']')
+                .split(',')
+                .map(|s| s.trim().trim_matches('"').to_string())
+                .filter(|s| !s.is_empty())
+                .collect();
+        }
+    }
+    flush(current, &mut targets);
+
+    targets.sort_by(|a, b| a.name.cmp(&b.name));
+    targets
+}
+
 #[tauri::command]
 fn mod_run_targets(project_root: String) -> Result<Vec<ModRunTarget>, String> {
     let path = PathBuf::from(&project_root).join("yog.toml");
     let contents = std::fs::read_to_string(&path).map_err(|e| e.to_string())?;
-    let value: toml::Value = contents.parse().map_err(|e: toml::de::Error| e.to_string())?;
-
-    let mut targets = Vec::new();
-    if let Some(run) = value.get("run").and_then(|v| v.as_table()) {
-        for (name, cfg) in run {
-            let description = cfg.get("command").and_then(|c| c.as_str()).map(|command| {
-                let args: Vec<String> = cfg
-                    .get("args")
-                    .and_then(|a| a.as_array())
-                    .map(|arr| arr.iter().filter_map(|v| v.as_str().map(String::from)).collect())
-                    .unwrap_or_default();
-                format!("{command} {}", args.join(" "))
-            });
-            targets.push(ModRunTarget { name: name.clone(), description });
-        }
-    }
-    targets.sort_by(|a, b| a.name.cmp(&b.name));
-    Ok(targets)
+    Ok(parse_mod_run_targets(&contents))
 }
 
 /// Runs a `[run.<name>]` target via `yog run <name>`.
