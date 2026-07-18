@@ -359,7 +359,20 @@ fn emit_failed(app: &AppHandle, message: impl Into<String>) {
 
 fn try_attach(app: &AppHandle, real_pid: i32, mod_id: &str, native_path: &Path) -> Result<(), String> {
     let symbols = SymbolTable::load(native_path).map_err(|e| format!("loading symbols from {}: {e}", native_path.display()))?;
-    let mut debugger = Debugger::attach(real_pid).map_err(|e| format!("attaching to pid {real_pid}: {e}"))?;
+    let mut debugger = Debugger::attach(real_pid).map_err(|e| {
+        let raw = e.to_string();
+        if raw.contains("EPERM") {
+            format!(
+                "attaching to pid {real_pid}: permission denied. Linux's ptrace security policy (Yama) only allows a process \
+                 to attach to its own descendants by default — the game process the control socket found is very likely not \
+                 a descendant of Yog-IDLE (e.g. an existing Gradle daemon reused across launches). Either run \
+                 `echo 0 | sudo tee /proc/sys/kernel/yama/ptrace_scope` (session-only, resets on reboot) or grant Yog-IDLE's \
+                 own binary the capability directly: `sudo setcap cap_sys_ptrace+ep <path to the yog-idle binary>`."
+            )
+        } else {
+            format!("attaching to pid {real_pid}: {raw}")
+        }
+    })?;
     let prefix = format!("yog-{mod_id}-");
     let module_base =
         find_module_base_by_prefix(debugger.pid(), &prefix).ok_or_else(|| format!("couldn't locate {mod_id}'s native in pid {real_pid}'s memory map"))?;
