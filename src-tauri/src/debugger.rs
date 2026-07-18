@@ -191,6 +191,7 @@ pub fn run_with_mode(app: AppHandle, project_root: String, config_name: String, 
     *app.state::<DebugState>().0.lock().unwrap() = Some(RunSession { wrapper: child, real_pid: None, debug: None });
     let _ = app.emit("game-status", GameStatus { stage: "starting", pid: None, mods: Vec::new() });
 
+    spawn_exit_watcher(app.clone());
     std::thread::spawn(move || connect_and_watch(app, socket_path, mod_id, debug, native_path));
     Ok(())
 }
@@ -279,7 +280,12 @@ fn connect_and_watch(app: AppHandle, socket_path: PathBuf, mod_id: String, debug
 
     // Keep reading further event lines (hot-reload-done, ...) for the rest
     // of the session — a plain forward into `game-status`, same shape as
-    // the `ready` handling above.
+    // the `ready` handling above. When the game process exits (however it
+    // exits — the user closing the client themselves, a crash, Stop) the
+    // OS closes its end of the socket, so this read loop ending is exactly
+    // the "the game is gone" signal: emit it and clean up the session
+    // instead of silently leaving stale state around (a manually-closed
+    // client previously left Yog-IDLE with no idea anything had changed).
     let mut line = String::new();
     loop {
         line.clear();
@@ -294,6 +300,51 @@ fn connect_and_watch(app: AppHandle, socket_path: PathBuf, mod_id: String, debug
         }
     }
     let _ = stream.flush();
+    mark_exited(&app);
+}
+
+/// Clears whatever's left of the session and reports "the game is gone" —
+/// called both when the control socket drops (the common, prompt path) and
+/// by `spawn_exit_watcher`'s `try_wait` polling (the backstop for a run
+/// whose socket never connected in the first place, e.g. an older
+/// `yog-runtime` without control-socket support). Safe to call more than
+/// once — a session that's already gone is simply a no-op.
+fn mark_exited(app: &AppHandle) {
+    *ACTIVE_PID.lock().unwrap() = None;
+    let had_session = state_has_session(app);
+    *app.state::<DebugState>().0.lock().unwrap() = None;
+    if had_session {
+        let _ = app.emit("game-status", GameStatus { stage: "exited", pid: None, mods: Vec::new() });
+        let _ = app.emit("debug-stopped", DebugStoppedEvent { reason: "exited".to_string(), stack_trace: Vec::new() });
+    }
+}
+
+fn state_has_session(app: &AppHandle) -> bool {
+    app.state::<DebugState>().0.lock().unwrap().is_some()
+}
+
+/// Backstop for detecting the game exiting when the control socket never
+/// connected at all (so `connect_and_watch`'s own read loop never got a
+/// chance to notice the drop): polls the spawned wrapper process
+/// non-blockingly every second and reports "exited" the moment it's gone —
+/// whether that's the user closing the client themselves, a crash, or
+/// `debug_stop`. Exits its own loop once the session is gone by any means
+/// (this watcher's own detection, or `connect_and_watch`'s).
+fn spawn_exit_watcher(app: AppHandle) {
+    std::thread::spawn(move || loop {
+        std::thread::sleep(Duration::from_secs(1));
+        let mut guard = app.state::<DebugState>().0.lock().unwrap();
+        let Some(session) = guard.as_mut() else { return };
+        match session.wrapper.try_wait() {
+            Ok(Some(_)) => {
+                drop(guard);
+                mark_exited(&app);
+                return;
+            }
+            Ok(None) => continue,
+            Err(_) => return,
+        }
+    });
 }
 
 /// Reports a debug-lifecycle failure both as the dedicated event
