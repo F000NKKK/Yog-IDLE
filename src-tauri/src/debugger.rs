@@ -1,5 +1,5 @@
 //! "Start Debugging": builds a mod with debug symbols, launches it via
-//! `yog run <config> --debugging-symbols`, finds the *real* game JVM process
+//! `yog run <config> --debug`, finds the *real* game JVM process
 //! (the spawned process is very often a launcher wrapper — `./gradlew
 //! runClient` — that forks its own JVM as a child, not the process itself),
 //! and attaches `yog-debugger` to it.
@@ -117,7 +117,7 @@ fn local_native_path(project_root: &Path, mod_id: &str) -> PathBuf {
     project_root.join("target").join(triple).join("release").join(lib)
 }
 
-/// Starts `yog run <config_name> --debugging-symbols`, scans its output for
+/// Starts `yog run <config_name> --debug`, scans its output for
 /// the `"==> launched pid "` line (yog-cli emits this right after spawning),
 /// then hunts the spawned process's descendants for the one that actually
 /// has `yog_runtime` loaded — since the spawned process is commonly a
@@ -141,7 +141,7 @@ pub fn debug_start(app: AppHandle, project_root: String, config_name: String) ->
     let native_path = local_native_path(&root, &mod_id);
 
     let mut child = Command::new("yog")
-        .args(["run", &config_name, "--debugging-symbols"])
+        .args(["run", &config_name, "--debug"])
         .current_dir(&root)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
