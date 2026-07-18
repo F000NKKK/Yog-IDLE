@@ -2,7 +2,7 @@
 export function EmptyEditorState() {
   return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", color: "var(--sp-text-faint)" }}>
-      <p>Open a file from Solution Explorer to start editing.</p>
+      <p>Open a file from Project Explorer to start editing.</p>
     </div>
   );
 }
