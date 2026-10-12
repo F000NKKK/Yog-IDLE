@@ -10,6 +10,9 @@ import {
   MenuBarItem,
   TerminalPanel,
   OutputPanel,
+  clearOutputBuffer,
+  Icon,
+  IconButton,
   SettingsWindow,
   AppearanceSettings,
   WindowControls,
@@ -49,9 +52,22 @@ import "./App.css";
 // them.
 const mainPanel: PanelDef = { id: "editor-empty", title: "", component: EmptyEditorState, hidden: true };
 
-/** Output panel wired to the workflow engine's live-output event — every `workflow_run` line lands here, the same way PTY output streams into the Terminal panel. */
+const OUTPUT_EVENT = "workflow-output";
+
+/** Output panel wired to the workflow engine's live-output event — every `workflow_run` line lands here, the same way PTY output streams into the Terminal panel. Its toolbar's Clear empties the shared buffer (`clearOutputBuffer`), which outlives the panel itself. */
 function BuildOutputPanel() {
-  return <OutputPanel eventName="workflow-output" emptyLabel="Run a Build command to see output here." />;
+  return (
+    <div className="output-panel">
+      <div className="output-panel-toolbar">
+        <IconButton size={22} title="Clear Output" onClick={() => clearOutputBuffer(OUTPUT_EVENT)}>
+          <Icon name="trash" size={14} />
+        </IconButton>
+      </div>
+      <div className="output-panel-body">
+        <OutputPanel eventName={OUTPUT_EVENT} emptyLabel="Run a Build command to see output here." />
+      </div>
+    </div>
+  );
 }
 
 const toolWindows = {
