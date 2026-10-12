@@ -1019,13 +1019,12 @@ impl Tracer {
             let raw = e.to_string();
             if raw.contains("EPERM") {
                 format!(
-                    "attaching to pid {real_pid}: permission denied. Linux's ptrace security policy (Yama) only allows a process \
-                     to attach to its own descendants by default — the game process the control socket found is very likely not \
-                     a descendant of Yog-IDLE (e.g. an existing Gradle daemon reused across launches). Either run \
-                     `echo 0 | sudo tee /proc/sys/kernel/yama/ptrace_scope` (session-only, resets on reboot) or grant Yog-IDLE's \
-                     own binary the capability directly: `sudo setcap cap_sys_ptrace+ep <path to the yog-idle binary>` — either \
-                     way, a capability granted to the binary only takes effect the *next* time Yog-IDLE itself is launched, not \
-                     the currently-running instance, so restart it before trying again."
+                    "attaching to pid {real_pid}: permission denied. Linux's ptrace policy (Yama) only lets a process \
+                     trace its own descendants, and the game usually isn't one of Yog-IDLE's (Gradle's daemon launches it). \
+                     yog-runtime lifts that for Yog-IDLE itself the moment it connects to the control socket \
+                     (`PR_SET_PTRACER`) — so this game is running an older runtime: rebuild the loader (`./dev.sh`) \
+                     and relaunch. If it still fails, `kernel.yama.ptrace_scope` is 2 (admin-only) here, which only root can \
+                     relax — use the Debug panel's \"Grant ptrace access\"."
                 )
             } else {
                 format!("attaching to pid {real_pid}: {raw}")
