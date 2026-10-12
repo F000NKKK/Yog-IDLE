@@ -4,7 +4,9 @@ use std::sync::Mutex;
 use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
-use substrate_platform::{EntryKind, Level, LogLine, LogSink, ProjectStandard, PtySession, WorkflowFile};
+use substrate_platform::{
+    EntryKind, Level, LogLine, LogSink, ProjectStandard, PtySession, WorkflowFile,
+};
 use tauri::{AppHandle, Emitter, State};
 
 #[cfg(target_os = "linux")]
@@ -36,13 +38,21 @@ fn validate_within_roots(state: &State<AppState>, path: &Path) -> Result<(), Str
         }
         match candidate.parent() {
             Some(parent) if !parent.as_os_str().is_empty() => candidate = parent.to_path_buf(),
-            _ => return Err(format!("path '{}' does not resolve to anything on disk", path.display())),
+            _ => {
+                return Err(format!(
+                    "path '{}' does not resolve to anything on disk",
+                    path.display()
+                ));
+            }
         }
     };
     if roots.iter().any(|root| canonical.starts_with(root)) {
         Ok(())
     } else {
-        Err(format!("path '{}' is outside any open project", path.display()))
+        Err(format!(
+            "path '{}' is outside any open project",
+            path.display()
+        ))
     }
 }
 
@@ -128,7 +138,9 @@ fn file_write(state: State<AppState>, path: String, contents: String) -> Result<
 /// on its own.
 #[tauri::command]
 fn allow_path(state: State<AppState>, path: String) -> Result<(), String> {
-    let canonical = PathBuf::from(&path).canonicalize().map_err(|e| e.to_string())?;
+    let canonical = PathBuf::from(&path)
+        .canonicalize()
+        .map_err(|e| e.to_string())?;
     let mut roots = state.project_roots.lock().unwrap();
     if !roots.iter().any(|root| canonical.starts_with(root)) {
         roots.push(canonical);
@@ -150,7 +162,9 @@ struct StandardsFile {
 }
 
 fn built_in_standards() -> Vec<ProjectStandard> {
-    toml::from_str::<StandardsFile>(BUILT_IN_STANDARDS_TOML).map(|f| f.standard).unwrap_or_default()
+    toml::from_str::<StandardsFile>(BUILT_IN_STANDARDS_TOML)
+        .map(|f| f.standard)
+        .unwrap_or_default()
 }
 
 #[derive(Clone, Serialize)]
@@ -172,7 +186,10 @@ fn project_open(state: State<AppState>, path: String) -> Result<ProjectOut, Stri
     let requested = PathBuf::from(&path);
     let canonical = requested.canonicalize().map_err(|e| e.to_string())?;
     let kind = ProjectStandard::detect(&canonical, &built_in_standards());
-    let name = canonical.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_else(|| "Project".to_string());
+    let name = canonical
+        .file_name()
+        .map(|n| n.to_string_lossy().into_owned())
+        .unwrap_or_else(|| "Project".to_string());
 
     {
         let mut roots = state.project_roots.lock().unwrap();
@@ -181,7 +198,11 @@ fn project_open(state: State<AppState>, path: String) -> Result<ProjectOut, Stri
         }
     }
 
-    Ok(ProjectOut { name, root: canonical.to_string_lossy().into_owned(), kind })
+    Ok(ProjectOut {
+        name,
+        root: canonical.to_string_lossy().into_owned(),
+        kind,
+    })
 }
 
 /// A generic escape hatch open to any project (regardless of `kind`): if it
@@ -205,12 +226,21 @@ struct WorkflowSummary {
 }
 
 #[tauri::command]
-fn workflow_list(state: State<AppState>, project_root: String) -> Result<Vec<WorkflowSummary>, String> {
+fn workflow_list(
+    state: State<AppState>,
+    project_root: String,
+) -> Result<Vec<WorkflowSummary>, String> {
     let root = PathBuf::from(project_root);
     validate_within_roots(&state, &root)?;
     let file = resolve_workflow_file(&root)?;
-    let mut list: Vec<WorkflowSummary> =
-        file.workflow.into_iter().map(|(name, def)| WorkflowSummary { name, description: def.description }).collect();
+    let mut list: Vec<WorkflowSummary> = file
+        .workflow
+        .into_iter()
+        .map(|(name, def)| WorkflowSummary {
+            name,
+            description: def.description,
+        })
+        .collect();
     list.sort_by(|a, b| a.name.cmp(&b.name));
     Ok(list)
 }
@@ -227,7 +257,13 @@ fn format_log_line(line: &LogLine) -> String {
 /// `workflow-exit` when done" body — `workflow_run`, `mod_run`, and
 /// `publish_run` all funnel through this instead of each re-wiring the
 /// sink/event plumbing themselves.
-fn run_and_stream(app: AppHandle, file: WorkflowFile, name: String, vars: HashMap<String, String>, root: PathBuf) {
+fn run_and_stream(
+    app: AppHandle,
+    file: WorkflowFile,
+    name: String,
+    vars: HashMap<String, String>,
+    root: PathBuf,
+) {
     let sink = LogSink::new();
     let out_app = app.clone();
     sink.on_push(move |line| {
@@ -249,7 +285,13 @@ fn run_and_stream(app: AppHandle, file: WorkflowFile, name: String, vars: HashMa
 /// every step has finished, mirroring the existing `pty-output`/`pty-exit`
 /// pattern.
 #[tauri::command]
-fn workflow_run(app: AppHandle, state: State<AppState>, project_root: String, name: String, vars: HashMap<String, String>) -> Result<(), String> {
+fn workflow_run(
+    app: AppHandle,
+    state: State<AppState>,
+    project_root: String,
+    name: String,
+    vars: HashMap<String, String>,
+) -> Result<(), String> {
     let root = PathBuf::from(project_root);
     validate_within_roots(&state, &root)?;
     let file = resolve_workflow_file(&root)?;
@@ -267,7 +309,12 @@ fn single_step_workflow(program: &str, args: Vec<String>) -> WorkflowFile {
         "run".to_string(),
         substrate_platform::WorkflowDef {
             description: None,
-            steps: vec![substrate_platform::WorkflowStep::Run { run: program.to_string(), args, cwd: None, env: HashMap::new() }],
+            steps: vec![substrate_platform::WorkflowStep::Run {
+                run: program.to_string(),
+                args,
+                cwd: None,
+                env: HashMap::new(),
+            }],
         },
     );
     WorkflowFile { workflow }
@@ -296,10 +343,23 @@ fn parse_mod_run_targets(contents: &str) -> Vec<ModRunTarget> {
     let mut targets: Vec<ModRunTarget> = Vec::new();
     let mut current: Option<(String, Option<String>, Option<String>, Vec<String>)> = None;
 
-    fn flush(current: Option<(String, Option<String>, Option<String>, Vec<String>)>, targets: &mut Vec<ModRunTarget>) {
+    fn flush(
+        current: Option<(String, Option<String>, Option<String>, Vec<String>)>,
+        targets: &mut Vec<ModRunTarget>,
+    ) {
         if let Some((name, display_name, command, args)) = current {
-            let description = command.map(|c| if args.is_empty() { c } else { format!("{c} {}", args.join(" ")) });
-            targets.push(ModRunTarget { name, display_name, description });
+            let description = command.map(|c| {
+                if args.is_empty() {
+                    c
+                } else {
+                    format!("{c} {}", args.join(" "))
+                }
+            });
+            targets.push(ModRunTarget {
+                name,
+                display_name,
+                description,
+            });
         }
     }
 
@@ -311,15 +371,28 @@ fn parse_mod_run_targets(contents: &str) -> Vec<ModRunTarget> {
         if line.starts_with('[') && line.ends_with(']') {
             flush(current.take(), &mut targets);
             let section = &line[1..line.len() - 1];
-            current = section.strip_prefix("run.").map(|name| (name.to_string(), None, None, Vec::new()));
+            current = section
+                .strip_prefix("run.")
+                .map(|name| (name.to_string(), None, None, Vec::new()));
             continue;
         }
-        let Some((_, display_name, command, args)) = current.as_mut() else { continue };
-        if let Some(value) = line.strip_prefix("name").and_then(|rest| rest.trim_start().strip_prefix('=')) {
+        let Some((_, display_name, command, args)) = current.as_mut() else {
+            continue;
+        };
+        if let Some(value) = line
+            .strip_prefix("name")
+            .and_then(|rest| rest.trim_start().strip_prefix('='))
+        {
             *display_name = Some(value.trim().trim_matches('"').to_string());
-        } else if let Some(value) = line.strip_prefix("command").and_then(|rest| rest.trim_start().strip_prefix('=')) {
+        } else if let Some(value) = line
+            .strip_prefix("command")
+            .and_then(|rest| rest.trim_start().strip_prefix('='))
+        {
             *command = Some(value.trim().trim_matches('"').to_string());
-        } else if let Some(value) = line.strip_prefix("args").and_then(|rest| rest.trim_start().strip_prefix('=')) {
+        } else if let Some(value) = line
+            .strip_prefix("args")
+            .and_then(|rest| rest.trim_start().strip_prefix('='))
+        {
             *args = value
                 .trim()
                 .trim_start_matches('[')
@@ -337,7 +410,10 @@ fn parse_mod_run_targets(contents: &str) -> Vec<ModRunTarget> {
 }
 
 #[tauri::command]
-fn mod_run_targets(state: State<AppState>, project_root: String) -> Result<Vec<ModRunTarget>, String> {
+fn mod_run_targets(
+    state: State<AppState>,
+    project_root: String,
+) -> Result<Vec<ModRunTarget>, String> {
     validate_within_roots(&state, Path::new(&project_root))?;
     let path = PathBuf::from(&project_root).join("yog.toml");
     let contents = std::fs::read_to_string(&path).map_err(|e| e.to_string())?;
@@ -353,7 +429,13 @@ fn mod_run_targets(state: State<AppState>, project_root: String) -> Result<Vec<M
 /// the plain fire-and-forget run; the debugger stack is Linux-only there
 /// too (`ptrace`).
 #[tauri::command]
-fn mod_run(app: AppHandle, state: State<AppState>, project_root: String, name: String, mode: String) -> Result<(), String> {
+fn mod_run(
+    app: AppHandle,
+    state: State<AppState>,
+    project_root: String,
+    name: String,
+    mode: String,
+) -> Result<(), String> {
     validate_within_roots(&state, Path::new(&project_root))?;
     #[cfg(target_os = "linux")]
     {
@@ -415,7 +497,10 @@ fn ensure_gitignored(project_root: &Path) {
 }
 
 #[tauri::command]
-fn publish_profiles_list(state: State<AppState>, project_root: String) -> Result<Vec<PublishProfile>, String> {
+fn publish_profiles_list(
+    state: State<AppState>,
+    project_root: String,
+) -> Result<Vec<PublishProfile>, String> {
     validate_within_roots(&state, Path::new(&project_root))?;
     let dir = publish_profiles_dir(&PathBuf::from(project_root));
     if !dir.exists() {
@@ -436,7 +521,11 @@ fn publish_profiles_list(state: State<AppState>, project_root: String) -> Result
 }
 
 #[tauri::command]
-fn publish_profile_save(state: State<AppState>, project_root: String, profile: PublishProfile) -> Result<(), String> {
+fn publish_profile_save(
+    state: State<AppState>,
+    project_root: String,
+    profile: PublishProfile,
+) -> Result<(), String> {
     let root = PathBuf::from(&project_root);
     validate_within_roots(&state, &root)?;
     let dir = publish_profiles_dir(&root);
@@ -451,7 +540,11 @@ fn publish_profile_save(state: State<AppState>, project_root: String, profile: P
 }
 
 #[tauri::command]
-fn publish_profile_delete(state: State<AppState>, project_root: String, id: String) -> Result<(), String> {
+fn publish_profile_delete(
+    state: State<AppState>,
+    project_root: String,
+    id: String,
+) -> Result<(), String> {
     validate_within_roots(&state, Path::new(&project_root))?;
     let path = publish_profiles_dir(&PathBuf::from(project_root)).join(format!("{id}.json"));
     validate_within_roots(&state, &path)?;
@@ -462,7 +555,12 @@ fn publish_profile_delete(state: State<AppState>, project_root: String, id: Stri
 }
 
 #[tauri::command]
-fn publish_run(app: AppHandle, state: State<AppState>, project_root: String, profile: PublishProfile) -> Result<(), String> {
+fn publish_run(
+    app: AppHandle,
+    state: State<AppState>,
+    project_root: String,
+    profile: PublishProfile,
+) -> Result<(), String> {
     let root = PathBuf::from(project_root);
     validate_within_roots(&state, &root)?;
     let (program, args) = match profile.mode.as_str() {
@@ -494,7 +592,12 @@ struct ShellInfo {
 fn list_shells() -> Vec<ShellInfo> {
     substrate_platform::detect_shells()
         .into_iter()
-        .map(|s| ShellInfo { id: s.id, label: s.label, command: s.command, clear_command: s.clear_command })
+        .map(|s| ShellInfo {
+            id: s.id,
+            label: s.label,
+            command: s.command,
+            clear_command: s.clear_command,
+        })
         .collect()
 }
 
@@ -518,7 +621,14 @@ struct PtyExit {
 }
 
 #[tauri::command]
-fn pty_spawn(app: AppHandle, state: State<PtyState>, id: String, cols: u16, rows: u16, shell: Option<String>) -> Result<(), String> {
+fn pty_spawn(
+    app: AppHandle,
+    state: State<PtyState>,
+    id: String,
+    cols: u16,
+    rows: u16,
+    shell: Option<String>,
+) -> Result<(), String> {
     let out_app = app.clone();
     let out_id = id.clone();
     let exit_app = app.clone();
@@ -530,10 +640,21 @@ fn pty_spawn(app: AppHandle, state: State<PtyState>, id: String, cols: u16, rows
         rows,
         move |bytes| {
             let data = String::from_utf8_lossy(&bytes).into_owned();
-            let _ = out_app.emit("pty-output", PtyOutput { id: out_id.clone(), data });
+            let _ = out_app.emit(
+                "pty-output",
+                PtyOutput {
+                    id: out_id.clone(),
+                    data,
+                },
+            );
         },
         move || {
-            let _ = exit_app.emit("pty-exit", PtyExit { id: exit_id.clone() });
+            let _ = exit_app.emit(
+                "pty-exit",
+                PtyExit {
+                    id: exit_id.clone(),
+                },
+            );
         },
     )
     .map_err(|e| e.to_string())?;
@@ -635,5 +756,7 @@ pub fn run() {
         publish_run,
     ]);
 
-    builder.run(tauri::generate_context!()).expect("error while running tauri application");
+    builder
+        .run(tauri::generate_context!())
+        .expect("error while running tauri application");
 }

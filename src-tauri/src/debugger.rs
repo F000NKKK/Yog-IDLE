@@ -77,7 +77,10 @@ impl TracerHandle {
     /// as its own and resumes straight afterward. Returns `false` once the
     /// tracer thread is gone.
     fn send(&self, cmd: TracerCmd) -> bool {
-        let urgent = matches!(cmd, TracerCmd::SetBreakpoint { .. } | TracerCmd::ClearBreakpoint { .. });
+        let urgent = matches!(
+            cmd,
+            TracerCmd::SetBreakpoint { .. } | TracerCmd::ClearBreakpoint { .. }
+        );
         if self.tx.send(cmd).is_err() {
             return false;
         }
@@ -87,7 +90,12 @@ impl TracerHandle {
             // here would ever SIGCONT them again.
             // SAFETY: a plain syscall taking only integer arguments.
             unsafe {
-                nix::libc::syscall(nix::libc::SYS_tgkill, self.pid, self.pid, nix::libc::SIGSTOP);
+                nix::libc::syscall(
+                    nix::libc::SYS_tgkill,
+                    self.pid,
+                    self.pid,
+                    nix::libc::SIGSTOP,
+                );
             }
         }
         true
@@ -165,7 +173,10 @@ fn read_mod_id(contents: &str) -> Option<String> {
         if section != "mod" && section != "package" {
             continue;
         }
-        if let Some(value) = line.strip_prefix("id").and_then(|rest| rest.trim_start().strip_prefix('=')) {
+        if let Some(value) = line
+            .strip_prefix("id")
+            .and_then(|rest| rest.trim_start().strip_prefix('='))
+        {
             return Some(value.trim().trim_matches('"').to_string());
         }
     }
@@ -188,11 +199,19 @@ fn local_native_path(project_root: &Path, mod_id: &str) -> PathBuf {
         _ => "x86_64-unknown-linux-gnu",
     };
     let lib = format!("lib{}.so", to_snake_name(mod_id));
-    project_root.join("target").join(triple).join("release").join(lib)
+    project_root
+        .join("target")
+        .join(triple)
+        .join("release")
+        .join(lib)
 }
 
 fn control_socket_path() -> PathBuf {
-    std::env::temp_dir().join(format!("yog-idle-{}-{}.sock", std::process::id(), std::time::SystemTime::now().elapsed_or_zero_nanos()))
+    std::env::temp_dir().join(format!(
+        "yog-idle-{}-{}.sock",
+        std::process::id(),
+        std::time::SystemTime::now().elapsed_or_zero_nanos()
+    ))
 }
 
 // `SystemTime` has no direct "nanos since some fixed point" accessor without
@@ -203,7 +222,9 @@ trait ElapsedOrZero {
 }
 impl ElapsedOrZero for std::time::SystemTime {
     fn elapsed_or_zero_nanos(&self) -> u128 {
-        self.duration_since(std::time::UNIX_EPOCH).map(|d| d.as_nanos()).unwrap_or(0)
+        self.duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_nanos())
+            .unwrap_or(0)
     }
 }
 
@@ -217,7 +238,12 @@ impl ElapsedOrZero for std::time::SystemTime {
 /// socket read that never arrives would hang Tauri's invoke call (and,
 /// since its blocking-thread pool is bounded, eventually every *other*
 /// command too) for as long as that read blocks.
-pub fn run_with_mode(app: AppHandle, project_root: String, config_name: String, mode: String) -> Result<(), String> {
+pub fn run_with_mode(
+    app: AppHandle,
+    project_root: String,
+    config_name: String,
+    mode: String,
+) -> Result<(), String> {
     let root = PathBuf::from(&project_root);
     let yog_toml = std::fs::read_to_string(root.join("yog.toml")).map_err(|e| e.to_string())?;
     let mod_id = read_mod_id(&yog_toml).ok_or("yog.toml has no [mod]/[package] id")?;
@@ -259,8 +285,20 @@ pub fn run_with_mode(app: AppHandle, project_root: String, config_name: String, 
     }
 
     let id = NEXT_SESSION_ID.fetch_add(1, Ordering::Relaxed);
-    *app.state::<DebugState>().0.lock().unwrap() = Some(RunSession { id, wrapper: child, real_pid: None, tracer: None });
-    let _ = app.emit("game-status", GameStatus { stage: "starting", pid: None, mods: Vec::new() });
+    *app.state::<DebugState>().0.lock().unwrap() = Some(RunSession {
+        id,
+        wrapper: child,
+        real_pid: None,
+        tracer: None,
+    });
+    let _ = app.emit(
+        "game-status",
+        GameStatus {
+            stage: "starting",
+            pid: None,
+            mods: Vec::new(),
+        },
+    );
 
     spawn_exit_watcher(app.clone(), id);
     std::thread::spawn(move || connect_and_watch(app, id, socket_path, mod_id, debug, native_path));
@@ -287,12 +325,21 @@ struct GameStatus {
 /// reach `nativeInit`), reads the `ready` line for the real pid directly —
 /// no `/proc` walking at all — then keeps reading further event lines for
 /// the rest of the session, translating each into a `game-status` event.
-fn connect_and_watch(app: AppHandle, session_id: u64, socket_path: PathBuf, mod_id: String, debug: bool, native_path: PathBuf) {
+fn connect_and_watch(
+    app: AppHandle,
+    session_id: u64,
+    socket_path: PathBuf,
+    mod_id: String,
+    debug: bool,
+    native_path: PathBuf,
+) {
     let connect_deadline = Instant::now() + Duration::from_secs(90);
     let stream = loop {
         match UnixStream::connect(&socket_path) {
             Ok(s) => break Some(s),
-            Err(_) if Instant::now() < connect_deadline => std::thread::sleep(Duration::from_millis(200)),
+            Err(_) if Instant::now() < connect_deadline => {
+                std::thread::sleep(Duration::from_millis(200))
+            }
             Err(_) => break None,
         }
     };
@@ -307,7 +354,10 @@ fn connect_and_watch(app: AppHandle, session_id: u64, socket_path: PathBuf, mod_
             "[warn] control socket never connected — no live status or debugger attach available for this run".to_string(),
         );
         if debug {
-            emit_failed(&app, "control socket never connected — is this mod's yog-runtime new enough to support it?");
+            emit_failed(
+                &app,
+                "control socket never connected — is this mod's yog-runtime new enough to support it?",
+            );
         }
         return;
     };
@@ -321,17 +371,33 @@ fn connect_and_watch(app: AppHandle, session_id: u64, socket_path: PathBuf, mod_
     if reader.read_line(&mut line).unwrap_or(0) == 0 {
         return;
     }
-    let Ok(ready) = serde_json::from_str::<serde_json::Value>(line.trim()) else { return };
-    let Some(real_pid) = ready.get("pid").and_then(|v| v.as_i64()).map(|v| v as i32) else { return };
+    let Ok(ready) = serde_json::from_str::<serde_json::Value>(line.trim()) else {
+        return;
+    };
+    let Some(real_pid) = ready.get("pid").and_then(|v| v.as_i64()).map(|v| v as i32) else {
+        return;
+    };
     let mods: Vec<ModInfoOut> = ready
         .get("mods")
         .and_then(|v| v.as_array())
         .map(|arr| {
             arr.iter()
                 .map(|m| ModInfoOut {
-                    id: m.get("id").and_then(|v| v.as_str()).unwrap_or_default().to_string(),
-                    name: m.get("name").and_then(|v| v.as_str()).unwrap_or_default().to_string(),
-                    version: m.get("version").and_then(|v| v.as_str()).unwrap_or_default().to_string(),
+                    id: m
+                        .get("id")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or_default()
+                        .to_string(),
+                    name: m
+                        .get("name")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or_default()
+                        .to_string(),
+                    version: m
+                        .get("version")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or_default()
+                        .to_string(),
                 })
                 .collect()
         })
@@ -346,7 +412,14 @@ fn connect_and_watch(app: AppHandle, session_id: u64, socket_path: PathBuf, mod_
             _ => return,
         }
     }
-    let _ = app.emit("game-status", GameStatus { stage: "ready", pid: Some(real_pid), mods });
+    let _ = app.emit(
+        "game-status",
+        GameStatus {
+            stage: "ready",
+            pid: Some(real_pid),
+            mods,
+        },
+    );
 
     if debug {
         start_tracer(&app, session_id, real_pid, mod_id, native_path);
@@ -367,8 +440,14 @@ fn connect_and_watch(app: AppHandle, session_id: u64, socket_path: PathBuf, mod_
             Ok(0) | Err(_) => break,
             Ok(_) => {
                 if let Ok(event) = serde_json::from_str::<serde_json::Value>(line.trim()) {
-                    let stage = event.get("event").and_then(|v| v.as_str()).unwrap_or("unknown");
-                    let _ = app.emit("workflow-output", format!("[control] {stage}: {line}", line = line.trim()));
+                    let stage = event
+                        .get("event")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("unknown");
+                    let _ = app.emit(
+                        "workflow-output",
+                        format!("[control] {stage}: {line}", line = line.trim()),
+                    );
                 }
             }
         }
@@ -396,8 +475,21 @@ fn mark_exited(app: &AppHandle, session_id: u64) {
         }
     };
     if had_session {
-        let _ = app.emit("game-status", GameStatus { stage: "exited", pid: None, mods: Vec::new() });
-        let _ = app.emit("debug-stopped", DebugStoppedEvent { reason: "exited".to_string(), stack_trace: Vec::new() });
+        let _ = app.emit(
+            "game-status",
+            GameStatus {
+                stage: "exited",
+                pid: None,
+                mods: Vec::new(),
+            },
+        );
+        let _ = app.emit(
+            "debug-stopped",
+            DebugStoppedEvent {
+                reason: "exited".to_string(),
+                stack_trace: Vec::new(),
+            },
+        );
         // `useModRunTargets`'s `running` flag only ever resets on this
         // event (a holdover from the old `run_and_stream`-based flow,
         // which fired it automatically) — without it, `RunBar`'s Start
@@ -415,19 +507,23 @@ fn mark_exited(app: &AppHandle, session_id: u64) {
 /// `debug_stop`. Exits its own loop once the session is gone by any means
 /// (this watcher's own detection, or `connect_and_watch`'s).
 fn spawn_exit_watcher(app: AppHandle, session_id: u64) {
-    std::thread::spawn(move || loop {
-        std::thread::sleep(Duration::from_secs(1));
-        let debug_state = app.state::<DebugState>();
-        let mut guard = debug_state.0.lock().unwrap();
-        let Some(session) = guard.as_mut().filter(|s| s.id == session_id) else { return };
-        match session.wrapper.try_wait() {
-            Ok(Some(_)) => {
-                drop(guard);
-                mark_exited(&app, session_id);
+    std::thread::spawn(move || {
+        loop {
+            std::thread::sleep(Duration::from_secs(1));
+            let debug_state = app.state::<DebugState>();
+            let mut guard = debug_state.0.lock().unwrap();
+            let Some(session) = guard.as_mut().filter(|s| s.id == session_id) else {
                 return;
+            };
+            match session.wrapper.try_wait() {
+                Ok(Some(_)) => {
+                    drop(guard);
+                    mark_exited(&app, session_id);
+                    return;
+                }
+                Ok(None) => continue,
+                Err(_) => return,
             }
-            Ok(None) => continue,
-            Err(_) => return,
         }
     });
 }
@@ -445,7 +541,13 @@ fn emit_failed(app: &AppHandle, message: impl Into<String>) {
 /// Registers a `TracerHandle` on the session (so breakpoint toggles made
 /// while attach is still in progress queue up instead of being lost) and
 /// spawns the tracer thread itself.
-fn start_tracer(app: &AppHandle, session_id: u64, real_pid: i32, mod_id: String, native_path: PathBuf) {
+fn start_tracer(
+    app: &AppHandle,
+    session_id: u64,
+    real_pid: i32,
+    mod_id: String,
+    native_path: PathBuf,
+) {
     let (tx, rx) = mpsc::channel();
     let running = Arc::new(AtomicBool::new(false));
     {
@@ -453,7 +555,11 @@ fn start_tracer(app: &AppHandle, session_id: u64, real_pid: i32, mod_id: String,
         let mut guard = debug_state.0.lock().unwrap();
         match guard.as_mut() {
             Some(session) if session.id == session_id => {
-                session.tracer = Some(TracerHandle { tx, pid: real_pid, running: running.clone() });
+                session.tracer = Some(TracerHandle {
+                    tx,
+                    pid: real_pid,
+                    running: running.clone(),
+                });
             }
             _ => return,
         }
@@ -472,7 +578,14 @@ fn start_tracer(app: &AppHandle, session_id: u64, real_pid: i32, mod_id: String,
 /// `Debugger::attach` leaves the tracee stopped (attach + `waitpid`), so
 /// right after arming breakpoints this resumes it — otherwise the game
 /// would sit frozen with nothing in the UI able to continue it.
-fn tracer_main(app: AppHandle, real_pid: i32, mod_id: String, native_path: PathBuf, rx: Receiver<TracerCmd>, running: Arc<AtomicBool>) {
+fn tracer_main(
+    app: AppHandle,
+    real_pid: i32,
+    mod_id: String,
+    native_path: PathBuf,
+    rx: Receiver<TracerCmd>,
+    running: Arc<AtomicBool>,
+) {
     let mut tracer = match Tracer::attach(&app, real_pid, &mod_id, &native_path) {
         Ok(t) => t,
         Err(e) => {
@@ -533,8 +646,14 @@ fn tracer_main(app: AppHandle, real_pid: i32, mod_id: String, native_path: PathB
 }
 
 impl Tracer {
-    fn attach(app: &AppHandle, real_pid: i32, mod_id: &str, native_path: &Path) -> Result<Self, String> {
-        let symbols = SymbolTable::load(native_path).map_err(|e| format!("loading symbols from {}: {e}", native_path.display()))?;
+    fn attach(
+        app: &AppHandle,
+        real_pid: i32,
+        mod_id: &str,
+        native_path: &Path,
+    ) -> Result<Self, String> {
+        let symbols = SymbolTable::load(native_path)
+            .map_err(|e| format!("loading symbols from {}: {e}", native_path.display()))?;
         let mut debugger = Debugger::attach(real_pid).map_err(|e| {
             let raw = e.to_string();
             if raw.contains("EPERM") {
@@ -556,7 +675,9 @@ impl Tracer {
             // Attached but unusable — let the game go rather than leaving
             // it stopped.
             let _ = debugger.detach();
-            return Err(format!("couldn't locate {mod_id}'s native in pid {real_pid}'s memory map"));
+            return Err(format!(
+                "couldn't locate {mod_id}'s native in pid {real_pid}'s memory map"
+            ));
         };
 
         let mut tracer = Tracer {
@@ -577,7 +698,10 @@ impl Tracer {
         match cmd {
             TracerCmd::SetBreakpoint { file, line } => self.set_breakpoint(app, file, line),
             TracerCmd::ClearBreakpoint { file, line } => {
-                if let Err(e) = self.breakpoints.clear(&mut self.debugger, &self.mod_id, &file, line) {
+                if let Err(e) =
+                    self.breakpoints
+                        .clear(&mut self.debugger, &self.mod_id, &file, line)
+                {
                     warn(app, format!("clearing breakpoint {file}:{line}: {e}"));
                 }
             }
@@ -591,21 +715,47 @@ impl Tracer {
     /// itself would happily track a duplicate), reporting both outright
     /// failures and lines that don't map to any code in the native.
     fn set_breakpoint(&mut self, app: &AppHandle, file: String, line: u32) {
-        if self.breakpoints.all().iter().any(|bp| bp.file == file && bp.line == line) {
+        if self
+            .breakpoints
+            .all()
+            .iter()
+            .any(|bp| bp.file == file && bp.line == line)
+        {
             return;
         }
-        match self.breakpoints.set(&mut self.debugger, &self.mod_id, self.generation, self.module_base, &self.symbols, &file, line) {
+        match self.breakpoints.set(
+            &mut self.debugger,
+            &self.mod_id,
+            self.generation,
+            self.module_base,
+            &self.symbols,
+            &file,
+            line,
+        ) {
             Err(e) => warn(app, format!("setting breakpoint {file}:{line}: {e}")),
             Ok(()) => {
-                if self.breakpoints.all().last().is_some_and(|bp| bp.addr.is_none()) {
-                    warn(app, format!("breakpoint {file}:{line} doesn't map to any code in {}'s native — it won't be hit", self.mod_id));
+                if self
+                    .breakpoints
+                    .all()
+                    .last()
+                    .is_some_and(|bp| bp.addr.is_none())
+                {
+                    warn(
+                        app,
+                        format!(
+                            "breakpoint {file}:{line} doesn't map to any code in {}'s native — it won't be hit",
+                            self.mod_id
+                        ),
+                    );
                 }
             }
         }
     }
 
     fn stack_trace(&self) -> Vec<StackFrameOut> {
-        let Ok(addrs) = self.debugger.backtrace(64) else { return Vec::new() };
+        let Ok(addrs) = self.debugger.backtrace(64) else {
+            return Vec::new();
+        };
         addrs
             .into_iter()
             .enumerate()
@@ -628,8 +778,18 @@ impl Tracer {
             StopReason::Signal(_) => "signal",
             StopReason::Exited(_) | StopReason::Killed(_) => "exited",
         };
-        let stack_trace = if reason_str == "exited" { Vec::new() } else { self.stack_trace() };
-        let _ = app.emit("debug-stopped", DebugStoppedEvent { reason: reason_str.to_string(), stack_trace });
+        let stack_trace = if reason_str == "exited" {
+            Vec::new()
+        } else {
+            self.stack_trace()
+        };
+        let _ = app.emit(
+            "debug-stopped",
+            DebugStoppedEvent {
+                reason: reason_str.to_string(),
+                stack_trace,
+            },
+        );
     }
 }
 
@@ -646,11 +806,18 @@ static BREAKPOINTS: Mutex<Vec<(String, u32)>> = Mutex::new(Vec::new());
 
 fn tracer_send(state: &State<DebugState>, cmd: TracerCmd) -> bool {
     let guard = state.inner().0.lock().unwrap();
-    guard.as_ref().and_then(|s| s.tracer.as_ref()).is_some_and(|tracer| tracer.send(cmd))
+    guard
+        .as_ref()
+        .and_then(|s| s.tracer.as_ref())
+        .is_some_and(|tracer| tracer.send(cmd))
 }
 
 #[tauri::command]
-pub fn debug_set_breakpoint(state: State<DebugState>, file: String, line: u32) -> Result<(), String> {
+pub fn debug_set_breakpoint(
+    state: State<DebugState>,
+    file: String,
+    line: u32,
+) -> Result<(), String> {
     {
         let mut breakpoints = BREAKPOINTS.lock().unwrap();
         if !breakpoints.iter().any(|(f, l)| f == &file && *l == line) {
@@ -664,20 +831,35 @@ pub fn debug_set_breakpoint(state: State<DebugState>, file: String, line: u32) -
 }
 
 #[tauri::command]
-pub fn debug_clear_breakpoint(state: State<DebugState>, file: String, line: u32) -> Result<(), String> {
-    BREAKPOINTS.lock().unwrap().retain(|(f, l)| !(f == &file && *l == line));
+pub fn debug_clear_breakpoint(
+    state: State<DebugState>,
+    file: String,
+    line: u32,
+) -> Result<(), String> {
+    BREAKPOINTS
+        .lock()
+        .unwrap()
+        .retain(|(f, l)| !(f == &file && *l == line));
     tracer_send(&state, TracerCmd::ClearBreakpoint { file, line });
     Ok(())
 }
 
 #[tauri::command]
 pub fn debug_continue(state: State<DebugState>) -> Result<(), String> {
-    if tracer_send(&state, TracerCmd::Continue) { Ok(()) } else { Err("no active debug session".to_string()) }
+    if tracer_send(&state, TracerCmd::Continue) {
+        Ok(())
+    } else {
+        Err("no active debug session".to_string())
+    }
 }
 
 #[tauri::command]
 pub fn debug_step(state: State<DebugState>) -> Result<(), String> {
-    if tracer_send(&state, TracerCmd::Step) { Ok(()) } else { Err("no active debug session".to_string()) }
+    if tracer_send(&state, TracerCmd::Step) {
+        Ok(())
+    } else {
+        Err("no active debug session".to_string())
+    }
 }
 
 /// Kills the whole instance, whether or not it's a debug-mode run: signals
@@ -693,17 +875,34 @@ pub fn debug_step(state: State<DebugState>) -> Result<(), String> {
 #[tauri::command]
 pub fn debug_stop(app: AppHandle, state: State<DebugState>) -> Result<(), String> {
     let session = state.inner().0.lock().unwrap().take();
-    let Some(mut session) = session else { return Ok(()) };
+    let Some(mut session) = session else {
+        return Ok(());
+    };
     if let Some(pid) = session.real_pid {
         let _ = nix::sys::signal::kill(Pid::from_raw(pid), Signal::SIGKILL);
     }
     drop(session.tracer.take());
-    let _ = Command::new("pkill").args(["-P", &session.wrapper.id().to_string()]).status();
+    let _ = Command::new("pkill")
+        .args(["-P", &session.wrapper.id().to_string()])
+        .status();
     let _ = session.wrapper.kill();
     let _ = session.wrapper.wait();
 
-    let _ = app.emit("game-status", GameStatus { stage: "exited", pid: None, mods: Vec::new() });
-    let _ = app.emit("debug-stopped", DebugStoppedEvent { reason: "exited".to_string(), stack_trace: Vec::new() });
+    let _ = app.emit(
+        "game-status",
+        GameStatus {
+            stage: "exited",
+            pid: None,
+            mods: Vec::new(),
+        },
+    );
+    let _ = app.emit(
+        "debug-stopped",
+        DebugStoppedEvent {
+            reason: "exited".to_string(),
+            stack_trace: Vec::new(),
+        },
+    );
     let _ = app.emit("workflow-exit", ());
     Ok(())
 }
@@ -720,7 +919,8 @@ pub fn debug_stop(app: AppHandle, state: State<DebugState>) -> Result<(), String
 /// after an `EPERM` attach failure).
 #[tauri::command]
 pub fn debug_grant_ptrace_capability() -> Result<(), String> {
-    let exe = std::env::current_exe().map_err(|e| format!("couldn't determine Yog-IDLE's own executable path: {e}"))?;
+    let exe = std::env::current_exe()
+        .map_err(|e| format!("couldn't determine Yog-IDLE's own executable path: {e}"))?;
     let status = Command::new("pkexec")
         .arg("setcap")
         .arg("cap_sys_ptrace+ep")
@@ -730,6 +930,9 @@ pub fn debug_grant_ptrace_capability() -> Result<(), String> {
     if status.success() {
         Ok(())
     } else {
-        Err(format!("setcap exited with {status} — cancelled, or `setcap`/`pkexec` isn't available. You can also run this manually: sudo setcap cap_sys_ptrace+ep {}", exe.display()))
+        Err(format!(
+            "setcap exited with {status} — cancelled, or `setcap`/`pkexec` isn't available. You can also run this manually: sudo setcap cap_sys_ptrace+ep {}",
+            exe.display()
+        ))
     }
 }
