@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState, type FocusEvent } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { emit } from "@tauri-apps/api/event";
 import {
@@ -14,6 +15,8 @@ import { openWithItems, useOpenFiles } from "../OpenFilesContext";
 import { openFile } from "../fileOpenBus";
 import { reportError } from "../reportError";
 import { IDE_OUTPUT_EVENT } from "../outputSource";
+import { isWithin, renamedPath, validateEntryName as validateName } from "../paths";
+import { registerExplorerRename, renamePath, selectionPathRemoved, selectMultiple, selectPath } from "../ideSelection";
 
 const dirCommands = {
   list: (path: string) => invoke<DirEntry[]>("dir_list", { path }),
@@ -38,16 +41,7 @@ export function ProjectExplorer() {
       </div>
     );
   }
-  return <ProjectExplorerTree project={project} />;
-}
-
-/** A name for a new/renamed entry: non-empty, and a single path segment. */
-function validateName(value: string): string | null {
-  const name = value.trim();
-  if (!name) return "";
-  if (/[/\\]/.test(name)) return "A name can't contain / or \\.";
-  if (name === "." || name === "..") return "Not a valid name.";
-  return null;
+  return <ProjectExplorerTree key={project.root} project={project} />;
 }
 
 /** Runs a tree operation, reporting a failure instead of letting it vanish into an unhandled rejection. */
@@ -63,6 +57,40 @@ function ProjectExplorerTree({ project }: { project: ProjectInfo }) {
   // Expanded folders are remembered per project (see `WorkspaceProvider`).
   const tree = useDirectoryTree(project.root, project.name, dirCommands, reportListError, "explorer.expanded");
   const { tabs, pathRenamed, pathRemoved } = useOpenFiles();
+  // Controlled, so a rename (here or from Properties) can carry the
+  // selection over to the new path instead of losing it.
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const treeRef = useRef(tree);
+  treeRef.current = tree;
+
+  // Properties' "File Name" renames through here while the path is in the
+  // tree, so the tree re-lists its folder.
+  useEffect(
+    () =>
+      registerExplorerRename(async (path, newName) => {
+        const node = findNode(treeRef.current.nodes, path);
+        if (!node) return false;
+        await treeRef.current.renameNode(node, newName);
+        const to = renamedPath(path, newName);
+        setSelectedIds((prev) => new Set([...prev].map((id) => (isWithin(id, path) ? to + id.slice(path.length) : id))));
+        return true;
+      }),
+    []
+  );
+
+  /** Makes this tree's selection the global one (what Properties shows). */
+  function publishSelection(ids: Set<string>) {
+    if (ids.size > 1) return selectMultiple(ids.size, "explorer");
+    const [id] = ids;
+    if (id === undefined) return;
+    const node = findNode(tree.nodes, id);
+    selectPath(id, node?.kind ?? "file", "explorer");
+  }
+
+  /** Coming back to the tree from elsewhere (an editor) makes its selection current again, as in Visual Studio. */
+  function handleFocus(e: FocusEvent<HTMLDivElement>) {
+    if (!e.currentTarget.contains(e.relatedTarget as Node | null)) publishSelection(selectedIds);
+  }
 
   function getMenuItems(node: FileTreeNode): FileTreeMenuItem[] {
     const items: FileTreeMenuItem[] = [];
@@ -102,11 +130,8 @@ function ProjectExplorerTree({ project }: { project: ProjectInfo }) {
         onSelect: async (n) => {
           const name = await promptDialog({ title: "Rename", label: "New name", defaultValue: n.name, confirmLabel: "Rename", validate: validateName });
           if (name === null || name.trim() === n.name) return;
-          await attempt(`Failed to rename ${n.name}`, async () => {
-            await tree.renameNode(n, name.trim());
-            // Open tabs under the old path follow it to the new one.
-            pathRenamed(n.id, n.id.replace(/[^/\\]+$/, name.trim()));
-          });
+          // Open tabs and the selection under the old path follow it to the new one.
+          await attempt(`Failed to rename ${n.name}`, () => renamePath(n.id, name.trim(), pathRenamed));
         },
       });
       items.push({
@@ -122,6 +147,8 @@ function ProjectExplorerTree({ project }: { project: ProjectInfo }) {
           await attempt(`Failed to delete ${n.name}`, async () => {
             await tree.removeNode(n);
             pathRemoved(n.id);
+            selectionPathRemoved(n.id);
+            setSelectedIds((prev) => new Set([...prev].filter((id) => !isWithin(id, n.id))));
           });
         },
       });
@@ -130,14 +157,28 @@ function ProjectExplorerTree({ project }: { project: ProjectInfo }) {
   }
 
   return (
-    <div style={{ height: "100%", overflow: "auto", padding: "var(--sp-space-xs)", boxSizing: "border-box" }}>
+    <div style={{ height: "100%", overflow: "auto", padding: "var(--sp-space-xs)", boxSizing: "border-box" }} onFocus={handleFocus}>
       <FileTree
         nodes={tree.nodes}
         expandedIds={tree.expandedIds}
         onExpandedChange={tree.onExpandedChange}
+        selectedIds={selectedIds}
+        onSelectionChange={(ids) => {
+          setSelectedIds(ids);
+          publishSelection(ids);
+        }}
         onActivate={(node) => openFile({ path: node.id, name: node.name })}
         getMenuItems={getMenuItems}
       />
     </div>
   );
+}
+
+function findNode(nodes: FileTreeNode[], id: string): FileTreeNode | null {
+  for (const node of nodes) {
+    if (node.id === id) return node;
+    const inner = node.children ? findNode(node.children, id) : null;
+    if (inner) return inner;
+  }
+  return null;
 }

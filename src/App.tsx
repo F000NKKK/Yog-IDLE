@@ -31,7 +31,7 @@ import type { PanelDef, SettingsSection } from "substrate-platform-ui";
 import { EmptyEditorState } from "./panels/EmptyEditorState";
 import { Toolbox } from "./panels/Toolbox";
 import { ProjectExplorer } from "./panels/ProjectExplorer";
-import { Properties } from "./panels/Properties";
+import { ActiveDocumentSelection, Properties } from "./panels/Properties";
 import { RunToolbar } from "./panels/RunToolbar";
 import { PublishWindow } from "./panels/PublishWindow";
 import { DebugPanel } from "./panels/DebugPanel";
@@ -390,6 +390,7 @@ function ShellChrome({ onOpenSettings, onOpenPublish, run, onRunningChange }: Om
       <Toolbar leading={<RunToolbar onRunningChange={onRunningChange} />} sections={[...editorToolbarSections(editor), ...runToolbarSections(run)]} />
       <EditorKeybindings actions={editor} />
       <OpenFilesPersistence />
+      <ActiveDocumentSelection />
     </>
   );
 }

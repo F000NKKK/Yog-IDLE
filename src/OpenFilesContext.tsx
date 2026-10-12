@@ -25,6 +25,7 @@ import { samePath } from "./paths";
 import { onOpenFileRequest, type FileOpenRequest } from "./fileOpenBus";
 import { baseName, isWithin } from "./paths";
 import { reportError } from "./reportError";
+import { selectPath } from "./ideSelection";
 import { addCloseGuard } from "./windowClose";
 import { useGlobalState, useGlobalStateStore } from "./WorkspaceContext";
 
@@ -81,6 +82,8 @@ interface OpenFilesContextValue {
   pathRenamed: (from: string, to: string) => void;
   /** Explorer deleted `path` (a file or folder) — clean tabs under it close, dirty ones are kept, marked deleted. */
   pathRemoved: (path: string) => void;
+  /** Re-reads open files from disk now (as on window focus) — after something in the IDE itself rewrote one, e.g. Properties editing `yog.toml`. */
+  recheckDisk: () => Promise<void>;
   /** One `PanelDef` per open tab, fed straight into `PlatformShell`'s `extraCenterPanels` — no wrapper "Editor" panel around them. Each panel's `component` keeps a stable identity across renders (cached per tab id) so CodeMirror's internal state (undo history, cursor) survives every keystroke instead of remounting. */
   panels: PanelDef[];
 }
@@ -364,41 +367,42 @@ export function OpenFilesProvider({ children }: { children: ReactNode }) {
   // without edits, and only *tell* about ones with edits — never overwrite
   // unsaved work. Files that vanished are handled like an Explorer delete.
   const warnedDisk = useRef(new Map<string, string>());
-  useEffect(() => {
-    async function recheck() {
-      const vanished = new Set<string>();
-      for (const tab of tabsRef.current) {
-        if (!tab.textLoaded) continue;
-        let disk: string;
-        try {
-          disk = await invoke<string>("file_read", { path: tab.path });
-        } catch {
-          vanished.add(tab.id);
-          continue;
-        }
-        const current = tabsRef.current.find((t) => t.id === tab.id);
-        if (!current) continue;
-        if (disk === current.diskContent) {
-          // Back again (restored by git, say) — no longer "deleted".
-          if (current.missing) setTabs((prev) => prev.map((t) => (t.id === tab.id ? { ...t, missing: false } : t)));
-          continue;
-        }
-        if (!current.dirty) {
-          setTabs((prev) =>
-            prev.map((t) =>
-              t.id === tab.id && !t.dirty ? { ...t, content: disk, diskContent: disk, missing: false, contentVersion: t.contentVersion + 1 } : t
-            )
-          );
-        } else if (warnedDisk.current.get(tab.id) !== disk) {
-          warnedDisk.current.set(tab.id, disk);
-          notify({ level: "warn", message: `${current.name} changed on disk — your unsaved changes are kept; saving will overwrite the file.` });
-        }
+  const recheckDisk = useCallback(async () => {
+    const vanished = new Set<string>();
+    for (const tab of tabsRef.current) {
+      if (!tab.textLoaded) continue;
+      let disk: string;
+      try {
+        disk = await invoke<string>("file_read", { path: tab.path });
+      } catch {
+        vanished.add(tab.id);
+        continue;
       }
-      if (vanished.size > 0) markGone((t) => vanished.has(t.id));
+      const current = tabsRef.current.find((t) => t.id === tab.id);
+      if (!current) continue;
+      if (disk === current.diskContent) {
+        // Back again (restored by git, say) — no longer "deleted".
+        if (current.missing) setTabs((prev) => prev.map((t) => (t.id === tab.id ? { ...t, missing: false } : t)));
+        continue;
+      }
+      if (!current.dirty) {
+        setTabs((prev) =>
+          prev.map((t) =>
+            t.id === tab.id && !t.dirty ? { ...t, content: disk, diskContent: disk, missing: false, contentVersion: t.contentVersion + 1 } : t
+          )
+        );
+      } else if (warnedDisk.current.get(tab.id) !== disk) {
+        warnedDisk.current.set(tab.id, disk);
+        notify({ level: "warn", message: `${current.name} changed on disk — your unsaved changes are kept; saving will overwrite the file.` });
+      }
     }
+    if (vanished.size > 0) markGone((t) => vanished.has(t.id));
+  }, [markGone]);
+  useEffect(() => {
+    const recheck = () => void recheckDisk();
     window.addEventListener("focus", recheck);
     return () => window.removeEventListener("focus", recheck);
-  }, [markGone]);
+  }, [recheckDisk]);
 
   function getComponent(tabId: string): ComponentType {
     let component = componentCache.current.get(tabId);
@@ -474,16 +478,21 @@ export function OpenFilesProvider({ children }: { children: ReactNode }) {
           return <provider.component {...props} />;
         };
         return (
-          <MultiViewEditor
-            providers={providers}
-            view={active.id}
-            onViewChange={chooseView}
-            renderView={renderView}
-            path={tab.path}
-            content={tab.content}
-            contentVersion={tab.contentVersion}
-            onChange={onChange}
-          />
+          // Focus anywhere in the editor makes its file the global selection
+          // (what Properties shows); `display: contents` keeps the wrapper
+          // out of the layout.
+          <div style={{ display: "contents" }} onFocus={() => selectPath(tab.path, "file", "editor")}>
+            <MultiViewEditor
+              providers={providers}
+              view={active.id}
+              onViewChange={chooseView}
+              renderView={renderView}
+              path={tab.path}
+              content={tab.content}
+              contentVersion={tab.contentVersion}
+              onChange={onChange}
+            />
+          </div>
         );
       };
       componentCache.current.set(tabId, component);
@@ -526,7 +535,7 @@ export function OpenFilesProvider({ children }: { children: ReactNode }) {
 
   return (
     <OpenFilesContext.Provider
-      value={{ tabs, open, updateContent, closeTab, closeTabs, closeAll, setPinned, setView, save, saveAll, hasDirty, pathRenamed, pathRemoved, panels }}
+      value={{ tabs, open, updateContent, closeTab, closeTabs, closeAll, setPinned, setView, save, saveAll, hasDirty, pathRenamed, pathRemoved, recheckDisk, panels }}
     >
       {children}
     </OpenFilesContext.Provider>
