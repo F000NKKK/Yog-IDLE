@@ -5211,9 +5211,9 @@ dependencies = [
 
 [[package]]
 name = "yog-symbols"
-version = "0.3.3"
+version = "0.3.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d39855e615287f9cd55a3c72647101b3194c796d7ce2364dbed23192f1e4c5d8"
+checksum = "49a24564f3d33d11ab39bcc397a7b911660a042cecbd4be369309a1c32e635ad"
 dependencies = [
  "addr2line",
  "gimli",

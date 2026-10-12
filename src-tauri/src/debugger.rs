@@ -32,7 +32,7 @@ use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager, State};
 use yog_debugger::{Debugger, SourceBreakpoints, StepKind, StopReason, is_library_source};
 use yog_hot_reload::{GenerationAllocator, ModuleGeneration};
-use yog_symbols::{FrameRegs, SymbolTable, TargetMemory};
+use yog_symbols::{FrameRegs, SymbolTable, TargetMemory, ValueNode, ValueRef};
 
 /// Everything the tracer thread owns for one attached debug session — see
 /// `tracer_main`. Never leaves that thread.
@@ -51,6 +51,11 @@ struct Tracer {
     /// Why the tracee last stopped — re-reported when the user switches
     /// threads, so the UI keeps showing "breakpoint" rather than a new stop.
     last_stop: StopReason,
+    /// Expandable values handed out (`VariableOut::handle`) since the
+    /// tracee last stopped — they name places in its memory, so they're
+    /// dropped as soon as it runs again (or the native is reloaded).
+    values: HashMap<u64, ValueRef>,
+    next_value: u64,
 }
 
 /// A request for the tracer thread. Breakpoint edits are applied whether
@@ -76,12 +81,9 @@ enum TracerCmd {
     /// The runtime just hot-reloaded the mod: reload symbols from the
     /// freshly built native and re-resolve every breakpoint against them.
     Rebind,
-    /// Locals of backtrace frame `frame` (`StackFrameOut::id`) of the
-    /// selected thread, answered on `reply`.
-    Variables {
-        frame: usize,
-        reply: Sender<Result<Vec<VariableOut>, String>>,
-    },
+    /// A read-only look at the paused tracee (locals, watch expressions,
+    /// expanding a value) — see `tracer_query`.
+    Inspect(Box<dyn FnOnce(&mut Tracer) + Send>),
     /// Yog-IDLE is exiting: take every breakpoint out and let the game run
     /// on untraced, then say so on `done`.
     Detach {
@@ -231,8 +233,10 @@ impl DebugStoppedEvent {
     }
 }
 
-/// One row of the Locals view — `yog_symbols::Value`, which already bounds
-/// how deep and wide `children` go.
+/// One row of the Locals/Watch/Autos views and DataTips — a
+/// `yog_symbols::ValueNode`. `children` is only ever filled for an eagerly
+/// read tree; rows with a `handle` are expanded on demand with
+/// `debug_children`.
 #[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct VariableOut {
@@ -240,17 +244,19 @@ pub struct VariableOut {
     pub type_name: String,
     pub value: String,
     pub children: Vec<VariableOut>,
+    /// An expression that evaluates back to this row ("Add Watch").
+    pub expr: String,
+    /// Set when the row can be expanded: pass to `debug_children` while
+    /// the tracee is still paused at the same stop.
+    pub handle: Option<u64>,
 }
 
-impl From<yog_symbols::Value> for VariableOut {
-    fn from(value: yog_symbols::Value) -> Self {
-        Self {
-            name: value.name,
-            type_name: value.type_name,
-            value: value.value,
-            children: value.children.into_iter().map(Self::from).collect(),
-        }
-    }
+/// One watch expression's result: a row, or why there isn't one.
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WatchOut {
+    pub value: Option<VariableOut>,
+    pub error: Option<String>,
 }
 
 /// The tracee's memory through `/proc/<pid>/mem` — readable by its tracer
@@ -1039,7 +1045,16 @@ fn start_tracer(
         pause_request,
     };
     std::thread::spawn(move || {
-        tracer_main(app, session_id, real_pid, mod_id, native_path, ptracer, rx, flags)
+        tracer_main(
+            app,
+            session_id,
+            real_pid,
+            mod_id,
+            native_path,
+            ptracer,
+            rx,
+            flags,
+        )
     });
 }
 
@@ -1088,6 +1103,7 @@ fn tracer_main(
     let mut resume = Some(Resume::Continue);
     loop {
         if let Some(kind) = resume.take() {
+            tracer.values.clear();
             let result = match kind {
                 Resume::Continue => {
                     running.store(true, Ordering::SeqCst);
@@ -1208,6 +1224,8 @@ impl Tracer {
             generations,
             breakpoints: SourceBreakpoints::new(),
             last_stop: StopReason::Signal(Signal::SIGSTOP),
+            values: HashMap::new(),
+            next_value: 1,
         };
         for (file, line) in BREAKPOINTS.lock().unwrap().clone() {
             tracer.set_breakpoint(app, file, line);
@@ -1237,9 +1255,7 @@ impl Tracer {
                 Ok(()) => self.emit_stop(app, self.last_stop.clone()),
                 Err(e) => warn(app, format!("selecting thread {tid}: {e}")),
             },
-            TracerCmd::Variables { frame, reply } => {
-                let _ = reply.send(self.variables(frame));
-            }
+            TracerCmd::Inspect(query) => query(self),
             TracerCmd::Detach { done } => {
                 let _ = self.debugger.detach();
                 let _ = done.send(());
@@ -1266,6 +1282,7 @@ impl Tracer {
             )
             .map_err(|e| e.to_string())?;
         self.symbols = symbols;
+        self.values.clear();
         self.module_base = module_base;
         self.generation = generation;
         Ok(())
@@ -1361,25 +1378,83 @@ impl Tracer {
         out
     }
 
-    /// Locals of the selected thread's frame `frame` (a `stack_trace` id):
-    /// the physical frame's registers, and of the function instances at
-    /// its pc the one the id's inline index names — an inlined call's
-    /// caller shows its own variables, not the callee's. The innermost
-    /// frame has every register; outer ones have what CFI recovered
-    /// (`rsp`, `rip` and the callee-saved registers), so variables kept in
-    /// other registers read as `<unavailable>`.
-    fn variables(&self, frame: usize) -> Result<Vec<VariableOut>, String> {
-        let mem = ProcMem::open(self.debugger.pid())?;
+    /// The registers of the selected thread's frame `frame` (a
+    /// `stack_trace` id) and the index of the function instance at its pc
+    /// the id names — an inlined call's caller shows its own variables,
+    /// not the callee's. The innermost frame has every register; outer
+    /// ones have what CFI recovered (`rsp`, `rip` and the callee-saved
+    /// registers), so variables kept in other registers read as
+    /// `<unavailable>`.
+    fn frame_regs(&self, frame: usize) -> Result<(FrameRegs, usize), String> {
         let frames = self.frames();
         let regs = frames
             .get(frame / FRAME_ID_STRIDE)
             .ok_or_else(|| format!("frame {frame} is past the end of the stack"))?;
-        Ok(self
+        Ok((regs.clone(), frame % FRAME_ID_STRIDE))
+    }
+
+    /// A row for the UI, remembering its expandable value under a handle.
+    fn row(&mut self, node: ValueNode) -> VariableOut {
+        let handle = node.children.map(|value| {
+            let id = self.next_value;
+            self.next_value += 1;
+            self.values.insert(id, value);
+            id
+        });
+        VariableOut {
+            name: node.name,
+            type_name: node.type_name,
+            value: node.value,
+            children: Vec::new(),
+            expr: node.expr,
+            handle,
+        }
+    }
+
+    /// Locals of the selected thread's frame `frame`, one level at a time.
+    fn variables(&mut self, frame: usize) -> Result<Vec<VariableOut>, String> {
+        let mem = ProcMem::open(self.debugger.pid())?;
+        let (regs, inline) = self.frame_regs(frame)?;
+        let nodes = self
             .symbols
-            .read_locals_in_frame(regs, self.module_base, &mem, frame % FRAME_ID_STRIDE)
-            .into_iter()
-            .map(VariableOut::from)
+            .local_nodes(&regs, self.module_base, &mem, inline);
+        Ok(nodes.into_iter().map(|n| self.row(n)).collect())
+    }
+
+    /// Watch expressions evaluated in frame `frame`.
+    fn evaluate(&mut self, frame: usize, exprs: &[String]) -> Result<Vec<WatchOut>, String> {
+        let mem = ProcMem::open(self.debugger.pid())?;
+        let (regs, inline) = self.frame_regs(frame)?;
+        Ok(exprs
+            .iter()
+            .map(|expr| {
+                match self
+                    .symbols
+                    .evaluate(expr, &regs, self.module_base, &mem, inline)
+                {
+                    Ok(node) => WatchOut {
+                        value: Some(self.row(node)),
+                        error: None,
+                    },
+                    Err(e) => WatchOut {
+                        value: None,
+                        error: Some(e.to_string()),
+                    },
+                }
+            })
             .collect())
+    }
+
+    /// The rows under an expandable row from this same stop.
+    fn children(&mut self, handle: u64) -> Result<Vec<VariableOut>, String> {
+        let value = self
+            .values
+            .get(&handle)
+            .cloned()
+            .ok_or("the value is no longer available — the game has run since")?;
+        let mem = ProcMem::open(self.debugger.pid())?;
+        let nodes = self.symbols.expand(&value, &mem);
+        Ok(nodes.into_iter().map(|n| self.row(n)).collect())
     }
 
     fn emit_stop(&self, app: &AppHandle, reason: StopReason) {
@@ -1581,14 +1656,13 @@ pub fn debug_select_thread(state: State<DebugState>, thread: i32) -> Result<(), 
     }
 }
 
-/// Locals of frame `frame` (a `StackFrameOut::id`) of the thread the last
-/// `debug-stopped` described. Only answerable while paused — reading a
-/// running thread's registers would be meaningless anyway.
-#[tauri::command]
-pub async fn debug_variables(
+/// Runs `query` on the tracer thread against the paused tracee and
+/// returns its answer. Only answerable while paused — reading a running
+/// thread's registers and memory would be meaningless anyway.
+async fn tracer_query<T: Send + 'static>(
     state: State<'_, DebugState>,
-    frame: usize,
-) -> Result<Vec<VariableOut>, String> {
+    query: impl FnOnce(&mut Tracer) -> Result<T, String> + Send + 'static,
+) -> Result<T, String> {
     let (reply, answer) = mpsc::channel();
     {
         let guard = state.inner().0.lock().unwrap();
@@ -1599,7 +1673,10 @@ pub async fn debug_variables(
         if tracer.running.load(Ordering::SeqCst) {
             return Err("the game is running".to_string());
         }
-        if !tracer.send(TracerCmd::Variables { frame, reply }) {
+        let cmd = TracerCmd::Inspect(Box::new(move |t: &mut Tracer| {
+            let _ = reply.send(query(t));
+        }));
+        if !tracer.send(cmd) {
             return Err("no active debug session".to_string());
         }
     }
@@ -1612,6 +1689,38 @@ pub async fn debug_variables(
     })
     .await
     .map_err(|e| e.to_string())?
+}
+
+/// Locals of frame `frame` (a `StackFrameOut::id`) of the thread the last
+/// `debug-stopped` described, one level deep — expand rows with
+/// `debug_children`.
+#[tauri::command]
+pub async fn debug_variables(
+    state: State<'_, DebugState>,
+    frame: usize,
+) -> Result<Vec<VariableOut>, String> {
+    tracer_query(state, move |t| t.variables(frame)).await
+}
+
+/// Watch expressions (and DataTips) evaluated in frame `frame`, one result
+/// per expression, in order.
+#[tauri::command]
+pub async fn debug_evaluate(
+    state: State<'_, DebugState>,
+    frame: usize,
+    exprs: Vec<String>,
+) -> Result<Vec<WatchOut>, String> {
+    tracer_query(state, move |t| t.evaluate(frame, &exprs)).await
+}
+
+/// The rows under an expandable row (`VariableOut::handle`) from the
+/// current stop.
+#[tauri::command]
+pub async fn debug_children(
+    state: State<'_, DebugState>,
+    handle: u64,
+) -> Result<Vec<VariableOut>, String> {
+    tracer_query(state, move |t| t.children(handle)).await
 }
 
 #[tauri::command]

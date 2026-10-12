@@ -158,6 +158,24 @@ pub fn debug_select_thread(thread: i32) -> Result<(), String> {
 }
 
 #[tauri::command]
+pub fn debug_variables(frame: usize) -> Result<Vec<()>, String> {
+    let _ = frame;
+    Err(UNSUPPORTED.to_string())
+}
+
+#[tauri::command]
+pub fn debug_evaluate(frame: usize, exprs: Vec<String>) -> Result<Vec<()>, String> {
+    let _ = (frame, exprs);
+    Err(UNSUPPORTED.to_string())
+}
+
+#[tauri::command]
+pub fn debug_children(handle: u64) -> Result<Vec<()>, String> {
+    let _ = handle;
+    Err(UNSUPPORTED.to_string())
+}
+
+#[tauri::command]
 pub fn debug_grant_ptrace_capability() -> Result<(), String> {
     Err(UNSUPPORTED.to_string())
 }
