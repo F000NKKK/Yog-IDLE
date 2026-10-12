@@ -6,7 +6,7 @@
 //! gutter keeps working) but there is nothing to arm them in, and
 //! continue/step report that native debugging isn't available.
 
-use std::process::{Child, Command, Stdio};
+use std::process::{Child, Command};
 use std::sync::Mutex;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
@@ -161,3 +161,6 @@ pub fn debug_select_thread(thread: i32) -> Result<(), String> {
 pub fn debug_grant_ptrace_capability() -> Result<(), String> {
     Err(UNSUPPORTED.to_string())
 }
+
+/// Nothing to detach without a debugger — the game simply keeps running.
+pub fn detach_on_exit(_app: &AppHandle) {}

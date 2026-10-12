@@ -1157,6 +1157,12 @@ pub fn run() {
     ]);
 
     builder
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        .run(|app, event| {
+            // The game outlives the IDE; only a debugger has to let go.
+            if let tauri::RunEvent::Exit = event {
+                debugger::detach_on_exit(app);
+            }
+        });
 }

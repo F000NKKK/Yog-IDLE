@@ -81,6 +81,11 @@ enum TracerCmd {
         frame: usize,
         reply: Sender<Result<Vec<VariableOut>, String>>,
     },
+    /// Yog-IDLE is exiting: take every breakpoint out and let the game run
+    /// on untraced, then say so on `done`.
+    Detach {
+        done: Sender<()>,
+    },
 }
 
 #[derive(Clone, Copy)]
@@ -114,6 +119,7 @@ impl TracerHandle {
                 | TracerCmd::ClearBreakpoint { .. }
                 | TracerCmd::Rebind
                 | TracerCmd::Pause
+                | TracerCmd::Detach { .. }
         );
         if self.tx.send(cmd).is_err() {
             return false;
@@ -1142,6 +1148,10 @@ impl Tracer {
             TracerCmd::Variables { frame, reply } => {
                 let _ = reply.send(self.variables(frame));
             }
+            TracerCmd::Detach { done } => {
+                let _ = self.debugger.detach();
+                let _ = done.send(());
+            }
             // Already paused (a Pause racing a breakpoint hit) — nothing to do.
             TracerCmd::Pause => {}
             TracerCmd::Continue | TracerCmd::Step(_) => {}
@@ -1506,6 +1516,25 @@ pub fn debug_stop(app: AppHandle, state: State<DebugState>) -> Result<(), String
     let _ = app.emit("debug-stopped", DebugStoppedEvent::exited());
     let _ = app.emit("workflow-exit", ());
     Ok(())
+}
+
+/// On Yog-IDLE exiting: the game it launched keeps running (see
+/// `crate::spawn_yog_run`), so a debug session detaches from it first —
+/// otherwise its breakpoints would stay armed with nobody left to handle
+/// the trap. Waits briefly; the game itself is never stopped here.
+pub fn detach_on_exit(app: &AppHandle) {
+    let (done, finished) = mpsc::channel();
+    let sent = app
+        .state::<DebugState>()
+        .0
+        .lock()
+        .unwrap()
+        .as_ref()
+        .and_then(|s| s.tracer.as_ref())
+        .is_some_and(|tracer| tracer.send(TracerCmd::Detach { done }));
+    if sent {
+        let _ = finished.recv_timeout(Duration::from_secs(2));
+    }
 }
 
 /// Why an attach got `EPERM`, and the one thing that fixes it here. Yama
