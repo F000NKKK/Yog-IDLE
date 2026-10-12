@@ -1314,6 +1314,53 @@ impl Exec<'_> {
         }
     }
 
+    /// `CopyAsAdmin`: the one elevated command, so the password prompt
+    /// shows once per JDK and covers nothing but the copy.
+    fn copy_as_admin(&self, from: &Path, into: &Path, downloads: &Path) -> Result<(), String> {
+        let (from_s, into_s) = (from.to_string_lossy(), into.to_string_lossy());
+        let what = format!("copy {from_s} into {into_s} (as administrator)");
+        let cmd = if cfg!(windows) {
+            // UAC: an elevated PowerShell running a script, its exit code passed back.
+            let script = downloads.join("copy-as-admin.ps1");
+            std::fs::write(
+                &script,
+                format!(
+                    "$ErrorActionPreference = 'Stop'\r\nNew-Item -ItemType Directory -Force -Path '{into_s}' | Out-Null\r\nCopy-Item -Recurse -Force -Path '{from_s}\\*' -Destination '{into_s}'\r\n"
+                ),
+            )
+            .map_err(|e| e.to_string())?;
+            let mut cmd = Command::new("powershell");
+            cmd.args([
+                "-NoProfile",
+                "-Command",
+                &format!(
+                    "$p = Start-Process powershell -Verb RunAs -Wait -PassThru -ArgumentList '-NoProfile','-ExecutionPolicy','Bypass','-File','\"{}\"'; exit $p.ExitCode",
+                    script.to_string_lossy()
+                ),
+            ]);
+            cmd
+        } else if cfg!(target_os = "macos") {
+            let shell = format!("mkdir -p '{into_s}' && cp -R '{from_s}/' '{into_s}/'");
+            let mut cmd = Command::new("osascript");
+            cmd.args([
+                "-e",
+                &format!(
+                    "do shell script \"{}\" with administrator privileges",
+                    shell.replace('\\', "\\\\").replace('"', "\\\"")
+                ),
+            ]);
+            cmd
+        } else {
+            // pkexec shows the desktop's polkit password dialog; the paths go in as arguments, not into the script.
+            let mut cmd = Command::new("pkexec");
+            cmd.args(["sh", "-c", "mkdir -p \"$2\" && cp -a \"$1\"/. \"$2\"/", "sh"])
+                .arg(from)
+                .arg(into);
+            cmd
+        };
+        self.run(cmd, &what)
+    }
+
     fn extract(&self, archive: &Path, dest: &Path) -> Result<(), String> {
         std::fs::create_dir_all(dest).map_err(|e| e.to_string())?;
         let mut cmd = Command::new("tar");
@@ -1550,7 +1597,9 @@ pub fn environment_install(
     state: State<'_, EnvironmentState>,
     components: Vec<String>,
     project_root: Option<String>,
+    scope: Option<InstallScope>,
 ) -> Result<(), String> {
+    let scope = scope.unwrap_or_default();
     let cancel = {
         let mut slot = state.install.lock().unwrap();
         if slot.is_some() {
@@ -1593,7 +1642,7 @@ pub fn environment_install(
                     );
                 }
             };
-            let result = plan(&id, &report, &settings, &downloads).and_then(|steps| {
+            let result = plan(&id, &report, &settings, &downloads, scope).and_then(|steps| {
                 execute(
                     &steps,
                     &Exec {
@@ -1921,13 +1970,13 @@ mod tests {
 
         // The toolchain needs rustup first.
         assert!(
-            plan("toolchain", &report, &settings, downloads)
+            plan("toolchain", &report, &settings, downloads, InstallScope::User)
                 .unwrap_err()
                 .contains("rust")
         );
-        assert!(plan("git", &report, &settings, downloads).is_err());
+        assert!(plan("git", &report, &settings, downloads, InstallScope::User).is_err());
 
-        let rust = plan("rust", &report, &settings, downloads).unwrap();
+        let rust = plan("rust", &report, &settings, downloads, InstallScope::User).unwrap();
         if rustup_host().is_some() {
             assert!(
                 matches!(&rust[0], Step::Download { url, .. } if url.starts_with("https://static.rust-lang.org/rustup/dist/"))
@@ -1935,10 +1984,10 @@ mod tests {
             assert!(matches!(&rust[2], Step::Run { args, .. } if args.contains(&"-y".to_string())));
         }
 
-        let jdk = plan("jdk-17", &report, &settings, downloads).unwrap();
+        let jdk = plan("jdk-17", &report, &settings, downloads, InstallScope::User).unwrap();
         assert!(matches!(&jdk[1], Step::Extract { dest, .. } if dest == Path::new("/t/jdk")));
         assert_eq!(
-            plan("zig", &report, &settings, downloads).unwrap(),
+            plan("zig", &report, &settings, downloads, InstallScope::User).unwrap(),
             vec![Step::Zig {
                 dest: PathBuf::from("/t/zig")
             }]
