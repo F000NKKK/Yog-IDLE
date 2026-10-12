@@ -284,6 +284,12 @@ pub trait Probe {
     /// The files (not directories) directly in `path`.
     fn list_files(&self, path: &Path) -> Vec<PathBuf>;
     fn env(&self, key: &str) -> Option<String>;
+    /// `path` with symlinks resolved — one JDK reached through several
+    /// links (`/usr/lib/jvm/java-1.21.0-openjdk-amd64` → `java-21-openjdk-amd64`)
+    /// is listed once.
+    fn canonical(&self, path: &Path) -> PathBuf {
+        path.to_path_buf()
+    }
 }
 
 pub struct SystemProbe;
@@ -291,6 +297,14 @@ pub struct SystemProbe;
 const PROBE_TIMEOUT: Duration = Duration::from_secs(20);
 
 impl Probe for SystemProbe {
+    fn canonical(&self, path: &Path) -> PathBuf {
+        // `dunce` would strip Windows' `\\?\` prefix; plain paths there are rarely links anyway.
+        if cfg!(windows) {
+            return path.to_path_buf();
+        }
+        std::fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf())
+    }
+
     fn run(&self, program: &Path, args: &[&str]) -> Option<String> {
         let mut child = Command::new(program)
             .args(args)
@@ -589,6 +603,7 @@ pub fn detect_jdks(probe: &dyn Probe, tools: &Path) -> Vec<Jdk> {
     let mut seen: Vec<PathBuf> = Vec::new();
     let mut jdks = Vec::new();
     for (home, managed) in jdk_candidates(probe, tools) {
+        let home = probe.canonical(&home);
         if seen.contains(&home) || !probe.is_file(&home.join("bin").join(exe("java"))) {
             continue;
         }
