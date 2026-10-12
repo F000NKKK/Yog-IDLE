@@ -84,7 +84,7 @@ function copyName(name: string, taken: Set<string>): string {
   const dot = name.lastIndexOf(".");
   const [stem, ext] = dot > 0 ? [name.slice(0, dot), name.slice(dot)] : [name, ""];
   for (let n = 1; ; n++) {
-    const candidate = `${stem} - ${t("Copy")}${n > 1 ? ` (${n})` : ""}${ext}`;
+    const candidate = `${stem}${t(" - Copy")}${n > 1 ? ` (${n})` : ""}${ext}`;
     if (!taken.has(candidate.toLowerCase())) return candidate;
   }
 }
