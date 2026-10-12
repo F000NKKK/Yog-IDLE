@@ -11,6 +11,7 @@ use substrate_platform::{
 use tauri::{AppHandle, Emitter, Manager, State};
 
 mod environment;
+mod git;
 mod project_properties;
 mod properties;
 mod search;
@@ -1365,6 +1366,30 @@ pub fn run() {
         project_run_target_remove,
         project_build_targets_set,
         crates_search,
+        git::git_status,
+        git::git_stage,
+        git::git_unstage,
+        git::git_discard,
+        git::git_commit,
+        git::git_last_message,
+        git::git_diff_texts,
+        git::git_head_text,
+        git::git_log,
+        git::git_commit_files,
+        git::git_branches,
+        git::git_switch,
+        git::git_branch_create,
+        git::git_branch_delete,
+        git::git_remote,
+        git::git_integrate,
+        git::git_operation,
+        git::git_clone,
+        git::git_init,
+        git::git_stash_list,
+        git::git_stash_push,
+        git::git_stash_op,
+        git::git_config_get,
+        git::git_config_set,
     ]);
 
     builder
