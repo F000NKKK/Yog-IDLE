@@ -5,7 +5,7 @@ use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
 use substrate_platform::{
-    EntryKind, Level, LogLine, LogSink, ProjectStandard, PtySession, WorkflowFile,
+    EntryKind, Level, LogLine, LogSink, ProjectStandard, PtyOptions, PtySession, WorkflowFile,
 };
 use tauri::{AppHandle, Emitter, State};
 
@@ -664,13 +664,17 @@ fn pty_spawn(
     let out_id = id.clone();
     let exit_app = app.clone();
     let exit_id = id.clone();
-    let session = PtySession::spawn(
-        shell,
-        None,
+    // `spawn_utf8` holds back a multi-byte character split across two reads
+    // until it's complete, so every chunk is valid text on its own instead of
+    // each half being decoded (and garbled into U+FFFD) separately.
+    let session = PtySession::spawn_utf8(
+        PtyOptions {
+            shell,
+            ..PtyOptions::default()
+        },
         cols,
         rows,
-        move |bytes| {
-            let data = String::from_utf8_lossy(&bytes).into_owned();
+        move |data| {
             let _ = out_app.emit(
                 "pty-output",
                 PtyOutput {
