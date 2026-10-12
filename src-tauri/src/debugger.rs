@@ -1314,10 +1314,13 @@ impl Tracer {
         out
     }
 
-    /// Locals of the selected thread's frame `frame` (a `stack_trace` id).
-    /// The innermost frame has every register; outer ones have what CFI
-    /// recovered (`rsp`, `rip` and the callee-saved registers), so
-    /// variables kept in other registers read as `<unavailable>`.
+    /// Locals of the selected thread's frame `frame` (a `stack_trace` id):
+    /// the physical frame's registers, and of the function instances at
+    /// its pc the one the id's inline index names — an inlined call's
+    /// caller shows its own variables, not the callee's. The innermost
+    /// frame has every register; outer ones have what CFI recovered
+    /// (`rsp`, `rip` and the callee-saved registers), so variables kept in
+    /// other registers read as `<unavailable>`.
     fn variables(&self, frame: usize) -> Result<Vec<VariableOut>, String> {
         let mem = ProcMem::open(self.debugger.pid())?;
         let frames = self.frames();
@@ -1326,7 +1329,7 @@ impl Tracer {
             .ok_or_else(|| format!("frame {frame} is past the end of the stack"))?;
         Ok(self
             .symbols
-            .read_locals(regs, self.module_base, &mem)
+            .read_locals_in_frame(regs, self.module_base, &mem, frame % FRAME_ID_STRIDE)
             .into_iter()
             .map(VariableOut::from)
             .collect())
