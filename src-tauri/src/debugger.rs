@@ -31,7 +31,7 @@ use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager, State};
 use yog_debugger::{Debugger, SourceBreakpoints, StepKind, StopReason};
 use yog_hot_reload::{GenerationAllocator, ModuleGeneration};
-use yog_symbols::SymbolTable;
+use yog_symbols::{FrameRegs, SymbolTable, TargetMemory};
 
 /// Everything the tracer thread owns for one attached debug session — see
 /// `tracer_main`. Never leaves that thread.
@@ -75,6 +75,12 @@ enum TracerCmd {
     /// The runtime just hot-reloaded the mod: reload symbols from the
     /// freshly built native and re-resolve every breakpoint against them.
     Rebind,
+    /// Locals of backtrace frame `frame` (`StackFrameOut::id`) of the
+    /// selected thread, answered on `reply`.
+    Variables {
+        frame: usize,
+        reply: Sender<Result<Vec<VariableOut>, String>>,
+    },
 }
 
 #[derive(Clone, Copy)]
@@ -180,6 +186,52 @@ impl DebugStoppedEvent {
             thread: 0,
             registers: Vec::new(),
         }
+    }
+}
+
+/// One row of the Locals view — `yog_symbols::Value`, which already bounds
+/// how deep and wide `children` go.
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VariableOut {
+    pub name: String,
+    pub type_name: String,
+    pub value: String,
+    pub children: Vec<VariableOut>,
+}
+
+impl From<yog_symbols::Value> for VariableOut {
+    fn from(value: yog_symbols::Value) -> Self {
+        Self {
+            name: value.name,
+            type_name: value.type_name,
+            value: value.value,
+            children: value.children.into_iter().map(Self::from).collect(),
+        }
+    }
+}
+
+/// The tracee's memory through `/proc/<pid>/mem` — readable by its tracer
+/// while it's stopped, and far cheaper than a word-at-a-time `PTRACE_PEEKDATA`.
+struct ProcMem(std::fs::File);
+
+impl ProcMem {
+    fn open(pid: Pid) -> Result<Self, String> {
+        std::fs::File::open(format!("/proc/{pid}/mem"))
+            .map(Self)
+            .map_err(|e| format!("opening /proc/{pid}/mem: {e}"))
+    }
+
+    fn read_u64(&self, addr: u64) -> Option<u64> {
+        let mut buf = [0u8; 8];
+        self.read(addr, &mut buf).then(|| u64::from_ne_bytes(buf))
+    }
+}
+
+impl TargetMemory for ProcMem {
+    fn read(&self, addr: u64, buf: &mut [u8]) -> bool {
+        use std::os::unix::fs::FileExt;
+        self.0.read_exact_at(buf, addr).is_ok()
     }
 }
 
@@ -1093,6 +1145,9 @@ impl Tracer {
                 Ok(()) => self.emit_stop(app, self.last_stop.clone()),
                 Err(e) => warn(app, format!("selecting thread {tid}: {e}")),
             },
+            TracerCmd::Variables { frame, reply } => {
+                let _ = reply.send(self.variables(frame));
+            }
             // Already paused (a Pause racing a breakpoint hit) — nothing to do.
             TracerCmd::Pause => {}
             TracerCmd::Continue | TracerCmd::Step(_) => {}
@@ -1190,6 +1245,39 @@ impl Tracer {
                 })
             })
             .collect()
+    }
+
+    /// Locals of the selected thread's backtrace frame `frame` (the same
+    /// numbering `stack_trace` reports as `id`). The innermost frame has
+    /// every register; outer ones are recovered by walking the `rbp` chain
+    /// exactly as `Debugger::backtrace` does, so only `rip`/`rsp`/`rbp` are
+    /// known there and variables kept in other registers read as
+    /// `<unavailable>`.
+    fn variables(&self, frame: usize) -> Result<Vec<VariableOut>, String> {
+        let r = self.debugger.registers().map_err(|e| e.to_string())?;
+        let mem = ProcMem::open(self.debugger.pid())?;
+        let mut regs = FrameRegs::from_dwarf_order([
+            r.rax, r.rdx, r.rcx, r.rbx, r.rsi, r.rdi, r.rbp, r.rsp, r.r8, r.r9, r.r10, r.r11,
+            r.r12, r.r13, r.r14, r.r15, r.rip,
+        ]);
+        let mut bp = r.rbp;
+        for _ in 0..frame {
+            let (Some(saved_bp), Some(return_addr)) =
+                (mem.read_u64(bp), mem.read_u64(bp.wrapping_add(8)))
+            else {
+                return Err(format!("frame {frame} is past the end of the stack"));
+            };
+            // `return_addr - 1`: still inside the call instruction, so the
+            // scope lookup lands in the caller's block for that call.
+            regs = FrameRegs::new(return_addr.wrapping_sub(1), bp.wrapping_add(16), saved_bp);
+            bp = saved_bp;
+        }
+        Ok(self
+            .symbols
+            .read_locals(&regs, self.module_base, &mem)
+            .into_iter()
+            .map(VariableOut::from)
+            .collect())
     }
 
     fn emit_stop(&self, app: &AppHandle, reason: StopReason) {
@@ -1326,6 +1414,39 @@ pub fn debug_select_thread(state: State<DebugState>, thread: i32) -> Result<(), 
     } else {
         Err("no active debug session".to_string())
     }
+}
+
+/// Locals of frame `frame` (a `StackFrameOut::id`) of the thread the last
+/// `debug-stopped` described. Only answerable while paused — reading a
+/// running thread's registers would be meaningless anyway.
+#[tauri::command]
+pub async fn debug_variables(
+    state: State<'_, DebugState>,
+    frame: usize,
+) -> Result<Vec<VariableOut>, String> {
+    let (reply, answer) = mpsc::channel();
+    {
+        let guard = state.inner().0.lock().unwrap();
+        let tracer = guard
+            .as_ref()
+            .and_then(|s| s.tracer.as_ref())
+            .ok_or("no active debug session")?;
+        if tracer.running.load(Ordering::SeqCst) {
+            return Err("the game is running".to_string());
+        }
+        if !tracer.send(TracerCmd::Variables { frame, reply }) {
+            return Err("no active debug session".to_string());
+        }
+    }
+    // The first lookup parses the native's DWARF units, which can take a
+    // moment for a large mod.
+    tauri::async_runtime::spawn_blocking(move || {
+        answer
+            .recv_timeout(Duration::from_secs(20))
+            .map_err(|_| "the debugger didn't answer".to_string())?
+    })
+    .await
+    .map_err(|e| e.to_string())?
 }
 
 #[tauri::command]
