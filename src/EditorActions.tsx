@@ -105,10 +105,10 @@ export type EditorActions = ReturnType<typeof useEditorActions>;
 
 /** Keybindings that act on the active editor tab beyond CodeMirror's own (undo, find, toggle comment, ... are already bound inside each editor): Ctrl+S saves it, Ctrl+Shift+S saves every file, Ctrl+F4 / Ctrl+W closes it, Shift+Alt+F formats it. Renders nothing. */
 export function EditorKeybindings({ actions }: { actions: EditorActions }) {
-  useKeybinding("Ctrl+S", () => actions.save(), { id: "file.save" });
-  useKeybinding("Ctrl+Shift+S", () => actions.saveAll(), { id: "file.saveAll" });
-  useKeybinding(["Ctrl+F4", "Ctrl+W"], () => actions.close(), { id: "file.close" });
-  useKeybinding("Shift+Alt+F", () => actions.format(), { id: "edit.format" });
+  useKeybinding("Ctrl+S", () => void actions.save(), { id: "file.save" });
+  useKeybinding("Ctrl+Shift+S", () => void actions.saveAll(), { id: "file.saveAll" });
+  useKeybinding(["Ctrl+F4", "Ctrl+W"], () => void actions.close(), { id: "file.close" });
+  useKeybinding("Shift+Alt+F", () => void actions.format(), { id: "edit.format" });
   return null;
 }
 
