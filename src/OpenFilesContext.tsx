@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState, ty
 import { invoke } from "@tauri-apps/api/core";
 import {
   editorProviderById,
+  editorProviderIcon,
   editorProvidersFor,
   generalEditorProviders,
   getEditorView,
@@ -16,6 +17,7 @@ import {
   type ContextMenuItem,
   type EditorProps,
   type EditorProvider,
+  type PanelAction,
   type PanelDef,
   type TabMenuContext,
 } from "substrate-platform-ui";
@@ -27,7 +29,7 @@ import { baseName, isWithin } from "./paths";
 import { reportError } from "./reportError";
 import { selectPath } from "./ideSelection";
 import { addCloseGuard } from "./windowClose";
-import { useGlobalState, useGlobalStateStore } from "./WorkspaceContext";
+import { useGlobalStateStore } from "./WorkspaceContext";
 
 interface FileTab {
   /** Stable for the tab's lifetime (survives a rename) — the dock panel id. */
@@ -99,6 +101,20 @@ function isViewMap(value: unknown): boolean {
 
 function extensionOf(name: string): string {
   return name.includes(".") ? (name.split(".").pop()?.toLowerCase() ?? "") : "";
+}
+
+/**
+ * The views a tab can show — its file's own editors, plus one picked through
+ * "Open With…" that isn't among them (labelled by its full name, to tell it
+ * from the file's own "Code") — and the one it shows: its own choice, else
+ * the one last chosen for its extension, else the default.
+ */
+function tabViews(tab: FileTab, remembered: Record<string, string>): { providers: EditorProvider[]; active: EditorProvider } {
+  const matching = editorProvidersFor(tab.path);
+  const view = tab.view ?? remembered[extensionOf(tab.name)];
+  const picked = tab.view && !matching.some((p) => p.id === tab.view) ? editorProviderById(tab.view) : undefined;
+  const providers = picked ? [...matching, { ...picked, label: picked.name ?? picked.label }] : matching;
+  return { providers, active: providers.find((p) => p.id === view) ?? providers[0] };
 }
 
 /** Plain enough to be both a dock tab's `ContextMenuItem` and Project Explorer's `FileTreeMenuItem`. */
@@ -408,23 +424,48 @@ export function OpenFilesProvider({ children }: { children: ReactNode }) {
     let component = componentCache.current.get(tabId);
     if (!component) {
       component = function FileEditorPanel() {
-        const { tabs, updateContent, setView } = useOpenFiles();
+        const { tabs, updateContent } = useOpenFiles();
         const { forFile, toggle } = useBreakpoints();
         const { executionLocation } = useDebugSessionContext();
         const { activateCenterPanel } = useShell();
-        const [rememberedViews, setRememberedViews] = useGlobalState<Record<string, string>>(VIEWS_KEY, {}, isViewMap);
+        const { activeCenterId } = useShell();
         const tab = tabs.find((t) => t.id === tabId);
-        const matching = useEditorProviders(tab?.path ?? "");
+        // Re-renders when editors are registered; the views themselves come from `tabViews`.
+        useEditorProviders(tab?.path ?? "");
         const reveal = tab?.reveal;
         const ext = tab ? extensionOf(tab.name) : "";
-        const view = tab?.view ?? rememberedViews[ext];
-        // A view picked through "Open With…" that isn't one of this file's
-        // own joins the switcher.
-        const picked = view && !matching.some((p) => p.id === view) ? editorProviderById(view) : undefined;
-        // Its full name tells it apart from the file's own "Code" view.
-        const providers = picked ? [...matching, { ...picked, label: picked.name ?? picked.label }] : matching;
-        const active = providers.find((p) => p.id === view) ?? providers[0];
+        const { providers, active } = tab ? tabViews(tab, rememberedViews()) : { providers: [], active: undefined! };
         const textView = providers.find((p) => p.kind === "text");
+
+        // VS Code's Markdown keys, for any file with more than one view:
+        // Ctrl+Shift+V flips between the source and the preview/designer,
+        // Ctrl+K V opens the preview to the side.
+        const isActive = activeCenterId === tabId;
+        useEffect(() => {
+          if (!isActive || !tab || providers.length < 2) return;
+          let chord = 0;
+          const onKey = (e: KeyboardEvent) => {
+            const mod = e.ctrlKey || e.metaKey;
+            const key = e.key.toLowerCase();
+            const toggleTarget = active.kind === "text" && active === textView ? providers.find((p) => p.kind !== "text") : textView;
+            const side = providers.find((p) => editorProviderIcon(p) === "previewSide");
+            let target: EditorProvider | undefined;
+            if (mod && e.shiftKey && key === "v") target = toggleTarget;
+            else if (mod && !e.shiftKey && key === "k") {
+              chord = Date.now();
+              if (side) e.preventDefault();
+              return;
+            } else if (key === "v" && !e.shiftKey && Date.now() - chord < 1500) target = active === side ? textView : side;
+            chord = 0;
+            if (!target) return;
+            e.preventDefault();
+            e.stopPropagation();
+            chooseView(tab.id, target.id);
+          };
+          window.addEventListener("keydown", onKey, true);
+          return () => window.removeEventListener("keydown", onKey, true);
+          // eslint-disable-next-line react-hooks/exhaustive-deps
+        }, [isActive, tab?.id, active?.id, providers.length]);
         // A line to go to, waiting for a text view to be mounted — a reveal
         // into a tab showing a designer switches it to its text view first.
         const pendingLine = useRef<{ line: number; column?: number } | null>(null);
@@ -454,10 +495,6 @@ export function OpenFilesProvider({ children }: { children: ReactNode }) {
 
         if (!tab) return null;
         const onChange = (next: string) => updateContent(tab.id, next);
-        const chooseView = (id: string) => {
-          void setView(tab.id, id);
-          setRememberedViews((prev) => ({ ...prev, [ext]: id }));
-        };
         // Only Rust source is actually debuggable (see the debugger backend —
         // it resolves breakpoints against a mod's own compiled native), so
         // only a `.rs` file's text view gets wired to `CodeEditorProps`'s
@@ -485,7 +522,9 @@ export function OpenFilesProvider({ children }: { children: ReactNode }) {
             <MultiViewEditor
               providers={providers}
               view={active.id}
-              onViewChange={chooseView}
+              onViewChange={(id) => chooseView(tab.id, id)}
+              // The views are buttons in the tab strip (`viewActions`), as in VS Code.
+              showSwitcher={false}
               renderView={renderView}
               path={tab.path}
               content={tab.content}
@@ -500,14 +539,42 @@ export function OpenFilesProvider({ children }: { children: ReactNode }) {
     return component;
   }
 
+  function rememberedViews(): Record<string, string> {
+    const stored = globalStore.get(VIEWS_KEY);
+    return isViewMap(stored) ? (stored as Record<string, string>) : {};
+  }
+
+  /** Shows a tab in another view, remembered as the view for its kind of file. */
+  function chooseView(tabId: string, view: string) {
+    const tab = tabsRef.current.find((t) => t.id === tabId);
+    if (!tab) return;
+    void setView(tabId, view);
+    globalStore.set(VIEWS_KEY, { ...rememberedViews(), [extensionOf(tab.name)]: view });
+  }
+
+  /** The tab-strip buttons for a file with several views — one per view, the shown one pressed. */
+  function viewActions(tab: FileTab): PanelAction[] {
+    const { providers, active } = tabViews(tab, rememberedViews());
+    if (providers.length < 2) return [];
+    const textView = providers.find((p) => p.kind === "text");
+    return providers.map((p) => {
+      const icon = editorProviderIcon(p);
+      const shortcut = icon === "previewSide" ? " (Ctrl+K V)" : p === textView || p === providers.find((o) => o.kind !== "text") ? " (Ctrl+Shift+V)" : "";
+      return {
+        id: p.id,
+        icon,
+        title: `${p.kind === "text" && icon !== "previewSide" ? "Show" : "Open"} ${p.label}${shortcut}`,
+        active: p === active,
+        onClick: () => chooseView(tab.id, p.id),
+      };
+    });
+  }
+
   function tabMenu(tab: FileTab, { centerIds }: TabMenuContext): ContextMenuItem[] {
     const fileIds = new Set(tabsRef.current.map((t) => t.id));
     const unpinned = (ids: string[]) => ids.filter((id) => fileIds.has(id) && !tabsRef.current.find((t) => t.id === id)?.pinned);
     const toTheRight = unpinned(centerIds.slice(centerIds.indexOf(tab.id) + 1));
-    const providers = editorProvidersFor(tab.path);
-    const remembered = globalStore.get(VIEWS_KEY) as Record<string, string> | undefined;
-    const wanted = tab.view ?? remembered?.[extensionOf(tab.name)];
-    const current = (editorProviderById(wanted ?? "") ?? providers[0]).id;
+    const current = tabViews(tab, rememberedViews()).active.id;
     const copy = (text: string) => navigator.clipboard.writeText(text).catch((err) => reportError(`Couldn't copy to the clipboard: ${err}`));
     return [
       { label: "Close", onSelect: () => void closeTab(tab.id) },
@@ -518,7 +585,12 @@ export function OpenFilesProvider({ children }: { children: ReactNode }) {
       { label: tab.pinned ? "Unpin Tab" : "Pin Tab", separatorBefore: true, onSelect: () => setPinned(tab.id, !tab.pinned) },
       { label: "Copy Full Path", separatorBefore: true, onSelect: () => void copy(tab.path) },
       { label: "Copy File Name", onSelect: () => void copy(tab.name) },
-      { label: "Open With", separatorBefore: true, submenu: openWithItems(tab.path, current, (view) => void setView(tab.id, view)) },
+      {
+        label: "Open With",
+        separatorBefore: true,
+        // A one-off for this tab, not remembered for its kind of file.
+        submenu: openWithItems(tab.path, current, (view) => void setView(tab.id, view)),
+      },
     ];
   }
 
@@ -529,6 +601,7 @@ export function OpenFilesProvider({ children }: { children: ReactNode }) {
     pinned: t.pinned,
     onUnpin: () => setPinned(t.id, false),
     contextMenu: (context) => tabMenu(t, context),
+    actions: viewActions(t),
     component: getComponent(t.id),
   }));
   const hasDirty = tabs.some((t) => t.dirty);
