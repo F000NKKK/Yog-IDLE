@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from "react";
 import { emit } from "@tauri-apps/api/event";
-import { confirmDialog, notify, t } from "substrate-platform-ui";
+import { confirmDialog, notify, promptDialog, t } from "substrate-platform-ui";
 import { setOutputSource } from "../outputSource";
 import { gitApi, type BranchInfo, type FileChange, type RemoteOp, type RepoStatus, type StashInfo, type StashMode } from "./gitApi";
 
@@ -194,6 +194,29 @@ export const switchBranch = (name: string, isRemote: boolean) =>
 
 export const createBranch = (name: string, start: string, checkout: boolean) =>
   runGit(t("Creating branch {branch}…", { branch: name }), (root) => gitApi.createBranch(root, name, start, checkout));
+
+/** Why `name` can't be a branch name (`git check-ref-format`'s rules, roughly), or `null`. */
+export function branchNameError(name: string): string | null {
+  const n = name.trim();
+  if (!n) return "";
+  if (/[\s~^:?*[\\]|\.\.|@\{|\/\/|^[-/.]|[/.]$|\.lock$|^@$/.test(n)) return t("That isn't a valid branch name.");
+  if (state.branches.some((b) => !b.remote && b.name === n)) return t("A branch named {branch} already exists.", { branch: n });
+  return null;
+}
+
+/** Git > New Branch — asks for a name, creates it from `start` (default: what's checked out) and checks it out. */
+export async function promptNewBranch(start?: string): Promise<void> {
+  if (!state.status) return;
+  const base = start ?? state.status.branch ?? state.status.head ?? "HEAD";
+  const name = await promptDialog({
+    title: t("Create a New Branch"),
+    message: t("Based on: {branch}", { branch: base }),
+    label: t("Branch name:"),
+    confirmLabel: t("Create"),
+    validate: branchNameError,
+  });
+  if (name) await createBranch(name.trim(), start ?? "", true);
+}
 
 export async function deleteBranch(name: string): Promise<void> {
   const ok = await confirmDialog({
