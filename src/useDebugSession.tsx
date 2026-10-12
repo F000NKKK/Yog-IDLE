@@ -57,6 +57,9 @@ export function useDebugSession() {
       } else if (event.payload.stage === "exited") {
         setAttaching(false);
         setDebugging(false);
+        // However the session ended (crash included), drop the stop — the
+        // editor's execution arrow and the panel go with it.
+        setStopped(null);
       } else {
         setAttaching(false);
       }
@@ -69,6 +72,7 @@ export function useDebugSession() {
     const unlistenFailed = listen<string>("debug-attach-failed", (event) => {
       setAttaching(false);
       setDebugging(false);
+      setStopped(null);
       setError(event.payload);
     });
     const unlistenStopped = listen<DebugStoppedEvent>("debug-stopped", (event) => {
