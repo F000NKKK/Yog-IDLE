@@ -1,5 +1,6 @@
-import { registerEditorProvider, XmlEditor } from "substrate-platform-ui";
+import { registerEditorProvider } from "substrate-platform-ui";
 import { ScreenDesigner } from "../designer/ScreenDesigner";
+import { YuiSourceEditor, YuiSplitEditor } from "../designer/YuiSplitEditor";
 import { isLangFile, LangFileEditor } from "./LangFileEditor";
 
 // Yog-specific editors, on top of the platform's built-in ones — imported
@@ -16,11 +17,25 @@ registerEditorProvider({
   kind: "designer",
 });
 
-// `.yui` screens: the designer by default, the XML underneath as "Source".
+// `.yui` screens, as Visual Studio shows XAML: Design and XAML split in one
+// tab by default, either one alone a click away. (The split view keeps the
+// id the designer used to have, so a remembered "designer" choice becomes it.)
 registerEditorProvider({
   id: "yog.yui",
-  label: "Designer",
+  label: "Split",
   name: "Screen Designer",
+  icon: "splitRows",
+  extensions: ["yui"],
+  component: YuiSplitEditor,
+  priority: 20,
+  kind: "text",
+  strict: true,
+});
+
+registerEditorProvider({
+  id: "yog.yui.design",
+  label: "Design",
+  name: "Screen Designer (Design Only)",
   extensions: ["yui"],
   component: ScreenDesigner,
   priority: 10,
@@ -29,10 +44,10 @@ registerEditorProvider({
 
 registerEditorProvider({
   id: "yog.yui.source",
-  label: "Source",
+  label: "XAML",
   name: "Screen Source Editor",
   extensions: ["yui"],
-  component: XmlEditor,
+  component: YuiSourceEditor,
   priority: 0,
   kind: "text",
 });

@@ -45,14 +45,14 @@ export function GitMenu() {
     <MenuBarItem
       label={t("Git")}
       items={[
-        { label: t("Commit or Stash..."), shortcut: "Ctrl+0, Ctrl+G", disabled: !root, onClick: () => shell.showToolWindow(GIT_CHANGES_PANEL) },
+        { label: t("Commit or Stash..."), shortcut: "Ctrl+0 Ctrl+G", disabled: !root, onClick: () => shell.showToolWindow(GIT_CHANGES_PANEL) },
         { label: t("Fetch"), separatorBefore: true, disabled: !idle, onClick: () => void remote("fetch") },
         { label: t("Pull"), disabled: !idle, onClick: () => void remote("pull") },
         { label: t("Push"), disabled: !idle, onClick: () => void remote("push") },
         { label: t("Sync (Pull then Push)"), disabled: !idle, onClick: () => void remote("sync") },
         { label: t("New Branch..."), separatorBefore: true, disabled: !idle, onClick: () => void promptNewBranch() },
         { label: t("Switch Branch..."), disabled: !idle, onClick: openBranchPicker },
-        { label: t("Manage Branches"), shortcut: "Ctrl+0, Ctrl+R", disabled: !repo, onClick: openGitRepository },
+        { label: t("Manage Branches"), shortcut: "Ctrl+0 Ctrl+R", disabled: !repo, onClick: openGitRepository },
         { label: t("View Branch History"), disabled: !repo, onClick: openGitRepository },
         { label: t("Clone Repository..."), separatorBefore: true, disabled: !!busy, onClick: () => void clone() },
         { label: t("Create Git Repository..."), disabled: !root || repo || !!busy, onClick: () => void initRepository() },

@@ -11,6 +11,7 @@ import {
   finishOperation,
   gitState,
   initRepository,
+  promptNewBranch,
   refreshGit,
   remote,
   stage,
@@ -21,6 +22,7 @@ import {
   useGit,
   type CommitThen,
 } from "./gitStore";
+import { belowButton } from "./dropdown";
 import "./git.css";
 
 export const GIT_CHANGES_PANEL = "gitChanges";
@@ -135,39 +137,48 @@ function BranchBar() {
   return (
     <div className="idle-git-toolbar">
       <button type="button" className="idle-git-branch" title={tracking} onClick={openBranchPicker}>
-        <Icon name="branch" size={13} />
+        <Icon name="branch" size={14} />
         <span className="idle-git-branch-name">{branchLabel}</span>
         <Icon name="chevronRight" size={10} className="idle-git-chevron-down" />
       </button>
       <span className="idle-git-spacer" />
-      <IconButton size={22} title={t("Fetch")} disabled={disabled} onClick={() => void remote("fetch")}>
-        <Icon name="fetch" size={14} />
-      </IconButton>
-      <button type="button" className="idle-git-counter" title={t("Pull")} disabled={disabled} onClick={() => void remote("pull")}>
-        <Icon name="arrowDown" size={13} />
-        {status.behind > 0 && <span>{status.behind}</span>}
-      </button>
-      <button type="button" className="idle-git-counter" title={t("Push")} disabled={disabled} onClick={() => void remote("push")}>
-        <Icon name="arrowUp" size={13} />
-        {status.ahead > 0 && <span>{status.ahead}</span>}
-      </button>
-      <IconButton size={22} title={t("Sync (Pull then Push)")} disabled={disabled} onClick={() => void remote("sync")}>
-        <Icon name="sync" size={14} />
-      </IconButton>
-      <div className="idle-git-anchor">
-        <IconButton size={22} title={t("More Actions")} onClick={() => menu.openAtAnchor()}>
-          <Icon name="more" size={14} />
-        </IconButton>
-        <ContextMenu
-          target={menu.target ? { mode: "anchor" } : null}
-          items={[
-            { label: t("Manage Branches"), onSelect: openGitRepository },
-            { label: t("Refresh"), onSelect: () => void refreshGit() },
-          ]}
-          onClose={menu.close}
-        />
-      </div>
+      <ToolButton icon="fetch" title={t("Fetch — download incoming commits without changing your files")} disabled={disabled} onClick={() => void remote("fetch")} />
+      <ToolButton
+        icon="arrowDown"
+        count={status.behind}
+        title={status.behind > 0 ? t("Pull — {count} incoming commits", { count: status.behind }) : t("Pull — fetch and merge incoming commits")}
+        disabled={disabled}
+        onClick={() => void remote("pull")}
+      />
+      <ToolButton
+        icon="arrowUp"
+        count={status.ahead}
+        title={status.ahead > 0 ? t("Push — {count} outgoing commits", { count: status.ahead }) : t("Push — upload your commits")}
+        disabled={disabled}
+        onClick={() => void remote("push")}
+      />
+      <ToolButton icon="sync" title={t("Sync (Pull then Push)")} disabled={disabled} onClick={() => void remote("sync")} />
+      <ToolButton icon="more" title={t("More Actions")} onClick={(e) => menu.openAtPoint(undefined, belowButton(e))} />
+      <ContextMenu
+        target={menu.target}
+        items={[
+          { label: t("Manage Branches"), shortcut: "Ctrl+0 Ctrl+R", onSelect: openGitRepository },
+          { label: t("New Branch..."), disabled, onSelect: () => void promptNewBranch() },
+          { label: t("Refresh"), separatorBefore: true, onSelect: () => void refreshGit() },
+        ]}
+        onClose={menu.close}
+      />
     </div>
+  );
+}
+
+/** A Git Changes toolbar button: a 16px icon, and a count beside it when there is one (incoming / outgoing). */
+function ToolButton({ icon, count, title, disabled, onClick }: { icon: string; count?: number; title: string; disabled?: boolean; onClick: (e: MouseEvent<HTMLButtonElement>) => void }) {
+  return (
+    <button type="button" className="idle-git-tool" title={title} aria-label={title} disabled={disabled} onClick={onClick}>
+      <Icon name={icon} size={16} />
+      {!!count && <span className="idle-git-tool-count">{count}</span>}
+    </button>
   );
 }
 
@@ -260,23 +271,23 @@ function CommitBox() {
   return (
     <div className="idle-git-commit">
       <textarea
-        className="idle-git-message"
+        className="sp-textfield idle-git-message"
         value={message}
         placeholder={t("Enter a message <Required>")}
-        rows={3}
+        rows={4}
         spellCheck={false}
         onChange={(e) => setMessage(e.target.value)}
         onKeyDown={onKeyDown}
       />
       <div className="idle-git-commit-row">
-        <div className="idle-git-split idle-git-anchor">
+        <div className="idle-git-split">
           <Button variant="primary" disabled={!canCommit} title={t("{action} (Ctrl+Enter)", { action: commitLabel })} onClick={() => run("nothing")}>
             {commitLabel}
           </Button>
-          <Button variant="primary" className="idle-git-split-arrow" title={t("More Commit Actions")} onClick={() => menu.openAtAnchor()}>
+          <Button variant="primary" className="idle-git-split-arrow" title={t("More Commit Actions")} onClick={(e) => menu.openAtPoint(undefined, belowButton(e))}>
             <Icon name="chevronRight" size={10} className="idle-git-chevron-down" />
           </Button>
-          <ContextMenu target={menu.target ? { mode: "anchor" } : null} items={items} onClose={menu.close} />
+          <ContextMenu target={menu.target} items={items} onClose={menu.close} />
         </div>
         <CheckField checked={amend} disabled={!status?.head} onChange={setAmend} label={t("Amend")} />
       </div>
