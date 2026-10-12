@@ -24,7 +24,7 @@ import { onOpenFileRequest, type FileOpenRequest } from "./fileOpenBus";
 import { baseName, isWithin } from "./paths";
 import { reportError } from "./reportError";
 import { addCloseGuard } from "./windowClose";
-import { useGlobalState } from "./WorkspaceContext";
+import { useGlobalState, useGlobalStateStore } from "./WorkspaceContext";
 
 interface FileTab {
   /** Stable for the tab's lifetime (survives a rename) — the dock panel id. */
@@ -140,6 +140,7 @@ export function OpenFilesProvider({ children }: { children: ReactNode }) {
   const tabsRef = useRef(tabs);
   tabsRef.current = tabs;
   const componentCache = useRef(new Map<string, ComponentType>());
+  const globalStore = useGlobalStateStore();
   // Paths being read for opening right now — a second request for one
   // (a double-click) waits for the same read instead of opening it twice.
   const pendingOpens = useRef(new Map<string, Promise<string | null>>());
@@ -434,10 +435,12 @@ export function OpenFilesProvider({ children }: { children: ReactNode }) {
     const unpinned = (ids: string[]) => ids.filter((id) => fileIds.has(id) && !tabsRef.current.find((t) => t.id === id)?.pinned);
     const toTheRight = unpinned(centerIds.slice(centerIds.indexOf(tab.id) + 1));
     const providers = editorProvidersFor(tab.path);
-    const current = providers.find((p) => p.id === tab.view)?.id;
+    const remembered = globalStore.get(VIEWS_KEY) as Record<string, string> | undefined;
+    const wanted = tab.view ?? remembered?.[extensionOf(tab.name)];
+    const current = (providers.find((p) => p.id === wanted) ?? providers[0]).id;
     const copy = (text: string) => navigator.clipboard.writeText(text).catch((err) => reportError(`Couldn't copy to the clipboard: ${err}`));
     return [
-      { label: "Close", shortcut: "Ctrl+F4", onSelect: () => void closeTab(tab.id) },
+      { label: "Close", onSelect: () => void closeTab(tab.id) },
       { label: "Close All But This", onSelect: () => void closeTabs(unpinned(centerIds).filter((id) => id !== tab.id)) },
       { label: "Close All But Pinned", onSelect: () => void closeTabs(unpinned(centerIds)) },
       { label: "Close Tabs to the Right", disabled: toTheRight.length === 0, onSelect: () => void closeTabs(toTheRight) },
@@ -451,7 +454,7 @@ export function OpenFilesProvider({ children }: { children: ReactNode }) {
         disabled: providers.length < 2,
         submenu: providers.map((p, i) => ({
           label: i === 0 ? `${p.label} (default)` : p.label,
-          checked: p.id === (current ?? providers[0].id),
+          checked: p.id === current,
           onSelect: () => setView(tab.id, p.id),
         })),
       },

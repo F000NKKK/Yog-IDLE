@@ -5,7 +5,7 @@ import { addWorkspaceCollector } from "./WorkspaceContext";
 
 /** What `"openFiles"` holds in the workspace state: the tabs in order, each with its cursor, and which one was in front. */
 interface PersistedOpenFiles {
-  files: { path: string; line?: number; column?: number }[];
+  files: { path: string; line?: number; column?: number; pinned?: boolean }[];
   active?: string;
 }
 
@@ -24,7 +24,7 @@ function isPersistedOpenFiles(value: unknown): value is PersistedOpenFiles {
  * Renders nothing; must be inside the shell.
  */
 export function OpenFilesPersistence() {
-  const { tabs, open, closeTab } = useOpenFiles();
+  const { tabs, open, closeTab, setPinned } = useOpenFiles();
   const { activeCenterId } = useShell();
   const store = useStateStore();
   const tabsRef = useRef(tabs);
@@ -39,11 +39,12 @@ export function OpenFilesPersistence() {
     // One entry per file, even if a tab got opened twice somehow.
     const unique = tabsRef.current.filter((t, i, all) => all.findIndex((o) => o.path === t.path) === i);
     const files = unique.map((t) => {
+      const pinned = t.pinned || undefined;
       const view = getEditorView(t.path);
-      if (!view) return { path: t.path };
+      if (!view) return { path: t.path, pinned };
       const head = view.state.selection.main.head;
       const line = view.state.doc.lineAt(head);
-      return { path: t.path, line: line.number, column: head - line.from + 1 };
+      return { path: t.path, line: line.number, column: head - line.from + 1, pinned };
     });
     return { files, active: tabsRef.current.find((t) => t.id === activeRef.current)?.path };
   }
@@ -67,6 +68,7 @@ export function OpenFilesPersistence() {
             { path: file.path, line: file.line, column: file.column },
             { silent: true, activate: false }
           );
+          if (id && file.pinned) setPinned(id, true);
           if (id && file.path === saved.active) activeId = id;
         }
         if (cancelled) return;
@@ -82,7 +84,7 @@ export function OpenFilesPersistence() {
 
   // Saved when the set/order of tabs or the front one changes — not on
   // every edit (`tabs` changes with each keystroke).
-  const tabPaths = tabs.map((t) => t.path).join("\n");
+  const tabPaths = tabs.map((t) => `${t.pinned ? "*" : ""}${t.path}`).join("\n");
   useEffect(() => {
     if (restoredScope.current === store.scope) store.set(OPEN_FILES_KEY, snapshot());
     // eslint-disable-next-line react-hooks/exhaustive-deps
