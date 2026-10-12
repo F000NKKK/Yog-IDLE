@@ -24,6 +24,7 @@ import { clearActiveDesigner, setActiveDesigner, TOOLBOX_MIME } from "./activeDe
 import { charWidth, compute, LINE_GAP, LINE_H, screenWidget, strWidth, wrapText, type LNode, type LWidget } from "./layout";
 import { widgetProperties } from "./properties";
 import {
+  adoptUids,
   cloneFresh,
   cssColor,
   findNode,
@@ -38,8 +39,10 @@ import {
   mapNode,
   newNode,
   newScreen,
+  nodeAtPath,
   parseNodes,
   parseYui,
+  pathOf,
   removeNodes,
   serializeNodes,
   serializeYui,
@@ -48,6 +51,7 @@ import {
   type YuiKind,
   type YuiNode,
 } from "./yui";
+import { patchYui } from "./yuiText";
 import "./ScreenDesigner.css";
 
 /** What Properties shows for the designer's selection (`setSelection` kind `"yui.widget"`). */
@@ -57,6 +61,41 @@ export interface YuiSelectionData {
   objectType: string;
   objectKey: string;
   properties: PropertyDescriptor[];
+}
+
+/**
+ * The XAML pane of the split view, as the designer sees it (`YuiSplitEditor`):
+ * there the text is the document — the designer's edits are written into it
+ * (and undone there), and edits typed there come back re-parsed.
+ */
+export interface DesignerLink {
+  /** Writes a designer edit (`prev` → `next`) into the XAML as one undo step; the new text, or `null` when the edit can't be made now (the markup there is invalid or not parsed yet). */
+  write: (prev: YuiDoc, next: YuiDoc) => string | null;
+  undo: () => void;
+  redo: () => void;
+  canUndo: () => boolean;
+  canRedo: () => boolean;
+  /** The designer's selection as child-index paths, primary first — the XAML marks it, and moves its cursor there when `reveal`. */
+  selected: (paths: number[][], reveal: boolean) => void;
+  /** The designer was focused more recently than the XAML — the Edit menu acts on it. */
+  preferred: () => boolean;
+  /** Called by the designer while it's mounted; returns the detach. */
+  attach: (designer: LinkedDesigner) => () => void;
+}
+
+/** What the split view can ask of its designer. */
+export interface LinkedDesigner {
+  /** A valid parse of the XAML after it was edited there. */
+  receive: (doc: YuiDoc, text: string) => void;
+  /** The XAML cursor is in the element at `path`. */
+  selectPath: (path: number[]) => void;
+  /** Shows the selection in Properties (focus moved into the XAML). */
+  publish: () => void;
+}
+
+export interface ScreenDesignerProps extends EditorProps {
+  /** Set by the split view — see `DesignerLink`. */
+  link?: DesignerLink;
 }
 
 /** Common GUI sizes — the game window divided by its GUI scale. */
@@ -85,9 +124,9 @@ interface ViewSettings {
   showGrid: boolean;
 }
 
-// Kept per file while the IDE runs: switching to the Source view and back
+// Kept per file while the IDE runs: switching to the XAML view and back
 // unmounts the designer, but its undo history survives if the text is what
-// it left.
+// it left. (In the split view the XAML editor keeps the history instead.)
 const sessions = new Map<string, Session>();
 let settings: ViewSettings = { res: 0, zoom: 2, snap: true, showGrid: false };
 let clipboard: string | null = null;
@@ -125,7 +164,7 @@ function nodeLabel(n: YuiNode): string {
   return `${name}(${n.kind})`;
 }
 
-export function ScreenDesigner({ path, content, onChange, readOnly, contentVersion }: EditorProps) {
+export function ScreenDesigner({ path, content, onChange, readOnly, contentVersion, link }: ScreenDesignerProps) {
   const t = useT();
   const activeTab = useActiveFileTab();
   const isActive = activeTab?.path === path;
@@ -135,6 +174,8 @@ export function ScreenDesigner({ path, content, onChange, readOnly, contentVersi
   const [error, setError] = useState<string | null>(null);
   const sessionRef = useRef<Session | null>(null);
   const draggingRef = useRef(false);
+  /** The next selection change came from the XAML cursor — don't send the cursor back there. */
+  const fromTextRef = useRef(false);
   const menu = useContextMenu();
 
   // ── Document & history ────────────────────────────────────────────────────
@@ -185,8 +226,9 @@ export function ScreenDesigner({ path, content, onChange, readOnly, contentVersi
     [path]
   );
 
+  // Linked, the XAML editor takes reloads and passes them on (`receive`).
   const loadedVersion = useRef<number | undefined>(-1);
-  if (loadedVersion.current !== contentVersion) {
+  if (loadedVersion.current !== contentVersion && !(link && loadedVersion.current !== -1)) {
     loadedVersion.current = contentVersion;
     load(content);
   }
@@ -199,18 +241,25 @@ export function ScreenDesigner({ path, content, onChange, readOnly, contentVersi
     (next: YuiDoc, nextSelection?: string[]) => {
       const s = sessionRef.current;
       if (!s || readOnly || next === s.doc) return;
-      s.past.push(s.doc);
-      if (s.past.length > 200) s.past.shift();
-      s.future = [];
+      if (link) {
+        const text = link.write(s.doc, next);
+        if (text === null) return;
+        s.text = text;
+      } else {
+        s.past.push(s.doc);
+        if (s.past.length > 200) s.past.shift();
+        s.future = [];
+        // Only what changed is rewritten — the rest of the file stays as the user wrote it.
+        s.text = patchYui(s.text, s.doc, next);
+        onChange(s.text);
+      }
       s.doc = next;
       if (nextSelection) s.selection = nextSelection;
       s.selection = s.selection.filter((uid) => findNode(next.root, uid));
-      s.text = serializeYui(next);
-      onChange(s.text);
       setRevision((r) => r + 1);
       notifyDocumentCommands();
     },
-    [onChange, readOnly]
+    [onChange, readOnly, link]
   );
 
   const select = useCallback((uids: string[]) => {
@@ -225,19 +274,24 @@ export function ScreenDesigner({ path, content, onChange, readOnly, contentVersi
     (back: boolean) => {
       const s = sessionRef.current;
       if (!s || readOnly) return;
+      if (link) {
+        if (back) link.undo();
+        else link.redo();
+        return;
+      }
       const from = back ? s.past : s.future;
       const to = back ? s.future : s.past;
       const doc = from.pop();
       if (!doc) return;
       to.push(s.doc);
+      s.text = patchYui(s.text, s.doc, doc);
       s.doc = doc;
       s.selection = s.selection.filter((uid) => findNode(doc.root, uid));
-      s.text = serializeYui(doc);
       onChange(s.text);
       setRevision((r) => r + 1);
       notifyDocumentCommands();
     },
-    [onChange, readOnly]
+    [onChange, readOnly, link]
   );
 
   // ── Layout ────────────────────────────────────────────────────────────────
@@ -547,9 +601,9 @@ export function ScreenDesigner({ path, content, onChange, readOnly, contentVersi
   useEffect(
     () =>
       registerDocumentCommands(path, {
-        canUndo: () => !readOnly && (sessionRef.current?.past.length ?? 0) > 0,
+        canUndo: () => !readOnly && (link ? link.canUndo() : (sessionRef.current?.past.length ?? 0) > 0),
         undo: () => commands.current.step(true),
-        canRedo: () => !readOnly && (sessionRef.current?.future.length ?? 0) > 0,
+        canRedo: () => !readOnly && (link ? link.canRedo() : (sessionRef.current?.future.length ?? 0) > 0),
         redo: () => commands.current.step(false),
         hasSelection: () => {
           const s = sessionRef.current;
@@ -564,9 +618,58 @@ export function ScreenDesigner({ path, content, onChange, readOnly, contentVersi
           if (s) commands.current.select(s.doc.root.children.map((c) => c.uid));
         },
         delete: () => commands.current.deleteSelection(),
+        preferred: link?.preferred,
       }),
-    [path, readOnly]
+    [path, readOnly, link]
   );
+
+  // ── The split view's XAML pane ────────────────────────────────────────────
+
+  useEffect(
+    () =>
+      link?.attach({
+        receive: (doc, text) => {
+          const s = sessionRef.current;
+          if (s) {
+            // Same nodes, same uids: the selection survives the re-parse.
+            s.doc = { ...doc, root: adoptUids(s.doc.root, doc.root) };
+            s.text = text;
+            s.selection = s.selection.filter((uid) => findNode(s.doc.root, uid));
+          } else {
+            const session: Session = { text, doc, past: [], future: [], selection: [] };
+            sessionRef.current = session;
+            sessions.set(path, session);
+          }
+          setError(null);
+          setRevision((r) => r + 1);
+          notifyDocumentCommands();
+        },
+        selectPath: (at) => {
+          const s = sessionRef.current;
+          const node = s ? nodeAtPath(s.doc.root, at) : null;
+          if (!s || !node || (s.selection.length === 1 && s.selection[0] === node.uid)) return;
+          fromTextRef.current = true;
+          commands.current.select([node.uid]);
+          publishRef.current();
+        },
+        publish: () => publishRef.current(),
+      }),
+    [link, path]
+  );
+
+  // The XAML marks what's selected here (and follows edits), and its cursor
+  // goes to a newly selected element — unless the selection came from there.
+  const selectionKey = selection.join(",");
+  useEffect(() => {
+    if (link && doc) link.selected(selection.map((uid) => pathOf(doc.root, uid)).filter((p): p is number[] => !!p), false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [link, doc]);
+  useEffect(() => {
+    const reveal = !fromTextRef.current;
+    fromTextRef.current = false;
+    if (link && doc) link.selected(selection.map((uid) => pathOf(doc.root, uid)).filter((p): p is number[] => !!p), reveal);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [link, selectionKey]);
 
   useEffect(() => {
     if (!isActive || !doc) return;
@@ -640,7 +743,7 @@ export function ScreenDesigner({ path, content, onChange, readOnly, contentVersi
       <div className="yui-designer-error">
         <p>{t("The designer can't show this file:")}</p>
         <pre>{error ?? t("Loading…")}</pre>
-        <p>{t("Fix it in the Source view (the Source button on the tab strip), then come back.")}</p>
+        <p>{link ? t("Fix the markup in the XAML pane — the designer follows as soon as it's valid.") : t("Fix it in the XAML view (the XAML button on the tab strip), then come back.")}</p>
       </div>
     );
   }
