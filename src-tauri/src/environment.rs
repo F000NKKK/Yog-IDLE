@@ -1325,7 +1325,14 @@ impl Exec<'_> {
             std::fs::write(
                 &script,
                 format!(
-                    "$ErrorActionPreference = 'Stop'\r\nNew-Item -ItemType Directory -Force -Path '{into_s}' | Out-Null\r\nCopy-Item -Recurse -Force -Path '{from_s}\\*' -Destination '{into_s}'\r\n"
+                    // Each JDK folder replaces an older copy of itself — Copy-Item would nest into an existing one.
+                    "$ErrorActionPreference = 'Stop'\r\n\
+                     New-Item -ItemType Directory -Force -Path '{into_s}' | Out-Null\r\n\
+                     Get-ChildItem -LiteralPath '{from_s}' | ForEach-Object {{\r\n\
+                     $target = Join-Path '{into_s}' $_.Name\r\n\
+                     if (Test-Path -LiteralPath $target) {{ Remove-Item -LiteralPath $target -Recurse -Force }}\r\n\
+                     Copy-Item -LiteralPath $_.FullName -Destination $target -Recurse -Force\r\n\
+                     }}\r\n"
                 ),
             )
             .map_err(|e| e.to_string())?;
@@ -1340,7 +1347,13 @@ impl Exec<'_> {
             ]);
             cmd
         } else if cfg!(target_os = "macos") {
-            let shell = format!("mkdir -p '{into_s}' && cp -R '{from_s}/' '{into_s}/'");
+            // Bundles go in as `<name>.jdk`, the layout /usr/libexec/java_home expects;
+            // an older copy is replaced, not nested into.
+            let shell = format!(
+                "mkdir -p '{into_s}' && for d in '{from_s}'/*; do n=$(basename \"$d\"); \
+                 case \"$n\" in *.jdk) ;; *) n=\"$n.jdk\" ;; esac; \
+                 rm -rf '{into_s}'/\"$n\" && cp -R \"$d\" '{into_s}'/\"$n\" || exit 1; done"
+            );
             let mut cmd = Command::new("osascript");
             cmd.args([
                 "-e",
@@ -1986,6 +1999,9 @@ mod tests {
 
         let jdk = plan("jdk-17", &report, &settings, downloads, InstallScope::User).unwrap();
         assert!(matches!(&jdk[1], Step::Extract { dest, .. } if dest == Path::new("/t/jdk")));
+        let machine = plan("jdk-17", &report, &settings, downloads, InstallScope::Machine).unwrap();
+        assert!(matches!(&machine[1], Step::Extract { dest, .. } if dest.starts_with(downloads)));
+        assert!(matches!(machine.last(), Some(Step::CopyAsAdmin { into, .. }) if *into == system_jdk_dir()));
         assert_eq!(
             plan("zig", &report, &settings, downloads, InstallScope::User).unwrap(),
             vec![Step::Zig {
