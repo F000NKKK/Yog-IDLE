@@ -105,3 +105,15 @@
   font-size: var(--sp-font-size);
   cursor: pointer;
 }
+
+.yi-publish-error {
+  margin: 0;
+  color: var(--sp-danger);
+  font-size: var(--sp-font-size);
+  white-space: pre-wrap;
+}
+
+.yi-publish-actions {
+  display: flex;
+  gap: var(--sp-space-xs);
+}

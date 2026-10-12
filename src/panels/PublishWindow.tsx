@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { Button, IconButton, TextField, Icon, useDraggable } from "substrate-platform-ui";
+import { Button, IconButton, TextField, Icon, useDraggable, confirmDialog } from "substrate-platform-ui";
+import { reportError } from "../reportError";
 import "./PublishWindow.css";
 
 interface PublishProfile {
@@ -21,6 +22,7 @@ function randomId(): string {
  * exports`, optionally `--dry-run`). Profiles are saved into the project's
  * `.yog-idle/publish-profiles/` (auto-gitignored on first save — see
  * `publish_profile_save` on the Rust side), not this window's own state.
+ * Any failure is shown inline (and reported to Output), never swallowed.
  */
 export function PublishWindow({ projectRoot, onClose }: { projectRoot: string; onClose: () => void }) {
   const { pos, handlers } = useDraggable({ x: 260, y: 120 });
@@ -28,30 +30,76 @@ export function PublishWindow({ projectRoot, onClose }: { projectRoot: string; o
   const [name, setName] = useState("");
   const [mode, setMode] = useState<"package" | "exports">("package");
   const [dryRun, setDryRun] = useState(false);
+  /** The profile the form is editing — `null` while it's creating a new one. */
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  function fail(what: string, err: unknown) {
+    const message = `${what}: ${err}`;
+    setError(message);
+    reportError(message);
+  }
 
   function reload() {
     invoke<PublishProfile[]>("publish_profiles_list", { projectRoot })
       .then(setProfiles)
-      .catch(() => setProfiles([]));
+      .catch((err) => {
+        setProfiles([]);
+        fail("Failed to load publish profiles", err);
+      });
   }
 
   useEffect(reload, [projectRoot]);
 
+  function resetForm() {
+    setEditingId(null);
+    setName("");
+    setMode("package");
+    setDryRun(false);
+  }
+
+  function editProfile(profile: PublishProfile) {
+    setEditingId(profile.id);
+    setName(profile.name);
+    setMode(profile.mode);
+    setDryRun(profile.dryRun);
+    setError(null);
+  }
+
   async function saveProfile() {
     if (!name.trim()) return;
-    const profile: PublishProfile = { id: randomId(), name: name.trim(), mode, dryRun };
-    await invoke("publish_profile_save", { projectRoot, profile }).catch(() => {});
-    setName("");
+    // Editing keeps the profile's id, so the save overwrites its file.
+    const profile: PublishProfile = { id: editingId ?? randomId(), name: name.trim(), mode, dryRun: mode === "exports" && dryRun };
+    try {
+      await invoke("publish_profile_save", { projectRoot, profile });
+    } catch (err) {
+      fail(`Failed to save profile "${profile.name}"`, err);
+      return;
+    }
+    setError(null);
+    resetForm();
     reload();
   }
 
-  async function deleteProfile(id: string) {
-    await invoke("publish_profile_delete", { projectRoot, id }).catch(() => {});
+  async function deleteProfile(profile: PublishProfile) {
+    if (!(await confirmDialog({ title: "Delete Profile", message: `Delete publish profile "${profile.name}"?`, confirmLabel: "Delete" }))) return;
+    try {
+      await invoke("publish_profile_delete", { projectRoot, id: profile.id });
+      if (editingId === profile.id) resetForm();
+      setError(null);
+    } catch (err) {
+      fail(`Failed to delete profile "${profile.name}"`, err);
+    }
     reload();
   }
 
   async function runProfile(profile: PublishProfile) {
-    await invoke("publish_run", { projectRoot, profile }).catch(() => {});
+    try {
+      await invoke("publish_run", { projectRoot, profile });
+      setError(null);
+    } catch (err) {
+      fail(`Failed to run profile "${profile.name}"`, err);
+    }
   }
 
   return (
@@ -65,6 +113,7 @@ export function PublishWindow({ projectRoot, onClose }: { projectRoot: string; o
 
       <div className="yi-publish-body">
         <div className="yi-publish-section">
+          {error && <p className="yi-publish-error">{error}</p>}
           <div className="yi-publish-label">Profiles</div>
           {profiles.length === 0 && <p className="yi-publish-empty">No publish profiles yet — create one below.</p>}
           {profiles.map((p) => (
@@ -78,7 +127,10 @@ export function PublishWindow({ projectRoot, onClose }: { projectRoot: string; o
               <Button variant="ghost" onClick={() => runProfile(p)}>
                 Run
               </Button>
-              <Button variant="ghost" onClick={() => deleteProfile(p.id)}>
+              <Button variant="ghost" onClick={() => editProfile(p)}>
+                Edit
+              </Button>
+              <Button variant="ghost" onClick={() => deleteProfile(p)}>
                 Delete
               </Button>
             </div>
@@ -88,7 +140,7 @@ export function PublishWindow({ projectRoot, onClose }: { projectRoot: string; o
         <div className="yi-publish-divider" />
 
         <div className="yi-publish-section">
-          <div className="yi-publish-label">New Profile</div>
+          <div className="yi-publish-label">{editingId ? "Edit Profile" : "New Profile"}</div>
           <TextField placeholder="Profile name" value={name} onChange={(e) => setName(e.target.value)} />
           <div className="yi-publish-mode-row">
             <label className="yi-publish-radio">
@@ -106,9 +158,16 @@ export function PublishWindow({ projectRoot, onClose }: { projectRoot: string; o
               Dry run
             </label>
           )}
-          <Button variant="subtle" onClick={saveProfile}>
-            Save Profile
-          </Button>
+          <div className="yi-publish-actions">
+            <Button variant="subtle" disabled={!name.trim()} onClick={saveProfile}>
+              {editingId ? "Save Changes" : "Save Profile"}
+            </Button>
+            {editingId && (
+              <Button variant="ghost" onClick={resetForm}>
+                Cancel
+              </Button>
+            )}
+          </div>
         </div>
       </div>
     </div>
