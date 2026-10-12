@@ -36,7 +36,9 @@ export function OpenFilesPersistence() {
   const restoredScope = useRef<string | null>(null);
 
   function snapshot(): PersistedOpenFiles {
-    const files = tabsRef.current.map((t) => {
+    // One entry per file, even if a tab got opened twice somehow.
+    const unique = tabsRef.current.filter((t, i, all) => all.findIndex((o) => o.path === t.path) === i);
+    const files = unique.map((t) => {
       const view = getEditorView(t.path);
       if (!view) return { path: t.path };
       const head = view.state.selection.main.head;
@@ -55,7 +57,11 @@ export function OpenFilesPersistence() {
       const saved = store.get(OPEN_FILES_KEY);
       if (isPersistedOpenFiles(saved)) {
         let activeId: string | null = null;
+        const seen = new Set<string>();
         for (const file of saved.files) {
+          // Older workspace files may list a tab twice.
+          if (seen.has(file.path)) continue;
+          seen.add(file.path);
           if (cancelled) return;
           const id = await open(
             { path: file.path, line: file.line, column: file.column },

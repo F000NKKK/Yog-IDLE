@@ -142,7 +142,13 @@ export function OpenFilesProvider({ children }: { children: ReactNode }) {
         return null;
       }
       const id = `file-${++nextTabId}`;
-      setTabs((prev) => [...prev, { id, path, name, content, diskContent: content, dirty: false, contentVersion: 0, missing: false, reveal }]);
+      const tab: FileTab = { id, path, name, content, diskContent: content, dirty: false, contentVersion: 0, missing: false, reveal };
+      // Into the ref right away, not on the next render: once this promise
+      // settles `pendingOpens` forgets the path, and an `open` of the same
+      // path before React re-renders (restoring the active tab does exactly
+      // that) would otherwise find neither and open a duplicate.
+      tabsRef.current = [...tabsRef.current, tab];
+      setTabs((prev) => [...prev, tab]);
       return id;
     })();
     pendingOpens.current.set(path, opening);
