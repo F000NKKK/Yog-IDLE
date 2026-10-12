@@ -24,3 +24,17 @@ export function samePath(a: string, b: string): boolean {
   const y = norm(b);
   return x === y || x.endsWith(`/${y}`) || y.endsWith(`/${x}`);
 }
+
+/** A name for a new/renamed file or folder: `null` if usable, else why not (`""` for blank — nothing worth saying). */
+export function validateEntryName(value: string): string | null {
+  const name = value.trim();
+  if (!name) return "";
+  if (/[/\\]/.test(name)) return "A name can't contain / or \\.";
+  if (name === "." || name === "..") return "Not a valid name.";
+  return null;
+}
+
+/** `path` with its last segment replaced by `name` — where a rename moves it. */
+export function renamedPath(path: string, name: string): string {
+  return path.replace(/[^/\\]+$/, name);
+}
