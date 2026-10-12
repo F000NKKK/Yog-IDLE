@@ -28,9 +28,16 @@ function fileName(path: string): string {
   return path.split(/[/\\]/).pop() ?? path;
 }
 
+/** How the Debug panel introduces an error, by where it came from (see `useDebugSession`). */
+function errorPrefix(kind: "attach" | "session" | null): string {
+  if (kind === "attach") return "Attach failed: ";
+  if (kind === "session") return "Debugging stopped — the debugger failed: ";
+  return "";
+}
+
 /** The Debug tool window: Continue/Step/Stop, plus the locals, call stack, threads and registers from the last stop — the counterpart to Output/Terminal, docked alongside them. */
 export function DebugPanel() {
-  const { debugging, stopped, error, continue_, step, pause, stop, selectThread, selectedFrame, selectFrame, grantPtraceAccess } =
+  const { debugging, stopped, error, errorKind, continue_, step, pause, stop, selectThread, selectedFrame, selectFrame, grantPtraceAccess } =
     useDebugSessionContext();
   const [notice, setNotice] = useState<{ text: string; isError: boolean } | null>(null);
   const [granted, setGranted] = useState(false);
@@ -43,7 +50,7 @@ export function DebugPanel() {
     return (
       <div style={{ ...muted, display: "flex", flexDirection: "column", gap: "var(--sp-space-sm)" }}>
         <div style={error ? { color: "var(--sp-danger, var(--sp-text))", whiteSpace: "pre-wrap" } : undefined}>
-          {error ? `Attach failed: ${message}` : "Pick Debug mode next to the run target, then press Start."}
+          {error ? `${errorPrefix(errorKind)}${message}` : "Pick Debug mode next to the run target, then press Start."}
         </div>
         {needsCapability && !granted && (
           <Button

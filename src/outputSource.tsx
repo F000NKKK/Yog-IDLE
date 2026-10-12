@@ -81,6 +81,7 @@ export function OutputSourceSync() {
         setOutputSource("game");
       }),
       listen("debug-attach-failed", () => setOutputSource("debug")),
+      listen("debug-failed", () => setOutputSource("debug")),
     ];
     return () => {
       unlistens.forEach((p) => p.then((f) => f()));

@@ -51,6 +51,10 @@ export function useDebugSession() {
   const [attaching, setAttaching] = useState(false);
   const [debugging, setDebugging] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /** The last failure event: the attach failing, or an attached session's debugger giving up. */
+  const [failure, setFailure] = useState<{ kind: "attach" | "session"; message: string } | null>(null);
+  /** What `error` reports, if it's that failure (`null` for anything else). */
+  const errorKind = failure && failure.message === error ? failure.kind : null;
   const [stopped, setStopped] = useState<DebugStoppedEvent | null>(null);
   /** Index into `stopped.stackTrace` the editor's execution marker and the panel highlight follow. */
   const [selectedFrame, setSelectedFrame] = useState(0);
@@ -75,6 +79,7 @@ export function useDebugSession() {
       if (event.payload.stage === "starting") {
         setAttaching(true);
         setError(null);
+        setFailure(null);
       } else if (event.payload.stage === "exited") {
         setAttaching(false);
         setDebugging(false);
@@ -89,13 +94,18 @@ export function useDebugSession() {
       setAttaching(false);
       setDebugging(true);
       setError(null);
+      setFailure(null);
     });
-    const unlistenFailed = listen<string>("debug-attach-failed", (event) => {
+    const onFailed = (kind: "attach" | "session") => (event: { payload: string }) => {
       setAttaching(false);
       setDebugging(false);
       setStopped(null);
       setError(event.payload);
-    });
+      setFailure({ kind, message: event.payload });
+    };
+    const unlistenFailed = listen<string>("debug-attach-failed", onFailed("attach"));
+    // The debugger gave up mid-session (the attach itself had worked).
+    const unlistenSessionFailed = listen<string>("debug-failed", onFailed("session"));
     const unlistenStopped = listen<DebugStoppedEvent>("debug-stopped", (event) => {
       setStopped(event.payload);
       setSelectedFrame(0);
@@ -111,6 +121,7 @@ export function useDebugSession() {
       unlistenStarting.then((f) => f());
       unlistenAttached.then((f) => f());
       unlistenFailed.then((f) => f());
+      unlistenSessionFailed.then((f) => f());
       unlistenStopped.then((f) => f());
     };
   }, []);
@@ -212,5 +223,5 @@ export function useDebugSession() {
     return invoke("debug_grant_ptrace_capability");
   }, []);
 
-  return { attaching, debugging, error, stopped, notifyRun, canRestart, stop, restart, restartWorkflow, continue_, step, pause, selectThread, selectedFrame, selectFrame, executionLocation, grantPtraceAccess };
+  return { attaching, debugging, error, errorKind, stopped, notifyRun, canRestart, stop, restart, restartWorkflow, continue_, step, pause, selectThread, selectedFrame, selectFrame, executionLocation, grantPtraceAccess };
 }

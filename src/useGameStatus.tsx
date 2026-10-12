@@ -111,6 +111,11 @@ export function useGameStatus() {
         setBusy(false);
         pushLine(`[error] ${e.payload}`);
       }),
+      listen<string>("debug-failed", (e) => {
+        setText("Debugger failed");
+        setBusy(false);
+        pushLine(`[error] ${e.payload}`);
+      }),
       listen<DebugStoppedEvent>("debug-stopped", (e) => {
         if (e.payload.reason === "exited") {
           setText("Idle");
