@@ -974,6 +974,35 @@ pub enum Step {
     Remove {
         path: PathBuf,
     },
+    /// Copy everything in `from` into the system folder `into`, as an
+    /// administrator — the OS asks for the password (pkexec, macOS's
+    /// authorization prompt, Windows' UAC).
+    CopyAsAdmin {
+        from: PathBuf,
+        into: PathBuf,
+    },
+}
+
+/// Who an installed JDK is for: just this user (the IDE's tools folder,
+/// no admin rights) or every user of the machine (the OS's own JDK folder).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum InstallScope {
+    #[default]
+    User,
+    Machine,
+}
+
+/// Where JDKs installed for every user go — the folder each OS's own
+/// installers use (and `jdk_candidates` scans).
+fn system_jdk_dir() -> PathBuf {
+    if cfg!(windows) {
+        PathBuf::from("C:\\Program Files\\Eclipse Adoptium")
+    } else if cfg!(target_os = "macos") {
+        PathBuf::from("/Library/Java/JavaVirtualMachines")
+    } else {
+        PathBuf::from("/usr/lib/jvm")
+    }
 }
 
 /// rustup-init's host triple (the toolchain host, not a mod target).
@@ -1017,6 +1046,7 @@ pub fn plan(
     report: &Report,
     settings: &Settings,
     downloads: &Path,
+    scope: InstallScope,
 ) -> Result<Vec<Step>, String> {
     let bin = cargo_bin(settings);
     let tools = tools_dir(settings);
@@ -1123,17 +1153,38 @@ pub fn plan(
                 "temurin-{major}.{}",
                 if cfg!(windows) { "zip" } else { "tar.gz" }
             ));
-            vec![
-                Step::Download {
-                    url,
-                    dest: archive.clone(),
-                },
-                Step::Extract {
-                    archive: archive.clone(),
-                    dest: tools.join("jdk"),
-                },
-                Step::Remove { path: archive },
-            ]
+            match scope {
+                InstallScope::User => vec![
+                    Step::Download {
+                        url,
+                        dest: archive.clone(),
+                    },
+                    Step::Extract {
+                        archive: archive.clone(),
+                        dest: tools.join("jdk"),
+                    },
+                    Step::Remove { path: archive },
+                ],
+                // Unpacked as the user, then only the copy runs elevated.
+                InstallScope::Machine => {
+                    let staging = downloads.join(format!("jdk-{major}"));
+                    vec![
+                        Step::Download {
+                            url,
+                            dest: archive.clone(),
+                        },
+                        Step::Extract {
+                            archive: archive.clone(),
+                            dest: staging.clone(),
+                        },
+                        Step::Remove { path: archive },
+                        Step::CopyAsAdmin {
+                            from: staging,
+                            into: system_jdk_dir(),
+                        },
+                    ]
+                }
+            }
         }
         other => return Err(format!("'{other}' can't be installed from Yog IDLE")),
     })
@@ -1294,6 +1345,7 @@ impl Exec<'_> {
                 let _ = std::fs::remove_file(path);
                 Ok(())
             }
+            Step::CopyAsAdmin { from, into } => self.copy_as_admin(from, into, downloads),
             Step::Zig { dest } => {
                 let index_file = downloads.join("zig-index.json");
                 self.download("https://ziglang.org/download/index.json", &index_file)?;

@@ -605,6 +605,9 @@ registerTranslations("ru", {
   "Builds every mod against this yog-api (YOG_API_PATH) instead of crates.io — needed for hot reload of a locally built loader.":
     "Собирает все моды с этим yog-api (YOG_API_PATH) вместо crates.io — нужно для горячей перезагрузки с локально собранным загрузчиком.",
   "Build for this platform only ({platform}) — faster, but the .yog won't run elsewhere": "Собирать только для этой платформы ({platform}) — быстрее, но .yog не запустится на других",
+  "Build for this platform only ({platform})": "Собирать только для этой платформы ({platform})",
+  "Empty: found in PATH or ~/.cargo/bin.": "Если пусто — ищется в PATH и ~/.cargo/bin.",
+  "Empty: next to the project, or in the tools folder.": "Если пусто — ищется рядом с проектом или в папке инструментов.",
   "Check the environment on startup": "Проверять среду при запуске",
 
   // Project Properties

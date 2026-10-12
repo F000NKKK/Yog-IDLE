@@ -7,6 +7,8 @@ import {
   FormField,
   FormPage,
   FormSection,
+  Icon,
+  IconButton,
   SelectField,
   notify,
   t,
@@ -63,20 +65,27 @@ async function browseFolder(current: string): Promise<string | null> {
   return typeof chosen === "string" ? chosen : null;
 }
 
-/** A path field with a Browse button — commits on Enter/blur like the rest. */
-function PathField({ value, placeholder, onCommit, file }: { value: string; placeholder?: string; onCommit: (value: string) => void; file?: boolean }) {
+/** The "..." button that picks a folder (or file) for the field before it. */
+function BrowseButton({ onClick }: { onClick: () => void }) {
   const t = useT();
   return (
+    <IconButton size={28} title={t("Browse...")} aria-label={t("Browse...")} onClick={onClick}>
+      <Icon name="folderOpen" size={16} />
+    </IconButton>
+  );
+}
+
+/** A path field with a Browse button — commits on Enter/blur like the rest. Empty shows what's used instead, as the placeholder. */
+function PathField({ value, placeholder, onCommit, file }: { value: string; placeholder?: string; onCommit: (value: string) => void; file?: boolean }) {
+  return (
     <div className="environment-jdk-row">
-      <CommitTextField value={value} placeholder={placeholder} monospace onCommit={(text) => onCommit(text.trim())} />
-      <Button
+      <CommitTextField value={value} placeholder={placeholder} onCommit={(text) => onCommit(text.trim())} />
+      <BrowseButton
         onClick={async () => {
           const chosen = file ? await open({ defaultPath: value || undefined }) : await browseFolder(value);
           if (typeof chosen === "string") onCommit(chosen);
         }}
-      >
-        {t("Browse...")}
-      </Button>
+      />
     </div>
   );
 }
@@ -106,15 +115,14 @@ export function EnvironmentSettingsPage({ onOpenInstaller }: { onOpenInstaller: 
   return (
     <FormPage
       title={t("Environment")}
-      description={t("The tools Yog builds and runs mods with. Empty fields are detected automatically.")}
       actions={<Button onClick={onOpenInstaller}>{t("Install Components...")}</Button>}
     >
       {missing.length > 0 && (
         <p className="environment-summary is-warning">{t("Missing or out of date: {names}.", { names: missing.map((c) => componentText(c).name).join(", ") })}</p>
       )}
       <FormSection title={t("Tools")}>
-        <FormField label={t("yog executable")} hint={t("Detected: {path}", { path: report?.yogPath ?? t("not found") })}>
-          <PathField file value={settings.yogPath} placeholder={t("From PATH or ~/.cargo/bin")} onCommit={(yogPath) => change({ yogPath })} />
+        <FormField label={t("yog executable")} hint={t("Empty: found in PATH or ~/.cargo/bin.")}>
+          <PathField file value={settings.yogPath} placeholder={report?.yogPath ?? t("not found")} onCommit={(yogPath) => change({ yogPath })} />
         </FormField>
         <FormField label="CARGO_HOME" hint={t("Where rustup, cargo and cargo-installed tools (yog, cargo-zigbuild) live.")}>
           <PathField value={settings.cargoHome} placeholder="~/.cargo" onCommit={(cargoHome) => change({ cargoHome })} />
@@ -124,18 +132,18 @@ export function EnvironmentSettingsPage({ onOpenInstaller }: { onOpenInstaller: 
         </FormField>
       </FormSection>
 
-      <FormSection title={t("Java")} description={t("Run targets get JAVA_HOME from here when their yog.toml doesn't set it.")}>
+      <FormSection title={t("Java")}>
         {majors.length === 0 && <p className="environment-note">{t("No run target needs a particular Java version.")}</p>}
         {majors.map((major) => {
           const detected = (report?.jdks ?? []).filter((j) => String(j.major) === major);
           const current = settings.jdks[major] ?? "";
           const options = [
             { value: "", label: t("Newest detected") },
-            ...detected.map((j) => ({ value: j.home, label: `${j.version}${j.vendor ? ` (${j.vendor})` : ""} — ${j.home}` })),
+            ...detected.map((j) => ({ value: j.home, label: `${j.version}${j.vendor ? ` (${j.vendor})` : ""}` })),
             ...(current && !detected.some((j) => j.home === current) ? [{ value: current, label: current }] : []),
           ];
           return (
-            <FormField key={major} label={t("JDK {major}", { major })}>
+            <FormField key={major} label={t("JDK {major}", { major })} hint={t("Run targets get JAVA_HOME from here when their yog.toml doesn't set it.")}>
               <div className="environment-jdk-row">
                 <SelectField
                   value={current}
@@ -143,14 +151,12 @@ export function EnvironmentSettingsPage({ onOpenInstaller }: { onOpenInstaller: 
                   aria-label={t("JDK {major}", { major })}
                   onChange={(home) => change({ jdks: { ...settings.jdks, [major]: home } })}
                 />
-                <Button
+                <BrowseButton
                   onClick={async () => {
                     const home = await browseFolder(current);
                     if (home) change({ jdks: { ...settings.jdks, [major]: home } });
                   }}
-                >
-                  {t("Browse...")}
-                </Button>
+                />
               </div>
             </FormField>
           );
@@ -158,8 +164,8 @@ export function EnvironmentSettingsPage({ onOpenInstaller }: { onOpenInstaller: 
       </FormSection>
 
       <FormSection title={t("Build")}>
-        <FormField label={t("Yog Mod Loader checkout")} hint={t("Detected: {path}", { path: report?.loaderRepo ?? t("not found") })}>
-          <PathField value={settings.loaderRepo} placeholder={t("Next to the project, or in the tools folder")} onCommit={(loaderRepo) => change({ loaderRepo })} />
+        <FormField label={t("Yog Mod Loader checkout")} hint={t("Empty: next to the project, or in the tools folder.")}>
+          <PathField value={settings.loaderRepo} placeholder={report?.loaderRepo ?? t("not found")} onCommit={(loaderRepo) => change({ loaderRepo })} />
         </FormField>
         <FormField label={t("Local yog-api crate")} hint={t("Builds every mod against this yog-api (YOG_API_PATH) instead of crates.io — needed for hot reload of a locally built loader.")}>
           <PathField value={settings.yogApiPath} placeholder={t("crates.io")} onCommit={(yogApiPath) => change({ yogApiPath })} />
@@ -167,7 +173,7 @@ export function EnvironmentSettingsPage({ onOpenInstaller }: { onOpenInstaller: 
         <CheckField
           checked={settings.hostOnly}
           onChange={(hostOnly) => change({ hostOnly })}
-          label={t("Build for this platform only ({platform}) — faster, but the .yog won't run elsewhere", { platform: report?.hostTag ?? "?" })}
+          label={t("Build for this platform only ({platform})", { platform: report?.hostTag ?? "?" })}
         />
         <CheckField
           checked={!settings.skipStartupCheck}

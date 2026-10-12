@@ -105,7 +105,8 @@ export function EnvironmentWindow({ onClose, onOpenOptions }: { onClose: () => v
       status,
       statusLabel,
       version,
-      detail: failed ?? c.detail ?? undefined,
+      detail: c.detail ?? undefined,
+      error: failed,
       progress: working && env.queue[0] === c.id ? (progress?.fraction ?? null) : working ? 0 : undefined,
       progressLabel: working ? progress?.message : undefined,
       optional: !c.required,
@@ -138,22 +139,25 @@ export function EnvironmentWindow({ onClose, onOpenOptions }: { onClose: () => v
           <ComponentList items={items} emptyLabel={env.checking ? t("Checking…") : undefined} />
         </div>
         {report && (
-          <dl className="environment-facts">
-            <dt>{t("Rust toolchain")}</dt>
-            <dd>{report.rustToolchain}</dd>
-            <dt>{t("This platform")}</dt>
-            <dd>{report.hostTag ?? t("unsupported")}</dd>
-            <dt>{t("yog")}</dt>
-            <dd>{report.yogPath ?? t("not found")}</dd>
-            <dt>{t("Tools folder")}</dt>
-            <dd>{report.toolsDir}</dd>
-            <dt>{t("Loader checkout")}</dt>
-            <dd>{report.loaderRepo ?? t("not found")}</dd>
-            <dt>{t("JDKs")}</dt>
-            <dd>{report.jdks.length === 0 ? t("none found") : report.jdks.map((j) => `${j.version} (${j.home})`).join("\n")}</dd>
-          </dl>
+          <details className="environment-details">
+            <summary>{t("Details")}</summary>
+            <dl className="environment-facts">
+              <dt>{t("Rust toolchain")}</dt>
+              <dd>{report.rustToolchain}</dd>
+              <dt>{t("This platform")}</dt>
+              <dd>{report.hostTag ?? t("unsupported")}</dd>
+              <dt>{t("yog")}</dt>
+              <dd>{report.yogPath ?? t("not found")}</dd>
+              <dt>{t("Tools folder")}</dt>
+              <dd>{report.toolsDir}</dd>
+              <dt>{t("Loader checkout")}</dt>
+              <dd>{report.loaderRepo ?? t("not found")}</dd>
+              <dt>{t("JDKs")}</dt>
+              <dd>{report.jdks.length === 0 ? t("none found") : report.jdks.map((j) => `${j.version} (${j.home})`).join("\n")}</dd>
+            </dl>
+            <p className="environment-note">{t("Minecraft itself is downloaded by the loader's Gradle build the first time a run target starts.")}</p>
+          </details>
         )}
-        <p className="environment-note">{t("Minecraft itself is downloaded by the loader's Gradle build the first time a run target starts.")}</p>
         <div className="environment-footer">
           <Button variant="ghost" onClick={onOpenOptions}>
             {t("Options...")}
