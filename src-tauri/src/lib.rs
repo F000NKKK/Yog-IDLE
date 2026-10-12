@@ -10,6 +10,8 @@ use substrate_platform::{
 };
 use tauri::{AppHandle, Emitter, Manager, State};
 
+mod environment;
+mod project_properties;
 mod properties;
 mod search;
 mod symbols;
@@ -183,6 +185,118 @@ fn mod_manifest_set(
     let root = PathBuf::from(&project_root);
     validate_within_roots(&state, &root.join("yog.toml"))?;
     properties::set_manifest_field(&root, &key, value)
+}
+
+// ── Project Properties (`project_properties.rs`) ─────────────────────────────
+
+#[tauri::command]
+fn project_properties_read(
+    state: State<AppState>,
+    project_root: String,
+) -> Result<project_properties::ProjectProps, String> {
+    let root = PathBuf::from(project_root);
+    validate_within_roots(&state, &root)?;
+    project_properties::read(&root)
+}
+
+/// A `[mod]` field or `authors`.
+#[tauri::command]
+fn project_properties_set_field(
+    state: State<AppState>,
+    project_root: String,
+    key: String,
+    value: properties::FieldValue,
+) -> Result<project_properties::ProjectProps, String> {
+    let root = PathBuf::from(project_root);
+    validate_within_roots(&state, &root)?;
+    project_properties::set_field(&root, &key, value)
+}
+
+/// `which`: `"version"` (the `[dependencies]` pin) or `"path"` (`[dev] yog_api_path`).
+#[tauri::command]
+fn project_properties_set_yog_api(
+    state: State<AppState>,
+    project_root: String,
+    which: String,
+    value: String,
+) -> Result<project_properties::ProjectProps, String> {
+    let root = PathBuf::from(project_root);
+    validate_within_roots(&state, &root)?;
+    match which.as_str() {
+        "version" => project_properties::set_yog_api_version(&root, &value),
+        "path" => project_properties::set_yog_api_path(&root, &value),
+        other => Err(format!("unknown yog-api setting '{other}'")),
+    }
+}
+
+#[tauri::command]
+fn project_dependency_set(
+    state: State<AppState>,
+    project_root: String,
+    mods: bool,
+    original: Option<String>,
+    dependency: project_properties::Dependency,
+) -> Result<project_properties::ProjectProps, String> {
+    let root = PathBuf::from(project_root);
+    validate_within_roots(&state, &root)?;
+    project_properties::set_dependency(&root, mods, original.as_deref(), &dependency)
+}
+
+#[tauri::command]
+fn project_dependency_remove(
+    state: State<AppState>,
+    project_root: String,
+    mods: bool,
+    name: String,
+) -> Result<project_properties::ProjectProps, String> {
+    let root = PathBuf::from(project_root);
+    validate_within_roots(&state, &root)?;
+    project_properties::remove_dependency(&root, mods, &name)
+}
+
+#[tauri::command]
+fn project_run_target_set(
+    state: State<AppState>,
+    project_root: String,
+    original: Option<String>,
+    target: project_properties::RunTarget,
+) -> Result<project_properties::ProjectProps, String> {
+    let root = PathBuf::from(project_root);
+    validate_within_roots(&state, &root)?;
+    project_properties::set_run_target(&root, original.as_deref(), &target)
+}
+
+#[tauri::command]
+fn project_run_target_remove(
+    state: State<AppState>,
+    project_root: String,
+    id: String,
+) -> Result<project_properties::ProjectProps, String> {
+    let root = PathBuf::from(project_root);
+    validate_within_roots(&state, &root)?;
+    project_properties::remove_run_target(&root, &id)
+}
+
+#[tauri::command]
+fn project_build_targets_set(
+    state: State<AppState>,
+    project_root: String,
+    targets: Vec<String>,
+) -> Result<project_properties::ProjectProps, String> {
+    let root = PathBuf::from(project_root);
+    validate_within_roots(&state, &root)?;
+    project_properties::set_build_targets(&root, &targets)
+}
+
+/// The Dependencies page's search — crates.io (`mods`: Yog mods' exports crates).
+#[tauri::command]
+async fn crates_search(
+    query: String,
+    mods: bool,
+) -> Result<Vec<project_properties::CrateHit>, String> {
+    tauri::async_runtime::spawn_blocking(move || project_properties::search_crates(&query, mods))
+        .await
+        .map_err(|e| e.to_string())?
 }
 
 /// Expands the allowed-path boundary to cover `path` — used by "Open File...",
@@ -682,7 +796,11 @@ fn workflow_run(
 /// "run") — for commands (`yog run <name>`, `yog build`, `yog publish
 /// exports`) that don't need a whole `workflow.toml` of their own, just the
 /// engine's existing process-streaming plumbing.
-fn single_step_workflow(program: &str, args: Vec<String>) -> WorkflowFile {
+fn single_step_workflow(
+    program: &str,
+    args: Vec<String>,
+    env: HashMap<String, String>,
+) -> WorkflowFile {
     let mut workflow = HashMap::new();
     workflow.insert(
         "run".to_string(),
@@ -692,7 +810,7 @@ fn single_step_workflow(program: &str, args: Vec<String>) -> WorkflowFile {
                 run: program.to_string(),
                 args,
                 cwd: None,
-                env: HashMap::new(),
+                env,
             }],
         },
     );
@@ -855,12 +973,21 @@ fn mod_hot_reload(
     }
 }
 
+/// A one-step `yog <args>` workflow run the way Tools > Options >
+/// Environment says: the configured `yog`, its tool dirs on `PATH`, and the
+/// project's build platforms (`YOG_TARGETS`).
+fn yog_workflow(app: &AppHandle, root: &Path, args: Vec<String>) -> WorkflowFile {
+    let settings = app.state::<environment::EnvironmentState>().settings();
+    let env = environment::tool_env(&settings, &project_properties::read_build_targets(root));
+    single_step_workflow(&environment::yog_program(&settings), args, env)
+}
+
 /// The Build menu's plain "Build" action for a `yog-mod` project — `yog build`.
 #[tauri::command]
 fn mod_build(app: AppHandle, state: State<AppState>, project_root: String) -> Result<(), String> {
     let root = PathBuf::from(project_root);
     validate_within_roots(&state, &root)?;
-    let file = single_step_workflow("yog", vec!["build".to_string()]);
+    let file = yog_workflow(&app, &root, vec!["build".to_string()]);
     run_and_stream(app, file, "run".to_string(), HashMap::new(), root);
     Ok(())
 }
@@ -1012,18 +1139,18 @@ fn publish_run(
 ) -> Result<(), String> {
     let root = PathBuf::from(project_root);
     validate_within_roots(&state, &root)?;
-    let (program, args) = match profile.mode.as_str() {
+    let args = match profile.mode.as_str() {
         "exports" => {
             let mut args = vec!["publish".to_string(), "exports".to_string()];
             if profile.dry_run {
                 args.push("--dry-run".to_string());
             }
-            ("yog".to_string(), args)
+            args
         }
-        "package" => ("yog".to_string(), vec!["build".to_string()]),
+        "package" => vec!["build".to_string()],
         other => return Err(format!("unknown publish mode '{other}'")),
     };
-    let file = single_step_workflow(&program, args);
+    let file = yog_workflow(&app, &root, args);
     run_and_stream(app, file, "run".to_string(), HashMap::new(), root);
     Ok(())
 }
@@ -1128,6 +1255,14 @@ fn pty_kill(state: State<PtyState>, id: String) -> Result<(), String> {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    let context = tauri::generate_context!();
+    // Before any thread exists: the Environment options go into this
+    // process's own environment, for every `yog`/`cargo` it starts.
+    let env_settings = environment::default_state_file(&context.config().identifier)
+        .map(|file| environment::load_settings_from(&file))
+        .unwrap_or_default();
+    environment::apply_to_process_at_startup(&env_settings);
+
     let builder = tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
@@ -1146,6 +1281,7 @@ pub fn run() {
         .manage(PtyState::default())
         .manage(WorkflowState::default())
         .manage(AppState::default())
+        .manage(environment::EnvironmentState::with_settings(env_settings))
         .manage(search::SearchState::default())
         .manage(symbols::SymbolIndexState::default());
 
@@ -1204,10 +1340,23 @@ pub fn run() {
         search::find_cancel,
         search::replace_in_files,
         symbols::code_search,
+        environment::environment_detect,
+        environment::environment_settings_set,
+        environment::environment_install,
+        environment::environment_cancel,
+        project_properties_read,
+        project_properties_set_field,
+        project_properties_set_yog_api,
+        project_dependency_set,
+        project_dependency_remove,
+        project_run_target_set,
+        project_run_target_remove,
+        project_build_targets_set,
+        crates_search,
     ]);
 
     builder
-        .build(tauri::generate_context!())
+        .build(context)
         .expect("error while building tauri application")
         .run(|app, event| {
             // The game outlives the IDE; only a debugger has to let go.

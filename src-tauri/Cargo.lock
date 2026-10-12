@@ -5187,6 +5187,7 @@ dependencies = [
 name = "yog-idle-tauri"
 version = "0.1.0"
 dependencies = [
+ "dirs",
  "globset",
  "ignore",
  "nix 0.31.3",

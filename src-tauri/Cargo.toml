@@ -28,6 +28,8 @@ serde_json = "1"
 toml = "1"
 # `yog.toml` edits from the Properties window keep the file's formatting.
 toml_edit = "0.25"
+# Where the Environment options and IDE-installed tools live.
+dirs = "6"
 substrate-platform = { path = "../../Substrate-Platform" }
 tauri-plugin-window-state = "2"
 # Find in Files / Code Search (`search.rs`, `symbols.rs`): a .gitignore-aware

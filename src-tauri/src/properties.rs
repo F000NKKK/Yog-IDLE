@@ -75,7 +75,7 @@ pub fn set_read_only(path: &Path, read_only: bool) -> Result<(), String> {
 
 /// The `[mod]` keys the Properties window shows and edits (plus `authors`,
 /// an array) — the same set `yog-cli` reads.
-const TEXT_FIELDS: &[&str] = &[
+pub(crate) const TEXT_FIELDS: &[&str] = &[
     "id",
     "name",
     "version",
@@ -116,7 +116,7 @@ fn manifest_path(project_root: &Path) -> std::path::PathBuf {
     project_root.join("yog.toml")
 }
 
-fn load(path: &Path) -> Result<(DocumentMut, &'static str), String> {
+pub(crate) fn load(path: &Path) -> Result<(DocumentMut, &'static str), String> {
     let text = std::fs::read_to_string(path).map_err(|e| format!("{}: {e}", path.display()))?;
     let doc: DocumentMut = text
         .parse()
@@ -139,7 +139,7 @@ fn table_len(doc: &DocumentMut, dotted: &[&str]) -> usize {
     item.as_table_like().map_or(0, |t| t.iter().count())
 }
 
-fn summarize(doc: &DocumentMut, section: &str) -> ManifestOut {
+pub(crate) fn summarize(doc: &DocumentMut, section: &str) -> ManifestOut {
     let table = doc[section].as_table_like();
     let text = |key: &str| {
         table
@@ -168,7 +168,7 @@ fn summarize(doc: &DocumentMut, section: &str) -> ManifestOut {
         .map_or(0, |t| {
             t.iter()
                 .filter(|(k, v)| {
-                    !v.is_table_like() && !matches!(*k, "yog_api_version" | "yog-api" | "yog_api")
+                    !v.is_table() && !matches!(*k, "yog_api_version" | "yog-api" | "yog_api")
                 })
                 .count()
         });
@@ -195,7 +195,7 @@ pub fn read_manifest(project_root: &Path) -> Result<ManifestOut, String> {
 /// `yog-cli` reads `yog.toml` line by line and takes values verbatim
 /// between the quotes — no escapes, no multi-line strings — so a value
 /// must survive that, not just be valid TOML.
-fn check_plain(value: &str) -> Result<(), String> {
+pub(crate) fn check_plain(value: &str) -> Result<(), String> {
     if value.contains(['"', '\\', '\n', '\r']) {
         return Err("Can't contain quotes, backslashes or line breaks (yog reads yog.toml values verbatim).".into());
     }
@@ -235,7 +235,7 @@ fn is_semver(value: &str) -> bool {
 
 /// Gives a newly added key the same `key   =` padding the table's existing
 /// keys use, so it lines up with them.
-fn align_new_key(table: &mut Table, key: &str) {
+pub(crate) fn align_new_key(table: &mut Table, key: &str) {
     let width = table.iter().find_map(|(k, _)| {
         let suffix = table.key(k)?.leaf_decor().suffix()?.as_str()?;
         (suffix.len() > 1 && suffix.trim().is_empty()).then(|| k.len() + suffix.len())
