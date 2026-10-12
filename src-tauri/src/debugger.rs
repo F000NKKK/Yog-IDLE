@@ -1022,10 +1022,17 @@ fn tracer_main(
                     running.store(false, Ordering::SeqCst);
                     result
                 }
+                // A step can turn into a free run (stepping off the end of
+                // the mod's code continues to the next breakpoint), so it
+                // must be interruptible for Pause/breakpoint edits too.
                 Resume::Step(step) => {
-                    tracer
-                        .debugger
-                        .source_step(step, &tracer.symbols, tracer.module_base)
+                    running.store(true, Ordering::SeqCst);
+                    let result =
+                        tracer
+                            .debugger
+                            .source_step(step, &tracer.symbols, tracer.module_base);
+                    running.store(false, Ordering::SeqCst);
+                    result
                 }
             };
             match result {

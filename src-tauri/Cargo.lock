@@ -5094,9 +5094,9 @@ dependencies = [
 
 [[package]]
 name = "yog-debugger"
-version = "0.8.0"
+version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4529acfce919c0f4078f595941d16e6227afb7fef34295adea083186f28901b5"
+checksum = "239f42474d5488fc94e05b7353cf363d5b5168f4b90374d977106715add02db0"
 dependencies = [
  "iced-x86",
  "nix 0.31.3",
@@ -5135,9 +5135,9 @@ dependencies = [
 
 [[package]]
 name = "yog-symbols"
-version = "0.3.0"
+version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bc029f205dc3c69b5160d0154b1581a6b500660be4ec8f25083c949d16d64a92"
+checksum = "2579f7e8453fb769ceeba50c78b0926ef32f63deba4e47173fed96fb8c9fa7d3"
 dependencies = [
  "addr2line",
  "gimli",
