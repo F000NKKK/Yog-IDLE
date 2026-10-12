@@ -102,6 +102,10 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       setWorkspace(null);
       return;
     }
+    // Until its file is read, the new project gets an empty store of its
+    // own — never the previous project's (or the app-wide) one, which
+    // widgets re-keyed to the new root would otherwise save into.
+    setWorkspace({ scope: `loading:${root}`, get: () => undefined, set: () => {}, flush: async () => {} });
     let cancelled = false;
     let loaded: FileStateStore | null = null;
     invoke<unknown>("workspace_load", { projectRoot: root })
