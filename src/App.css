@@ -27,8 +27,8 @@ body,
   margin: 0;
 }
 
-/* Output tool window: a Clear button above `OutputPanel`, styled like the
-   Terminal panel's own toolbar. */
+/* Output tool window: the "Show output from" source picker and a Clear
+   button above `OutputPanel`, styled like the Terminal panel's own toolbar. */
 .output-panel {
   display: flex;
   flex-direction: column;
@@ -44,6 +44,44 @@ body,
   gap: 2px;
   padding: var(--sp-space-xs) 10px var(--sp-space-xs) var(--sp-space-xs);
   border-bottom: 1px solid var(--sp-border);
+}
+
+.output-panel-label {
+  padding-left: var(--sp-space-xs);
+  color: var(--sp-text-muted);
+  font-size: var(--sp-font-size);
+}
+
+.output-panel-source-anchor {
+  position: relative;
+}
+
+/* Ghost, like the run bar's target picker. */
+.output-panel-source {
+  appearance: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px var(--sp-space-sm);
+  border: none;
+  border-radius: var(--sp-radius-sm);
+  background: transparent;
+  color: var(--sp-text);
+  font-family: var(--sp-font-ui);
+  font-size: var(--sp-font-size);
+  cursor: pointer;
+}
+
+.output-panel-source:hover {
+  background: var(--sp-surface-2);
+}
+
+.output-panel-chevron {
+  transform: rotate(90deg);
+}
+
+.output-panel-spacer {
+  flex: 1 1 auto;
 }
 
 .output-panel-body {

@@ -13,6 +13,7 @@ import { useProject, type ProjectInfo } from "../ProjectContext";
 import { useOpenFiles } from "../OpenFilesContext";
 import { openFile } from "../fileOpenBus";
 import { reportError } from "../reportError";
+import { IDE_OUTPUT_EVENT } from "../outputSource";
 
 const dirCommands = {
   list: (path: string) => invoke<DirEntry[]>("dir_list", { path }),
@@ -24,7 +25,7 @@ const dirCommands = {
 
 /** A folder that failed to list stays unloaded in the tree (expanding it again retries) — say why in Output rather than only the devtools console. */
 function reportListError(error: unknown, path: string) {
-  emit("workflow-output", `[error] failed to list ${path}: ${error}`);
+  emit(IDE_OUTPUT_EVENT, `[error] failed to list ${path}: ${error}`);
 }
 
 export function ProjectExplorer() {

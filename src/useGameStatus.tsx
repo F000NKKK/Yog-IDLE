@@ -34,8 +34,8 @@ interface DebugStoppedEvent {
  * Drives the bottom status bar from whatever's actually happening with the
  * running game — `game-status`/`debug-attached`/`debug-attach-failed`/
  * `debug-stopped`/`hot-reload` (from the control-socket-backed run flow, see
- * `src-tauri/src/debugger.rs`) plus the existing `workflow-output`/
- * `workflow-exit` build/run log stream, so there's one place answering
+ * `src-tauri/src/debugger.rs`) plus every Output source's lines and
+ * `workflow-exit`, so there's one place answering
  * "what is the IDE doing right now" instead of that being scattered
  * across whichever panel happens to be open.
  */
@@ -53,7 +53,9 @@ export function useGameStatus() {
 
   useEffect(() => {
     const unlistens = [
-      listen<string>("workflow-output", (e) => pushLine(e.payload)),
+      ...["workflow-output", "game-output", "debug-output", "ide-output"].map((source) =>
+        listen<string>(source, (e) => pushLine(e.payload)),
+      ),
       listen("workflow-start", () => {
         setText("Building…");
         setBusy(true);

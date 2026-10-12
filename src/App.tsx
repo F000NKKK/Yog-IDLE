@@ -11,6 +11,8 @@ import {
   TerminalPanel,
   OutputPanel,
   clearOutputBuffer,
+  ContextMenu,
+  useContextMenu,
   Icon,
   IconButton,
   SettingsWindow,
@@ -46,6 +48,7 @@ import { WorkspaceProvider } from "./WorkspaceContext";
 import { installCloseHandler } from "./windowClose";
 import { reportError } from "./reportError";
 import { requestOpenFile } from "./fileOpenBus";
+import { OUTPUT_SOURCES, OutputSourceSync, setOutputSource, useOutputSource, type OutputSource } from "./outputSource";
 
 import "./App.css";
 
@@ -61,23 +64,53 @@ import "./App.css";
 // them.
 const mainPanel: PanelDef = { id: "editor-empty", title: "", component: EmptyEditorState, hidden: true };
 
-const OUTPUT_EVENT = "workflow-output";
-
-/** Output panel wired to the workflow engine's live-output event — every `workflow_run` line lands here, the same way PTY output streams into the Terminal panel. Its toolbar's Clear empties the shared buffer (`clearOutputBuffer`), which outlives the panel itself. */
-function BuildOutputPanel() {
+/**
+ * The Output tool window, Visual-Studio-style: "Show output from:" picks
+ * which source's buffer it shows (`outputSource`), Clear empties just that
+ * one. The buffers live outside the panel (`outputBuffer`), so they keep
+ * filling while it's hidden.
+ */
+function OutputToolWindow() {
+  const source = useOutputSource();
+  const menu = useContextMenu<void>();
+  const current = OUTPUT_SOURCES.find((s) => s.id === source) ?? OUTPUT_SOURCES[0];
   return (
     <div className="output-panel">
       <div className="output-panel-toolbar">
-        <IconButton size={22} title="Clear Output" onClick={() => clearOutputBuffer(OUTPUT_EVENT)}>
+        <span className="output-panel-label">Show output from:</span>
+        <div className="output-panel-source-anchor">
+          <button type="button" className="output-panel-source" onClick={() => menu.openAtAnchor()}>
+            <span>{current.label}</span>
+            <Icon name="chevronRight" size={11} className="output-panel-chevron" />
+          </button>
+          <ContextMenu
+            target={menu.target ? { mode: "anchor" } : null}
+            items={OUTPUT_SOURCES.map((s) => ({
+              label: s.label,
+              checked: s.id === source,
+              onSelect: () => setOutputSource(s.id),
+            }))}
+            onClose={menu.close}
+          />
+        </div>
+        <span className="output-panel-spacer" />
+        <IconButton size={22} title={`Clear ${current.label} Output`} onClick={() => clearOutputBuffer(current.event)}>
           <Icon name="trash" size={14} />
         </IconButton>
       </div>
       <div className="output-panel-body">
-        <OutputPanel eventName={OUTPUT_EVENT} emptyLabel="Run a Build command to see output here." />
+        <OutputPanel key={current.event} eventName={current.event} emptyLabel={EMPTY_LABELS[current.id]} />
       </div>
     </div>
   );
 }
+
+const EMPTY_LABELS: Record<OutputSource, string> = {
+  build: "Run a Build command to see output here.",
+  game: "Start the game to see its output here.",
+  debug: "Debugger messages appear here.",
+  ide: "No messages.",
+};
 
 const toolWindows = {
   left: [{ id: "toolbox", title: "Toolbox", component: Toolbox } satisfies PanelDef],
@@ -86,7 +119,7 @@ const toolWindows = {
     { id: "properties", title: "Properties", component: Properties } satisfies PanelDef,
   ],
   bottom: [
-    { id: "output", title: "Output", component: BuildOutputPanel } satisfies PanelDef,
+    { id: "output", title: "Output", component: OutputToolWindow } satisfies PanelDef,
     { id: "terminal", title: "Terminal", component: TerminalPanel } satisfies PanelDef,
     { id: "debug", title: "Debug", component: DebugPanel } satisfies PanelDef,
   ],
@@ -407,6 +440,7 @@ function App() {
 
   return (
     <main className="app-root">
+      <OutputSourceSync />
       <Shell onOpenSettings={() => setSettingsOpen(true)} onOpenPublish={() => setPublishOpen(true)} />
       {settingsOpen && <SettingsWindow sections={SETTINGS_SECTIONS} onClose={() => setSettingsOpen(false)} />}
       {publishOpen && project && <PublishWindow projectRoot={project.root} onClose={() => setPublishOpen(false)} />}
