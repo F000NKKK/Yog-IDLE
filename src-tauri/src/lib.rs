@@ -1223,6 +1223,7 @@ struct PtyExit {
 }
 
 #[tauri::command]
+#[allow(clippy::too_many_arguments)] // a Tauri command's arguments are its JS parameters
 fn pty_spawn(
     app: AppHandle,
     state: State<PtyState>,
