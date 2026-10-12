@@ -12,6 +12,8 @@ import {
   type PanelDef,
 } from "substrate-platform-ui";
 import { useBreakpoints } from "./BreakpointsContext";
+import { useDebugSessionContext } from "./DebugSessionContext";
+import { samePath } from "./paths";
 import { onOpenFileRequest, type FileOpenRequest } from "./fileOpenBus";
 import { baseName, isWithin } from "./paths";
 import { reportError } from "./reportError";
@@ -292,6 +294,7 @@ export function OpenFilesProvider({ children }: { children: ReactNode }) {
       component = function FileEditorPanel() {
         const { tabs, updateContent } = useOpenFiles();
         const { forFile, toggle } = useBreakpoints();
+        const { executionLocation } = useDebugSessionContext();
         const { activateCenterPanel } = useShell();
         const tab = tabs.find((t) => t.id === tabId);
         const reveal = tab?.reveal;
@@ -328,6 +331,7 @@ export function OpenFilesProvider({ children }: { children: ReactNode }) {
               onChange={onChange}
               breakpoints={forFile(tab.path)}
               onToggleBreakpoint={(line) => toggle(tab.path, line)}
+              executionLine={executionLocation && samePath(executionLocation.file, tab.path) ? executionLocation.line : null}
             />
           );
         }

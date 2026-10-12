@@ -15,6 +15,9 @@ import {
   IconButton,
   SettingsWindow,
   AppearanceSettings,
+  appearanceSettingsKeywords,
+  EditorSettings,
+  editorSettingsKeywords,
   WindowControls,
   Toolbar,
   StatusBar,
@@ -36,6 +39,12 @@ import { BreakpointsProvider } from "./BreakpointsContext";
 import { DebugSessionProvider, useDebugSessionContext } from "./DebugSessionContext";
 import { useGameStatus, type GameStage, type WorkflowExitEvent } from "./useGameStatus";
 import { useHotReload } from "./useHotReload";
+import { EditMenu, EditorKeybindings, editorToolbarSections, useEditorActions, type EditorActions } from "./EditorActions";
+import { OpenFilesPersistence } from "./OpenFilesPersistence";
+import { ViewMenu } from "./ViewMenu";
+import { WorkspaceProvider } from "./WorkspaceContext";
+import { installCloseHandler } from "./windowClose";
+import { reportError } from "./reportError";
 import { requestOpenFile } from "./fileOpenBus";
 
 import "./App.css";
@@ -83,11 +92,14 @@ const toolWindows = {
   ],
 };
 
-const SETTINGS_SECTIONS: SettingsSection[] = [{ id: "appearance", label: "Appearance", content: <AppearanceSettings /> }];
+const SETTINGS_SECTIONS: SettingsSection[] = [
+  { id: "appearance", label: "Appearance", content: <AppearanceSettings />, keywords: appearanceSettingsKeywords },
+  { id: "editor", label: "Editor", content: <EditorSettings />, keywords: editorSettingsKeywords },
+];
 
-/** Basic build operations only, for the generic workflow.toml fallback path — Restore/Build/Test/Publish. "Run" targets live in the Run toolbar instead, and Clean isn't surfaced here. */
+/** Basic build operations only, for the generic workflow.toml fallback path — Restore/Build/Clean/Test/Publish. "Run" targets live in the Run toolbar instead. */
 function isBasicBuildWorkflow(name: string): boolean {
-  return /^(restore|build|test|publish)/i.test(name);
+  return /^(restore|build|clean|test|publish)/i.test(name);
 }
 
 /**
@@ -99,7 +111,20 @@ function isBasicBuildWorkflow(name: string): boolean {
  */
 function BuildMenu({ onOpenPublish }: { onOpenPublish: () => void }) {
   const { project } = useProject();
-  if (!project) return <MenuBarItem label="Build" />;
+  if (!project) {
+    // Nothing to build yet — the usual actions, shown but unavailable.
+    return (
+      <MenuBarItem
+        label="Build"
+        items={[
+          { label: "Build", disabled: true },
+          { label: "Clean", disabled: true },
+          { label: "Publish...", disabled: true, separatorBefore: true },
+          { label: "Cancel Build", disabled: true, separatorBefore: true },
+        ]}
+      />
+    );
+  }
   if (project.kind === "yog-mod") return <ModBuildMenu root={project.root} onOpenPublish={onOpenPublish} />;
   return <WorkflowBuildMenu root={project.root} />;
 }
@@ -124,7 +149,12 @@ function useWorkflowActive(): boolean {
 /** Build > Cancel Build — stops every Build/Publish still running (`workflow_cancel`). */
 function useCancelBuildItem() {
   const active = useWorkflowActive();
-  return { label: "Cancel Build", onClick: () => invoke("workflow_cancel"), disabled: !active };
+  return { label: "Cancel Build", onClick: () => invoke("workflow_cancel"), disabled: !active, separatorBefore: true };
+}
+
+/** Runs a `mod_*` build command — one that's refused outright (e.g. the project isn't open anymore) never starts a workflow, so say why here. */
+function runModCommand(command: string, root: string, what: string) {
+  invoke(command, { projectRoot: root }).catch((err) => reportError(`${what} failed to start: ${err}`));
 }
 
 function ModBuildMenu({ root, onOpenPublish }: { root: string; onOpenPublish: () => void }) {
@@ -133,8 +163,11 @@ function ModBuildMenu({ root, onOpenPublish }: { root: string; onOpenPublish: ()
     <MenuBarItem
       label="Build"
       items={[
-        { label: "Build", onClick: () => invoke("mod_build", { projectRoot: root }) },
-        { label: "Publish...", onClick: onOpenPublish },
+        { label: "Build", onClick: () => runModCommand("mod_build", root, "Build") },
+        // `yog-cli` has no clean command — `mod_clean` removes what builds
+        // produce, so not while a build is still writing there.
+        { label: "Clean", onClick: () => runModCommand("mod_clean", root, "Clean"), disabled: !cancelItem.disabled },
+        { label: "Publish...", onClick: onOpenPublish, separatorBefore: true },
         cancelItem,
       ]}
     />
@@ -251,13 +284,18 @@ function HelpMenu() {
   );
 }
 
-// No Edit or View menu: Undo/Redo/Format/Toggle Comment need a handle on
-// "the focused editor" that doesn't exist yet (see `editorToolbarSections`),
-// and `PlatformShell` exposes no API for showing/hiding tool windows.
-function Menu({ onOpenSettings, onOpenPublish }: { onOpenSettings: () => void; onOpenPublish: () => void }) {
+interface MenuProps {
+  onOpenSettings: () => void;
+  onOpenPublish: () => void;
+  editor: EditorActions;
+}
+
+function Menu({ onOpenSettings, onOpenPublish, editor }: MenuProps) {
   return (
     <MenuBar title="Yog IDLE" windowControls={<WindowControls />}>
       <FileMenu />
+      <EditMenu actions={editor} />
+      <ViewMenu />
       <BuildMenu onOpenPublish={onOpenPublish} />
       <DebugMenu />
       <MenuBarItem label="Tools" items={[{ label: "Options...", onClick: onOpenSettings }]} />
@@ -282,27 +320,16 @@ interface RunActions {
 }
 
 /**
- * The editor action toolbar — Save is real (saves every dirty open file);
- * Undo/Redo/Format/Toggle Comment are disabled placeholders for now (wiring
- * them needs a way to reach "whichever editor is currently focused", which
- * doesn't exist yet). Hot Reload/Restart/Stop only appear once something is
- * actually running: Stop/Restart work for any game launch, Release or Debug
- * (`debug_stop` kills a plain run too); Hot Reload needs the game to have
- * connected its control socket (`gameStage === "ready"`) — it rebuilds and
- * swaps the new build in over that socket (`mod_hot_reload`).
+ * The toolbar's run-time section — Hot Reload/Restart/Stop only appear once
+ * something is actually running: Stop/Restart work for any game launch,
+ * Release or Debug (`debug_stop` kills a plain run too); Hot Reload needs
+ * the game to have connected its control socket (`gameStage === "ready"`) —
+ * it rebuilds and swaps the new build in over that socket
+ * (`mod_hot_reload`). The editing sections before it come from
+ * `editorToolbarSections`.
  */
-function editorToolbarSections(hasDirty: boolean, onSaveAll: () => void, run: RunActions): ToolbarSection[] {
-  const sections: ToolbarSection[] = [
-    [{ icon: "save", label: "Save All", disabled: !hasDirty, onClick: onSaveAll }],
-    [
-      { icon: "undo", label: "Undo", disabled: true },
-      { icon: "redo", label: "Redo", disabled: true },
-    ],
-    [
-      { icon: "format", label: "Format Document", disabled: true },
-      { icon: "comment", label: "Toggle Comment", disabled: true },
-    ],
-  ];
+function runToolbarSections(run: RunActions): ToolbarSection[] {
+  const sections: ToolbarSection[] = [];
   const gameUp = run.gameStage !== "idle" || run.debugging;
   if (run.running || gameUp) {
     const hotReload = run.onHotReload;
@@ -320,8 +347,21 @@ function editorToolbarSections(hasDirty: boolean, onSaveAll: () => void, run: Ru
   return sections;
 }
 
+/** The menu bar, toolbar and editor keybindings — rendered inside the shell, since they act on its active editor tab and tool windows. */
+function ShellChrome({ onOpenSettings, onOpenPublish, run, onRunningChange }: Omit<MenuProps, "editor"> & { run: RunActions; onRunningChange: (running: boolean) => void }) {
+  const editor = useEditorActions();
+  return (
+    <>
+      <Menu onOpenSettings={onOpenSettings} onOpenPublish={onOpenPublish} editor={editor} />
+      <Toolbar leading={<RunToolbar onRunningChange={onRunningChange} />} sections={[...editorToolbarSections(editor), ...runToolbarSections(run)]} />
+      <EditorKeybindings actions={editor} />
+      <OpenFilesPersistence />
+    </>
+  );
+}
+
 function Shell({ onOpenSettings, onOpenPublish }: { onOpenSettings: () => void; onOpenPublish: () => void }) {
-  const { panels, closeTab, hasDirty, saveAll } = useOpenFiles();
+  const { panels, closeTab } = useOpenFiles();
   const { debugging, canRestart, restart, stop } = useDebugSessionContext();
   const { project } = useProject();
   const gameStatus = useGameStatus();
@@ -344,13 +384,8 @@ function Shell({ onOpenSettings, onOpenPublish }: { onOpenSettings: () => void; 
       toolWindows={toolWindows}
       persistKey="yog-idle"
       extraCenterPanels={panels}
-      onCloseDynamicPanel={closeTab}
-      menu={
-        <>
-          <Menu onOpenSettings={onOpenSettings} onOpenPublish={onOpenPublish} />
-          <Toolbar leading={<RunToolbar onRunningChange={setRunning} />} sections={editorToolbarSections(hasDirty, saveAll, runActions)} />
-        </>
-      }
+      onCloseDynamicPanel={(id) => void closeTab(id)}
+      menu={<ShellChrome onOpenSettings={onOpenSettings} onOpenPublish={onOpenPublish} run={runActions} onRunningChange={setRunning} />}
       statusBar={<StatusBar text={gameStatus.text} busy={gameStatus.busy} detail={gameStatus.lines} />}
     />
   );
@@ -360,6 +395,10 @@ function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [publishOpen, setPublishOpen] = useState(false);
   const { project } = useProject();
+
+  // Closing the window first asks about unsaved files, then writes the
+  // remembered UI state (see `windowClose`).
+  useEffect(() => installCloseHandler(), []);
 
   return (
     <main className="app-root">
@@ -373,13 +412,15 @@ function App() {
 function AppWithProviders() {
   return (
     <ProjectProvider>
-      <OpenFilesProvider>
-        <BreakpointsProvider>
-          <DebugSessionProvider>
-            <App />
-          </DebugSessionProvider>
-        </BreakpointsProvider>
-      </OpenFilesProvider>
+      <WorkspaceProvider>
+        <OpenFilesProvider>
+          <BreakpointsProvider>
+            <DebugSessionProvider>
+              <App />
+            </DebugSessionProvider>
+          </BreakpointsProvider>
+        </OpenFilesProvider>
+      </WorkspaceProvider>
     </ProjectProvider>
   );
 }
