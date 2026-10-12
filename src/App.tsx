@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import { getVersion } from "@tauri-apps/api/app";
 import { message, open } from "@tauri-apps/plugin-dialog";
 import { openUrl } from "@tauri-apps/plugin-opener";
@@ -30,7 +31,7 @@ import { ProjectProvider, useProject } from "./ProjectContext";
 import { OpenFilesProvider, useOpenFiles } from "./OpenFilesContext";
 import { BreakpointsProvider } from "./BreakpointsContext";
 import { DebugSessionProvider, useDebugSessionContext } from "./DebugSessionContext";
-import { useGameStatus, type GameStage } from "./useGameStatus";
+import { useGameStatus, type GameStage, type WorkflowExitEvent } from "./useGameStatus";
 import { useHotReload } from "./useHotReload";
 import { requestOpenFile } from "./fileOpenBus";
 
@@ -87,13 +88,38 @@ function BuildMenu({ onOpenPublish }: { onOpenPublish: () => void }) {
   return <WorkflowBuildMenu root={project.root} />;
 }
 
+/** Whether a Build/Publish workflow run is in flight — counted from `workflow-start`/`workflow-exit`, ignoring the payload-less `workflow-exit` a game exiting fires. */
+function useWorkflowActive(): boolean {
+  const [active, setActive] = useState(0);
+  useEffect(() => {
+    const unlistens = [
+      listen("workflow-start", () => setActive((n) => n + 1)),
+      listen<WorkflowExitEvent | null>("workflow-exit", (e) => {
+        if (e.payload) setActive((n) => Math.max(0, n - 1));
+      }),
+    ];
+    return () => {
+      unlistens.forEach((p) => p.then((unlisten) => unlisten()));
+    };
+  }, []);
+  return active > 0;
+}
+
+/** Build > Cancel Build — stops every Build/Publish still running (`workflow_cancel`). */
+function useCancelBuildItem() {
+  const active = useWorkflowActive();
+  return { label: "Cancel Build", onClick: () => invoke("workflow_cancel"), disabled: !active };
+}
+
 function ModBuildMenu({ root, onOpenPublish }: { root: string; onOpenPublish: () => void }) {
+  const cancelItem = useCancelBuildItem();
   return (
     <MenuBarItem
       label="Build"
       items={[
         { label: "Build", onClick: () => invoke("mod_build", { projectRoot: root }) },
         { label: "Publish...", onClick: onOpenPublish },
+        cancelItem,
       ]}
     />
   );
@@ -101,8 +127,9 @@ function ModBuildMenu({ root, onOpenPublish }: { root: string; onOpenPublish: ()
 
 function WorkflowBuildMenu({ root }: { root: string }) {
   const runner = useWorkflowRunner(root);
+  const cancelItem = useCancelBuildItem();
   const items = runner.workflows.filter((w) => isBasicBuildWorkflow(w.name)).map((w) => ({ label: w.name, onClick: () => runner.run(w.name) }));
-  return <MenuBarItem label="Build" items={items} />;
+  return <MenuBarItem label="Build" items={[...items, cancelItem]} />;
 }
 
 /** File > Open Folder/Open Project/Open File, backed by the native OS picker (`@tauri-apps/plugin-dialog`), plus the recent projects list. Open Folder/Project/a recent entry all replace the current project via `ProjectContext`; Open File just opens a single file as an editor tab, expanding the allowed-path boundary to cover it (see `allow_path` on the Rust side) since it needn't belong to any open project. */

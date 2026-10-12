@@ -16,6 +16,12 @@ export interface HotReloadEvent {
   message: string;
 }
 
+/** `workflow-exit`'s payload when a Build/Publish run (not a game) ended. */
+export interface WorkflowExitEvent {
+  success: boolean;
+  cancelled: boolean;
+}
+
 /** Where the launched game is in its lifecycle — `"idle"` when nothing is running. */
 export type GameStage = "idle" | "starting" | "ready";
 
@@ -48,8 +54,22 @@ export function useGameStatus() {
   useEffect(() => {
     const unlistens = [
       listen<string>("workflow-output", (e) => pushLine(e.payload)),
-      listen("workflow-exit", () => {
-        setText("Idle");
+      listen("workflow-start", () => {
+        setText("Building…");
+        setBusy(true);
+      }),
+      // A Build/Publish run carries a `WorkflowExit`; a game exiting fires
+      // this too, with no payload.
+      listen<WorkflowExitEvent | null>("workflow-exit", (e) => {
+        if (e.payload?.cancelled) {
+          setText("Build cancelled");
+          pushLine("build cancelled");
+        } else if (e.payload && !e.payload.success) {
+          setText("Build failed");
+          pushLine("[error] build failed");
+        } else {
+          setText("Idle");
+        }
         setBusy(false);
       }),
       listen<GameStatusEvent>("game-status", (e) => {
