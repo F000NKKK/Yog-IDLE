@@ -177,6 +177,11 @@ fn read_mod_id(contents: &str) -> Option<String> {
 /// the host platform. Not the runtime-extracted temp copy (unpredictable —
 /// see `find_module_base_by_prefix`'s doc comment) — this is only used for
 /// its DWARF data, which is byte-identical between the two.
+///
+/// `release` is correct for debug-mode runs too: `yog run --debug` (like
+/// `yog build debug`) is still a `cargo build --release`, just with
+/// `CARGO_PROFILE_RELEASE_DEBUG=true`/`..._STRIP=none` so the debug info
+/// survives — there is no separate `debug/` output for it.
 fn local_native_path(project_root: &Path, mod_id: &str) -> PathBuf {
     let triple = match std::env::consts::ARCH {
         "aarch64" => "aarch64-unknown-linux-gnu",
