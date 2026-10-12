@@ -33,6 +33,10 @@ import { useActiveFileTab, useOpenFiles } from "./OpenFilesContext";
 import { extensionOf } from "./paths";
 import { reportError } from "./reportError";
 import { openCodeSearch, openFindInFiles } from "./search/searchUi";
+import { formatYui } from "./designer/yuiText";
+
+// Formats done here rather than by an external tool (`format_document`).
+const LOCAL_FORMATTERS: Record<string, (text: string) => string> = { yui: formatYui };
 
 // Whether Format Document works for a file kind (a formatter exists for it
 // and is installed — `format_supported` on the Rust side), asked once per
@@ -70,17 +74,23 @@ function useFormatSupported(path: string | null): boolean {
  */
 export function useEditorActions() {
   const tab = useActiveFileTab();
-  const view = useEditorView(tab?.path);
-  // A designer (no CodeMirror view) offers its own undo/clipboard commands.
-  const doc = useDocumentCommands(view ? null : tab?.path);
+  const textView = useEditorView(tab?.path);
+  // A designer (no CodeMirror view) offers its own undo/clipboard commands —
+  // and so does one sharing its tab with a text view (a split view), when it
+  // was focused last.
+  const designer = useDocumentCommands(tab?.path);
+  const view = textView && !designer?.preferred?.() ? textView : null;
+  const doc = view ? null : designer;
   const { save, saveAll, hasDirty, closeTab } = useOpenFiles();
-  const canFormat = useFormatSupported(view && tab ? tab.path : null) && !!view && !view.state.readOnly;
+  const localFormatter = tab ? LOCAL_FORMATTERS[extensionOf(tab.path)] : undefined;
+  const canFormat = (useFormatSupported(textView && tab && !localFormatter ? tab.path : null) || !!localFormatter) && !!textView && !textView.state.readOnly;
 
   async function format() {
+    const view = textView;
     if (!view || !tab || !canFormat) return;
     const contents = view.state.doc.toString();
     try {
-      const formatted = await invoke<string>("format_document", { path: tab.path, contents });
+      const formatted = localFormatter ? localFormatter(contents) : await invoke<string>("format_document", { path: tab.path, contents });
       // Skipped if the user typed while the formatter ran — its output
       // would silently undo that.
       if (view.state.doc.toString() === contents) editorSetText(view, formatted);
@@ -129,12 +139,13 @@ export function useEditorActions() {
 
 export type EditorActions = ReturnType<typeof useEditorActions>;
 
-/** Keybindings that act on the active editor tab beyond CodeMirror's own (undo, find, toggle comment, ... are already bound inside each editor): Ctrl+S saves it, Ctrl+Shift+S saves every file, Ctrl+F4 / Ctrl+W closes it, Shift+Alt+F formats it. Renders nothing. */
+/** Keybindings that act on the active editor tab beyond CodeMirror's own (undo, find, toggle comment, ... are already bound inside each editor): Ctrl+S saves it, Ctrl+Shift+S saves every file, Ctrl+F4 / Ctrl+W closes it, Shift+Alt+F (or Ctrl+K Ctrl+D) formats it. Renders nothing. */
 export function EditorKeybindings({ actions }: { actions: EditorActions }) {
   useKeybinding("Ctrl+S", () => void actions.save(), { id: "file.save" });
   useKeybinding("Ctrl+Shift+S", () => void actions.saveAll(), { id: "file.saveAll" });
   useKeybinding(["Ctrl+F4", "Ctrl+W"], () => void actions.close(), { id: "file.close" });
-  useKeybinding("Shift+Alt+F", () => void actions.format(), { id: "edit.format" });
+  // Visual Studio's chord as well as VS Code's.
+  useKeybinding(["Shift+Alt+F", "Ctrl+K Ctrl+D"], () => void actions.format(), { id: "edit.format" });
   return null;
 }
 
