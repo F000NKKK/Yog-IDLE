@@ -68,6 +68,7 @@ doesn't care.
 | `Canvas` | column panel | Children placed freely at `x`/`y` (missing = 0). |
 | `Column` | `panel(FlexDir::Column)` | Children flow top to bottom. |
 | `Row` | `panel(FlexDir::Row)` | Children flow left to right. |
+| `ScrollView` | `scroll_view()` | A Column that clips its children and scrolls them (`scroll_y`), with a scrollbar on overflow — yog-ui 0.35.2+. |
 | `Label` | `label(text)` | |
 | `Button` | `button(text)` | Text centered; no background unless `bg` is set. |
 | `ItemSlot` | `item_slot(item)` | An item icon in an 18×18 slot. |
@@ -109,6 +110,7 @@ Named after the builder methods they become.
 | `bg`, `color`, `focus_color` | `#RRGGBB`, `#AARRGGBB`, `0xAARRGGBB` | Background, text and focus colors. |
 | `font_scale` | number | Text size multiplier. |
 | `shadow`, `no_wrap`, `enabled` | `true`/`false` | Text shadow, single-line text, takes clicks/focus. |
+| `ellipsis` | `true`/`false` | Single-line text cut with `...` when too wide (yog-ui 0.35.2+). |
 | `focus_style` | `outline` `fill` `none` | Focus indicator. |
 | `on_click` | string | Event returned by `click()`; a constant in `events`. |
 
@@ -135,6 +137,8 @@ For `src/main_menu.yui`, `src/main_menu.designer.rs` defines:
   `on_ui_render`);
 - `click(event) -> Option<String>` — the `on_click` of the widget under a
   `"click:X:Y"` UI event, hit-tested against the last render;
+- `with_last(|ui| ...)` — the layout drawn by the last render, for event
+  handlers that need rects or scroll state (`ui.find_node(ids::LIST)`);
 - `open()` — `open_ui(ID, modal, pause)`.
 
 A code-behind module:
@@ -158,6 +162,41 @@ pub fn register(registry: &mut yog_api::Registry) {
     });
 }
 ```
+
+### Runtime content and scrolling
+
+What only exists at runtime — one row per item, say — is added by the
+code-behind, like WinForms code adding controls to a panel: give the
+container an `id` in the markup and fill it in `render_with`'s `customize`
+(`root.find_mut(ids::LIST)`, push `yog_api::ui::widget::...` children with
+their own `on_click`s, e.g. `"select:3"`, which `click()` then returns).
+
+A `ScrollView` scrolls by its widget's `style.scroll_y`; keep a
+`yog_api::ui::ScrollState` per scroll view, set `scroll_y` from its
+`offset` while rendering, and feed it the UI events first:
+
+```rust
+static LIST: Mutex<ScrollState> = Mutex::new(ScrollState::new());
+
+registry.on_ui_render(ID, |gfx| render_with(gfx, |root| {
+    let list = root.find_mut(ids::LIST).unwrap();
+    list.style.scroll_y = LIST.lock().unwrap().offset;
+    list.children = rows();
+}));
+registry.register_ui(ID, |_, event| {
+    // wheel (`scroll:DY`), scrollbar click/drag/release
+    let scrolled = with_last(|ui| {
+        ui.find_node(ids::LIST)
+            .is_some_and(|n| LIST.lock().unwrap().handle(event, n, 20.0))
+    });
+    if scrolled == Some(true) {
+        return;
+    }
+    // ... click(event)
+});
+```
+
+Yog-Modlist's `src/mod_list.yui` + `src/mod_list.rs` is a complete example.
 
 Call `main_menu::register(registry)` from the mod's `Mod::register`, and
 `main_menu::open()` (or `registry.register_menu_entry("Main Menu", main_menu::ID)`)

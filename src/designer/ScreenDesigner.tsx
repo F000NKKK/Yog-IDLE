@@ -21,7 +21,7 @@ import {
 } from "substrate-platform-ui";
 import { useActiveFileTab } from "../OpenFilesContext";
 import { clearActiveDesigner, setActiveDesigner, TOOLBOX_MIME } from "./activeDesigner";
-import { charWidth, compute, LINE_GAP, LINE_H, screenWidget, strWidth, wrapText, type LNode, type LWidget } from "./layout";
+import { charWidth, compute, LINE_GAP, LINE_H, screenWidget, strWidth, textLines, type LNode, type LWidget } from "./layout";
 import { widgetProperties } from "./properties";
 import {
   adoptUids,
@@ -915,7 +915,7 @@ function McWidget({ widget, node, zoom }: { widget: LWidget; node: LNode; zoom: 
 
   if (widget.kind === "label" || widget.kind === "button") {
     const availW = Math.max(0, r.w - s.pad[1] - s.pad[3]);
-    const lines = s.noWrap ? [widget.text] : wrapText(widget.text, availW, s.fontScale);
+    const lines = textLines(widget.text, s, availW);
     const lineH = LINE_H * s.fontScale + LINE_GAP;
     const totalH = lines.length * lineH - LINE_GAP;
     const contentH = r.h - s.pad[0] - s.pad[2];

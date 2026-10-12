@@ -99,6 +99,30 @@ export function wrapText(text: string, maxW: number, scale: number): string[] {
   return lines;
 }
 
+/** `line` cut with `...` to fit `maxW` — `render.rs`'s `ellipsize`. */
+function ellipsize(line: string, maxW: number, scale: number): string {
+  if (strWidth(line, scale) <= maxW) return line;
+  const budget = maxW - strWidth("...", scale);
+  let out = "";
+  let w = 0;
+  for (const c of line) {
+    const cw = charWidth(c) * scale;
+    if (w + cw > budget) break;
+    out += c;
+    w += cw;
+  }
+  return out.trimEnd() + "...";
+}
+
+/** The lines a label/button draws in `availW` — `render.rs`'s `text_lines`. */
+export function textLines(text: string, s: Style, availW: number): string[] {
+  if (s.ellipsis) return [ellipsize(text, availW, s.fontScale)];
+  return s.noWrap ? [text] : wrapText(text, availW, s.fontScale);
+}
+
+/** Width of the strip a ScrollView reserves for its scrollbar (`layout::SCROLLBAR_W`). */
+export const SCROLLBAR_W = 6;
+
 function textHeight(text: string, maxW: number, scale: number): number {
   const n = Math.max(1, wrapText(text, maxW, scale).length);
   return n * LINE_H * scale + Math.max(0, n - 1) * LINE_GAP;
@@ -126,6 +150,10 @@ export interface Style {
   fontScale: number;
   shadow: boolean;
   noWrap: boolean;
+  /** One line cut with `...` (implies `noWrap`). */
+  ellipsis: boolean;
+  /** Reserves `SCROLLBAR_W` on the right for a scrollbar (ScrollView). */
+  scrollbar: boolean;
   pos: [number, number] | null;
 }
 
@@ -179,6 +207,8 @@ function defaultStyle(): Style {
     fontScale: 1,
     shadow: true,
     noWrap: false,
+    ellipsis: false,
+    scrollbar: false,
     pos: null,
   };
 }
@@ -210,6 +240,7 @@ const LEAF_OF: Record<string, Leaf> = {
   Canvas: "panel",
   Column: "panel",
   Row: "panel",
+  ScrollView: "panel",
   Label: "label",
   Button: "button",
   ItemSlot: "item_slot",
@@ -256,6 +287,8 @@ export function toWidget(node: YuiNode, inCanvas: boolean): LWidget {
   style.color = parseColor(a.color) ?? style.color;
   if (a.shadow === "false") style.shadow = false;
   if (a.no_wrap === "true") style.noWrap = true;
+  if (a.ellipsis === "true") style.noWrap = style.ellipsis = true;
+  if (node.kind === "ScrollView") style.scrollbar = true;
   const canvas = CANVAS_KINDS.has(node.kind);
   return {
     uid: node.uid,
@@ -378,7 +411,8 @@ function layoutWidget(w: LWidget, node: LNode, x: number, y: number, maxW: numbe
   if (!hasChildren) return;
 
   const dir = w.kind === "panel" && w.dir === "row" ? "row" : "column";
-  const contentW = ww - s.pad[1] - s.pad[3];
+  const barW = s.scrollbar ? SCROLLBAR_W : 0;
+  const contentW = Math.max(0, ww - s.pad[1] - s.pad[3] - barW);
   const contentH = hh - s.pad[0] - s.pad[2];
   const effectiveFlex = (c: LWidget) => (c.style.dock === "fill" ? Math.max(c.style.flex, 1) : c.style.flex);
   const inFlow = (c: LWidget) => c.style.pos === null && !((dir === "row" && c.style.dock === "right") || (dir === "column" && c.style.dock === "bottom"));
@@ -466,7 +500,7 @@ function layoutWidget(w: LWidget, node: LNode, x: number, y: number, maxW: numbe
 
   if (s.w.t === "auto") {
     const cw = childNodes.reduce((m, c) => Math.max(m, c.rect.x - x + c.rect.w), 0);
-    node.rect.w = Math.min(Math.max(cw + s.pad[1] + s.pad[3], s.minW), maxW);
+    node.rect.w = Math.min(Math.max(cw + s.pad[1] + s.pad[3] + barW, s.minW), maxW);
   }
   if (s.h.t === "auto") {
     const ch = childNodes.reduce((m, c) => Math.max(m, c.rect.y - y + c.rect.h), 0);

@@ -4,7 +4,7 @@
 // write back.
 
 /** Every element the format knows, in Toolbox order. */
-export const KINDS = ["Screen", "Canvas", "Column", "Row", "Label", "Button", "Spacer", "ItemSlot", "InvSlot", "Image"] as const;
+export const KINDS = ["Screen", "Canvas", "Column", "Row", "ScrollView", "Label", "Button", "Spacer", "ItemSlot", "InvSlot", "Image"] as const;
 export type YuiKind = (typeof KINDS)[number];
 
 export interface YuiNode {
@@ -23,7 +23,7 @@ export interface YuiDoc {
   root: YuiNode;
 }
 
-export const CONTAINER_KINDS: ReadonlySet<string> = new Set(["Screen", "Canvas", "Column", "Row"]);
+export const CONTAINER_KINDS: ReadonlySet<string> = new Set(["Screen", "Canvas", "Column", "Row", "ScrollView"]);
 /** Containers that position every child absolutely (a missing x/y is 0). */
 export const CANVAS_KINDS: ReadonlySet<string> = new Set(["Screen", "Canvas"]);
 
@@ -63,6 +63,7 @@ export const ATTR_ORDER = [
   "font_scale",
   "shadow",
   "no_wrap",
+  "ellipsis",
   "focus_style",
   "focus_color",
   "enabled",
@@ -344,6 +345,13 @@ export const KIND_INFO: Record<YuiKind, KindInfo> = {
     group: "Containers",
     description: "Lays its children out left to right (flex row).",
     defaults: { w: "100", h: "20", gap: "2", padding: "2" },
+  },
+  ScrollView: {
+    kind: "ScrollView",
+    label: "Scroll Viewer",
+    group: "Containers",
+    description: "A column that clips its children and scrolls them, with a scrollbar when they overflow (scroll_y in code).",
+    defaults: { w: "80", h: "60", gap: "2", padding: "2", bg: "#40000000" },
   },
   Label: { kind: "Label", label: "Label", group: "Common Controls", description: "Static text.", defaults: { text: "Label", no_wrap: "true" } },
   Button: {

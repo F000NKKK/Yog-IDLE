@@ -49,6 +49,7 @@ const SPECS: AttrSpec[] = [
   { attr: "font_scale", name: "Font Scale", category: "Appearance", kind: "number", fallback: "1", only: TEXT_KINDS, description: "Text size multiplier." },
   { attr: "shadow", name: "Text Shadow", category: "Appearance", kind: "bool", fallback: "true", only: TEXT_KINDS, description: "Draws the text with Minecraft's drop shadow." },
   { attr: "no_wrap", name: "No Wrap", category: "Appearance", kind: "bool", fallback: "false", only: TEXT_KINDS, description: "Keeps the text on one line instead of wrapping it to the width." },
+  { attr: "ellipsis", name: "Ellipsis", category: "Appearance", kind: "bool", fallback: "false", only: TEXT_KINDS, description: "One line, cut with `...` when it's wider than the widget." },
   { attr: "focus_style", name: "Focus Style", category: "Appearance", kind: "enum", options: ["outline", "fill", "none"], fallback: "outline", description: "How keyboard focus is shown." },
   { attr: "focus_color", name: "Focus Color", category: "Appearance", kind: "color", description: "Color of the focus indicator (default amber)." },
   { attr: "enabled", name: "Enabled", category: "Behavior", kind: "bool", fallback: "true", description: "Whether the widget takes clicks and focus." },
