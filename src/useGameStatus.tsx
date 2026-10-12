@@ -9,6 +9,16 @@ interface GameStatusEvent {
   mods: { id: string; name: string; version: string }[];
 }
 
+export interface HotReloadEvent {
+  stage: "building" | "reloading" | "done";
+  modId: string;
+  ok: boolean | null;
+  message: string;
+}
+
+/** Where the launched game is in its lifecycle — `"idle"` when nothing is running. */
+export type GameStage = "idle" | "starting" | "ready";
+
 interface DebugStoppedEvent {
   reason: "breakpoint" | "signal" | "exited";
   stackTrace: unknown[];
@@ -17,7 +27,7 @@ interface DebugStoppedEvent {
 /**
  * Drives the bottom status bar from whatever's actually happening with the
  * running game — `game-status`/`debug-attached`/`debug-attach-failed`/
- * `debug-stopped` (from the control-socket-backed run flow, see
+ * `debug-stopped`/`hot-reload` (from the control-socket-backed run flow, see
  * `src-tauri/src/debugger.rs`) plus the existing `workflow-output`/
  * `workflow-exit` build/run log stream, so there's one place answering
  * "what is the IDE doing right now" instead of that being scattered
@@ -26,6 +36,7 @@ interface DebugStoppedEvent {
 export function useGameStatus() {
   const [text, setText] = useState("Idle");
   const [busy, setBusy] = useState(false);
+  const [stage, setStage] = useState<GameStage>("idle");
   const [lines, setLines] = useState<string[]>([]);
   const linesRef = useRef<string[]>([]);
 
@@ -43,17 +54,30 @@ export function useGameStatus() {
       }),
       listen<GameStatusEvent>("game-status", (e) => {
         if (e.payload.stage === "starting") {
+          setStage("starting");
           setText("Starting…");
           setBusy(true);
         } else if (e.payload.stage === "exited") {
+          setStage("idle");
           setText("Idle");
           setBusy(false);
           pushLine("game process exited");
         } else {
+          setStage("ready");
           const modCount = e.payload.mods.length;
           setText(`Running — pid ${e.payload.pid} (${modCount} mod${modCount === 1 ? "" : "s"})`);
           setBusy(false);
           pushLine(`ready: pid ${e.payload.pid}, mods: ${e.payload.mods.map((m) => `${m.id}@${m.version}`).join(", ")}`);
+        }
+      }),
+      listen<HotReloadEvent>("hot-reload", (e) => {
+        // The Output lines themselves arrive via `workflow-output` already.
+        if (e.payload.stage === "done") {
+          setText(e.payload.ok ? `Hot reloaded ${e.payload.modId}` : "Hot reload failed");
+          setBusy(false);
+        } else {
+          setText(e.payload.stage === "building" ? "Hot reload — building…" : "Hot reload — reloading…");
+          setBusy(true);
         }
       }),
       listen("debug-attached", (e) => {
@@ -81,5 +105,5 @@ export function useGameStatus() {
     };
   }, []);
 
-  return { text, busy, lines };
+  return { text, busy, lines, stage };
 }

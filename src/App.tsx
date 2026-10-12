@@ -28,7 +28,8 @@ import { ProjectProvider, useProject } from "./ProjectContext";
 import { OpenFilesProvider, useOpenFiles } from "./OpenFilesContext";
 import { BreakpointsProvider } from "./BreakpointsContext";
 import { DebugSessionProvider, useDebugSessionContext } from "./DebugSessionContext";
-import { useGameStatus } from "./useGameStatus";
+import { useGameStatus, type GameStage } from "./useGameStatus";
+import { useHotReload } from "./useHotReload";
 import { requestOpenFile } from "./fileOpenBus";
 
 import "./App.css";
@@ -156,25 +157,32 @@ function Menu({ onOpenSettings, onOpenPublish }: { onOpenSettings: () => void; o
   );
 }
 
+/** What the toolbar's run-time section (Hot Reload/Restart/Stop) needs to know and do. */
+interface RunActions {
+  /** Something launched from the Run toolbar is still going (a game, or a workflow run). */
+  running: boolean;
+  /** Where the launched game is — `"ready"` once it has reported in over the control socket. */
+  gameStage: GameStage;
+  debugging: boolean;
+  canRestart: boolean;
+  /** `null` when the open project can't be hot-reloaded at all (not a `yog-mod` project). */
+  onHotReload: (() => void) | null;
+  hotReloading: boolean;
+  onRestart: () => void;
+  onStop: () => void;
+}
+
 /**
  * The editor action toolbar — Save is real (saves every dirty open file);
  * Undo/Redo/Format/Toggle Comment are disabled placeholders for now (wiring
  * them needs a way to reach "whichever editor is currently focused", which
  * doesn't exist yet). Hot Reload/Restart/Stop only appear once something is
- * actually running/debugging. Restart/Stop are real once a debug session is
- * attached; Hot Reload stays a disabled placeholder even then — actually
- * triggering `yog-runtime`'s `nativeHotReload` JNI export from outside the
- * JVM needs either a JNI-attach from Yog-IDLE's own process or
- * function-injection via `ptrace`, real work of its own not attempted here.
+ * actually running: Stop/Restart work for any game launch, Release or Debug
+ * (`debug_stop` kills a plain run too); Hot Reload needs the game to have
+ * connected its control socket (`gameStage === "ready"`) — it rebuilds and
+ * swaps the new build in over that socket (`mod_hot_reload`).
  */
-function editorToolbarSections(
-  hasDirty: boolean,
-  onSaveAll: () => void,
-  running: boolean,
-  debugging: boolean,
-  onRestart: () => void,
-  onStop: () => void
-): ToolbarSection[] {
+function editorToolbarSections(hasDirty: boolean, onSaveAll: () => void, run: RunActions): ToolbarSection[] {
   const sections: ToolbarSection[] = [
     [{ icon: "save", label: "Save All", disabled: !hasDirty, onClick: onSaveAll }],
     [
@@ -186,11 +194,18 @@ function editorToolbarSections(
       { icon: "comment", label: "Toggle Comment", disabled: true },
     ],
   ];
-  if (running || debugging) {
+  const gameUp = run.gameStage !== "idle" || run.debugging;
+  if (run.running || gameUp) {
+    const hotReload = run.onHotReload;
     sections.push([
-      { icon: "hotReload", label: "Hot Reload", disabled: true },
-      { icon: "restart", label: "Restart", disabled: !debugging, onClick: onRestart },
-      { icon: "stop", label: "Stop Debugging", disabled: !debugging, onClick: onStop },
+      {
+        icon: "hotReload",
+        label: run.hotReloading ? "Hot Reloading…" : "Hot Reload",
+        disabled: !hotReload || run.gameStage !== "ready" || run.hotReloading,
+        onClick: hotReload ?? undefined,
+      },
+      { icon: "restart", label: "Restart", disabled: !gameUp || !run.canRestart, onClick: run.onRestart },
+      { icon: "stop", label: run.debugging ? "Stop Debugging" : "Stop", disabled: !gameUp, onClick: run.onStop },
     ]);
   }
   return sections;
@@ -198,9 +213,22 @@ function editorToolbarSections(
 
 function Shell({ onOpenSettings, onOpenPublish }: { onOpenSettings: () => void; onOpenPublish: () => void }) {
   const { panels, closeTab, hasDirty, saveAll } = useOpenFiles();
-  const { debugging, restart, stop } = useDebugSessionContext();
+  const { debugging, canRestart, restart, stop } = useDebugSessionContext();
+  const { project } = useProject();
   const gameStatus = useGameStatus();
+  const hotReload = useHotReload();
   const [running, setRunning] = useState(false);
+  const modRoot = project?.kind === "yog-mod" ? project.root : null;
+  const runActions: RunActions = {
+    running,
+    gameStage: gameStatus.stage,
+    debugging,
+    canRestart,
+    onHotReload: modRoot ? () => hotReload.trigger(modRoot) : null,
+    hotReloading: hotReload.busy,
+    onRestart: restart,
+    onStop: stop,
+  };
   return (
     <PlatformShell
       main={mainPanel}
@@ -211,10 +239,7 @@ function Shell({ onOpenSettings, onOpenPublish }: { onOpenSettings: () => void; 
       menu={
         <>
           <Menu onOpenSettings={onOpenSettings} onOpenPublish={onOpenPublish} />
-          <Toolbar
-            leading={<RunToolbar onRunningChange={setRunning} />}
-            sections={editorToolbarSections(hasDirty, saveAll, running, debugging, restart, stop)}
-          />
+          <Toolbar leading={<RunToolbar onRunningChange={setRunning} />} sections={editorToolbarSections(hasDirty, saveAll, runActions)} />
         </>
       }
       statusBar={<StatusBar text={gameStatus.text} busy={gameStatus.busy} detail={gameStatus.lines} />}
