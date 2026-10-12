@@ -10,6 +10,8 @@ use substrate_platform::{
 };
 use tauri::{AppHandle, Emitter, Manager, State};
 
+mod properties;
+
 #[cfg(target_os = "linux")]
 mod debugger;
 // Same command surface (`debug_*`) as the Linux debugger, minus the
@@ -143,6 +145,42 @@ fn file_write(state: State<AppState>, path: String, contents: String) -> Result<
     let target = PathBuf::from(&path);
     validate_within_roots(&state, &target)?;
     substrate_platform::dir::write_file(&target, &contents).map_err(|e| e.to_string())
+}
+
+/// Size, timestamps, read-only flag (and, for a folder, its item count and
+/// whether it's a mod project) — for the Properties window. Like
+/// `file_read`, any path may be inspected; changing it is what stays
+/// confined to the open project.
+#[tauri::command]
+fn path_info(path: String) -> Result<properties::PathInfo, String> {
+    properties::path_info(Path::new(&path))
+}
+
+#[tauri::command]
+fn path_set_readonly(state: State<AppState>, path: String, read_only: bool) -> Result<(), String> {
+    let target = PathBuf::from(&path);
+    validate_within_roots(&state, &target)?;
+    properties::set_read_only(&target, read_only)
+}
+
+/// A mod project's `yog.toml` `[mod]` fields, for the Properties window.
+#[tauri::command]
+fn mod_manifest_read(project_root: String) -> Result<properties::ManifestOut, String> {
+    properties::read_manifest(Path::new(&project_root))
+}
+
+/// Edits one `yog.toml` `[mod]` field in place (formatting preserved) —
+/// resolves the manifest as it now reads.
+#[tauri::command]
+fn mod_manifest_set(
+    state: State<AppState>,
+    project_root: String,
+    key: String,
+    value: properties::FieldValue,
+) -> Result<properties::ManifestOut, String> {
+    let root = PathBuf::from(&project_root);
+    validate_within_roots(&state, &root.join("yog.toml"))?;
+    properties::set_manifest_field(&root, &key, value)
 }
 
 /// Expands the allowed-path boundary to cover `path` — used by "Open File...",
@@ -1123,6 +1161,10 @@ pub fn run() {
         file_read,
         file_write,
         allow_path,
+        path_info,
+        path_set_readonly,
+        mod_manifest_read,
+        mod_manifest_set,
         project_open,
         project_close,
         workspace_load,
