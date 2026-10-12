@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { open } from "@tauri-apps/plugin-dialog";
+import { getVersion } from "@tauri-apps/api/app";
+import { message, open } from "@tauri-apps/plugin-dialog";
+import { openUrl } from "@tauri-apps/plugin-opener";
 import {
   PlatformShell,
   MenuBar,
@@ -146,16 +148,54 @@ function FileMenu() {
   );
 }
 
+/** Debug > Continue/Step/Restart/Stop — the same actions as the Debug panel and the toolbar, enabled under the same conditions. Starting a run stays with the Run toolbar, which owns the target/mode selection. */
+function DebugMenu() {
+  const { debugging, stopped, canRestart, continue_, step, restart, stop } = useDebugSessionContext();
+  const paused = debugging && !!stopped && stopped.reason !== "exited";
+  return (
+    <MenuBarItem
+      label="Debug"
+      items={[
+        { label: "Continue", onClick: continue_, disabled: !paused },
+        { label: "Step", onClick: step, disabled: !paused },
+        { label: "Restart", onClick: restart, disabled: !debugging || !canRestart },
+        { label: "Stop Debugging", onClick: stop, disabled: !debugging },
+      ]}
+    />
+  );
+}
+
+const REPO_URL = "https://github.com/F000NKKK/Yog-IDLE";
+const YOG_URL = "https://github.com/F000NKKK/Yog-Mod-Loader";
+
+function HelpMenu() {
+  async function about() {
+    const version = await getVersion().catch(() => "unknown");
+    await message(`Yog IDLE ${version}\n\nAn IDE for Yog Minecraft mods, built on Substrate Platform.\n\n${REPO_URL}`, { title: "About Yog IDLE" });
+  }
+  return (
+    <MenuBarItem
+      label="Help"
+      items={[
+        { label: "About Yog IDLE", onClick: about },
+        { label: "Yog IDLE on GitHub", onClick: () => openUrl(REPO_URL) },
+        { label: "Yog Mod Loader on GitHub", onClick: () => openUrl(YOG_URL) },
+      ]}
+    />
+  );
+}
+
+// No Edit or View menu: Undo/Redo/Format/Toggle Comment need a handle on
+// "the focused editor" that doesn't exist yet (see `editorToolbarSections`),
+// and `PlatformShell` exposes no API for showing/hiding tool windows.
 function Menu({ onOpenSettings, onOpenPublish }: { onOpenSettings: () => void; onOpenPublish: () => void }) {
   return (
     <MenuBar title="Yog IDLE" windowControls={<WindowControls />}>
       <FileMenu />
-      <MenuBarItem label="Edit" />
-      <MenuBarItem label="View" />
       <BuildMenu onOpenPublish={onOpenPublish} />
-      <MenuBarItem label="Debug" />
+      <DebugMenu />
       <MenuBarItem label="Tools" items={[{ label: "Options...", onClick: onOpenSettings }]} />
-      <MenuBarItem label="Help" />
+      <HelpMenu />
     </MenuBar>
   );
 }
