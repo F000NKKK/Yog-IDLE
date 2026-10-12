@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
+import { t, tn, useLocale } from "substrate-platform-ui";
 
 const MAX_LINES = 500;
 
@@ -40,7 +41,10 @@ interface DebugStoppedEvent {
  * across whichever panel happens to be open.
  */
 export function useGameStatus() {
-  const [text, setText] = useState("Idle");
+  useLocale();
+  // A thunk, so the status re-translates when the language changes.
+  const [text, setTextThunk] = useState<() => string>(() => () => t("Idle"));
+  const setText = (status: () => string) => setTextThunk(() => status);
   const [busy, setBusy] = useState(false);
   const [stage, setStage] = useState<GameStage>("idle");
   const [lines, setLines] = useState<string[]>([]);
@@ -57,37 +61,38 @@ export function useGameStatus() {
         listen<string>(source, (e) => pushLine(e.payload)),
       ),
       listen("workflow-start", () => {
-        setText("Building…");
+        setText(() => t("Building…"));
         setBusy(true);
       }),
       // A Build/Publish run carries a `WorkflowExit`; a game exiting fires
       // this too, with no payload.
       listen<WorkflowExitEvent | null>("workflow-exit", (e) => {
         if (e.payload?.cancelled) {
-          setText("Build cancelled");
+          setText(() => t("Build cancelled"));
           pushLine("build cancelled");
         } else if (e.payload && !e.payload.success) {
-          setText("Build failed");
+          setText(() => t("Build failed"));
           pushLine("[error] build failed");
         } else {
-          setText("Idle");
+          setText(() => t("Idle"));
         }
         setBusy(false);
       }),
       listen<GameStatusEvent>("game-status", (e) => {
         if (e.payload.stage === "starting") {
           setStage("starting");
-          setText("Starting…");
+          setText(() => t("Starting…"));
           setBusy(true);
         } else if (e.payload.stage === "exited") {
           setStage("idle");
-          setText("Idle");
+          setText(() => t("Idle"));
           setBusy(false);
           pushLine("game process exited");
         } else {
           setStage("ready");
           const modCount = e.payload.mods.length;
-          setText(`Running — pid ${e.payload.pid} (${modCount} mod${modCount === 1 ? "" : "s"})`);
+          const pid = e.payload.pid;
+          setText(() => tn(modCount, "Running — pid {pid} ({count} mod)", "Running — pid {pid} ({count} mods)", { pid: String(pid), count: String(modCount) }));
           setBusy(false);
           pushLine(`ready: pid ${e.payload.pid}, mods: ${e.payload.mods.map((m) => `${m.id}@${m.version}`).join(", ")}`);
         }
@@ -95,34 +100,37 @@ export function useGameStatus() {
       listen<HotReloadEvent>("hot-reload", (e) => {
         // The Output lines themselves arrive via `workflow-output` already.
         if (e.payload.stage === "done") {
-          setText(e.payload.ok ? `Hot reloaded ${e.payload.modId}` : "Hot reload failed");
+          const { ok, modId } = e.payload;
+          setText(() => (ok ? t("Hot reloaded {mod}", { mod: modId }) : t("Hot reload failed")));
           setBusy(false);
         } else {
-          setText(e.payload.stage === "building" ? "Hot reload — building…" : "Hot reload — reloading…");
+          const building = e.payload.stage === "building";
+          setText(() => (building ? t("Hot reload — building…") : t("Hot reload — reloading…")));
           setBusy(true);
         }
       }),
       listen("debug-attached", (e) => {
-        setText(`Debugging — pid ${e.payload}`);
+        const pid = String(e.payload);
+        setText(() => t("Debugging — pid {pid}", { pid }));
         setBusy(false);
       }),
       listen<string>("debug-attach-failed", (e) => {
-        setText("Attach failed");
+        setText(() => t("Attach failed"));
         setBusy(false);
         pushLine(`[error] ${e.payload}`);
       }),
       listen<string>("debug-failed", (e) => {
-        setText("Debugger failed");
+        setText(() => t("Debugger failed"));
         setBusy(false);
         pushLine(`[error] ${e.payload}`);
       }),
       listen<DebugStoppedEvent>("debug-stopped", (e) => {
         if (e.payload.reason === "exited") {
-          setText("Idle");
+          setText(() => t("Idle"));
         } else if (e.payload.reason === "breakpoint") {
-          setText("Debugging — stopped at breakpoint");
+          setText(() => t("Debugging — stopped at breakpoint"));
         } else {
-          setText("Debugging — stopped");
+          setText(() => t("Debugging — stopped"));
         }
         setBusy(false);
       }),
@@ -132,5 +140,5 @@ export function useGameStatus() {
     };
   }, []);
 
-  return { text, busy, lines, stage };
+  return { text: text(), busy, lines, stage };
 }

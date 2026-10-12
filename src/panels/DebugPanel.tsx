@@ -1,6 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { useState, type CSSProperties, type ReactNode } from "react";
-import { Button } from "substrate-platform-ui";
+import { Button, formatShortcut, t, useT } from "substrate-platform-ui";
 import { useDebugSessionContext } from "../DebugSessionContext";
 import { LocalsView } from "./LocalsView";
 
@@ -30,8 +30,8 @@ function fileName(path: string): string {
 
 /** How the Debug panel introduces an error, by where it came from (see `useDebugSession`). */
 function errorPrefix(kind: "attach" | "session" | null): string {
-  if (kind === "attach") return "Attach failed: ";
-  if (kind === "session") return "Debugging stopped — the debugger failed: ";
+  if (kind === "attach") return t("Attach failed: ");
+  if (kind === "session") return t("Debugging stopped — the debugger failed: ");
   return "";
 }
 
@@ -39,6 +39,10 @@ function errorPrefix(kind: "attach" | "session" | null): string {
 export function DebugPanel() {
   const { debugging, stopped, error, errorKind, continue_, step, pause, stop, selectThread, selectedFrame, selectFrame, grantPtraceAccess } =
     useDebugSessionContext();
+  const t = useT();
+  /** `t`, for where a thread named `t` shadows it. */
+  const tr = t;
+  const withShortcut = (label: string, shortcut: string) => `${t(label)} (${formatShortcut(shortcut)})`;
   const [notice, setNotice] = useState<{ text: string; isError: boolean } | null>(null);
   const [granted, setGranted] = useState(false);
 
@@ -50,7 +54,7 @@ export function DebugPanel() {
     return (
       <div style={{ ...muted, display: "flex", flexDirection: "column", gap: "var(--sp-space-sm)" }}>
         <div style={error ? { color: "var(--sp-danger, var(--sp-text))", whiteSpace: "pre-wrap" } : undefined}>
-          {error ? `${errorPrefix(errorKind)}${message}` : "Pick Debug mode next to the run target, then press Start."}
+          {error ? `${errorPrefix(errorKind)}${message}` : t("Pick Debug mode next to the run target, then press Start.")}
         </div>
         {needsCapability && !granted && (
           <Button
@@ -65,14 +69,14 @@ export function DebugPanel() {
             }
             style={{ alignSelf: "flex-start" }}
           >
-            Grant ptrace access…
+            {t("Grant ptrace access…")}
           </Button>
         )}
         {granted && (
           <>
-            <div style={{ color: "var(--sp-text)" }}>Granted — it applies from the next start of Yog-IDLE.</div>
+            <div style={{ color: "var(--sp-text)" }}>{t("Granted — it applies from the next start of Yog-IDLE.")}</div>
             <Button variant="ghost" onClick={() => invoke("app_restart")} style={{ alignSelf: "flex-start" }}>
-              Restart Yog-IDLE
+              {t("Restart Yog-IDLE")}
             </Button>
           </>
         )}
@@ -85,37 +89,37 @@ export function DebugPanel() {
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
       <div style={{ display: "flex", gap: "var(--sp-space-xs)", padding: "var(--sp-space-xs)", borderBottom: "1px solid var(--sp-border)", flexWrap: "wrap" }}>
-        <Button variant="ghost" onClick={continue_} disabled={!paused} title="Continue (F5)">
-          Continue
+        <Button variant="ghost" onClick={continue_} disabled={!paused} title={withShortcut("Continue", "F5")}>
+          {t("Continue")}
         </Button>
-        <Button variant="ghost" onClick={pause} disabled={!!stopped} title="Break All (Ctrl+Alt+Break)">
-          Pause
+        <Button variant="ghost" onClick={pause} disabled={!!stopped} title={withShortcut("Break All", "Ctrl+Alt+Break")}>
+          {t("Pause")}
         </Button>
-        <Button variant="ghost" onClick={() => step("over")} disabled={!paused} title="Step Over (F10)">
-          Step Over
+        <Button variant="ghost" onClick={() => step("over")} disabled={!paused} title={withShortcut("Step Over", "F10")}>
+          {t("Step Over")}
         </Button>
-        <Button variant="ghost" onClick={() => step("into")} disabled={!paused} title="Step Into (F11)">
-          Step Into
+        <Button variant="ghost" onClick={() => step("into")} disabled={!paused} title={withShortcut("Step Into", "F11")}>
+          {t("Step Into")}
         </Button>
-        <Button variant="ghost" onClick={() => step("out")} disabled={!paused} title="Step Out (Shift+F11)">
-          Step Out
+        <Button variant="ghost" onClick={() => step("out")} disabled={!paused} title={withShortcut("Step Out", "Shift+F11")}>
+          {t("Step Out")}
         </Button>
-        <Button variant="ghost" onClick={stop} title="Stop Debugging (Shift+F5)">
-          Stop
+        <Button variant="ghost" onClick={stop} title={withShortcut("Stop Debugging", "Shift+F5")}>
+          {t("Stop")}
         </Button>
       </div>
       {error && <div style={{ ...muted, color: "var(--sp-danger, var(--sp-text))", whiteSpace: "pre-wrap" }}>{error}</div>}
       <div style={{ flex: 1, overflow: "auto" }}>
-        {!stopped && <div style={muted}>Running…</div>}
-        {stopped?.reason === "exited" && <div style={muted}>Process exited.</div>}
+        {!stopped && <div style={muted}>{t("Running…")}</div>}
+        {stopped?.reason === "exited" && <div style={muted}>{t("Process exited.")}</div>}
         {stopped && paused && (
           <>
-            <Section title="Locals">
+            <Section title={t("Locals")}>
               <LocalsView stopKey={stopped} frame={stopped.stackTrace[selectedFrame]?.id ?? null} />
             </Section>
-            <Section title="Call Stack">
+            <Section title={t("Call Stack")}>
               {stopped.stackTrace.length === 0 && (
-                <div style={muted}>{stopped.reason === "pause" ? "Paused outside mod code — pick another thread." : "No mod code on this thread's stack."}</div>
+                <div style={muted}>{stopped.reason === "pause" ? t("Paused outside mod code — pick another thread.") : t("No mod code on this thread's stack.")}</div>
               )}
               {stopped.stackTrace.map((frame, i) => (
                 <div
@@ -134,13 +138,18 @@ export function DebugPanel() {
                 </div>
               ))}
             </Section>
-            <Section title={`Threads (${stopped.threads.filter((t) => t.stopped).length} stopped / ${stopped.threads.length})`}>
+            <Section
+              title={t("Threads ({stopped} stopped / {count})", {
+                stopped: stopped.threads.filter((th) => th.stopped).length,
+                count: stopped.threads.length,
+              })}
+            >
               {/* Stopped ones first: only they can be inspected; the rest keep running. */}
               {[...stopped.threads].sort((a, b) => Number(b.stopped) - Number(a.stopped)).map((t) => (
                 <div
                   key={t.id}
                   onClick={() => t.stopped && t.id !== stopped.thread && selectThread(t.id)}
-                  title={t.stopped ? undefined : "Running — only stopped threads can be inspected"}
+                  title={t.stopped ? undefined : tr("Running — only stopped threads can be inspected")}
                   style={{
                     ...row,
                     cursor: t.stopped ? "pointer" : "default",
@@ -150,12 +159,12 @@ export function DebugPanel() {
                   }}
                 >
                   {t.id === stopped.thread ? "➜ " : "   "}
-                  {t.id} {t.name || "<unnamed>"}
-                  {!t.stopped && " (running)"}
+                  {t.id} {t.name || tr("<unnamed>")}
+                  {!t.stopped && ` ${tr("(running)")}`}
                 </div>
               ))}
             </Section>
-            <Section title="Registers">
+            <Section title={t("Registers")}>
               <div style={{ display: "grid", gridTemplateColumns: "max-content 1fr", columnGap: "var(--sp-space-sm)", padding: "0 var(--sp-space-sm)", ...mono }}>
                 {stopped.registers.map(([name, value]) => (
                   <div key={name} style={{ display: "contents" }}>
