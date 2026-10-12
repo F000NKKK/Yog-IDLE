@@ -443,54 +443,94 @@ pub(crate) const OUTPUT_BUILD: &str = "workflow-output";
 pub(crate) const OUTPUT_GAME: &str = "game-output";
 pub(crate) const OUTPUT_DEBUG: &str = "debug-output";
 
-/// Streams a `yog run` child's stdout/stderr to Output: everything up to
-/// its `==> launched pid N` line is the mod's build (Build), everything
-/// after is the game itself (Game).
-pub(crate) fn stream_yog_run(app: &AppHandle, child: &mut std::process::Child) {
-    use std::io::{BufRead, BufReader, Read};
+/// Starts `cmd` (a `yog run`) so it outlives Yog-IDLE: in its own process
+/// group (a Ctrl+C or hang-up aimed at the IDE's group doesn't reach it),
+/// and writing to a log file rather than pipes — when the IDE exits, a pipe
+/// breaks and Gradle tears `runClient` down with it, taking the game along.
+/// [`stream_yog_run`] tails that file into Output.
+pub(crate) fn spawn_yog_run(
+    cmd: &mut std::process::Command,
+) -> std::io::Result<(std::process::Child, PathBuf)> {
+    static NEXT_LOG: AtomicU64 = AtomicU64::new(1);
+    let log = std::env::temp_dir().join(format!(
+        "yog-idle-run-{}-{}.log",
+        std::process::id(),
+        NEXT_LOG.fetch_add(1, Ordering::Relaxed)
+    ));
+    let out = std::fs::File::create(&log)?;
+    let err = out.try_clone()?;
+    #[cfg(unix)]
+    std::os::unix::process::CommandExt::process_group(cmd, 0);
+    let child = cmd
+        .stdin(std::process::Stdio::null())
+        .stdout(out)
+        .stderr(err)
+        .spawn()?;
+    Ok((child, log))
+}
+
+/// Held by a run's session; dropping it (the session ending) lets
+/// [`stream_yog_run`]'s tail finish reading the log and stop.
+pub(crate) struct OutputTail(std::sync::Arc<std::sync::atomic::AtomicBool>);
+
+impl Drop for OutputTail {
+    fn drop(&mut self) {
+        self.0.store(true, Ordering::SeqCst);
+    }
+}
+
+/// Tails a `yog run`'s log (see [`spawn_yog_run`]) into Output: everything
+/// up to its `==> launched pid N` line is the mod's build (Build),
+/// everything after is the game itself (Game). Lines are tagged as stderr
+/// lines would be — both streams share the file, and only diagnostics get
+/// a level. The log is removed once the run is over and fully read.
+pub(crate) fn stream_yog_run(app: &AppHandle, log: PathBuf) -> OutputTail {
+    use std::io::{BufRead, BufReader};
     use std::sync::Arc;
     use std::sync::atomic::AtomicBool;
 
-    let launched = Arc::new(AtomicBool::new(false));
-    let pipes: [(Option<Box<dyn Read + Send>>, bool); 2] = [
-        (
-            child
-                .stdout
-                .take()
-                .map(|p| Box::new(p) as Box<dyn Read + Send>),
-            false,
-        ),
-        (
-            child
-                .stderr
-                .take()
-                .map(|p| Box::new(p) as Box<dyn Read + Send>),
-            true,
-        ),
-    ];
-    for (pipe, is_stderr) in pipes {
-        let Some(pipe) = pipe else { continue };
-        let app = app.clone();
-        let launched = launched.clone();
-        std::thread::spawn(move || {
-            for line in BufReader::new(pipe).lines().map_while(Result::ok) {
-                let event = if launched.load(Ordering::SeqCst) {
-                    OUTPUT_GAME
-                } else {
-                    if line.starts_with("==> launched pid ") {
-                        launched.store(true, Ordering::SeqCst);
-                    }
-                    OUTPUT_BUILD
-                };
-                let line = if is_stderr {
-                    format_stderr_line(line)
-                } else {
-                    line
-                };
-                let _ = app.emit(event, line);
+    let done = Arc::new(AtomicBool::new(false));
+    let tail_done = done.clone();
+    let app = app.clone();
+    std::thread::spawn(move || {
+        let Ok(file) = std::fs::File::open(&log) else {
+            return;
+        };
+        let mut reader = BufReader::new(file);
+        let mut launched = false;
+        let mut line = String::new();
+        loop {
+            // Checked before reading, so the final read after the run ends
+            // still drains whatever it wrote last.
+            let finished = tail_done.load(Ordering::SeqCst);
+            match reader.read_line(&mut line) {
+                Ok(0) | Err(_) if finished => break,
+                Ok(0) | Err(_) => {
+                    std::thread::sleep(std::time::Duration::from_millis(100));
+                    continue;
+                }
+                // A line still being written — wait for its end.
+                Ok(_) if !line.ends_with('\n') && !finished => continue,
+                Ok(_) => {}
             }
-        });
-    }
+            let text = line.trim_end_matches(['\n', '\r']).to_string();
+            line.clear();
+            let event = if launched {
+                OUTPUT_GAME
+            } else {
+                launched = text.starts_with("==> launched pid ");
+                OUTPUT_BUILD
+            };
+            let _ = app.emit(event, format_stderr_line(text));
+        }
+        // A last line the run never finished.
+        if !line.is_empty() {
+            let event = if launched { OUTPUT_GAME } else { OUTPUT_BUILD };
+            let _ = app.emit(event, format_stderr_line(line.trim_end().to_string()));
+        }
+        let _ = std::fs::remove_file(&log);
+    });
+    OutputTail(done)
 }
 
 /// A line a launched process wrote to stderr, labelled the way

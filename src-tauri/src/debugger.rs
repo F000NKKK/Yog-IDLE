@@ -136,6 +136,8 @@ pub struct RunSession {
     /// *their own* session, never the fresh one.
     id: u64,
     wrapper: Child,
+    /// Keeps the run's Output tail going until the session ends.
+    _output: crate::OutputTail,
     real_pid: Option<i32>,
     /// A debug-mode run — a hot reload then rebuilds with debug info kept
     /// too, so the debugger still has symbols for the reloaded native.
@@ -422,21 +424,20 @@ pub fn run_with_mode(
         args.push("--debug".to_string());
     }
 
-    let mut child = Command::new("yog")
-        .args(&args)
-        .current_dir(&root)
-        .env("YOG_CONTROL_SOCKET", &socket_path)
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .map_err(|e| format!("failed to launch `yog run {config_name}`: {e}"))?;
-
-    crate::stream_yog_run(&app, &mut child);
+    let (child, log) = crate::spawn_yog_run(
+        Command::new("yog")
+            .args(&args)
+            .current_dir(&root)
+            .env("YOG_CONTROL_SOCKET", &socket_path),
+    )
+    .map_err(|e| format!("failed to launch `yog run {config_name}`: {e}"))?;
+    let output = crate::stream_yog_run(&app, log);
 
     let id = NEXT_SESSION_ID.fetch_add(1, Ordering::Relaxed);
     *app.state::<DebugState>().0.lock().unwrap() = Some(RunSession {
         id,
         wrapper: child,
+        _output: output,
         real_pid: None,
         debug_mode: debug,
         control: None,

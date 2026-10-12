@@ -21,6 +21,8 @@ struct PlainRun {
     /// must never tear down the run that replaced its own.
     id: u64,
     child: Child,
+    /// Keeps the run's Output tail going until the run ends.
+    _output: crate::OutputTail,
 }
 
 #[derive(Default)]
@@ -54,18 +56,20 @@ fn emit_exited(app: &AppHandle) {
 /// polls it for exit — `mode` is accepted for symmetry with Linux but a
 /// debug-mode run is just a plain one here.
 pub fn run(app: AppHandle, project_root: String, config_name: String) -> Result<(), String> {
-    let mut child = Command::new("yog")
-        .args(["run", &config_name])
-        .current_dir(&project_root)
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .map_err(|e| format!("failed to launch `yog run {config_name}`: {e}"))?;
-
-    crate::stream_yog_run(&app, &mut child);
+    let (child, log) = crate::spawn_yog_run(
+        Command::new("yog")
+            .args(["run", &config_name])
+            .current_dir(&project_root),
+    )
+    .map_err(|e| format!("failed to launch `yog run {config_name}`: {e}"))?;
+    let output = crate::stream_yog_run(&app, log);
 
     let id = NEXT_RUN_ID.fetch_add(1, Ordering::Relaxed);
-    *app.state::<DebugState>().0.lock().unwrap() = Some(PlainRun { id, child });
+    *app.state::<DebugState>().0.lock().unwrap() = Some(PlainRun {
+        id,
+        child,
+        _output: output,
+    });
     let _ = app.emit(
         "game-status",
         GameStatus {
