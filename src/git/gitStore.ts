@@ -330,3 +330,17 @@ export async function cloneRepository(url: string, parent: string): Promise<stri
     set({ busy: null });
   }
 }
+
+// ── Git > Settings ───────────────────────────────────────────────────────────
+
+const settingsListeners = new Set<() => void>();
+
+/** Opens Options on the Source Control page — `App` owns the Options window and listens. */
+export function openGitSettings(): void {
+  settingsListeners.forEach((listener) => listener());
+}
+
+export function onOpenGitSettings(listener: () => void): () => void {
+  settingsListeners.add(listener);
+  return () => settingsListeners.delete(listener);
+}
