@@ -965,4 +965,9 @@ registerTranslations("ru", {
   "{branch} tracks {upstream}: {behind} incoming, {ahead} outgoing": "{branch} отслеживает {upstream}: входящих {behind}, исходящих {ahead}",
   "{count} pending changes": "Ожидающих изменений: {count}",
   "{name}: {left} vs. {right}": "{name}: {left} и {right}",
+  "Fetch — download incoming commits without changing your files": "Получить — загрузить входящие фиксации, не изменяя ваши файлы",
+  "Pull — {count} incoming commits": "Извлечь — входящих фиксаций: {count}",
+  "Pull — fetch and merge incoming commits": "Извлечь — получить и слить входящие фиксации",
+  "Push — {count} outgoing commits": "Отправить — исходящих фиксаций: {count}",
+  "Push — upload your commits": "Отправить — передать ваши фиксации в удаленный репозиторий",
 });
