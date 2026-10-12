@@ -126,47 +126,14 @@ fn dir_remove(state: State<AppState>, path: String) -> Result<(), String> {
     substrate_platform::dir::remove(&target).map_err(|e| e.to_string())
 }
 
-/// Where the sources the debugger steps into live outside any project: the
-/// Rust toolchains' `rust-src` (`std`, `alloc`, ...) and cargo's
-/// dependency checkouts. Readable (a stack frame or a step can land there),
-/// never writable — `file_write` keeps to the project roots.
-fn library_source_roots() -> Vec<PathBuf> {
-    let home = std::env::var_os("HOME").map(PathBuf::from);
-    let rustup = std::env::var_os("RUSTUP_HOME")
-        .map(PathBuf::from)
-        .or_else(|| home.as_ref().map(|h| h.join(".rustup")));
-    let cargo = std::env::var_os("CARGO_HOME")
-        .map(PathBuf::from)
-        .or_else(|| home.as_ref().map(|h| h.join(".cargo")));
-    let mut roots = Vec::new();
-    if let Some(rustup) = rustup {
-        roots.push(rustup.join("toolchains"));
-    }
-    if let Some(cargo) = cargo {
-        roots.push(cargo.join("registry").join("src"));
-        roots.push(cargo.join("git").join("checkouts"));
-    }
-    roots
-        .into_iter()
-        .filter_map(|r| r.canonicalize().ok())
-        .collect()
-}
-
-/// A `.rs` file under one of the [`library_source_roots`].
-fn is_library_source(path: &Path) -> bool {
-    path.extension().is_some_and(|e| e == "rs")
-        && path.canonicalize().is_ok_and(|p| {
-            library_source_roots()
-                .iter()
-                .any(|root| p.starts_with(root))
-        })
-}
-
 #[tauri::command]
-fn file_read(state: State<AppState>, path: String) -> Result<String, String> {
+fn file_read(path: String) -> Result<String, String> {
+    // Any file may be *read* — a debugger frame in `std` or a dependency,
+    // a source the user opens from anywhere; `file_write` is what stays
+    // confined to the open project's roots.
     let target = PathBuf::from(&path);
-    if !is_library_source(&target) {
-        validate_within_roots(&state, &target)?;
+    if !target.is_file() {
+        return Err(format!("'{}' is not a file", target.display()));
     }
     substrate_platform::dir::read_file(&target).map_err(|e| e.to_string())
 }
