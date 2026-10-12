@@ -18,6 +18,7 @@ use std::os::unix::net::UnixStream;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
 use std::sync::Mutex;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, Instant};
 
 use nix::unistd::Pid;
@@ -41,10 +42,17 @@ struct DebugBits {
 /// or not it's a debug-mode run. `debug` is only `Some` once a debug-mode
 /// run has actually attached.
 pub struct RunSession {
+    /// Distinguishes this launch from whatever replaces it — a Restart
+    /// starts a new session while the old one's socket reader/exit watcher
+    /// threads are still winding down, and those must only ever tear down
+    /// *their own* session, never the fresh one.
+    id: u64,
     wrapper: Child,
     real_pid: Option<i32>,
     debug: Option<DebugBits>,
 }
+
+static NEXT_SESSION_ID: AtomicU64 = AtomicU64::new(1);
 
 #[derive(Default)]
 pub struct DebugState(pub Mutex<Option<RunSession>>);
@@ -188,11 +196,12 @@ pub fn run_with_mode(app: AppHandle, project_root: String, config_name: String, 
         }
     }
 
-    *app.state::<DebugState>().0.lock().unwrap() = Some(RunSession { wrapper: child, real_pid: None, debug: None });
+    let id = NEXT_SESSION_ID.fetch_add(1, Ordering::Relaxed);
+    *app.state::<DebugState>().0.lock().unwrap() = Some(RunSession { id, wrapper: child, real_pid: None, debug: None });
     let _ = app.emit("game-status", GameStatus { stage: "starting", pid: None, mods: Vec::new() });
 
-    spawn_exit_watcher(app.clone());
-    std::thread::spawn(move || connect_and_watch(app, socket_path, mod_id, debug, native_path));
+    spawn_exit_watcher(app.clone(), id);
+    std::thread::spawn(move || connect_and_watch(app, id, socket_path, mod_id, debug, native_path));
     Ok(())
 }
 
@@ -216,7 +225,7 @@ struct GameStatus {
 /// reach `nativeInit`), reads the `ready` line for the real pid directly —
 /// no `/proc` walking at all — then keeps reading further event lines for
 /// the rest of the session, translating each into a `game-status` event.
-fn connect_and_watch(app: AppHandle, socket_path: PathBuf, mod_id: String, debug: bool, native_path: PathBuf) {
+fn connect_and_watch(app: AppHandle, session_id: u64, socket_path: PathBuf, mod_id: String, debug: bool, native_path: PathBuf) {
     let connect_deadline = Instant::now() + Duration::from_secs(90);
     let stream = loop {
         match UnixStream::connect(&socket_path) {
@@ -266,8 +275,14 @@ fn connect_and_watch(app: AppHandle, socket_path: PathBuf, mod_id: String, debug
         })
         .unwrap_or_default();
 
-    if let Some(session) = app.state::<DebugState>().0.lock().unwrap().as_mut() {
-        session.real_pid = Some(real_pid);
+    {
+        let debug_state = app.state::<DebugState>();
+        let mut guard = debug_state.0.lock().unwrap();
+        match guard.as_mut() {
+            Some(session) if session.id == session_id => session.real_pid = Some(real_pid),
+            // Stopped (or restarted) before the game even reported in.
+            _ => return,
+        }
     }
     *ACTIVE_PID.lock().unwrap() = Some(real_pid);
     let _ = app.emit("game-status", GameStatus { stage: "ready", pid: Some(real_pid), mods });
@@ -300,7 +315,7 @@ fn connect_and_watch(app: AppHandle, socket_path: PathBuf, mod_id: String, debug
         }
     }
     let _ = stream.flush();
-    mark_exited(&app);
+    mark_exited(&app, session_id);
 }
 
 /// Clears whatever's left of the session and reports "the game is gone" —
@@ -308,12 +323,21 @@ fn connect_and_watch(app: AppHandle, socket_path: PathBuf, mod_id: String, debug
 /// by `spawn_exit_watcher`'s `try_wait` polling (the backstop for a run
 /// whose socket never connected in the first place, e.g. an older
 /// `yog-runtime` without control-socket support). Safe to call more than
-/// once — a session that's already gone is simply a no-op.
-fn mark_exited(app: &AppHandle) {
-    *ACTIVE_PID.lock().unwrap() = None;
-    let had_session = state_has_session(app);
-    *app.state::<DebugState>().0.lock().unwrap() = None;
+/// once — a session that's already gone (or already replaced by a newer
+/// one, e.g. after Restart) is simply a no-op.
+fn mark_exited(app: &AppHandle, session_id: u64) {
+    let had_session = {
+        let debug_state = app.state::<DebugState>();
+        let mut guard = debug_state.0.lock().unwrap();
+        if guard.as_ref().is_some_and(|s| s.id == session_id) {
+            *guard = None;
+            true
+        } else {
+            false
+        }
+    };
     if had_session {
+        *ACTIVE_PID.lock().unwrap() = None;
         let _ = app.emit("game-status", GameStatus { stage: "exited", pid: None, mods: Vec::new() });
         let _ = app.emit("debug-stopped", DebugStoppedEvent { reason: "exited".to_string(), stack_trace: Vec::new() });
         // `useModRunTargets`'s `running` flag only ever resets on this
@@ -325,10 +349,6 @@ fn mark_exited(app: &AppHandle) {
     }
 }
 
-fn state_has_session(app: &AppHandle) -> bool {
-    app.state::<DebugState>().0.lock().unwrap().is_some()
-}
-
 /// Backstop for detecting the game exiting when the control socket never
 /// connected at all (so `connect_and_watch`'s own read loop never got a
 /// chance to notice the drop): polls the spawned wrapper process
@@ -336,16 +356,16 @@ fn state_has_session(app: &AppHandle) -> bool {
 /// whether that's the user closing the client themselves, a crash, or
 /// `debug_stop`. Exits its own loop once the session is gone by any means
 /// (this watcher's own detection, or `connect_and_watch`'s).
-fn spawn_exit_watcher(app: AppHandle) {
+fn spawn_exit_watcher(app: AppHandle, session_id: u64) {
     std::thread::spawn(move || loop {
         std::thread::sleep(Duration::from_secs(1));
         let debug_state = app.state::<DebugState>();
         let mut guard = debug_state.0.lock().unwrap();
-        let Some(session) = guard.as_mut() else { return };
+        let Some(session) = guard.as_mut().filter(|s| s.id == session_id) else { return };
         match session.wrapper.try_wait() {
             Ok(Some(_)) => {
                 drop(guard);
-                mark_exited(&app);
+                mark_exited(&app, session_id);
                 return;
             }
             Ok(None) => continue,
