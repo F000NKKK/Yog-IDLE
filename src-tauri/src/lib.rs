@@ -1342,6 +1342,7 @@ pub fn run() {
         symbols::code_search,
         environment::environment_detect,
         environment::environment_settings_set,
+        environment::environment_run_presets,
         environment::environment_install,
         environment::environment_cancel,
         project_properties_read,

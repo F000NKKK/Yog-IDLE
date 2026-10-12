@@ -13,6 +13,7 @@ export const OUTPUT_SOURCES = [
   { id: "game", label: "Game", event: "game-output" },
   { id: "debug", label: "Debug", event: "debug-output" },
   { id: "ide", label: "General", event: "ide-output" },
+  { id: "environment", label: "Environment", event: "environment-output" },
 ] as const;
 
 export type OutputSource = (typeof OUTPUT_SOURCES)[number]["id"];

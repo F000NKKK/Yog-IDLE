@@ -31,6 +31,8 @@ import {
   t,
   useLocale,
   useT,
+  useKeybinding,
+  notify,
   type ToolbarSection,
 } from "substrate-platform-ui";
 import type { PanelDef, SettingsSection } from "substrate-platform-ui";
@@ -64,6 +66,11 @@ import { WorkspaceProvider } from "./WorkspaceContext";
 import { installCloseHandler } from "./windowClose";
 import { reportError } from "./reportError";
 import { requestOpenFile } from "./fileOpenBus";
+import { EnvironmentWindow } from "./environment/EnvironmentWindow";
+import { EnvironmentSettingsPage, EnvironmentSync, environmentSettingsKeywords } from "./environment/EnvironmentSettings";
+import { detectEnvironment, missingRequired } from "./environment/environmentStore";
+import { ProjectPropertiesWindow } from "./projectProperties/ProjectPropertiesWindow";
+import { onOpenProjectProperties, openProjectProperties, type ProjectPropertiesPage } from "./projectProperties/bus";
 import { OUTPUT_SOURCES, OutputSourceSync, setOutputSource, useOutputSource, type OutputSource } from "./outputSource";
 
 import "./App.css";
@@ -127,6 +134,7 @@ const EMPTY_LABELS: Record<OutputSource, string> = {
   game: "Start the game to see its output here.",
   debug: "Debugger messages appear here.",
   ide: "No messages.",
+  environment: "Installs from Tools > Install Components show their output here.",
 };
 
 /** The tool windows, titled in the active locale — rebuilt when it changes. */
@@ -149,11 +157,12 @@ function makeToolWindows() {
   };
 }
 
-function makeSettingsSections(): SettingsSection[] {
+function makeSettingsSections(openInstaller: () => void): SettingsSection[] {
   return [
     { id: "appearance", label: t("Appearance"), content: <AppearanceSettings />, keywords: appearanceSettingsKeywords },
     { id: "editor", label: t("Editor"), content: <EditorSettings />, keywords: editorSettingsKeywords },
     { id: "international", label: t("International Settings"), content: <InternationalSettings />, keywords: internationalSettingsKeywords },
+    { id: "environment", label: t("Environment"), content: <EnvironmentSettingsPage onOpenInstaller={openInstaller} />, keywords: environmentSettingsKeywords },
   ];
 }
 
@@ -333,6 +342,46 @@ function FileMenu({ editor }: { editor: EditorActions }) {
   );
 }
 
+/** Project > Properties (Alt+Enter on the project in Project Explorer) and the manifest itself. */
+function ProjectMenu() {
+  const t = useT();
+  const { project } = useProject();
+  const mod = project?.kind === "yog-mod" ? project : null;
+  return (
+    <MenuBarItem
+      label={t("Project")}
+      items={[
+        {
+          label: mod ? t("{name} Properties...", { name: mod.name }) : t("Properties..."),
+          shortcut: "Alt+Enter",
+          disabled: !mod,
+          onClick: () => openProjectProperties(),
+        },
+        { label: t("Dependencies..."), disabled: !mod, onClick: () => openProjectProperties("dependencies") },
+        { label: t("Run Targets..."), disabled: !mod, onClick: () => openProjectProperties("debug") },
+        {
+          label: t("Edit Project File"),
+          disabled: !mod,
+          separatorBefore: true,
+          onClick: () => mod && requestOpenFile({ path: `${mod.root.replace(/[/\\]+$/, "")}/yog.toml`, name: "yog.toml" }),
+        },
+      ]}
+    />
+  );
+}
+
+/** Tools > Check Environment — re-detects (asking crates.io for newer versions too); all good is just a notification, anything missing opens the installer. */
+async function checkEnvironment(projectRoot: string | null, openInstaller: () => void) {
+  const report = await detectEnvironment(projectRoot, true);
+  if (!report) {
+    openInstaller();
+    return;
+  }
+  const outdated = report.components.filter((c) => c.status === "outdated");
+  if (missingRequired(report).length > 0 || outdated.length > 0) openInstaller();
+  else notify({ level: "info", message: t("Everything Yog needs to build and run mods is installed.") });
+}
+
 /** Debug > Continue/Step/Restart/Stop — the same actions as the Debug panel and the toolbar, enabled under the same conditions. Starting a run stays with the Run toolbar, which owns the target/mode selection. */
 function DebugMenu() {
   const t = useT();
@@ -377,20 +426,30 @@ function HelpMenu() {
 
 interface MenuProps {
   onOpenSettings: () => void;
+  onOpenInstaller: () => void;
   onOpenPublish: () => void;
   editor: EditorActions;
 }
 
-function Menu({ onOpenSettings, onOpenPublish, editor }: MenuProps) {
+function Menu({ onOpenSettings, onOpenInstaller, onOpenPublish, editor }: MenuProps) {
   const t = useT();
+  const { project } = useProject();
   return (
     <MenuBar title="Yog IDLE" windowControls={<WindowControls />}>
       <FileMenu editor={editor} />
       <EditMenu actions={editor} />
       <ViewMenu />
+      <ProjectMenu />
       <BuildMenu onOpenPublish={onOpenPublish} />
       <DebugMenu />
-      <MenuBarItem label={t("Tools")} items={[{ label: t("Options..."), onClick: onOpenSettings }]} />
+      <MenuBarItem
+        label={t("Tools")}
+        items={[
+          { label: t("Check Environment..."), onClick: () => void checkEnvironment(project?.root ?? null, onOpenInstaller) },
+          { label: t("Install Components..."), onClick: onOpenInstaller },
+          { label: t("Options..."), onClick: onOpenSettings, separatorBefore: true },
+        ]}
+      />
       <HelpMenu />
     </MenuBar>
   );
@@ -441,13 +500,13 @@ function runToolbarSections(run: RunActions): ToolbarSection[] {
 }
 
 /** The menu bar, toolbar and editor keybindings — rendered inside the shell, since they act on its active editor tab and tool windows. */
-function ShellChrome({ onOpenSettings, onOpenPublish, run, onRunningChange }: Omit<MenuProps, "editor"> & { run: RunActions; onRunningChange: (running: boolean) => void }) {
+function ShellChrome({ onOpenSettings, onOpenInstaller, onOpenPublish, run, onRunningChange }: Omit<MenuProps, "editor"> & { run: RunActions; onRunningChange: (running: boolean) => void }) {
   const editor = useEditorActions();
   // The toolbar's labels are built by plain functions — re-rendered here when the locale changes.
   useLocale();
   return (
     <>
-      <Menu onOpenSettings={onOpenSettings} onOpenPublish={onOpenPublish} editor={editor} />
+      <Menu onOpenSettings={onOpenSettings} onOpenInstaller={onOpenInstaller} onOpenPublish={onOpenPublish} editor={editor} />
       <Toolbar leading={<RunToolbar onRunningChange={onRunningChange} />} sections={[...editorToolbarSections(editor), ...runToolbarSections(run)]} />
       <EditorKeybindings actions={editor} />
       <SearchHost />
@@ -457,7 +516,7 @@ function ShellChrome({ onOpenSettings, onOpenPublish, run, onRunningChange }: Om
   );
 }
 
-function Shell({ onOpenSettings, onOpenPublish }: { onOpenSettings: () => void; onOpenPublish: () => void }) {
+function Shell({ onOpenSettings, onOpenInstaller, onOpenPublish }: { onOpenSettings: () => void; onOpenInstaller: () => void; onOpenPublish: () => void }) {
   const { panels, closeTab } = useOpenFiles();
   const { debugging, canRestart, restart, restartWorkflow, stop } = useDebugSessionContext();
   const { project } = useProject();
@@ -489,7 +548,7 @@ function Shell({ onOpenSettings, onOpenPublish }: { onOpenSettings: () => void; 
       persistKey="yog-idle"
       extraCenterPanels={panels}
       onCloseDynamicPanel={(id) => void closeTab(id)}
-      menu={<ShellChrome onOpenSettings={onOpenSettings} onOpenPublish={onOpenPublish} run={runActions} onRunningChange={setRunning} />}
+      menu={<ShellChrome onOpenSettings={onOpenSettings} onOpenInstaller={onOpenInstaller} onOpenPublish={onOpenPublish} run={runActions} onRunningChange={setRunning} />}
       statusBar={<StatusBar text={gameStatus.text} busy={gameStatus.busy} detail={gameStatus.lines} />}
     />
   );
@@ -497,11 +556,28 @@ function Shell({ onOpenSettings, onOpenPublish }: { onOpenSettings: () => void; 
 
 function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsSection, setSettingsSection] = useState<string | undefined>(undefined);
   const [publishOpen, setPublishOpen] = useState(false);
+  const [installerOpen, setInstallerOpen] = useState(false);
+  /** The page Project Properties is open on — `null` while closed. */
+  const [propertiesPage, setPropertiesPage] = useState<{ page?: ProjectPropertiesPage; key: number } | null>(null);
   const { project } = useProject();
   const locale = useLocale();
+  const openInstaller = () => setInstallerOpen(true);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const settingsSections = useMemo(makeSettingsSections, [locale]);
+  const settingsSections = useMemo(() => makeSettingsSections(openInstaller), [locale]);
+  const mod = project?.kind === "yog-mod" ? project : null;
+
+  useEffect(() => onOpenProjectProperties((page) => setPropertiesPage((prev) => ({ page, key: (prev?.key ?? 0) + 1 }))), []);
+  // Another project's properties never stay open.
+  useEffect(() => setPropertiesPage(null), [project?.root]);
+
+  // Visual Studio: Alt+Enter on the project in Solution Explorer.
+  useKeybinding("Alt+Enter", () => openProjectProperties(), {
+    id: "project.properties",
+    enabled: !!mod,
+    when: () => !!document.activeElement?.closest(".project-explorer"),
+  });
 
   // Closing the window first asks about unsaved files, then writes the
   // remembered UI state (see `windowClose`).
@@ -510,8 +586,35 @@ function App() {
   return (
     <main className="app-root">
       <OutputSourceSync />
-      <Shell onOpenSettings={() => setSettingsOpen(true)} onOpenPublish={() => setPublishOpen(true)} />
-      {settingsOpen && <SettingsWindow sections={settingsSections} onClose={() => setSettingsOpen(false)} />}
+      <EnvironmentSync onOpenInstaller={openInstaller} />
+      <Shell
+        onOpenSettings={() => {
+          setSettingsSection(undefined);
+          setSettingsOpen(true);
+        }}
+        onOpenInstaller={openInstaller}
+        onOpenPublish={() => setPublishOpen(true)}
+      />
+      {settingsOpen && <SettingsWindow key={settingsSection} sections={settingsSections} initialSectionId={settingsSection} onClose={() => setSettingsOpen(false)} />}
+      {installerOpen && (
+        <EnvironmentWindow
+          onClose={() => setInstallerOpen(false)}
+          onOpenOptions={() => {
+            setSettingsSection("environment");
+            setSettingsOpen(true);
+          }}
+        />
+      )}
+      {propertiesPage && mod && (
+        <ProjectPropertiesWindow
+          key={propertiesPage.key}
+          root={mod.root}
+          name={mod.name}
+          initialPage={propertiesPage.page}
+          onClose={() => setPropertiesPage(null)}
+          onOpenPublish={() => setPublishOpen(true)}
+        />
+      )}
       {publishOpen && project && <PublishWindow projectRoot={project.root} onClose={() => setPublishOpen(false)} />}
     </main>
   );

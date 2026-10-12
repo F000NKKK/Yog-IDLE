@@ -18,6 +18,7 @@ import { openFile } from "../fileOpenBus";
 import { reportError } from "../reportError";
 import { IDE_OUTPUT_EVENT } from "../outputSource";
 import { isWithin, renamedPath, validateEntryName as validateName } from "../paths";
+import { openProjectProperties } from "../projectProperties/bus";
 import { registerExplorerRename, renamePath, selectionPathRemoved, selectMultiple, selectPath } from "../ideSelection";
 
 const dirCommands = {
@@ -157,11 +158,19 @@ function ProjectExplorerTree({ project }: { project: ProjectInfo }) {
         },
       });
     }
+    if (node.id === project.root && project.kind === "yog-mod") {
+      // Visual Studio's project node: Properties last (Alt+Enter).
+      items.push({ label: t("Properties"), separatorBefore: items.length > 0, onSelect: () => openProjectProperties() });
+    }
     return items;
   }
 
   return (
-    <div style={{ height: "100%", overflow: "auto", padding: "var(--sp-space-xs)", boxSizing: "border-box" }} onFocus={handleFocus}>
+    <div
+      className="project-explorer"
+      style={{ height: "100%", overflow: "auto", padding: "var(--sp-space-xs)", boxSizing: "border-box" }}
+      onFocus={handleFocus}
+    >
       <FileTree
         nodes={tree.nodes}
         expandedIds={tree.expandedIds}

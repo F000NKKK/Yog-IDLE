@@ -281,6 +281,8 @@ pub trait Probe {
     fn is_file(&self, path: &Path) -> bool;
     fn is_dir(&self, path: &Path) -> bool;
     fn list_dir(&self, path: &Path) -> Vec<PathBuf>;
+    /// The files (not directories) directly in `path`.
+    fn list_files(&self, path: &Path) -> Vec<PathBuf>;
     fn env(&self, key: &str) -> Option<String>;
 }
 
@@ -335,6 +337,16 @@ impl Probe for SystemProbe {
                 entries
                     .filter_map(|e| e.ok().map(|e| e.path()))
                     .filter(|p| p.is_dir())
+                    .collect()
+            })
+            .unwrap_or_default()
+    }
+    fn list_files(&self, path: &Path) -> Vec<PathBuf> {
+        std::fs::read_dir(path)
+            .map(|entries| {
+                entries
+                    .filter_map(|e| e.ok().map(|e| e.path()))
+                    .filter(|p| p.is_file())
                     .collect()
             })
             .unwrap_or_default()
@@ -1321,6 +1333,102 @@ pub fn execute(steps: &[Step], exec: &Exec, downloads: &Path) -> Result<(), Stri
     Ok(())
 }
 
+// ── Run target presets ──────────────────────────────────────────────────────
+
+/// A `[run.<id>]` for one loader + Minecraft version of the loader checkout
+/// (Project Properties > Debug > "Add Run Target") — the same shape as the
+/// example mods' targets, with `JAVA_HOME` from the Environment options.
+#[derive(Clone, Debug, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct RunPreset {
+    pub id: String,
+    pub name: String,
+    pub export_dir: String,
+    pub command: String,
+    pub args: Vec<String>,
+    pub cwd: String,
+    pub env: Vec<String>,
+    pub java_major: Option<u32>,
+    /// No JDK of `java_major` found — `env` has no `JAVA_HOME` then.
+    pub java_missing: bool,
+}
+
+/// The JDK home for `major`: the one chosen in the options, else the newest detected.
+pub fn java_home_for(settings: &Settings, jdks: &[Jdk], major: u32) -> Option<String> {
+    let configured = settings
+        .jdks
+        .get(&major.to_string())
+        .map(|h| h.trim())
+        .filter(|h| !h.is_empty());
+    match configured {
+        Some(home) => Some(home.to_string()),
+        None => jdks
+            .iter()
+            .find(|j| j.major == major)
+            .map(|j| j.home.clone()),
+    }
+}
+
+/// `dir` as the project's `yog.toml` should spell it: relative when it's a
+/// sibling of the project (portable across machines, like the examples).
+fn manifest_path_of(dir: &Path, project_root: &Path) -> String {
+    if let (Some(base), Some(parent), Some(name)) =
+        (project_root.parent(), dir.parent(), dir.file_name())
+        && base == parent
+    {
+        return format!("../{}", name.to_string_lossy());
+    }
+    dir.to_string_lossy().into_owned()
+}
+
+pub fn run_presets(probe: &dyn Probe, settings: &Settings, project_root: &Path) -> Vec<RunPreset> {
+    let Some(loader) =
+        find_loader_repo(probe, settings, Some(project_root)).filter(|d| is_loader_repo(probe, d))
+    else {
+        return Vec::new();
+    };
+    let jdks = detect_jdks(probe, &tools_dir(settings));
+    let base = manifest_path_of(&loader, project_root);
+    let gradlew = if cfg!(windows) {
+        "gradlew.bat"
+    } else {
+        "./gradlew"
+    };
+    let mut presets = Vec::new();
+    for (platform, label) in [
+        ("fabric", "Fabric"),
+        ("neoforge", "NeoForge"),
+        ("forge", "Forge"),
+    ] {
+        let mut versions: Vec<(String, Option<u32>)> = probe
+            .list_files(&loader.join(platform).join("versions"))
+            .into_iter()
+            .filter(|p| p.extension().is_some_and(|e| e == "properties"))
+            .filter_map(|p| {
+                let mc = p.file_stem()?.to_string_lossy().into_owned();
+                let java = probe.read(&p).and_then(|t| parse_java_version_property(&t));
+                Some((mc, java))
+            })
+            .collect();
+        versions.sort_by(|a, b| compare_versions(&b.0, &a.0));
+        for (mc, java) in versions {
+            let java_home = java.and_then(|major| java_home_for(settings, &jdks, major));
+            presets.push(RunPreset {
+                id: format!("{platform}-{mc}"),
+                name: format!("{label} {mc}"),
+                export_dir: format!("{base}/{platform}/run/yog-mods"),
+                command: gradlew.to_string(),
+                args: vec!["runClient".into(), format!("-Pminecraft_version={mc}")],
+                cwd: format!("{base}/{platform}"),
+                env: java_home.iter().map(|h| format!("JAVA_HOME={h}")).collect(),
+                java_major: java,
+                java_missing: java.is_some() && java_home.is_none(),
+            });
+        }
+    }
+    presets
+}
+
 // ── Commands ────────────────────────────────────────────────────────────────
 
 #[derive(Clone, Serialize)]
@@ -1354,6 +1462,20 @@ pub async fn environment_detect(
             project_root.as_deref().map(Path::new),
             check_latest,
         )
+    })
+    .await
+    .map_err(|e| e.to_string())
+}
+
+/// Run targets the loader checkout offers, for Project Properties > Debug.
+#[tauri::command]
+pub async fn environment_run_presets(
+    state: State<'_, EnvironmentState>,
+    project_root: String,
+) -> Result<Vec<RunPreset>, String> {
+    let settings = state.settings();
+    tauri::async_runtime::spawn_blocking(move || {
+        run_presets(&SystemProbe, &settings, Path::new(&project_root))
     })
     .await
     .map_err(|e| e.to_string())
@@ -1522,6 +1644,13 @@ mod tests {
             self.dirs
                 .iter()
                 .filter(|d| d.parent() == Some(path))
+                .cloned()
+                .collect()
+        }
+        fn list_files(&self, path: &Path) -> Vec<PathBuf> {
+            self.files
+                .keys()
+                .filter(|f| f.parent() == Some(path))
                 .cloned()
                 .collect()
         }
@@ -1803,5 +1932,40 @@ mod tests {
             Settings::default()
         );
         std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn run_presets_follow_the_loader_checkout() {
+        let probe = FakeProbe::default()
+            .file("/p/Yog-Mod-Loader/version.properties", "version=0.30.0\n")
+            .file(
+                "/p/Yog-Mod-Loader/fabric/versions/1.20.1.properties",
+                "java_version=17\n",
+            )
+            .file(
+                "/p/Yog-Mod-Loader/fabric/versions/1.21.1.properties",
+                "java_version=21\n",
+            )
+            .file("/jvm/temurin-21/bin/java", "")
+            .file("/jvm/temurin-21/release", "JAVA_VERSION=\"21.0.4\"\n");
+        let mut settings = Settings {
+            tools_dir: "/tools".into(),
+            ..Settings::default()
+        };
+        settings.jdks.insert("21".into(), "/jvm/temurin-21".into());
+        let presets = run_presets(&probe, &settings, Path::new("/p/MyMod"));
+        assert_eq!(presets.len(), 2);
+        let newest = &presets[0];
+        assert_eq!(newest.id, "fabric-1.21.1");
+        assert_eq!(newest.name, "Fabric 1.21.1");
+        assert_eq!(newest.export_dir, "../Yog-Mod-Loader/fabric/run/yog-mods");
+        assert_eq!(newest.cwd, "../Yog-Mod-Loader/fabric");
+        assert_eq!(newest.args, ["runClient", "-Pminecraft_version=1.21.1"]);
+        assert_eq!(newest.env, ["JAVA_HOME=/jvm/temurin-21"]);
+        assert!(!newest.java_missing);
+        let older = &presets[1];
+        assert_eq!(older.java_major, Some(17));
+        assert!(older.java_missing && older.env.is_empty());
+        assert!(run_presets(&FakeProbe::default(), &settings, Path::new("/p/MyMod")).is_empty());
     }
 }
