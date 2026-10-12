@@ -298,7 +298,7 @@ const PROBE_TIMEOUT: Duration = Duration::from_secs(20);
 
 impl Probe for SystemProbe {
     fn canonical(&self, path: &Path) -> PathBuf {
-        // `dunce` would strip Windows' `\\?\` prefix; plain paths there are rarely links anyway.
+        // Windows' canonical form is a `\\?\` path many tools reject, and JDKs there are rarely linked.
         if cfg!(windows) {
             return path.to_path_buf();
         }

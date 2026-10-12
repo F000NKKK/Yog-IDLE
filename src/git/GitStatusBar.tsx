@@ -26,7 +26,7 @@ export function GitStatusBar() {
         />
       )}
       <StatusBarButton
-        icon="edit"
+        icon="file"
         label={String(pending)}
         title={t("{count} pending changes", { count: pending })}
         onClick={() => shell.showToolWindow(GIT_CHANGES_PANEL)}
