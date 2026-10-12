@@ -1,0 +1,163 @@
+/* -- Find and Replace window ---------------------------------------------- */
+
+.idle-fif-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: var(--sp-space-sm) var(--sp-space-md) var(--sp-space-md);
+}
+
+.idle-fif-tabs {
+  display: flex;
+  gap: 2px;
+  margin-bottom: var(--sp-space-xs);
+  padding: 2px;
+  align-self: flex-start;
+  background: var(--sp-surface-0);
+  border: 1px solid var(--sp-border);
+  border-radius: var(--sp-radius-sm);
+}
+
+.idle-fif-tab {
+  height: 24px;
+  padding: 0 var(--sp-space-md);
+  border: none;
+  border-radius: var(--sp-radius-xs);
+  background: transparent;
+  color: var(--sp-text-muted);
+  font: inherit;
+  cursor: pointer;
+}
+
+.idle-fif-tab:hover {
+  color: var(--sp-text);
+}
+
+.idle-fif-tab[data-active] {
+  background: var(--sp-surface-3);
+  color: var(--sp-text);
+  box-shadow: inset 0 -2px 0 var(--sp-accent);
+}
+
+.idle-fif-label {
+  margin-top: 2px;
+  color: var(--sp-text-muted);
+  font-size: 12px;
+}
+
+/* The plain fields read as the same sunken boxes as the search field. */
+.idle-fif-input.sp-textfield,
+.idle-fif-select {
+  height: 26px;
+  box-sizing: border-box;
+  background: var(--sp-surface-0);
+  border: 1px solid var(--sp-border);
+  border-radius: var(--sp-radius-sm);
+  color: var(--sp-text);
+  font-family: var(--sp-font-ui);
+  font-size: var(--sp-font-size);
+}
+
+.idle-fif-input.sp-textfield:focus,
+.idle-fif-select:focus {
+  outline: none;
+  border-color: var(--sp-accent);
+  box-shadow: 0 0 0 1px var(--sp-accent-soft);
+}
+
+.idle-fif-select {
+  width: 100%;
+  padding: 0 var(--sp-space-xs);
+  cursor: pointer;
+}
+
+.idle-fif-row {
+  display: flex;
+  gap: var(--sp-space-md);
+}
+
+.idle-fif-col {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.idle-fif-hint {
+  color: var(--sp-text-faint);
+  font-size: 11.5px;
+}
+
+.idle-fif-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--sp-space-sm);
+  margin-top: var(--sp-space-sm);
+}
+
+/* -- Find Results tool window -------------------------------------------- */
+
+.idle-find-results {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.idle-find-results-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex: 0 0 auto;
+  height: 28px;
+  padding: 0 var(--sp-space-xs) 0 var(--sp-space-sm);
+  border-bottom: 1px solid var(--sp-border);
+}
+
+.idle-find-results-caption {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--sp-text-muted);
+}
+
+.idle-find-results-progress {
+  position: relative;
+  flex: 0 0 auto;
+  height: 2px;
+  overflow: hidden;
+}
+
+.idle-find-results-progress::after {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 25%;
+  background: var(--sp-accent);
+  animation: idle-find-results-progress 1s linear infinite;
+}
+
+@keyframes idle-find-results-progress {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(400%);
+  }
+}
+
+.idle-find-results-error {
+  padding: var(--sp-space-xs) var(--sp-space-sm);
+  color: var(--sp-danger);
+  white-space: pre-wrap;
+}
+
+/* -- Code Search ----------------------------------------------------------- */
+
+.idle-code-search-footer-key {
+  font-family: var(--sp-font-mono);
+  color: var(--sp-text-muted);
+}

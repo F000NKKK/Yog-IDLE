@@ -50,6 +50,7 @@ import { useGameStatus, type GameStage, type WorkflowExitEvent } from "./useGame
 import { useHotReload } from "./useHotReload";
 import { EditMenu, EditorKeybindings, editorToolbarSections, useEditorActions, type EditorActions } from "./EditorActions";
 import { OpenFilesPersistence } from "./OpenFilesPersistence";
+import { FIND_RESULTS_PANEL, FindResultsPanel, SearchHost } from "./search/SearchHost";
 import { ViewMenu } from "./ViewMenu";
 import { WorkspaceProvider } from "./WorkspaceContext";
 import { installCloseHandler } from "./windowClose";
@@ -132,6 +133,7 @@ function makeToolWindows() {
       { id: "output", title: t("Output"), component: OutputToolWindow } satisfies PanelDef,
       { id: "terminal", title: t("Terminal"), component: TerminalPanel } satisfies PanelDef,
       { id: "debug", title: t("Debug"), component: DebugPanel } satisfies PanelDef,
+      { id: FIND_RESULTS_PANEL, title: t("Find Results"), component: FindResultsPanel } satisfies PanelDef,
     ],
   };
 }
@@ -437,6 +439,7 @@ function ShellChrome({ onOpenSettings, onOpenPublish, run, onRunningChange }: Om
       <Menu onOpenSettings={onOpenSettings} onOpenPublish={onOpenPublish} editor={editor} />
       <Toolbar leading={<RunToolbar onRunningChange={onRunningChange} />} sections={[...editorToolbarSections(editor), ...runToolbarSections(run)]} />
       <EditorKeybindings actions={editor} />
+      <SearchHost />
       <OpenFilesPersistence />
       <ActiveDocumentSelection />
     </>

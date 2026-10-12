@@ -31,6 +31,7 @@ import {
 import { useActiveFileTab, useOpenFiles } from "./OpenFilesContext";
 import { extensionOf } from "./paths";
 import { reportError } from "./reportError";
+import { openCodeSearch, openFindInFiles } from "./search/searchUi";
 
 // Whether Format Document works for a file kind (a formatter exists for it
 // and is installed — `format_supported` on the Rust side), asked once per
@@ -138,9 +139,23 @@ export function EditMenu({ actions: a }: { actions: EditorActions }) {
     { label: t("Copy"), shortcut: "Ctrl+C", disabled: !a.hasSelection, onClick: a.copy },
     { label: t("Paste"), shortcut: "Ctrl+V", disabled: !a.canPaste, onClick: a.paste },
     { label: t("Select All"), shortcut: "Ctrl+A", disabled: !a.canFind, onClick: a.selectAll },
-    { label: t("Find"), shortcut: "Ctrl+F", disabled: !a.canFind, onClick: a.find, separatorBefore: true },
-    { label: t("Replace"), shortcut: "Ctrl+H", disabled: !a.canPaste, onClick: a.replace },
-    { label: t("Go To Line…"), shortcut: "Ctrl+G", disabled: !a.canFind, onClick: a.goToLine },
+    {
+      label: t("Find and Replace"),
+      separatorBefore: true,
+      items: [
+        { label: t("Quick Find"), shortcut: "Ctrl+F", disabled: !a.canFind, onClick: a.find },
+        { label: t("Quick Replace"), shortcut: "Ctrl+H", disabled: !a.canPaste, onClick: a.replace },
+        { label: t("Find in Files"), shortcut: "Ctrl+Shift+F", onClick: () => openFindInFiles("find"), separatorBefore: true },
+        { label: t("Replace in Files"), shortcut: "Ctrl+Shift+H", onClick: () => openFindInFiles("replace") },
+      ],
+    },
+    {
+      label: t("Go To"),
+      items: [
+        { label: t("Code Search…"), shortcut: "Ctrl+T", onClick: openCodeSearch },
+        { label: t("Go To Line…"), shortcut: "Ctrl+G", disabled: !a.canFind, onClick: a.goToLine },
+      ],
+    },
     { label: t("Toggle Comment"), shortcut: "Ctrl+/", disabled: !a.canToggleComment, onClick: a.toggleComment, separatorBefore: true },
     { label: t("Comment Selection"), shortcut: "Ctrl+K Ctrl+C", disabled: !a.canToggleComment || !a.canEdit, onClick: a.commentSelection },
     { label: t("Uncomment Selection"), shortcut: "Ctrl+K Ctrl+U", disabled: !a.canToggleComment || !a.canEdit, onClick: a.uncommentSelection },
