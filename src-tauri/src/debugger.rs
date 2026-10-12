@@ -12,6 +12,9 @@
 //! opaque to `RunBar`): a debug-mode run additionally builds with debug
 //! symbols and attaches `yog-debugger` the moment the socket's `ready`
 //! message gives us a trustworthy pid.
+//!
+//! The same socket carries hot reload the other way: `hot_reload` rebuilds
+//! the project and asks the runtime to swap in the new `.yog` in place.
 
 use std::io::{BufRead, BufReader, Write};
 use std::os::unix::net::UnixStream;
@@ -35,9 +38,14 @@ use yog_symbols::SymbolTable;
 /// `tracer_main`. Never leaves that thread.
 struct Tracer {
     debugger: Debugger,
+    native_path: PathBuf,
     symbols: SymbolTable,
     module_base: u64,
     mod_id: String,
+    /// One per load of the mod's native seen by this session — the initial
+    /// attach, then each successful hot reload — so `SourceBreakpoints` can
+    /// tell which load every breakpoint was last resolved against.
+    generations: GenerationAllocator,
     generation: ModuleGeneration,
     breakpoints: SourceBreakpoints,
 }
@@ -47,10 +55,19 @@ struct Tracer {
 /// see `TracerHandle::send`); `Continue`/`Step` only mean anything while
 /// it's paused.
 enum TracerCmd {
-    SetBreakpoint { file: String, line: u32 },
-    ClearBreakpoint { file: String, line: u32 },
+    SetBreakpoint {
+        file: String,
+        line: u32,
+    },
+    ClearBreakpoint {
+        file: String,
+        line: u32,
+    },
     Continue,
     Step,
+    /// The runtime just hot-reloaded the mod: reload symbols from the
+    /// freshly built native and re-resolve every breakpoint against them.
+    Rebind,
 }
 
 #[derive(Clone, Copy)]
@@ -79,7 +96,7 @@ impl TracerHandle {
     fn send(&self, cmd: TracerCmd) -> bool {
         let urgent = matches!(
             cmd,
-            TracerCmd::SetBreakpoint { .. } | TracerCmd::ClearBreakpoint { .. }
+            TracerCmd::SetBreakpoint { .. } | TracerCmd::ClearBreakpoint { .. } | TracerCmd::Rebind
         );
         if self.tx.send(cmd).is_err() {
             return false;
@@ -114,6 +131,14 @@ pub struct RunSession {
     id: u64,
     wrapper: Child,
     real_pid: Option<i32>,
+    /// A debug-mode run — a hot reload then rebuilds with debug info kept
+    /// too, so the debugger still has symbols for the reloaded native.
+    debug_mode: bool,
+    /// Write half of the control socket, once it's connected (the read
+    /// half lives on `connect_and_watch`'s thread).
+    control: Option<UnixStream>,
+    /// Set while `hot_reload` waits for the runtime's `hot-reload-done`.
+    hot_reload_waiter: Option<Sender<bool>>,
     tracer: Option<TracerHandle>,
 }
 
@@ -289,6 +314,9 @@ pub fn run_with_mode(
         id,
         wrapper: child,
         real_pid: None,
+        debug_mode: debug,
+        control: None,
+        hot_reload_waiter: None,
         tracer: None,
     });
     let _ = app.emit(
@@ -344,7 +372,7 @@ fn connect_and_watch(
         }
     };
 
-    let Some(mut stream) = stream else {
+    let Some(stream) = stream else {
         // Not fatal for a plain run — an older yog-runtime without socket
         // support, or a mod that never got as far as `nativeInit`, just
         // means no live status/attach for this session, not that the game
@@ -377,37 +405,16 @@ fn connect_and_watch(
     let Some(real_pid) = ready.get("pid").and_then(|v| v.as_i64()).map(|v| v as i32) else {
         return;
     };
-    let mods: Vec<ModInfoOut> = ready
-        .get("mods")
-        .and_then(|v| v.as_array())
-        .map(|arr| {
-            arr.iter()
-                .map(|m| ModInfoOut {
-                    id: m
-                        .get("id")
-                        .and_then(|v| v.as_str())
-                        .unwrap_or_default()
-                        .to_string(),
-                    name: m
-                        .get("name")
-                        .and_then(|v| v.as_str())
-                        .unwrap_or_default()
-                        .to_string(),
-                    version: m
-                        .get("version")
-                        .and_then(|v| v.as_str())
-                        .unwrap_or_default()
-                        .to_string(),
-                })
-                .collect()
-        })
-        .unwrap_or_default();
+    let mods = parse_mods(&ready);
 
     {
         let debug_state = app.state::<DebugState>();
         let mut guard = debug_state.0.lock().unwrap();
         match guard.as_mut() {
-            Some(session) if session.id == session_id => session.real_pid = Some(real_pid),
+            Some(session) if session.id == session_id => {
+                session.real_pid = Some(real_pid);
+                session.control = stream.try_clone().ok();
+            }
             // Stopped (or restarted) before the game even reported in.
             _ => return,
         }
@@ -425,9 +432,11 @@ fn connect_and_watch(
         start_tracer(&app, session_id, real_pid, mod_id, native_path);
     }
 
-    // Keep reading further event lines (hot-reload-done, ...) for the rest
-    // of the session — a plain forward into `game-status`, same shape as
-    // the `ready` handling above. When the game process exits (however it
+    // Keep reading further event lines for the rest of the session: a
+    // refreshed mod list (`mods`) becomes another `game-status` "ready",
+    // same shape as the `ready` handling above; `hot-reload-done` answers
+    // whichever `hot_reload` call is waiting on it; anything else is just
+    // echoed to Output. When the game process exits (however it
     // exits — the user closing the client themselves, a crash, Stop) the
     // OS closes its end of the socket, so this read loop ending is exactly
     // the "the game is gone" signal: emit it and clean up the session
@@ -440,20 +449,280 @@ fn connect_and_watch(
             Ok(0) | Err(_) => break,
             Ok(_) => {
                 if let Ok(event) = serde_json::from_str::<serde_json::Value>(line.trim()) {
-                    let stage = event
-                        .get("event")
-                        .and_then(|v| v.as_str())
-                        .unwrap_or("unknown");
-                    let _ = app.emit(
-                        "workflow-output",
-                        format!("[control] {stage}: {line}", line = line.trim()),
-                    );
+                    handle_control_event(&app, session_id, real_pid, &event, line.trim());
                 }
             }
         }
     }
-    let _ = stream.flush();
     mark_exited(&app, session_id);
+}
+
+fn parse_mods(message: &serde_json::Value) -> Vec<ModInfoOut> {
+    let field = |m: &serde_json::Value, key: &str| {
+        m.get(key)
+            .and_then(|v| v.as_str())
+            .unwrap_or_default()
+            .to_string()
+    };
+    message
+        .get("mods")
+        .and_then(|v| v.as_array())
+        .map(|arr| {
+            arr.iter()
+                .map(|m| ModInfoOut {
+                    id: field(m, "id"),
+                    name: field(m, "name"),
+                    version: field(m, "version"),
+                })
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+fn handle_control_event(
+    app: &AppHandle,
+    session_id: u64,
+    real_pid: i32,
+    event: &serde_json::Value,
+    raw: &str,
+) {
+    match event.get("event").and_then(|v| v.as_str()) {
+        Some("mods") => {
+            let _ = app.emit(
+                "game-status",
+                GameStatus {
+                    stage: "ready",
+                    pid: Some(real_pid),
+                    mods: parse_mods(event),
+                },
+            );
+        }
+        Some("hot-reload-done") => {
+            let ok = event.get("ok").and_then(|v| v.as_bool()).unwrap_or(false);
+            let debug_state = app.state::<DebugState>();
+            let mut guard = debug_state.0.lock().unwrap();
+            let waiter = guard
+                .as_mut()
+                .filter(|s| s.id == session_id)
+                .and_then(|s| s.hot_reload_waiter.take());
+            match waiter {
+                Some(waiter) => {
+                    let _ = waiter.send(ok);
+                }
+                // Nobody asked (or it already timed out) — still worth showing.
+                None => {
+                    let _ = app.emit("workflow-output", format!("[control] {raw}"));
+                }
+            }
+        }
+        other => {
+            let _ = app.emit(
+                "workflow-output",
+                format!("[control] {}: {raw}", other.unwrap_or("unknown")),
+            );
+        }
+    }
+}
+
+/// Only one hot reload at a time — a second click while the first is still
+/// building would otherwise race it for `artifacts/<id>.yog`.
+static HOT_RELOAD_BUSY: AtomicBool = AtomicBool::new(false);
+
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct HotReloadEvent {
+    /// `"building"` | `"reloading"` | `"done"`.
+    stage: &'static str,
+    mod_id: String,
+    /// Only set once `stage == "done"`.
+    ok: Option<bool>,
+    message: String,
+}
+
+fn emit_hot_reload(
+    app: &AppHandle,
+    stage: &'static str,
+    mod_id: &str,
+    ok: Option<bool>,
+    message: String,
+) {
+    let prefix = match ok {
+        Some(false) => "[error] ",
+        _ => "",
+    };
+    let _ = app.emit("workflow-output", format!("{prefix}hot reload: {message}"));
+    let _ = app.emit(
+        "hot-reload",
+        HotReloadEvent {
+            stage,
+            mod_id: mod_id.to_string(),
+            ok,
+            message,
+        },
+    );
+}
+
+/// Rebuilds the open project (`yog build`, or `yog build debug` for a
+/// debug-mode run) and asks the running game to hot-reload it over the
+/// control socket: `{"cmd":"hot_reload","mod_id",..,"yog_path":..}`,
+/// answered by `{"event":"hot-reload-done","ok":..}`. The runtime only
+/// accepts a `.yog` built against the exact same ABI version it's running.
+///
+/// Returns once the work is started — progress and the outcome arrive as
+/// `hot-reload` events (plus Output lines), same reasoning as
+/// `run_with_mode`'s about not blocking an invoke on a long-running wait.
+pub fn hot_reload(app: AppHandle, project_root: String) -> Result<(), String> {
+    let root = PathBuf::from(&project_root);
+    let yog_toml = std::fs::read_to_string(root.join("yog.toml")).map_err(|e| e.to_string())?;
+    let mod_id = read_mod_id(&yog_toml).ok_or("yog.toml has no [mod]/[package] id")?;
+
+    let (session_id, debug_mode) = {
+        let debug_state = app.state::<DebugState>();
+        let guard = debug_state.0.lock().unwrap();
+        let session = guard.as_ref().ok_or("the game isn't running")?;
+        if session.control.is_none() {
+            return Err(
+                "the game hasn't connected its control socket (yet) — hot reload needs it"
+                    .to_string(),
+            );
+        }
+        (session.id, session.debug_mode)
+    };
+    if HOT_RELOAD_BUSY.swap(true, Ordering::SeqCst) {
+        return Err("a hot reload is already in progress".to_string());
+    }
+
+    std::thread::spawn(move || {
+        let (ok, message) = match run_hot_reload(&app, &root, &mod_id, session_id, debug_mode) {
+            Ok(()) => (true, format!("{mod_id} reloaded")),
+            Err(e) => (false, e),
+        };
+        HOT_RELOAD_BUSY.store(false, Ordering::SeqCst);
+        emit_hot_reload(&app, "done", &mod_id, Some(ok), message);
+    });
+    Ok(())
+}
+
+fn run_hot_reload(
+    app: &AppHandle,
+    root: &Path,
+    mod_id: &str,
+    session_id: u64,
+    debug_mode: bool,
+) -> Result<(), String> {
+    let mut args = vec!["build"];
+    if debug_mode {
+        args.push("debug");
+    }
+    emit_hot_reload(
+        app,
+        "building",
+        mod_id,
+        None,
+        format!("running `yog {}`", args.join(" ")),
+    );
+    let mut child = Command::new("yog")
+        .args(&args)
+        .current_dir(root)
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .map_err(|e| format!("failed to launch `yog build`: {e}"))?;
+    // `yog build` reports progress on stderr — not a warning in itself.
+    let pipes: Vec<Box<dyn std::io::Read + Send>> = [
+        child
+            .stdout
+            .take()
+            .map(|p| Box::new(p) as Box<dyn std::io::Read + Send>),
+        child
+            .stderr
+            .take()
+            .map(|p| Box::new(p) as Box<dyn std::io::Read + Send>),
+    ]
+    .into_iter()
+    .flatten()
+    .collect();
+    let readers: Vec<_> = pipes
+        .into_iter()
+        .map(|pipe| {
+            let out_app = app.clone();
+            std::thread::spawn(move || {
+                for line in BufReader::new(pipe).lines().map_while(Result::ok) {
+                    let _ = out_app.emit("workflow-output", line);
+                }
+            })
+        })
+        .collect();
+    let status = child.wait().map_err(|e| e.to_string())?;
+    for reader in readers {
+        let _ = reader.join();
+    }
+    if !status.success() {
+        return Err(format!(
+            "`yog build` failed ({status}) — the game keeps running the previous build"
+        ));
+    }
+
+    let yog_path = root.join("artifacts").join(format!("{mod_id}.yog"));
+    let yog_path = yog_path
+        .canonicalize()
+        .map_err(|e| format!("{}: {e}", yog_path.display()))?;
+
+    let (tx, rx) = mpsc::channel();
+    {
+        let debug_state = app.state::<DebugState>();
+        let mut guard = debug_state.0.lock().unwrap();
+        let session = guard
+            .as_mut()
+            .filter(|s| s.id == session_id)
+            .ok_or("the game exited during the build")?;
+        let control = session.control.as_mut().ok_or("control socket is gone")?;
+        let request = serde_json::json!({
+            "cmd": "hot_reload",
+            "mod_id": mod_id,
+            "yog_path": yog_path.to_string_lossy(),
+        });
+        writeln!(control, "{request}")
+            .map_err(|e| format!("writing to the control socket: {e}"))?;
+        session.hot_reload_waiter = Some(tx);
+    }
+    emit_hot_reload(
+        app,
+        "reloading",
+        mod_id,
+        None,
+        format!("sent {} to the game", yog_path.display()),
+    );
+
+    let ok = match rx.recv_timeout(Duration::from_secs(60)) {
+        Ok(ok) => ok,
+        Err(mpsc::RecvTimeoutError::Timeout) => {
+            return Err("the game didn't answer within 60s".to_string());
+        }
+        Err(mpsc::RecvTimeoutError::Disconnected) => {
+            return Err("the game exited before answering".to_string());
+        }
+    };
+    if !ok {
+        return Err(format!(
+            "the game rejected the new build of {mod_id} (see the game log — most often an ABI version mismatch, \
+             which needs a full restart)"
+        ));
+    }
+
+    let debug_state = app.state::<DebugState>();
+    let mut guard = debug_state.0.lock().unwrap();
+    if let Some(session) = guard.as_mut().filter(|s| s.id == session_id) {
+        if let Some(tracer) = &session.tracer {
+            tracer.send(TracerCmd::Rebind);
+        }
+        // A reload can change the mod's reported version — refresh the list
+        // (the answer arrives as a `mods` event, see `handle_control_event`).
+        if let Some(control) = session.control.as_mut() {
+            let _ = writeln!(control, "{}", serde_json::json!({ "cmd": "list_mods" }));
+        }
+    }
+    Ok(())
 }
 
 /// Clears whatever's left of the session and reports "the game is gone" —
@@ -680,12 +949,15 @@ impl Tracer {
             ));
         };
 
+        let generations = GenerationAllocator::new();
         let mut tracer = Tracer {
             debugger,
+            native_path: native_path.to_path_buf(),
             symbols,
             module_base,
             mod_id: mod_id.to_string(),
-            generation: GenerationAllocator::new().next(),
+            generation: generations.next(),
+            generations,
             breakpoints: SourceBreakpoints::new(),
         };
         for (file, line) in BREAKPOINTS.lock().unwrap().clone() {
@@ -705,10 +977,37 @@ impl Tracer {
                     warn(app, format!("clearing breakpoint {file}:{line}: {e}"));
                 }
             }
+            TracerCmd::Rebind => {
+                if let Err(e) = self.rebind() {
+                    warn(app, format!("re-binding breakpoints after hot reload: {e}"));
+                }
+            }
             // Only meaningful while paused, where `tracer_main` handles
             // them itself — one arriving mid-run is a stale double-click.
             TracerCmd::Continue | TracerCmd::Step => {}
         }
+    }
+
+    fn rebind(&mut self) -> Result<(), String> {
+        let symbols = SymbolTable::load(&self.native_path)
+            .map_err(|e| format!("loading symbols from {}: {e}", self.native_path.display()))?;
+        let prefix = format!("yog-{}-", self.mod_id);
+        let module_base = find_module_base_by_prefix(self.debugger.pid(), &prefix)
+            .ok_or_else(|| format!("couldn't locate {}'s reloaded native", self.mod_id))?;
+        let generation = self.generations.next();
+        self.breakpoints
+            .rebind_after_reload(
+                &mut self.debugger,
+                &self.mod_id,
+                generation,
+                module_base,
+                &symbols,
+            )
+            .map_err(|e| e.to_string())?;
+        self.symbols = symbols;
+        self.module_base = module_base;
+        self.generation = generation;
+        Ok(())
     }
 
     /// Arms `file:line` unless it's already tracked (`SourceBreakpoints`

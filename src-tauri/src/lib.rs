@@ -451,6 +451,27 @@ fn mod_run(
     }
 }
 
+/// The toolbar's Hot Reload: rebuilds the project and swaps the new build
+/// into the running game over `yog-runtime`'s control socket — see
+/// `debugger::hot_reload`. That socket is only wired up on Linux so far.
+#[tauri::command]
+fn mod_hot_reload(
+    app: AppHandle,
+    state: State<AppState>,
+    project_root: String,
+) -> Result<(), String> {
+    validate_within_roots(&state, Path::new(&project_root))?;
+    #[cfg(target_os = "linux")]
+    {
+        debugger::hot_reload(app, project_root)
+    }
+    #[cfg(not(target_os = "linux"))]
+    {
+        let _ = (app, project_root);
+        Err("hot reload is only supported on Linux for now".to_string())
+    }
+}
+
 /// The Build menu's plain "Build" action for a `yog-mod` project — `yog build`.
 #[tauri::command]
 fn mod_build(app: AppHandle, state: State<AppState>, project_root: String) -> Result<(), String> {
@@ -718,6 +739,7 @@ pub fn run() {
         mod_run_targets,
         mod_run,
         mod_build,
+        mod_hot_reload,
         publish_profiles_list,
         publish_profile_save,
         publish_profile_delete,
