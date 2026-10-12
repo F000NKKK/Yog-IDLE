@@ -83,6 +83,17 @@ interface OpenFilesContextValue {
 
 const OpenFilesContext = createContext<OpenFilesContextValue | null>(null);
 
+/** Global state key: the view last chosen for each file extension — the next file of that kind opens in it. */
+const VIEWS_KEY = "editor.views";
+
+function isViewMap(value: unknown): boolean {
+  return !!value && typeof value === "object" && Object.values(value).every((v) => typeof v === "string");
+}
+
+function extensionOf(name: string): string {
+  return name.includes(".") ? (name.split(".").pop()?.toLowerCase() ?? "") : "";
+}
+
 let nextTabId = 0;
 let nextRevealSeq = 0;
 
@@ -336,66 +347,131 @@ export function OpenFilesProvider({ children }: { children: ReactNode }) {
     let component = componentCache.current.get(tabId);
     if (!component) {
       component = function FileEditorPanel() {
-        const { tabs, updateContent } = useOpenFiles();
+        const { tabs, updateContent, setView } = useOpenFiles();
         const { forFile, toggle } = useBreakpoints();
         const { executionLocation } = useDebugSessionContext();
         const { activateCenterPanel } = useShell();
+        const [rememberedViews, setRememberedViews] = useGlobalState<Record<string, string>>(VIEWS_KEY, {}, isViewMap);
         const tab = tabs.find((t) => t.id === tabId);
+        const providers = useEditorProviders(tab?.path ?? "");
         const reveal = tab?.reveal;
+        const ext = tab ? extensionOf(tab.name) : "";
+        const view = tab?.view ?? rememberedViews[ext];
+        const active = providers.find((p) => p.id === view) ?? providers[0];
+        const textView = providers.find((p) => p.kind === "text");
+        // A line to go to, waiting for a text view to be mounted — a reveal
+        // into a tab showing a designer switches it to its text view first.
+        const pendingLine = useRef<{ line: number; column?: number } | null>(null);
 
-        // A reveal request: bring this tab to the front, then (once the
-        // editor is laid out) move the cursor to the requested location.
         useEffect(() => {
           if (!reveal || !tab) return;
           if (reveal.activate) activateCenterPanel(tab.id);
           if (reveal.line === undefined) return;
-          const line = reveal.line;
-          const frame = requestAnimationFrame(() => {
-            const view = getEditorView(tab.path);
-            if (view) revealLine(view, line, reveal.column);
-          });
-          return () => cancelAnimationFrame(frame);
+          pendingLine.current = { line: reveal.line, column: reveal.column };
+          if (active.kind !== "text" && textView) setView(tab.id, textView.id);
           // eslint-disable-next-line react-hooks/exhaustive-deps
         }, [reveal?.seq]);
 
+        // Once the editor is laid out, move the cursor to the requested location.
+        useEffect(() => {
+          const target = pendingLine.current;
+          if (!target || !tab || active.kind !== "text") return;
+          const frame = requestAnimationFrame(() => {
+            const editor = getEditorView(tab.path);
+            if (!editor) return;
+            pendingLine.current = null;
+            revealLine(editor, target.line, target.column);
+          });
+          return () => cancelAnimationFrame(frame);
+          // eslint-disable-next-line react-hooks/exhaustive-deps
+        }, [reveal?.seq, active.id]);
+
         if (!tab) return null;
-        const EditorComponent = resolveEditor(tab.name);
         const onChange = (next: string) => updateContent(tab.id, next);
+        const chooseView = (id: string) => {
+          setView(tab.id, id);
+          setRememberedViews((prev) => ({ ...prev, [ext]: id }));
+        };
         // Only Rust source is actually debuggable (see the debugger backend —
         // it resolves breakpoints against a mod's own compiled native), so
-        // only `.rs` files get wired to `CodeEditorProps`'s breakpoint gutter
-        // — every other file kind's own props simply have no such field.
-        if (tab.name.toLowerCase().endsWith(".rs")) {
-          const CodeComponent = EditorComponent as ComponentType<CodeEditorProps>;
-          return (
-            <CodeComponent
-              path={tab.path}
-              content={tab.content}
-              contentVersion={tab.contentVersion}
-              onChange={onChange}
-              breakpoints={forFile(tab.path)}
-              onToggleBreakpoint={(line) => toggle(tab.path, line)}
-              executionLine={executionLocation && samePath(executionLocation.file, tab.path) ? executionLocation.line : null}
-            />
-          );
-        }
-        return <EditorComponent path={tab.path} content={tab.content} contentVersion={tab.contentVersion} onChange={onChange} />;
+        // only a `.rs` file's text view gets wired to `CodeEditorProps`'s
+        // breakpoint gutter — every other editor's own props simply have no
+        // such field.
+        const renderView = (provider: EditorProvider, props: EditorProps) => {
+          if (provider.kind === "text" && ext === "rs") {
+            const CodeComponent = provider.component as ComponentType<CodeEditorProps>;
+            return (
+              <CodeComponent
+                {...props}
+                breakpoints={forFile(tab.path)}
+                onToggleBreakpoint={(line) => toggle(tab.path, line)}
+                executionLine={executionLocation && samePath(executionLocation.file, tab.path) ? executionLocation.line : null}
+              />
+            );
+          }
+          return <provider.component {...props} />;
+        };
+        return (
+          <MultiViewEditor
+            providers={providers}
+            view={active.id}
+            onViewChange={chooseView}
+            renderView={renderView}
+            path={tab.path}
+            content={tab.content}
+            contentVersion={tab.contentVersion}
+            onChange={onChange}
+          />
+        );
       };
       componentCache.current.set(tabId, component);
     }
     return component;
   }
 
+  function tabMenu(tab: FileTab, { centerIds }: TabMenuContext): ContextMenuItem[] {
+    const fileIds = new Set(tabsRef.current.map((t) => t.id));
+    const unpinned = (ids: string[]) => ids.filter((id) => fileIds.has(id) && !tabsRef.current.find((t) => t.id === id)?.pinned);
+    const toTheRight = unpinned(centerIds.slice(centerIds.indexOf(tab.id) + 1));
+    const providers = editorProvidersFor(tab.path);
+    const current = providers.find((p) => p.id === tab.view)?.id;
+    const copy = (text: string) => navigator.clipboard.writeText(text).catch((err) => reportError(`Couldn't copy to the clipboard: ${err}`));
+    return [
+      { label: "Close", shortcut: "Ctrl+F4", onSelect: () => void closeTab(tab.id) },
+      { label: "Close All But This", onSelect: () => void closeTabs(unpinned(centerIds).filter((id) => id !== tab.id)) },
+      { label: "Close All But Pinned", onSelect: () => void closeTabs(unpinned(centerIds)) },
+      { label: "Close Tabs to the Right", disabled: toTheRight.length === 0, onSelect: () => void closeTabs(toTheRight) },
+      { label: "Close All Tabs", onSelect: () => void closeAll() },
+      { label: tab.pinned ? "Unpin Tab" : "Pin Tab", separatorBefore: true, onSelect: () => setPinned(tab.id, !tab.pinned) },
+      { label: "Copy Full Path", separatorBefore: true, onSelect: () => void copy(tab.path) },
+      { label: "Copy File Name", onSelect: () => void copy(tab.name) },
+      {
+        label: "Open With",
+        separatorBefore: true,
+        disabled: providers.length < 2,
+        submenu: providers.map((p, i) => ({
+          label: i === 0 ? `${p.label} (default)` : p.label,
+          checked: p.id === (current ?? providers[0].id),
+          onSelect: () => setView(tab.id, p.id),
+        })),
+      },
+    ];
+  }
+
   const panels: PanelDef[] = tabs.map((t) => ({
     id: t.id,
     title: `${t.name}${t.missing ? " (deleted)" : ""}${t.dirty ? " •" : ""}`,
+    tooltip: t.path,
+    pinned: t.pinned,
+    onUnpin: () => setPinned(t.id, false),
+    contextMenu: (context) => tabMenu(t, context),
     component: getComponent(t.id),
   }));
   const hasDirty = tabs.some((t) => t.dirty);
 
   return (
     <OpenFilesContext.Provider
-      value={{ tabs, open, updateContent, closeTab, closeAll, save, saveAll, hasDirty, pathRenamed, pathRemoved, panels }}
+      value={{ tabs, open, updateContent, closeTab, closeTabs, closeAll, setPinned, setView, save, saveAll, hasDirty, pathRenamed, pathRemoved, panels }}
     >
       {children}
     </OpenFilesContext.Provider>
