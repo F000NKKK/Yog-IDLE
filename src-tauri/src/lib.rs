@@ -436,6 +436,63 @@ fn workflow_list(
     Ok(list)
 }
 
+/// The Output panel's sources — one event each, picked from its "Show
+/// output from" dropdown: builds and workflows, the running game's own
+/// output, and the debugger's messages.
+pub(crate) const OUTPUT_BUILD: &str = "workflow-output";
+pub(crate) const OUTPUT_GAME: &str = "game-output";
+pub(crate) const OUTPUT_DEBUG: &str = "debug-output";
+
+/// Streams a `yog run` child's stdout/stderr to Output: everything up to
+/// its `==> launched pid N` line is the mod's build (Build), everything
+/// after is the game itself (Game).
+pub(crate) fn stream_yog_run(app: &AppHandle, child: &mut std::process::Child) {
+    use std::io::{BufRead, BufReader, Read};
+    use std::sync::Arc;
+    use std::sync::atomic::AtomicBool;
+
+    let launched = Arc::new(AtomicBool::new(false));
+    let pipes: [(Option<Box<dyn Read + Send>>, bool); 2] = [
+        (
+            child
+                .stdout
+                .take()
+                .map(|p| Box::new(p) as Box<dyn Read + Send>),
+            false,
+        ),
+        (
+            child
+                .stderr
+                .take()
+                .map(|p| Box::new(p) as Box<dyn Read + Send>),
+            true,
+        ),
+    ];
+    for (pipe, is_stderr) in pipes {
+        let Some(pipe) = pipe else { continue };
+        let app = app.clone();
+        let launched = launched.clone();
+        std::thread::spawn(move || {
+            for line in BufReader::new(pipe).lines().map_while(Result::ok) {
+                let event = if launched.load(Ordering::SeqCst) {
+                    OUTPUT_GAME
+                } else {
+                    if line.starts_with("==> launched pid ") {
+                        launched.store(true, Ordering::SeqCst);
+                    }
+                    OUTPUT_BUILD
+                };
+                let line = if is_stderr {
+                    format_stderr_line(line)
+                } else {
+                    line
+                };
+                let _ = app.emit(event, line);
+            }
+        });
+    }
+}
+
 /// A line a launched process wrote to stderr, labelled the way
 /// `format_log_line` labels workflow output (cargo/gradle progress on
 /// stderr stays unlabelled).

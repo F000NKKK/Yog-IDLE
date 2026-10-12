@@ -431,24 +431,7 @@ pub fn run_with_mode(
         .spawn()
         .map_err(|e| format!("failed to launch `yog run {config_name}`: {e}"))?;
 
-    for pipe_kind in ["stdout", "stderr"] {
-        let out_app = app.clone();
-        if pipe_kind == "stdout" {
-            if let Some(stdout) = child.stdout.take() {
-                std::thread::spawn(move || {
-                    for line in BufReader::new(stdout).lines().map_while(Result::ok) {
-                        let _ = out_app.emit("workflow-output", line);
-                    }
-                });
-            }
-        } else if let Some(stderr) = child.stderr.take() {
-            std::thread::spawn(move || {
-                for line in BufReader::new(stderr).lines().map_while(Result::ok) {
-                    let _ = out_app.emit("workflow-output", crate::format_stderr_line(line));
-                }
-            });
-        }
-    }
+    crate::stream_yog_run(&app, &mut child);
 
     let id = NEXT_SESSION_ID.fetch_add(1, Ordering::Relaxed);
     *app.state::<DebugState>().0.lock().unwrap() = Some(RunSession {
@@ -519,7 +502,7 @@ fn connect_and_watch(
         // means no live status/attach for this session, not that the game
         // itself failed to launch.
         let _ = app.emit(
-            "workflow-output",
+            crate::OUTPUT_DEBUG,
             "[warn] control socket never connected — no live status or debugger attach available for this run".to_string(),
         );
         if debug {
@@ -655,13 +638,13 @@ fn handle_control_event(
                 }
                 // Nobody asked (or it already timed out) — still worth showing.
                 None => {
-                    let _ = app.emit("workflow-output", format!("[control] {raw}"));
+                    let _ = app.emit(crate::OUTPUT_DEBUG, format!("[control] {raw}"));
                 }
             }
         }
         other => {
             let _ = app.emit(
-                "workflow-output",
+                crate::OUTPUT_DEBUG,
                 format!("[control] {}: {raw}", other.unwrap_or("unknown")),
             );
         }
@@ -694,7 +677,10 @@ fn emit_hot_reload(
         Some(false) => "[error] ",
         _ => "",
     };
-    let _ = app.emit("workflow-output", format!("{prefix}hot reload: {message}"));
+    let _ = app.emit(
+        crate::OUTPUT_BUILD,
+        format!("{prefix}hot reload: {message}"),
+    );
     let _ = app.emit(
         "hot-reload",
         HotReloadEvent {
@@ -792,7 +778,7 @@ fn run_hot_reload(
             let out_app = app.clone();
             std::thread::spawn(move || {
                 for line in BufReader::new(pipe).lines().map_while(Result::ok) {
-                    let _ = out_app.emit("workflow-output", line);
+                    let _ = out_app.emit(crate::OUTPUT_BUILD, line);
                 }
             })
         })
@@ -942,7 +928,7 @@ fn spawn_exit_watcher(app: AppHandle, session_id: u64) {
 fn emit_failed(app: &AppHandle, message: impl Into<String>) {
     let message = message.into();
     let _ = app.emit("debug-attach-failed", message.clone());
-    let _ = app.emit("workflow-output", format!("[error] debug: {message}"));
+    let _ = app.emit(crate::OUTPUT_DEBUG, format!("[error] {message}"));
 }
 
 /// Registers a `TracerHandle` on the session (so breakpoint toggles made
@@ -1355,7 +1341,7 @@ impl Tracer {
 }
 
 fn warn(app: &AppHandle, message: String) {
-    let _ = app.emit("workflow-output", format!("[warn] debug: {message}"));
+    let _ = app.emit(crate::OUTPUT_DEBUG, format!("[warn] {message}"));
 }
 
 /// Mirrors the editor gutter: every breakpoint the user currently has set,

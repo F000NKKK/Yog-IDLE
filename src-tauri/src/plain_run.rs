@@ -6,7 +6,6 @@
 //! gutter keeps working) but there is nothing to arm them in, and
 //! continue/step report that native debugging isn't available.
 
-use std::io::{BufRead, BufReader};
 use std::process::{Child, Command, Stdio};
 use std::sync::Mutex;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -63,22 +62,7 @@ pub fn run(app: AppHandle, project_root: String, config_name: String) -> Result<
         .spawn()
         .map_err(|e| format!("failed to launch `yog run {config_name}`: {e}"))?;
 
-    if let Some(stdout) = child.stdout.take() {
-        let out_app = app.clone();
-        std::thread::spawn(move || {
-            for line in BufReader::new(stdout).lines().map_while(Result::ok) {
-                let _ = out_app.emit("workflow-output", line);
-            }
-        });
-    }
-    if let Some(stderr) = child.stderr.take() {
-        let out_app = app.clone();
-        std::thread::spawn(move || {
-            for line in BufReader::new(stderr).lines().map_while(Result::ok) {
-                let _ = out_app.emit("workflow-output", crate::format_stderr_line(line));
-            }
-        });
-    }
+    crate::stream_yog_run(&app, &mut child);
 
     let id = NEXT_RUN_ID.fetch_add(1, Ordering::Relaxed);
     *app.state::<DebugState>().0.lock().unwrap() = Some(PlainRun { id, child });
