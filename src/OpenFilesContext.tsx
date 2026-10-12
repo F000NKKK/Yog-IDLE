@@ -4,6 +4,7 @@ import {
   editorProviderById,
   editorProviderIcon,
   editorProvidersFor,
+  formatShortcut,
   generalEditorProviders,
   getEditorView,
   isBinaryFile,
@@ -11,7 +12,9 @@ import {
   notify,
   revealLine,
   showDialog,
+  t,
   useEditorProviders,
+  useLocale,
   useShell,
   type CodeEditorProps,
   type ContextMenuItem,
@@ -148,8 +151,8 @@ export function openWithItems(path: string, current: string | undefined, pick: (
     onSelect: () => pick(p.id),
   });
   return [
-    ...matching.map((p, i) => item(p, `${p.name ?? p.label}${i === 0 ? " (default)" : ""}`)),
-    ...others.map((p, i) => item(p, p.name ?? p.label, i === 0)),
+    ...matching.map((p, i) => item(p, i === 0 ? t("{name} (default)", { name: t(p.name ?? p.label) }) : t(p.name ?? p.label))),
+    ...others.map((p, i) => item(p, t(p.name ?? p.label), i === 0)),
   ];
 }
 
@@ -160,10 +163,10 @@ let nextRevealSeq = 0;
 async function askToSave(names: string[]): Promise<string> {
   const many = names.length > 1;
   const result = await showDialog({
-    title: "Unsaved Changes",
+    title: t("Unsaved Changes"),
     message: many ? (
       <>
-        Save changes to the following files?
+        {t("Save changes to the following files?")}
         <ul>
           {names.map((n) => (
             <li key={n}>{n}</li>
@@ -171,12 +174,12 @@ async function askToSave(names: string[]): Promise<string> {
         </ul>
       </>
     ) : (
-      `Save changes to ${names[0]}?`
+      t("Save changes to {name}?", { name: names[0] })
     ),
     buttons: [
-      { id: "cancel", label: "Cancel", cancel: true },
-      { id: "discard", label: "Don't Save" },
-      { id: "save", label: many ? "Save All" : "Save", variant: "primary" },
+      { id: "cancel", label: t("Cancel"), cancel: true },
+      { id: "discard", label: t("Don't Save") },
+      { id: "save", label: many ? t("Save All") : t("Save"), variant: "primary" },
     ],
   });
   return result.button;
@@ -196,6 +199,8 @@ async function askToSave(names: string[]): Promise<string> {
  */
 export function OpenFilesProvider({ children }: { children: ReactNode }) {
   const [tabs, setTabs] = useState<FileTab[]>([]);
+  // Tab titles, tab menus and view buttons are built here — rebuilt in a new locale.
+  useLocale();
   const tabsRef = useRef(tabs);
   tabsRef.current = tabs;
   const componentCache = useRef(new Map<string, ComponentType>());
@@ -229,7 +234,7 @@ export function OpenFilesProvider({ children }: { children: ReactNode }) {
       try {
         content = textLoaded ? await invoke<string>("file_read", { path }) : "";
       } catch (err) {
-        if (!options.silent) reportError(`Failed to open ${path}: ${err}`);
+        if (!options.silent) reportError(t("Failed to open {path}: {error}", { path, error: String(err) }));
         return null;
       }
       const id = `file-${++nextTabId}`;
@@ -266,7 +271,7 @@ export function OpenFilesProvider({ children }: { children: ReactNode }) {
     try {
       await invoke("file_write", { path: tab.path, contents: written });
     } catch (err) {
-      reportError(`Failed to save ${tab.path}: ${err}`);
+      reportError(t("Failed to save {path}: {error}", { path: tab.path, error: String(err) }));
       return false;
     }
     // Still dirty if the user kept typing while the write was in flight.
@@ -283,7 +288,7 @@ export function OpenFilesProvider({ children }: { children: ReactNode }) {
     try {
       await invoke("file_write", { path, contents: written });
     } catch (err) {
-      reportError(`Failed to save ${path}: ${err}`);
+      reportError(t("Failed to save {path}: {error}", { path, error: String(err) }));
       return false;
     }
     setTabs((prev) =>
@@ -363,7 +368,7 @@ export function OpenFilesProvider({ children }: { children: ReactNode }) {
       try {
         content = await invoke<string>("file_read", { path: tab.path });
       } catch (err) {
-        reportError(`Can't open ${tab.path} as text: ${err}`);
+        reportError(t("Can't open {path} as text: {error}", { path: tab.path, error: String(err) }));
         return;
       }
       setTabs((prev) =>
@@ -396,7 +401,9 @@ export function OpenFilesProvider({ children }: { children: ReactNode }) {
       const kept = gone.filter((t) => t.dirty && !t.missing);
       if (kept.length === 0) return;
       setTabs((prev) => prev.map((t) => (kept.some((k) => k.id === t.id) ? { ...t, missing: true } : t)));
-      for (const t of kept) notify({ level: "warn", message: `${t.name} was deleted, but has unsaved changes — they're kept open; save to recreate it.` });
+      for (const tab of kept) {
+        notify({ level: "warn", message: t("{name} was deleted, but has unsaved changes — they're kept open; save to recreate it.", { name: tab.name }) });
+      }
     },
     [removeTabs]
   );
@@ -434,7 +441,7 @@ export function OpenFilesProvider({ children }: { children: ReactNode }) {
         );
       } else if (warnedDisk.current.get(tab.id) !== disk) {
         warnedDisk.current.set(tab.id, disk);
-        notify({ level: "warn", message: `${current.name} changed on disk — your unsaved changes are kept; saving will overwrite the file.` });
+        notify({ level: "warn", message: t("{name} changed on disk — your unsaved changes are kept; saving will overwrite the file.", { name: current.name }) });
       }
     }
     if (vanished.size > 0) markGone((t) => vanished.has(t.id));
@@ -573,11 +580,12 @@ export function OpenFilesProvider({ children }: { children: ReactNode }) {
     const textView = providers.find((p) => p.kind === "text");
     return providers.map((p) => {
       const icon = editorProviderIcon(p);
-      const shortcut = icon === "previewSide" ? " (Ctrl+K V)" : p === textView || p === providers.find((o) => o.kind !== "text") ? " (Ctrl+Shift+V)" : "";
+      const keys = icon === "previewSide" ? "Ctrl+K V" : p === textView || p === providers.find((o) => o.kind !== "text") ? "Ctrl+Shift+V" : "";
+      const shortcut = keys ? ` (${formatShortcut(keys)})` : "";
       return {
         id: p.id,
         icon,
-        title: `${p.kind === "text" && icon !== "previewSide" ? "Show" : "Open"} ${p.label}${shortcut}`,
+        title: `${t(p.kind === "text" && icon !== "previewSide" ? "Show {view}" : "Open {view}", { view: t(p.label) })}${shortcut}`,
         active: p === active,
         onClick: () => chooseView(tab.id, p.id),
       };
@@ -589,18 +597,18 @@ export function OpenFilesProvider({ children }: { children: ReactNode }) {
     const unpinned = (ids: string[]) => ids.filter((id) => fileIds.has(id) && !tabsRef.current.find((t) => t.id === id)?.pinned);
     const toTheRight = unpinned(centerIds.slice(centerIds.indexOf(tab.id) + 1));
     const current = tabViews(tab, rememberedViews()).active.id;
-    const copy = (text: string) => navigator.clipboard.writeText(text).catch((err) => reportError(`Couldn't copy to the clipboard: ${err}`));
+    const copy = (text: string) => navigator.clipboard.writeText(text).catch((err) => reportError(t("Couldn't copy to the clipboard: {error}", { error: String(err) })));
     return [
-      { label: "Close", onSelect: () => void closeTab(tab.id) },
-      { label: "Close All But This", onSelect: () => void closeTabs(unpinned(centerIds).filter((id) => id !== tab.id)) },
-      { label: "Close All But Pinned", onSelect: () => void closeTabs(unpinned(centerIds)) },
-      { label: "Close Tabs to the Right", disabled: toTheRight.length === 0, onSelect: () => void closeTabs(toTheRight) },
-      { label: "Close All Tabs", onSelect: () => void closeAll() },
-      { label: tab.pinned ? "Unpin Tab" : "Pin Tab", separatorBefore: true, onSelect: () => setPinned(tab.id, !tab.pinned) },
-      { label: "Copy Full Path", separatorBefore: true, onSelect: () => void copy(tab.path) },
-      { label: "Copy File Name", onSelect: () => void copy(tab.name) },
+      { label: t("Close"), onSelect: () => void closeTab(tab.id) },
+      { label: t("Close All But This"), onSelect: () => void closeTabs(unpinned(centerIds).filter((id) => id !== tab.id)) },
+      { label: t("Close All But Pinned"), onSelect: () => void closeTabs(unpinned(centerIds)) },
+      { label: t("Close Tabs to the Right"), disabled: toTheRight.length === 0, onSelect: () => void closeTabs(toTheRight) },
+      { label: t("Close All Tabs"), onSelect: () => void closeAll() },
+      { label: tab.pinned ? t("Unpin Tab") : t("Pin Tab"), separatorBefore: true, onSelect: () => setPinned(tab.id, !tab.pinned) },
+      { label: t("Copy Full Path"), separatorBefore: true, onSelect: () => void copy(tab.path) },
+      { label: t("Copy File Name"), onSelect: () => void copy(tab.name) },
       {
-        label: "Open With",
+        label: t("Open With"),
         separatorBefore: true,
         // A one-off for this tab, not remembered for its kind of file.
         submenu: openWithItems(tab.path, current, (view) => void setView(tab.id, view)),
@@ -608,15 +616,15 @@ export function OpenFilesProvider({ children }: { children: ReactNode }) {
     ];
   }
 
-  const panels: PanelDef[] = tabs.map((t) => ({
-    id: t.id,
-    title: `${t.name}${t.missing ? " (deleted)" : ""}${t.dirty ? " •" : ""}`,
-    tooltip: t.path,
-    pinned: t.pinned,
-    onUnpin: () => setPinned(t.id, false),
-    contextMenu: (context) => tabMenu(t, context),
-    actions: viewActions(t),
-    component: getComponent(t.id),
+  const panels: PanelDef[] = tabs.map((tab) => ({
+    id: tab.id,
+    title: `${tab.name}${tab.missing ? ` ${t("(deleted)")}` : ""}${tab.dirty ? " •" : ""}`,
+    tooltip: tab.path,
+    pinned: tab.pinned,
+    onUnpin: () => setPinned(tab.id, false),
+    contextMenu: (context) => tabMenu(tab, context),
+    actions: viewActions(tab),
+    component: getComponent(tab.id),
   }));
   const hasDirty = tabs.some((t) => t.dirty);
 

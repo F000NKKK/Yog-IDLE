@@ -6,6 +6,8 @@ import {
   confirmDialog,
   promptDialog,
   useDirectoryTree,
+  t,
+  useT,
   type DirEntry,
   type FileTreeMenuItem,
   type FileTreeNode,
@@ -32,12 +34,13 @@ function reportListError(error: unknown, path: string) {
 }
 
 export function ProjectExplorer() {
+  const t = useT();
   const { project, error } = useProject();
 
   if (!project) {
     return (
       <div style={{ padding: "var(--sp-space-sm)", color: "var(--sp-text-muted)" }}>
-        {error ? `Failed to open project: ${error}` : "No project open — use File > Open Project or Open Folder."}
+        {error ? t("Failed to open project: {error}", { error }) : t("No project open — use File > Open Project or Open Folder.")}
       </div>
     );
   }
@@ -55,6 +58,7 @@ async function attempt(what: string, op: () => Promise<void>) {
 
 function ProjectExplorerTree({ project }: { project: ProjectInfo }) {
   // Expanded folders are remembered per project (see `WorkspaceProvider`).
+  useT();
   const tree = useDirectoryTree(project.root, project.name, dirCommands, reportListError, "explorer.expanded");
   const { tabs, pathRenamed, pathRemoved } = useOpenFiles();
   // Controlled, so a rename (here or from Properties) can carry the
@@ -95,56 +99,56 @@ function ProjectExplorerTree({ project }: { project: ProjectInfo }) {
   function getMenuItems(node: FileTreeNode): FileTreeMenuItem[] {
     const items: FileTreeMenuItem[] = [];
     if (node.kind === "file") {
-      items.push({ label: "Open", onSelect: (n) => openFile({ path: n.id, name: n.name }) });
+      items.push({ label: t("Open"), onSelect: (n) => openFile({ path: n.id, name: n.name }) });
       const current = tabs.find((t) => t.path === node.id)?.view;
       items.push({
-        label: "Open With",
+        label: t("Open With"),
         submenu: openWithItems(node.id, current, (view) => openFile({ path: node.id, name: node.name, view })),
       });
     }
     if (node.kind === "folder") {
       items.push({
-        label: "New File...",
+        label: t("New File..."),
         onSelect: async (n) => {
-          const name = await promptDialog({ title: "New File", label: "File name", confirmLabel: "Create", validate: validateName });
+          const name = await promptDialog({ title: t("New File"), label: t("File name"), confirmLabel: t("Create"), validate: validateName });
           if (name === null) return;
-          await attempt(`Failed to create ${name.trim()}`, async () => {
+          await attempt(t("Failed to create {name}", { name: name.trim() }), async () => {
             await tree.createFileIn(n.id, name.trim());
             openFile({ path: `${n.id.replace(/[/\\]+$/, "")}/${name.trim()}` });
           });
         },
       });
       items.push({
-        label: "New Folder...",
+        label: t("New Folder..."),
         onSelect: async (n) => {
-          const name = await promptDialog({ title: "New Folder", label: "Folder name", confirmLabel: "Create", validate: validateName });
+          const name = await promptDialog({ title: t("New Folder"), label: t("Folder name"), confirmLabel: t("Create"), validate: validateName });
           if (name === null) return;
-          await attempt(`Failed to create ${name.trim()}`, () => tree.createDirIn(n.id, name.trim()));
+          await attempt(t("Failed to create {name}", { name: name.trim() }), () => tree.createDirIn(n.id, name.trim()));
         },
       });
     }
     if (node.id !== project.root) {
       items.push({
-        label: "Rename",
+        label: t("Rename"),
         separatorBefore: items.length > 0,
         onSelect: async (n) => {
-          const name = await promptDialog({ title: "Rename", label: "New name", defaultValue: n.name, confirmLabel: "Rename", validate: validateName });
+          const name = await promptDialog({ title: t("Rename"), label: t("New name"), defaultValue: n.name, confirmLabel: t("Rename"), validate: validateName });
           if (name === null || name.trim() === n.name) return;
           // Open tabs and the selection under the old path follow it to the new one.
-          await attempt(`Failed to rename ${n.name}`, () => renamePath(n.id, name.trim(), pathRenamed));
+          await attempt(t("Failed to rename {name}", { name: n.name }), () => renamePath(n.id, name.trim(), pathRenamed));
         },
       });
       items.push({
-        label: "Delete",
+        label: t("Delete"),
         destructive: true,
         onSelect: async (n) => {
           const confirmed = await confirmDialog({
-            title: n.kind === "folder" ? "Delete Folder" : "Delete File",
-            message: n.kind === "folder" ? `Delete "${n.name}" and everything in it?` : `Delete "${n.name}"?`,
-            confirmLabel: "Delete",
+            title: n.kind === "folder" ? t("Delete Folder") : t("Delete File"),
+            message: n.kind === "folder" ? t('Delete "{name}" and everything in it?', { name: n.name }) : t('Delete "{name}"?', { name: n.name }),
+            confirmLabel: t("Delete"),
           });
           if (!confirmed) return;
-          await attempt(`Failed to delete ${n.name}`, async () => {
+          await attempt(t("Failed to delete {name}", { name: n.name }), async () => {
             await tree.removeNode(n);
             pathRemoved(n.id);
             selectionPathRemoved(n.id);

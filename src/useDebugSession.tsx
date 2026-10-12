@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
+import { t } from "substrate-platform-ui";
 import { openFile } from "./fileOpenBus";
 
 export interface DebugStackFrame {
@@ -68,7 +69,7 @@ export function useDebugSession() {
 
   const openSource = useCallback((frame: DebugStackFrame) => {
     if (missingRustSrc(frame.file)) {
-      setError(`Can't open ${frame.file}: Rust's standard library sources aren't installed — install rust-src (\`rustup component add rust-src\`).`);
+      setError(t("Can't open {file}: Rust's standard library sources aren't installed — install rust-src (`rustup component add rust-src`).", { file: frame.file }));
       return;
     }
     openFile({ path: frame.file, line: frame.line });

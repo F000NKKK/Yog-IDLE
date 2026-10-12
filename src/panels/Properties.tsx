@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { PropertyGrid, useSelection, type PropertyDescriptor, type ShellSelection } from "substrate-platform-ui";
+import { PropertyGrid, t, tn, useLocale, useSelection, type PropertyDescriptor, type ShellSelection } from "substrate-platform-ui";
 import { useActiveFileTab, useOpenFiles } from "../OpenFilesContext";
 import { useProject } from "../ProjectContext";
 import { renamePath, selectPath, type IdeSelectionData } from "../ideSelection";
@@ -63,11 +63,11 @@ const LANGUAGES: Record<string, string> = {
 
 function languageOf(path: string): string {
   const ext = extensionOf(path);
-  return LANGUAGES[ext] ?? (ext ? ext.toUpperCase() : "Plain Text");
+  return t(LANGUAGES[ext] ?? (ext ? ext.toUpperCase() : "Plain Text"));
 }
 
 function formatSize(bytes: number): string {
-  const exact = `${bytes.toLocaleString()} bytes`;
+  const exact = tn(bytes, "{count} byte", "{count} bytes", { count: bytes.toLocaleString() });
   if (bytes < 1024) return exact;
   const units = ["KB", "MB", "GB", "TB"];
   let value = bytes / 1024;
@@ -86,16 +86,16 @@ function formatDate(ms: number | null): string {
 function lineEndingsOf(text: string): string {
   const crlf = text.match(/\r\n/g)?.length ?? 0;
   const lf = (text.match(/\n/g)?.length ?? 0) - crlf;
-  if (crlf && lf) return "Mixed (CRLF and LF)";
-  if (crlf) return "CRLF (Windows)";
-  if (lf) return "LF (Unix)";
-  return "None (single line)";
+  if (crlf && lf) return t("Mixed (CRLF and LF)");
+  if (crlf) return t("CRLF (Windows)");
+  if (lf) return t("LF (Unix)");
+  return t("None (single line)");
 }
 
 /** Rejects a name `validateEntryName` won't take — its `""` (blank) still gets a message here, since this has no OK button to grey out. */
 function validateName(value: unknown): string | null {
   const problem = validateEntryName(String(value));
-  return problem === "" ? "A name can't be empty." : problem;
+  return problem === "" ? t("A name can't be empty.") : problem;
 }
 
 /**
@@ -107,6 +107,7 @@ function validateName(value: unknown): string | null {
  * are written back in place by the backend, formatting kept.
  */
 export function Properties() {
+  useLocale();
   const selection = useSelection<IdeSelectionData>();
   const { tabs, pathRenamed, recheckDisk } = useOpenFiles();
   const { project } = useProject();
@@ -147,13 +148,13 @@ export function Properties() {
     };
   }, [selection, path, reloads, savedText]);
 
-  if (!selection) return <PropertyGrid properties={[]} emptyLabel="Select a file or folder in Project Explorer, or click into an editor." />;
-  if (selection.kind === "multiple") return <PropertyGrid properties={[]} emptyLabel="Multiple items are selected." />;
-  if (!loaded || !path) return <PropertyGrid properties={[]} emptyLabel="Loading…" />;
+  if (!selection) return <PropertyGrid properties={[]} emptyLabel={t("Select a file or folder in Project Explorer, or click into an editor.")} />;
+  if (selection.kind === "multiple") return <PropertyGrid properties={[]} emptyLabel={t("Multiple items are selected.")} />;
+  if (!loaded || !path) return <PropertyGrid properties={[]} emptyLabel={t("Loading…")} />;
 
   const shownPath = loaded.selection.data.path;
   const name = baseName(shownPath);
-  if (!loaded.info) return <PropertyGrid properties={[]} emptyLabel={`Couldn't read ${name}: ${loaded.error}`} />;
+  if (!loaded.info) return <PropertyGrid properties={[]} emptyLabel={t("Couldn't read {name}: {error}", { name, error: loaded.error ?? "" })} />;
 
   const info = loaded.info;
   const isRoot = project?.root === shownPath;
@@ -167,7 +168,7 @@ export function Properties() {
   let objectType: string;
 
   if (info.kind === "file") {
-    objectType = "File Properties";
+    objectType = t("File Properties");
     properties.push(...fileProperties(shownPath, info, rename, reload));
     // An open tab knows more about its text than the disk listing does.
     const openTab = tabs.find((t) => t.path === shownPath);
@@ -176,41 +177,41 @@ export function Properties() {
       properties.push(
         {
           id: "encoding",
-          name: "Encoding",
-          category: "Editor",
-          value: text.startsWith("﻿") ? "UTF-8 with BOM" : "UTF-8",
+          name: t("Encoding"),
+          category: t("Editor"),
+          value: text.startsWith("﻿") ? t("UTF-8 with BOM") : "UTF-8",
           readOnly: true,
-          description: "How the file's text is stored on disk. Yog IDLE reads and writes files as UTF-8.",
+          description: t("How the file's text is stored on disk. Yog IDLE reads and writes files as UTF-8."),
         },
         {
           id: "lineEndings",
-          name: "Line Endings",
-          category: "Editor",
+          name: t("Line Endings"),
+          category: t("Editor"),
           value: lineEndingsOf(text),
           readOnly: true,
-          description: "The line break sequence the open text uses.",
+          description: t("The line break sequence the open text uses."),
         },
-        { id: "lines", name: "Lines", category: "Editor", value: text.split("\n").length, readOnly: true, description: "Lines in the open text." },
+        { id: "lines", name: t("Lines"), category: t("Editor"), value: text.split("\n").length, readOnly: true, description: t("Lines in the open text.") },
         {
           id: "language",
-          name: "Language",
-          category: "Editor",
+          name: t("Language"),
+          category: t("Editor"),
           value: languageOf(shownPath),
           readOnly: true,
-          description: "The language the file is edited as.",
+          description: t("The language the file is edited as."),
         },
         {
           id: "unsaved",
-          name: "Unsaved Changes",
-          category: "Editor",
+          name: t("Unsaved Changes"),
+          category: t("Editor"),
           value: openTab.dirty,
           readOnly: true,
-          description: "Whether the open tab has edits that aren't saved to disk yet.",
+          description: t("Whether the open tab has edits that aren't saved to disk yet."),
         }
       );
     }
   } else {
-    objectType = info.isModProject ? "Project Properties" : "Folder Properties";
+    objectType = info.isModProject ? t("Project Properties") : t("Folder Properties");
     properties.push(...folderProperties(shownPath, info, isRoot ? null : rename));
     if (info.isModProject) {
       if (loaded.manifest) {
@@ -218,7 +219,7 @@ export function Properties() {
           // Don't write under an editor holding unsaved yog.toml edits —
           // saving that tab would silently undo this change.
           const manifestTab = tabs.find((t) => samePath(t.path, `${shownPath}/yog.toml`) && t.dirty);
-          if (manifestTab) return "yog.toml has unsaved changes in the editor — save or discard them first.";
+          if (manifestTab) return t("yog.toml has unsaved changes in the editor — save or discard them first.");
           const manifest = await invoke<Manifest>("mod_manifest_set", { projectRoot: shownPath, key, value });
           setLoaded((prev) => (prev && prev.selection === loaded.selection ? { ...prev, manifest } : prev));
           // A clean yog.toml tab shows the new text.
@@ -230,10 +231,10 @@ export function Properties() {
         properties.push({
           id: "manifestError",
           name: "yog.toml",
-          category: "Mod",
+          category: t("Mod"),
           value: loaded.error,
           readOnly: true,
-          description: "yog.toml couldn't be read.",
+          description: t("yog.toml couldn't be read."),
         });
       }
     }
@@ -247,53 +248,53 @@ function fileProperties(path: string, info: PathInfo, rename: (value: unknown) =
   return [
     {
       id: "name",
-      name: "File Name",
-      category: "Misc",
+      name: t("File Name"),
+      category: t("Misc"),
       value: baseName(path),
       validate: validateName,
       onCommit: rename,
-      description: "The file's name. Renaming it here renames it on disk; open tabs follow it.",
+      description: t("The file's name. Renaming it here renames it on disk; open tabs follow it."),
     },
-    { id: "fullPath", name: "Full Path", category: "Misc", value: path, readOnly: true, description: "Where the file is on disk." },
+    { id: "fullPath", name: t("Full Path"), category: t("Misc"), value: path, readOnly: true, description: t("Where the file is on disk.") },
     {
       id: "type",
-      name: "Type",
-      category: "Misc",
-      value: ext ? `${languageOf(path)} (.${ext})` : "File",
+      name: t("Type"),
+      category: t("Misc"),
+      value: ext ? `${languageOf(path)} (.${ext})` : t("File"),
       readOnly: true,
-      description: "The kind of file, by its extension.",
+      description: t("The kind of file, by its extension."),
     },
     {
       id: "size",
-      name: "Size",
-      category: "Details",
+      name: t("Size"),
+      category: t("Details"),
       value: info.size,
       displayValue: formatSize(info.size),
       readOnly: true,
-      description: "The file's size on disk.",
+      description: t("The file's size on disk."),
     },
     {
       id: "modified",
-      name: "Date Modified",
-      category: "Details",
+      name: t("Date Modified"),
+      category: t("Details"),
       value: formatDate(info.modified),
       readOnly: true,
-      description: "When the file was last written.",
+      description: t("When the file was last written."),
     },
     {
       id: "created",
-      name: "Date Created",
-      category: "Details",
+      name: t("Date Created"),
+      category: t("Details"),
       value: formatDate(info.created),
       readOnly: true,
-      description: "When the file was created, where the file system records it.",
+      description: t("When the file was created, where the file system records it."),
     },
     {
       id: "readOnly",
-      name: "Read Only",
-      category: "Details",
+      name: t("Read Only"),
+      category: t("Details"),
       value: info.readOnly,
-      description: "Whether the file is write-protected on disk (the owner's write permission).",
+      description: t("Whether the file is write-protected on disk (the owner's write permission)."),
       onCommit: async (value) => {
         await invoke("path_set_readonly", { path, readOnly: value === true });
         reload();
@@ -306,31 +307,31 @@ function folderProperties(path: string, info: PathInfo, rename: ((value: unknown
   return [
     {
       id: "name",
-      name: "Folder Name",
-      category: "Misc",
+      name: t("Folder Name"),
+      category: t("Misc"),
       value: baseName(path),
       validate: validateName,
       onCommit: rename ?? undefined,
       description: rename
-        ? "The folder's name. Renaming it here renames it on disk; open tabs inside it follow."
-        : "The open project's folder — reopen it from its new place to rename it.",
+        ? t("The folder's name. Renaming it here renames it on disk; open tabs inside it follow.")
+        : t("The open project's folder — reopen it from its new place to rename it."),
     },
-    { id: "fullPath", name: "Full Path", category: "Misc", value: path, readOnly: true, description: "Where the folder is on disk." },
+    { id: "fullPath", name: t("Full Path"), category: t("Misc"), value: path, readOnly: true, description: t("Where the folder is on disk.") },
     {
       id: "items",
-      name: "Items",
-      category: "Details",
+      name: t("Items"),
+      category: t("Details"),
       value: info.itemCount,
       readOnly: true,
-      description: "Files and folders directly inside this folder (not counting their contents).",
+      description: t("Files and folders directly inside this folder (not counting their contents)."),
     },
     {
       id: "modified",
-      name: "Date Modified",
-      category: "Details",
+      name: t("Date Modified"),
+      category: t("Details"),
       value: formatDate(info.modified),
       readOnly: true,
-      description: "When the folder's contents last changed.",
+      description: t("When the folder's contents last changed."),
     },
   ];
 }
@@ -341,22 +342,22 @@ function manifestProperties(manifest: Manifest, update: (key: string, value: str
   const text = (key: ManifestField, name: string, description: string): PropertyDescriptor => ({
     id: `mod.${key}`,
     name,
-    category: "Mod",
+    category: t("Mod"),
     value: field(key),
     description,
     onCommit: (value) => update(key, String(value)),
   });
   return [
-    text("id", "Id", "The mod's unique id (lowercase letters, digits, '-' and '_'). Other mods and saved worlds refer to the mod by it — change with care."),
-    text("name", "Name", "The mod's display name."),
-    text("version", "Version", "The mod's version, as semver (1.2.3)."),
-    text("description", "Description", "A one-line summary of what the mod does."),
+    text("id", t("Id"), t("The mod's unique id (lowercase letters, digits, '-' and '_'). Other mods and saved worlds refer to the mod by it — change with care.")),
+    text("name", t("Name"), t("The mod's display name.")),
+    text("version", t("Version"), t("The mod's version, as semver (1.2.3).")),
+    text("description", t("Description"), t("A one-line summary of what the mod does.")),
     {
       id: "mod.authors",
-      name: "Authors",
-      category: "Mod",
+      name: t("Authors"),
+      category: t("Mod"),
       value: manifest.authors.join(", "),
-      description: "Who made the mod, separated by commas.",
+      description: t("Who made the mod, separated by commas."),
       onCommit: (value) =>
         update(
           "authors",
@@ -366,53 +367,53 @@ function manifestProperties(manifest: Manifest, update: (key: string, value: str
             .filter(Boolean)
         ),
     },
-    text("license", "License", "The mod's license, as an SPDX expression. Empty uses yog's default (MIT OR Apache-2.0)."),
+    text("license", t("License"), t("The mod's license, as an SPDX expression. Empty uses yog's default (MIT OR Apache-2.0).")),
     text(
       "exports_license",
-      "Exports License",
-      "License of the generated exports crate other mods depend on (`yog publish exports`). Empty uses MIT OR Apache-2.0, whatever the mod's own license."
+      t("Exports License"),
+      t("License of the generated exports crate other mods depend on (`yog publish exports`). Empty uses MIT OR Apache-2.0, whatever the mod's own license.")
     ),
     {
       id: "mod.edition",
-      name: "Rust Edition",
-      category: "Mod",
+      name: t("Rust Edition"),
+      category: t("Mod"),
       kind: "enum",
       options: ["2015", "2018", "2021", "2024"],
       value: field("edition"),
-      description: "The Rust edition the mod's code is compiled with. Empty uses yog's default (2021).",
+      description: t("The Rust edition the mod's code is compiled with. Empty uses yog's default (2021)."),
       onCommit: (value) => update("edition", String(value)),
     },
     {
       id: "deps.crates",
-      name: "Crate Dependencies",
-      category: "Dependencies",
+      name: t("Crate Dependencies"),
+      category: t("Dependencies"),
       value: manifest.dependencies,
       readOnly: true,
-      description: "crates.io crates listed under [dependencies] — edit yog.toml to change them.",
+      description: t("crates.io crates listed under [dependencies] — edit yog.toml to change them."),
     },
     {
       id: "deps.mods",
-      name: "Mod Dependencies",
-      category: "Dependencies",
+      name: t("Mod Dependencies"),
+      category: t("Dependencies"),
       value: manifest.modDependencies,
       readOnly: true,
-      description: "Other Yog mods this mod uses, from [dependencies.exports].",
+      description: t("Other Yog mods this mod uses, from [dependencies.exports]."),
     },
     {
       id: "deps.runs",
-      name: "Run Configurations",
-      category: "Dependencies",
+      name: t("Run Configurations"),
+      category: t("Dependencies"),
       value: manifest.runConfigs,
       readOnly: true,
-      description: "[run.<name>] launch configurations — the targets in the Run toolbar.",
+      description: t("[run.<name>] launch configurations — the targets in the Run toolbar."),
     },
     {
       id: "deps.apiPath",
-      name: "yog-api Path",
-      category: "Dependencies",
+      name: t("yog-api Path"),
+      category: t("Dependencies"),
       value: manifest.yogApiPath ?? "",
       readOnly: true,
-      description: "[dev] yog_api_path: builds against a local yog-api checkout instead of crates.io. Empty when unset.",
+      description: t("[dev] yog_api_path: builds against a local yog-api checkout instead of crates.io. Empty when unset."),
     },
   ];
 }

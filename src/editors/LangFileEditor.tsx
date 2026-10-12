@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { DataGrid, type DataGridColumn, type EditorProps } from "substrate-platform-ui";
+import { DataGrid, useLocale, useT, type DataGridColumn, type EditorProps } from "substrate-platform-ui";
 
 /** One `"key": "value"` entry, with where its two string literals sit in the file's text. */
 interface LangEntry {
@@ -72,6 +72,8 @@ const REFERENCE_LOCALE = "en_us";
  * the file's formatting and order stay exactly as they were.
  */
 export function LangFileEditor({ path, content, onChange, readOnly }: EditorProps) {
+  const t = useT();
+  const locale = useLocale();
   const entries = useMemo(() => scanLangFile(content), [content]);
   const separator = path.includes("\\") ? "\\" : "/";
   const dir = path.slice(0, path.lastIndexOf(separator));
@@ -94,15 +96,16 @@ export function LangFileEditor({ path, content, onChange, readOnly }: EditorProp
 
   const columns = useMemo<DataGridColumn<LangEntry>[]>(
     () => [
-      { key: "key", header: "Key", width: 280, sortable: true, editable: true, sortValue: (e) => e.key },
+      { key: "key", header: t("Key"), width: 280, sortable: true, editable: true, sortValue: (e) => e.key },
       ...(reference ? [{ key: "reference", header: REFERENCE_LOCALE, width: 260, sortable: true, sortValue: (e: LangEntry) => e.reference ?? "" }] : []),
-      { key: "value", header: "Text", width: 320, sortable: true, editable: true, sortValue: (e) => e.value },
+      { key: "value", header: t("Text"), width: 320, sortable: true, editable: true, sortValue: (e) => e.value },
     ],
-    [reference]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [reference, locale]
   );
 
   if (!entries) {
-    return <div style={{ padding: "var(--sp-space-md)" }}>Not a flat JSON object of strings — fix it in the Code view.</div>;
+    return <div style={{ padding: "var(--sp-space-md)" }}>{t("Not a flat JSON object of strings — fix it in the Code view.")}</div>;
   }
   const rows = reference ? entries.map((e) => ({ ...e, reference: reference.get(e.key) })) : entries;
 

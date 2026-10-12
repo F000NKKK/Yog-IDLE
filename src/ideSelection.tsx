@@ -4,7 +4,7 @@
 // The Properties window reads it back through `useSelection`.
 
 import { invoke } from "@tauri-apps/api/core";
-import { getCurrentSelection, setSelection } from "substrate-platform-ui";
+import { getCurrentSelection, setSelection, t } from "substrate-platform-ui";
 import { isWithin, renamedPath } from "./paths";
 
 /** `"file"`/`"folder"` carry a path; `"multiple"` is several Explorer items at once (nothing to show properties of). */
@@ -67,7 +67,7 @@ export async function renamePath(path: string, newName: string, pathRenamed: (fr
       () => true,
       () => false
     );
-    if (taken) throw new Error(`"${newName}" already exists.`);
+    if (taken) throw new Error(t('"{name}" already exists.', { name: newName }));
   }
   const handled = explorerRename ? await explorerRename(path, newName) : false;
   if (!handled) await invoke("dir_rename", { from: path, to });

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { Button, IconButton, TextField, Icon, useDraggable, confirmDialog } from "substrate-platform-ui";
+import { Button, IconButton, TextField, Icon, useDraggable, confirmDialog, pt, useT } from "substrate-platform-ui";
 import { reportError } from "../reportError";
 import "./PublishWindow.css";
 
@@ -11,6 +11,7 @@ interface PublishProfile {
   dryRun: boolean;
 }
 
+/** English; shown through `t`. */
 const MODES: Record<PublishProfile["mode"], { title: string; detail: string }> = {
   package: { title: "Package as .yog", detail: "yog build — the mod archive, ready to drop into yog-mods/" },
   exports: { title: "Publish exports", detail: "yog publish exports — the generated exports crate, to crates.io" },
@@ -30,6 +31,7 @@ function randomId(): string {
  * Any failure is shown inline (and reported to Output), never swallowed.
  */
 export function PublishWindow({ projectRoot, onClose }: { projectRoot: string; onClose: () => void }) {
+  const t = useT();
   const { pos, handlers } = useDraggable({ x: 260, y: 120 });
   const [profiles, setProfiles] = useState<PublishProfile[]>([]);
   const [name, setName] = useState("");
@@ -50,7 +52,7 @@ export function PublishWindow({ projectRoot, onClose }: { projectRoot: string; o
       .then(setProfiles)
       .catch((err) => {
         setProfiles([]);
-        fail("Failed to load publish profiles", err);
+        fail(t("Failed to load publish profiles"), err);
       });
   }
 
@@ -78,7 +80,7 @@ export function PublishWindow({ projectRoot, onClose }: { projectRoot: string; o
     try {
       await invoke("publish_profile_save", { projectRoot, profile });
     } catch (err) {
-      fail(`Failed to save profile "${profile.name}"`, err);
+      fail(t('Failed to save profile "{name}"', { name: profile.name }), err);
       return;
     }
     setError(null);
@@ -87,13 +89,13 @@ export function PublishWindow({ projectRoot, onClose }: { projectRoot: string; o
   }
 
   async function deleteProfile(profile: PublishProfile) {
-    if (!(await confirmDialog({ title: "Delete Profile", message: `Delete publish profile "${profile.name}"?`, confirmLabel: "Delete" }))) return;
+    if (!(await confirmDialog({ title: t("Delete Profile"), message: t('Delete publish profile "{name}"?', { name: profile.name }), confirmLabel: t("Delete") }))) return;
     try {
       await invoke("publish_profile_delete", { projectRoot, id: profile.id });
       if (editingId === profile.id) resetForm();
       setError(null);
     } catch (err) {
-      fail(`Failed to delete profile "${profile.name}"`, err);
+      fail(t('Failed to delete profile "{name}"', { name: profile.name }), err);
     }
     reload();
   }
@@ -103,15 +105,15 @@ export function PublishWindow({ projectRoot, onClose }: { projectRoot: string; o
       await invoke("publish_run", { projectRoot, profile });
       setError(null);
     } catch (err) {
-      fail(`Failed to run profile "${profile.name}"`, err);
+      fail(t('Failed to run profile "{name}"', { name: profile.name }), err);
     }
   }
 
   return (
     <div className="yi-publish-window" style={{ left: pos.x, top: pos.y }}>
       <div className="yi-publish-header" {...handlers}>
-        <span className="yi-publish-title">Publish</span>
-        <IconButton size={24} aria-label="Close" onClick={onClose}>
+        <span className="yi-publish-title">{t("Publish")}</span>
+        <IconButton size={24} aria-label={t("Close")} onClick={onClose}>
           <Icon name="close" size={18} />
         </IconButton>
       </div>
@@ -120,24 +122,24 @@ export function PublishWindow({ projectRoot, onClose }: { projectRoot: string; o
         {error && <p className="yi-publish-error">{error}</p>}
 
         <section className="yi-publish-section">
-          <div className="yi-publish-label">Profiles</div>
+          <div className="yi-publish-label">{t("Profiles")}</div>
           <div className="yi-publish-list">
-            {profiles.length === 0 && <p className="yi-publish-empty">No publish profiles yet — create one below.</p>}
+            {profiles.length === 0 && <p className="yi-publish-empty">{t("No publish profiles yet — create one below.")}</p>}
             {profiles.map((p) => (
               <div key={p.id} className={`yi-publish-profile-row${editingId === p.id ? " is-editing" : ""}`}>
                 <div className="yi-publish-profile-info">
                   <span className="yi-publish-profile-name">{p.name}</span>
-                  <span className="yi-publish-profile-mode">{MODES[p.mode].title}{p.mode === "exports" && p.dryRun ? " (dry run)" : ""}</span>
+                  <span className="yi-publish-profile-mode">{t(MODES[p.mode].title)}{p.mode === "exports" && p.dryRun ? ` ${t("(dry run)")}` : ""}</span>
                 </div>
                 <div className="yi-publish-profile-buttons">
                   <Button variant="primary" onClick={() => runProfile(p)}>
-                    Run
+                    {t("Run")}
                   </Button>
                   <Button variant="ghost" onClick={() => editProfile(p)}>
-                    Edit
+                    {pt("profile", "Edit")}
                   </Button>
                   <Button variant="ghost" onClick={() => deleteProfile(p)}>
-                    Delete
+                    {t("Delete")}
                   </Button>
                 </div>
               </div>
@@ -146,31 +148,31 @@ export function PublishWindow({ projectRoot, onClose }: { projectRoot: string; o
         </section>
 
         <section className="yi-publish-section">
-          <div className="yi-publish-label">{editingId ? "Edit Profile" : "New Profile"}</div>
+          <div className="yi-publish-label">{editingId ? t("Edit Profile") : t("New Profile")}</div>
           <label className="yi-publish-field">
-            <span className="yi-publish-field-label">Name</span>
+            <span className="yi-publish-field-label">{t("Name")}</span>
             <TextField
-              placeholder="e.g. Release package"
+              placeholder={t("e.g. Release package")}
               value={name}
               onChange={(e) => setName(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && saveProfile()}
             />
           </label>
           <div className="yi-publish-field">
-            <span className="yi-publish-field-label">Action</span>
+            <span className="yi-publish-field-label">{t("Action")}</span>
             {(Object.keys(MODES) as PublishProfile["mode"][]).map((m) => (
               <label key={m} className={`yi-publish-option${mode === m ? " is-selected" : ""}`}>
                 <input type="radio" name="yi-publish-mode" checked={mode === m} onChange={() => setMode(m)} />
                 <span className="yi-publish-option-text">
-                  <span className="yi-publish-option-title">{MODES[m].title}</span>
-                  <span className="yi-publish-option-detail">{MODES[m].detail}</span>
+                  <span className="yi-publish-option-title">{t(MODES[m].title)}</span>
+                  <span className="yi-publish-option-detail">{t(MODES[m].detail)}</span>
                 </span>
               </label>
             ))}
             {mode === "exports" && (
               <label className="yi-publish-check">
                 <input type="checkbox" checked={dryRun} onChange={(e) => setDryRun(e.target.checked)} />
-                Dry run (don't upload)
+                {t("Dry run (don't upload)")}
               </label>
             )}
           </div>
@@ -180,11 +182,11 @@ export function PublishWindow({ projectRoot, onClose }: { projectRoot: string; o
       <div className="yi-publish-footer">
         {editingId && (
           <Button variant="ghost" onClick={resetForm}>
-            Cancel
+            {t("Cancel")}
           </Button>
         )}
         <Button variant="primary" disabled={!name.trim()} onClick={saveProfile}>
-          {editingId ? "Save Changes" : "Save Profile"}
+          {editingId ? t("Save Changes") : t("Save Profile")}
         </Button>
       </div>
     </div>

@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { useEffect, useState, type CSSProperties, type ReactElement } from "react";
+import { useT } from "substrate-platform-ui";
 
 /** One row of the Locals view, as `debug_variables` (debugger.rs `VariableOut`) returns it. */
 interface Variable {
@@ -21,6 +22,7 @@ const cell: CSSProperties ={ whiteSpace: "nowrap", overflow: "hidden", textOverf
  * stepping keeps the same members open.
  */
 export function LocalsView({ stopKey, frame }: { stopKey: unknown; frame: number | null }) {
+  const t = useT();
   const [vars, setVars] = useState<Variable[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(new Set());
@@ -57,8 +59,8 @@ export function LocalsView({ stopKey, frame }: { stopKey: unknown; frame: number
     });
 
   if (error) return <div style={{ ...mono, padding: "2px var(--sp-space-sm)", color: "var(--sp-text-muted)" }}>{error}</div>;
-  if (!vars) return <div style={{ ...mono, padding: "2px var(--sp-space-sm)", color: "var(--sp-text-muted)" }}>Loading…</div>;
-  if (vars.length === 0) return <div style={{ ...mono, padding: "2px var(--sp-space-sm)", color: "var(--sp-text-muted)" }}>No locals in this frame.</div>;
+  if (!vars) return <div style={{ ...mono, padding: "2px var(--sp-space-sm)", color: "var(--sp-text-muted)" }}>{t("Loading…")}</div>;
+  if (vars.length === 0) return <div style={{ ...mono, padding: "2px var(--sp-space-sm)", color: "var(--sp-text-muted)" }}>{t("No locals in this frame.")}</div>;
 
   const rows: ReactElement[] = [];
   const walk = (list: Variable[], depth: number, parent: string) => {
@@ -96,9 +98,9 @@ export function LocalsView({ stopKey, frame }: { stopKey: unknown; frame: number
 
   return (
     <div style={{ display: "grid", gridTemplateColumns: "minmax(80px, 1fr) minmax(80px, 2fr) minmax(60px, 1fr)", ...mono }}>
-      <div style={{ ...cell, color: "var(--sp-text-muted)" }}>Name</div>
-      <div style={{ ...cell, color: "var(--sp-text-muted)" }}>Value</div>
-      <div style={{ ...cell, color: "var(--sp-text-muted)" }}>Type</div>
+      <div style={{ ...cell, color: "var(--sp-text-muted)" }}>{t("Name")}</div>
+      <div style={{ ...cell, color: "var(--sp-text-muted)" }}>{t("Value")}</div>
+      <div style={{ ...cell, color: "var(--sp-text-muted)" }}>{t("Type")}</div>
       {rows}
     </div>
   );

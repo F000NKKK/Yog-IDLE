@@ -1,3 +1,5 @@
+import { t } from "substrate-platform-ui";
+
 /** Whether `path` is `ancestor` itself or anywhere beneath it. */
 export function isWithin(path: string, ancestor: string): boolean {
   if (path === ancestor) return true;
@@ -29,8 +31,8 @@ export function samePath(a: string, b: string): boolean {
 export function validateEntryName(value: string): string | null {
   const name = value.trim();
   if (!name) return "";
-  if (/[/\\]/.test(name)) return "A name can't contain / or \\.";
-  if (name === "." || name === "..") return "Not a valid name.";
+  if (/[/\\]/.test(name)) return t("A name can't contain / or \\.");
+  if (name === "." || name === "..") return t("Not a valid name.");
   return null;
 }
 
