@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { SearchField, useT } from "substrate-platform-ui";
+import { SearchField, beginItemDrag, useT } from "substrate-platform-ui";
 import { TOOLBOX_MIME, useActiveDesigner } from "../designer/activeDesigner";
 import { KIND_INFO, KINDS, type KindInfo } from "../designer/yui";
 import "./Toolbox.css";
@@ -73,10 +73,8 @@ export function Toolbox() {
                     tabIndex={0}
                     className={`toolbox-item${designer ? "" : " disabled"}`}
                     title={t(info.description)}
-                    draggable={!!designer}
-                    onDragStart={(e) => {
-                      e.dataTransfer.setData(TOOLBOX_MIME, info.kind);
-                      e.dataTransfer.effectAllowed = "copy";
+                    onPointerDown={(e) => {
+                      if (designer) beginItemDrag(e, { type: TOOLBOX_MIME, data: info.kind, label: t(info.label) });
                     }}
                     onDoubleClick={() => add(info)}
                     onKeyDown={(e) => {

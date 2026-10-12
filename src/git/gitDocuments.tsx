@@ -1,6 +1,6 @@
 import { useMemo, useSyncExternalStore, type ComponentType } from "react";
 import { t, useLocale, type PanelDef } from "substrate-platform-ui";
-import type { DiffSide } from "./gitApi";
+import type { CommitInfo, DiffSide, FileChange } from "./gitApi";
 import { DiffDocument } from "./DiffDocument";
 import { GitRepositoryWindow } from "./GitRepositoryWindow";
 
@@ -117,4 +117,42 @@ export function useGitPanels(): PanelDef[] {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [docs, locale],
   );
+}
+
+/** The diff Git Changes opens for a change: unstaged — what's staged vs. the file on disk; staged — the last commit vs. what's staged. */
+export function changeDiff(file: FileChange, staged: boolean): DiffRequest {
+  const before = file.origPath ?? file.path;
+  if (staged) {
+    const added = file.kind === "added" || file.kind === "copied";
+    return {
+      absPath: file.absPath,
+      left: { rev: added ? "" : "HEAD", path: before },
+      right: { rev: file.kind === "deleted" ? "" : "INDEX", path: file.path },
+      leftLabel: "HEAD",
+      rightLabel: t("Staged"),
+    };
+  }
+  if (file.kind === "conflicted") {
+    return { absPath: file.absPath, left: { rev: "HEAD", path: file.path }, right: { rev: "WORKTREE", path: file.path }, leftLabel: "HEAD", rightLabel: t("Working Tree") };
+  }
+  return {
+    absPath: file.absPath,
+    left: { rev: file.kind === "untracked" ? "" : "INDEX", path: file.path },
+    right: { rev: file.kind === "deleted" ? "" : "WORKTREE", path: file.path },
+    leftLabel: t("Index"),
+    rightLabel: t("Working Tree"),
+  };
+}
+
+/** A file as one commit changed it, against the commit's first parent. */
+export function commitDiff(file: FileChange, commit: CommitInfo): DiffRequest {
+  const parent = commit.parents[0];
+  const short = commit.shortHash;
+  return {
+    absPath: file.absPath,
+    left: { rev: parent && file.kind !== "added" ? parent : "", path: file.origPath ?? file.path },
+    right: { rev: file.kind === "deleted" ? "" : commit.hash, path: file.path },
+    leftLabel: parent ? parent.slice(0, short.length) : t("(none)"),
+    rightLabel: short,
+  };
 }
