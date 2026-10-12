@@ -165,6 +165,18 @@ pub struct DebugStoppedEvent {
     pub registers: Vec<(String, String)>,
 }
 
+impl DebugStoppedEvent {
+    fn exited() -> Self {
+        Self {
+            reason: "exited".to_string(),
+            stack_trace: Vec::new(),
+            threads: Vec::new(),
+            thread: 0,
+            registers: Vec::new(),
+        }
+    }
+}
+
 #[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ThreadOut {
@@ -812,13 +824,7 @@ fn mark_exited(app: &AppHandle, session_id: u64) {
                 mods: Vec::new(),
             },
         );
-        let _ = app.emit(
-            "debug-stopped",
-            DebugStoppedEvent {
-                reason: "exited".to_string(),
-                stack_trace: Vec::new(),
-            },
-        );
+        let _ = app.emit("debug-stopped", DebugStoppedEvent::exited());
         // `useModRunTargets`'s `running` flag only ever resets on this
         // event (a holdover from the old `run_and_stream`-based flow,
         // which fired it automatically) — without it, `RunBar`'s Start
@@ -1329,13 +1335,7 @@ pub fn debug_stop(app: AppHandle, state: State<DebugState>) -> Result<(), String
             mods: Vec::new(),
         },
     );
-    let _ = app.emit(
-        "debug-stopped",
-        DebugStoppedEvent {
-            reason: "exited".to_string(),
-            stack_trace: Vec::new(),
-        },
-    );
+    let _ = app.emit("debug-stopped", DebugStoppedEvent::exited());
     let _ = app.emit("workflow-exit", ());
     Ok(())
 }

@@ -9,9 +9,22 @@ export interface DebugStackFrame {
   line: number;
 }
 
+export interface DebugThread {
+  id: number;
+  name: string;
+}
+
+export type StepKind = "over" | "into" | "out";
+
 interface DebugStoppedEvent {
-  reason: "breakpoint" | "signal" | "exited";
+  reason: "breakpoint" | "step" | "signal" | "exited";
   stackTrace: DebugStackFrame[];
+  /** Every thread of the game; all are stopped while paused. */
+  threads: DebugThread[];
+  /** The thread `stackTrace`/`registers` describe. */
+  thread: number;
+  /** General-purpose registers of `thread`: `[name, hex value]`. */
+  registers: [string, string][];
 }
 
 /**
@@ -94,13 +107,17 @@ export function useDebugSession() {
     invoke("debug_continue").catch((err) => setError(String(err)));
   }, []);
 
-  const step = useCallback(() => {
-    invoke("debug_step").catch((err) => setError(String(err)));
+  const step = useCallback((kind: StepKind = "over") => {
+    invoke("debug_step", { kind }).catch((err) => setError(String(err)));
+  }, []);
+
+  const selectThread = useCallback((thread: number) => {
+    invoke("debug_select_thread", { thread }).catch((err) => setError(String(err)));
   }, []);
 
   const grantPtraceAccess = useCallback(() => {
     return invoke("debug_grant_ptrace_capability");
   }, []);
 
-  return { attaching, debugging, error, stopped, notifyRun, canRestart, stop, restart, continue_, step, grantPtraceAccess };
+  return { attaching, debugging, error, stopped, notifyRun, canRestart, stop, restart, continue_, step, selectThread, grantPtraceAccess };
 }
