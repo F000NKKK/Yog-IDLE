@@ -16,3 +16,11 @@ export function extensionOf(path: string): string {
   const dot = name.lastIndexOf(".");
   return dot > 0 ? name.slice(dot + 1).toLowerCase() : "";
 }
+
+/** Whether two paths name the same file — separators normalized, and a relative path (as debug info sometimes records, e.g. `src/lib.rs`) matches an absolute one ending in it. */
+export function samePath(a: string, b: string): boolean {
+  const norm = (p: string) => p.replace(/\\/g, "/").replace(/\/+$/, "");
+  const x = norm(a);
+  const y = norm(b);
+  return x === y || x.endsWith(`/${y}`) || y.endsWith(`/${x}`);
+}
