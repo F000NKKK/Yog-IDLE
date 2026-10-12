@@ -2,12 +2,13 @@ import { invoke } from "@tauri-apps/api/core";
 import { useState, type CSSProperties, type ReactNode } from "react";
 import { Button } from "substrate-platform-ui";
 import { useDebugSessionContext } from "../DebugSessionContext";
+import { LocalsView } from "./LocalsView";
 
 const muted: CSSProperties = { padding: "var(--sp-space-sm)", color: "var(--sp-text-muted)" };
 const mono: CSSProperties = { fontFamily: "var(--sp-font-mono)", fontSize: "12px" };
 const row: CSSProperties = { ...mono, padding: "2px var(--sp-space-sm)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" };
 
-/** A collapsible block of the Debug panel (Call Stack / Threads / Registers). */
+/** A collapsible block of the Debug panel (Locals / Call Stack / Threads / Registers). */
 function Section({ title, children }: { title: string; children: ReactNode }) {
   const [open, setOpen] = useState(true);
   return (
@@ -27,7 +28,7 @@ function fileName(path: string): string {
   return path.split(/[/\\]/).pop() ?? path;
 }
 
-/** The Debug tool window: Continue/Step/Stop, plus the call stack, threads and registers from the last stop — the counterpart to Output/Terminal, docked alongside them. */
+/** The Debug tool window: Continue/Step/Stop, plus the locals, call stack, threads and registers from the last stop — the counterpart to Output/Terminal, docked alongside them. */
 export function DebugPanel() {
   const { debugging, stopped, error, continue_, step, pause, stop, selectThread, selectedFrame, selectFrame, grantPtraceAccess } =
     useDebugSessionContext();
@@ -102,6 +103,9 @@ export function DebugPanel() {
         {stopped?.reason === "exited" && <div style={muted}>Process exited.</div>}
         {stopped && paused && (
           <>
+            <Section title="Locals">
+              <LocalsView stopKey={stopped} frame={stopped.stackTrace[selectedFrame]?.id ?? null} />
+            </Section>
             <Section title="Call Stack">
               {stopped.stackTrace.length === 0 && (
                 <div style={muted}>{stopped.reason === "pause" ? "Paused outside mod code — pick another thread." : "No mod code on this thread's stack."}</div>
