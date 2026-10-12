@@ -1,8 +1,8 @@
 // What the Properties window shows for the widgets selected in the screen
 // designer — one row per `.yui` attribute the selection can have.
 
-import { t, type PropertyDescriptor, type PropertyValue } from "substrate-platform-ui";
-import { CONTAINER_KINDS, cssColor, parseColor, parseNumber, type YuiNode } from "./yui";
+import { t, type PropertyDescriptor, type PropertyValue, type XmlSchema } from "substrate-platform-ui";
+import { CONTAINER_KINDS, cssColor, KIND_INFO, KINDS, parseColor, parseNumber, type YuiNode } from "./yui";
 
 type AttrKind = "text" | "number" | "units" | "color" | "bool" | "enum" | "padding";
 
@@ -127,4 +127,26 @@ export function widgetProperties(nodes: YuiNode[], apply: (attr: string, value: 
     rows.push(row);
   }
   return rows;
+}
+
+/**
+ * The `.yui` vocabulary for the XAML editor's completion — every element
+ * with the attributes Properties offers for it, enum and boolean values
+ * included, descriptions as completion info (in the current language).
+ */
+export function yuiSchema(): XmlSchema {
+  const children = KINDS.filter((k) => k !== "Screen");
+  return {
+    elements: KINDS.map((kind) => ({
+      name: kind,
+      top: kind === "Screen",
+      children: CONTAINER_KINDS.has(kind) ? children : [],
+      completion: { info: t(KIND_INFO[kind].description) },
+      attributes: SPECS.filter((spec) => applies(spec, kind)).map((spec) => ({
+        name: spec.attr,
+        values: spec.kind === "bool" ? ["true", "false"] : spec.kind === "enum" ? spec.options : spec.kind === "units" ? ["auto"] : undefined,
+        completion: { info: t(spec.description), detail: spec.fallback !== undefined ? `= ${spec.fallback}` : undefined },
+      })),
+    })),
+  };
 }

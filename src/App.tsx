@@ -74,6 +74,13 @@ import { ProjectPropertiesWindow } from "./projectProperties/ProjectPropertiesWi
 import { onOpenProjectProperties, openProjectProperties, type ProjectPropertiesPage } from "./projectProperties/bus";
 import { OUTPUT_SOURCES, OutputSourceSync, setOutputSource, useOutputSource, type OutputSource } from "./outputSource";
 
+import { GitChangesWindow, GIT_CHANGES_PANEL } from "./git/GitChangesWindow";
+import { GitHost } from "./git/GitHost";
+import { GitMenu } from "./git/GitMenu";
+import { GitStatusBar } from "./git/GitStatusBar";
+import { GitSettingsPage, gitSettingsKeywords } from "./git/GitSettings";
+import { closeGitDocument, isGitDocument, useGitPanels } from "./git/gitDocuments";
+import { onOpenGitSettings } from "./git/gitStore";
 import "./App.css";
 
 // Everything below is Yog-IDLE-specific: which panels exist, where they
@@ -148,6 +155,7 @@ function makeToolWindows() {
     ],
     right: [
       { id: "projectExplorer", title: t("Project Explorer"), component: ProjectExplorer } satisfies PanelDef,
+      { id: GIT_CHANGES_PANEL, title: t("Git Changes"), component: GitChangesWindow } satisfies PanelDef,
       { id: "properties", title: t("Properties"), component: Properties } satisfies PanelDef,
     ],
     bottom: [
@@ -168,6 +176,7 @@ function makeSettingsSections(openInstaller: () => void): SettingsSection[] {
     { id: "editor", label: t("Editor"), content: <EditorSettings />, keywords: editorSettingsKeywords },
     { id: "international", label: t("International Settings"), content: <InternationalSettings />, keywords: internationalSettingsKeywords },
     { id: "environment", label: t("Environment"), content: <EnvironmentSettingsPage onOpenInstaller={openInstaller} />, keywords: environmentSettingsKeywords },
+    { id: "sourceControl", label: t("Source Control"), content: <GitSettingsPage />, keywords: gitSettingsKeywords },
   ];
 }
 
@@ -444,6 +453,7 @@ function Menu({ onOpenSettings, onOpenInstaller, onOpenPublish, editor }: MenuPr
       <FileMenu editor={editor} />
       <EditMenu actions={editor} />
       <ViewMenu />
+      <GitMenu />
       <ProjectMenu />
       <BuildMenu onOpenPublish={onOpenPublish} />
       <DebugMenu />
@@ -515,6 +525,7 @@ function ShellChrome({ onOpenSettings, onOpenInstaller, onOpenPublish, run, onRu
       <Toolbar leading={<RunToolbar onRunningChange={onRunningChange} />} sections={[...editorToolbarSections(editor), ...runToolbarSections(run)]} />
       <EditorKeybindings actions={editor} />
       <SearchHost />
+      <GitHost />
       <OpenFilesPersistence />
       <ActiveDocumentSelection />
     </>
@@ -523,6 +534,8 @@ function ShellChrome({ onOpenSettings, onOpenInstaller, onOpenPublish, run, onRu
 
 function Shell({ onOpenSettings, onOpenInstaller, onOpenPublish }: { onOpenSettings: () => void; onOpenInstaller: () => void; onOpenPublish: () => void }) {
   const { panels, closeTab } = useOpenFiles();
+  const gitPanels = useGitPanels();
+  const centerPanels = useMemo(() => [...panels, ...gitPanels], [panels, gitPanels]);
   const { debugging, canRestart, restart, restartWorkflow, stop } = useDebugSessionContext();
   const { project } = useProject();
   const gameStatus = useGameStatus();
@@ -551,10 +564,10 @@ function Shell({ onOpenSettings, onOpenInstaller, onOpenPublish }: { onOpenSetti
       main={mainPanel}
       toolWindows={toolWindows}
       persistKey="yog-idle"
-      extraCenterPanels={panels}
-      onCloseDynamicPanel={(id) => void closeTab(id)}
+      extraCenterPanels={centerPanels}
+      onCloseDynamicPanel={(id) => (isGitDocument(id) ? closeGitDocument(id) : void closeTab(id))}
       menu={<ShellChrome onOpenSettings={onOpenSettings} onOpenInstaller={onOpenInstaller} onOpenPublish={onOpenPublish} run={runActions} onRunningChange={setRunning} />}
-      statusBar={<StatusBar text={gameStatus.text} busy={gameStatus.busy} detail={gameStatus.lines} />}
+      statusBar={<StatusBar text={gameStatus.text} busy={gameStatus.busy} detail={gameStatus.lines} trailing={<GitStatusBar />} />}
     />
   );
 }
@@ -573,6 +586,15 @@ function App() {
   const settingsSections = useMemo(() => makeSettingsSections(openInstaller), [locale]);
   const mod = project?.kind === "yog-mod" ? project : null;
 
+  // Git > Settings.
+  useEffect(
+    () =>
+      onOpenGitSettings(() => {
+        setSettingsSection("sourceControl");
+        setSettingsOpen(true);
+      }),
+    [],
+  );
   useEffect(() => onOpenProjectProperties((page) => setPropertiesPage((prev) => ({ page, key: (prev?.key ?? 0) + 1 }))), []);
   // Another project's properties never stay open.
   useEffect(() => setPropertiesPage(null), [project?.root]);
