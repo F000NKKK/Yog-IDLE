@@ -10,7 +10,7 @@ import {
   type FileTreeNode,
 } from "substrate-platform-ui";
 import { useProject, type ProjectInfo } from "../ProjectContext";
-import { useOpenFiles } from "../OpenFilesContext";
+import { openWithItems, useOpenFiles } from "../OpenFilesContext";
 import { openFile } from "../fileOpenBus";
 import { reportError } from "../reportError";
 import { IDE_OUTPUT_EVENT } from "../outputSource";
@@ -62,10 +62,22 @@ async function attempt(what: string, op: () => Promise<void>) {
 function ProjectExplorerTree({ project }: { project: ProjectInfo }) {
   // Expanded folders are remembered per project (see `WorkspaceProvider`).
   const tree = useDirectoryTree(project.root, project.name, dirCommands, reportListError, "explorer.expanded");
-  const { pathRenamed, pathRemoved } = useOpenFiles();
+  const { tabs, pathRenamed, pathRemoved } = useOpenFiles();
 
   function getMenuItems(node: FileTreeNode): FileTreeMenuItem[] {
     const items: FileTreeMenuItem[] = [];
+    if (node.kind === "file") {
+      items.push({ label: "Open", onSelect: (n) => openFile({ path: n.id, name: n.name }) });
+      const current = tabs.find((t) => t.path === node.id)?.view;
+      items.push({
+        label: "Open With",
+        submenu: openWithItems(node.id, current, (view) => openFile({ path: node.id, name: node.name, view })).map((item) => ({
+          ...item,
+          label: String(item.label),
+          onSelect: item.onSelect && (() => item.onSelect!()),
+        })),
+      });
+    }
     if (node.kind === "folder") {
       items.push({
         label: "New File...",
@@ -90,6 +102,7 @@ function ProjectExplorerTree({ project }: { project: ProjectInfo }) {
     if (node.id !== project.root) {
       items.push({
         label: "Rename",
+        separatorBefore: items.length > 0,
         onSelect: async (n) => {
           const name = await promptDialog({ title: "Rename", label: "New name", defaultValue: n.name, confirmLabel: "Rename", validate: validateName });
           if (name === null || name.trim() === n.name) return;

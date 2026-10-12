@@ -1,9 +1,9 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ComponentType, type ReactNode } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import {
-  allEditorProviders,
   editorProviderById,
   editorProvidersFor,
+  generalEditorProviders,
   getEditorView,
   isBinaryFile,
   MultiViewEditor,
@@ -100,12 +100,13 @@ function extensionOf(name: string): string {
 
 /**
  * "Open With…" entries for `path`: the editors made for it first (the
- * default marked), then every other registered editor — the user may know
- * better than the extension.
+ * default marked), then every editor that can open any file — the user may
+ * know better than the extension. Designers and viewers made for one format
+ * only appear for their own files.
  */
 export function openWithItems(path: string, current: string | undefined, pick: (view: string) => void): ContextMenuItem[] {
   const matching = editorProvidersFor(path);
-  const others = allEditorProviders().filter((p) => !matching.includes(p));
+  const others = generalEditorProviders().filter((p) => !matching.includes(p));
   const item = (p: EditorProvider, label: string, separatorBefore = false): ContextMenuItem => ({
     label,
     checked: p.id === current,
@@ -408,7 +409,8 @@ export function OpenFilesProvider({ children }: { children: ReactNode }) {
         // A view picked through "Open With…" that isn't one of this file's
         // own joins the switcher.
         const picked = view && !matching.some((p) => p.id === view) ? editorProviderById(view) : undefined;
-        const providers = picked ? [...matching, picked] : matching;
+        // Its full name tells it apart from the file's own "Code" view.
+        const providers = picked ? [...matching, { ...picked, label: picked.name ?? picked.label }] : matching;
         const active = providers.find((p) => p.id === view) ?? providers[0];
         const textView = providers.find((p) => p.kind === "text");
         // A line to go to, waiting for a text view to be mounted — a reveal
