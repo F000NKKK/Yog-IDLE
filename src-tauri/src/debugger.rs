@@ -380,7 +380,7 @@ pub fn run_with_mode(
         } else if let Some(stderr) = child.stderr.take() {
             std::thread::spawn(move || {
                 for line in BufReader::new(stderr).lines().map_while(Result::ok) {
-                    let _ = out_app.emit("workflow-output", format!("[warn] {line}"));
+                    let _ = out_app.emit("workflow-output", crate::format_stderr_line(line));
                 }
             });
         }

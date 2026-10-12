@@ -431,6 +431,16 @@ fn workflow_list(
     Ok(list)
 }
 
+/// A line a launched process wrote to stderr, labelled the way
+/// `format_log_line` labels workflow output (cargo/gradle progress on
+/// stderr stays unlabelled).
+pub(crate) fn format_stderr_line(text: String) -> String {
+    format_log_line(&LogLine {
+        level: Level::of_stderr_line(&text),
+        text,
+    })
+}
+
 fn format_log_line(line: &LogLine) -> String {
     match line.level {
         Level::Info => line.text.clone(),

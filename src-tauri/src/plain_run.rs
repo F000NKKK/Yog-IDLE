@@ -75,7 +75,7 @@ pub fn run(app: AppHandle, project_root: String, config_name: String) -> Result<
         let out_app = app.clone();
         std::thread::spawn(move || {
             for line in BufReader::new(stderr).lines().map_while(Result::ok) {
-                let _ = out_app.emit("workflow-output", format!("[warn] {line}"));
+                let _ = out_app.emit("workflow-output", crate::format_stderr_line(line));
             }
         });
     }
