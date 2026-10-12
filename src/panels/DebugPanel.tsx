@@ -1,7 +1,6 @@
 import { useState, type CSSProperties, type ReactNode } from "react";
 import { Button } from "substrate-platform-ui";
 import { useDebugSessionContext } from "../DebugSessionContext";
-import { requestOpenFile } from "../fileOpenBus";
 
 const muted: CSSProperties = { padding: "var(--sp-space-sm)", color: "var(--sp-text-muted)" };
 const mono: CSSProperties = { fontFamily: "var(--sp-font-mono)", fontSize: "12px" };
@@ -29,7 +28,8 @@ function fileName(path: string): string {
 
 /** The Debug tool window: Continue/Step/Stop, plus the call stack, threads and registers from the last stop — the counterpart to Output/Terminal, docked alongside them. */
 export function DebugPanel() {
-  const { debugging, stopped, error, continue_, step, stop, selectThread, grantPtraceAccess } = useDebugSessionContext();
+  const { debugging, stopped, error, continue_, step, pause, stop, selectThread, selectedFrame, selectFrame, grantPtraceAccess } =
+    useDebugSessionContext();
   const [notice, setNotice] = useState<{ text: string; isError: boolean } | null>(null);
 
   if (!debugging) {
@@ -69,6 +69,9 @@ export function DebugPanel() {
         <Button variant="ghost" onClick={continue_} disabled={!paused} title="Continue (F5)">
           Continue
         </Button>
+        <Button variant="ghost" onClick={pause} disabled={!!stopped} title="Break All (Ctrl+Alt+Break)">
+          Pause
+        </Button>
         <Button variant="ghost" onClick={() => step("over")} disabled={!paused} title="Step Over (F10)">
           Step Over
         </Button>
@@ -89,13 +92,20 @@ export function DebugPanel() {
         {stopped && paused && (
           <>
             <Section title="Call Stack">
-              {stopped.stackTrace.length === 0 && <div style={muted}>No mod code on this thread's stack.</div>}
+              {stopped.stackTrace.length === 0 && (
+                <div style={muted}>{stopped.reason === "pause" ? "Paused outside mod code — pick another thread." : "No mod code on this thread's stack."}</div>
+              )}
               {stopped.stackTrace.map((frame, i) => (
                 <div
                   key={frame.id}
-                  onClick={() => requestOpenFile({ path: frame.file, name: fileName(frame.file) })}
+                  onClick={() => selectFrame(i)}
                   title={`${frame.file}:${frame.line}`}
-                  style={{ ...row, cursor: "pointer", fontWeight: i === 0 ? 600 : undefined }}
+                  style={{
+                    ...row,
+                    cursor: "pointer",
+                    fontWeight: i === 0 ? 600 : undefined,
+                    background: i === selectedFrame ? "var(--sp-accent-soft)" : undefined,
+                  }}
                 >
                   {i === 0 ? "➜ " : "   "}
                   {frame.name} — {fileName(frame.file)}:{frame.line}

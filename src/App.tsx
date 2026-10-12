@@ -213,13 +213,14 @@ function FileMenu() {
 
 /** Debug > Continue/Step/Restart/Stop — the same actions as the Debug panel and the toolbar, enabled under the same conditions. Starting a run stays with the Run toolbar, which owns the target/mode selection. */
 function DebugMenu() {
-  const { debugging, stopped, canRestart, continue_, step, restart, stop } = useDebugSessionContext();
+  const { debugging, stopped, canRestart, continue_, step, pause, restart, stop } = useDebugSessionContext();
   const paused = debugging && !!stopped && stopped.reason !== "exited";
   return (
     <MenuBarItem
       label="Debug"
       items={[
         { label: "Continue", onClick: continue_, disabled: !paused, shortcut: "F5" },
+        { label: "Break All", onClick: pause, disabled: !debugging || !!stopped, shortcut: "Ctrl+Alt+Break" },
         { label: "Step Over", onClick: () => step("over"), disabled: !paused, shortcut: "F10", separatorBefore: true },
         { label: "Step Into", onClick: () => step("into"), disabled: !paused, shortcut: "F11" },
         { label: "Step Out", onClick: () => step("out"), disabled: !paused, shortcut: "Shift+F11" },

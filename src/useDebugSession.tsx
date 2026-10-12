@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
+import { openFile } from "./fileOpenBus";
 
 export interface DebugStackFrame {
   id: number;
@@ -17,7 +18,7 @@ export interface DebugThread {
 export type StepKind = "over" | "into" | "out";
 
 interface DebugStoppedEvent {
-  reason: "breakpoint" | "step" | "signal" | "exited";
+  reason: "breakpoint" | "step" | "pause" | "signal" | "exited";
   stackTrace: DebugStackFrame[];
   /** Every thread of the game; all are stopped while paused. */
   threads: DebugThread[];
@@ -41,6 +42,8 @@ export function useDebugSession() {
   const [debugging, setDebugging] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [stopped, setStopped] = useState<DebugStoppedEvent | null>(null);
+  /** Index into `stopped.stackTrace` the editor's execution marker and the panel highlight follow. */
+  const [selectedFrame, setSelectedFrame] = useState(0);
   const relaunchRef = useRef<(() => Promise<unknown>) | null>(null);
   const [canRestart, setCanRestart] = useState(false);
 
@@ -68,7 +71,14 @@ export function useDebugSession() {
     });
     const unlistenStopped = listen<DebugStoppedEvent>("debug-stopped", (event) => {
       setStopped(event.payload);
-      if (event.payload.reason === "exited") setDebugging(false);
+      setSelectedFrame(0);
+      if (event.payload.reason === "exited") {
+        setDebugging(false);
+        return;
+      }
+      // Like any IDE: bring up where it stopped.
+      const top = event.payload.stackTrace[0];
+      if (top) openFile({ path: top.file, line: top.line });
     });
     return () => {
       unlistenStarting.then((f) => f());
@@ -103,13 +113,37 @@ export function useDebugSession() {
     stop().finally(() => relaunch().catch((err) => setError(String(err))));
   }, [stop]);
 
+  // Resuming invalidates the last stop: the panel shows "Running…" and the
+  // editor drops its execution marker until the next `debug-stopped`.
   const continue_ = useCallback(() => {
-    invoke("debug_continue").catch((err) => setError(String(err)));
+    invoke("debug_continue")
+      .then(() => setStopped(null))
+      .catch((err) => setError(String(err)));
   }, []);
 
   const step = useCallback((kind: StepKind = "over") => {
-    invoke("debug_step", { kind }).catch((err) => setError(String(err)));
+    invoke("debug_step", { kind })
+      .then(() => setStopped(null))
+      .catch((err) => setError(String(err)));
   }, []);
+
+  /** Break All — stops the running game wherever it is; the stop arrives as a `debug-stopped` with reason `"pause"`. */
+  const pause = useCallback(() => {
+    invoke("debug_pause").catch((err) => setError(String(err)));
+  }, []);
+
+  const selectFrame = useCallback(
+    (index: number) => {
+      const frame = stopped?.stackTrace[index];
+      if (!frame) return;
+      setSelectedFrame(index);
+      openFile({ path: frame.file, line: frame.line });
+    },
+    [stopped],
+  );
+
+  /** Where the editor should draw the execution arrow: the selected frame's file/line while paused. */
+  const executionLocation = stopped && stopped.reason !== "exited" ? (stopped.stackTrace[selectedFrame] ?? null) : null;
 
   const selectThread = useCallback((thread: number) => {
     invoke("debug_select_thread", { thread }).catch((err) => setError(String(err)));
@@ -119,5 +153,5 @@ export function useDebugSession() {
     return invoke("debug_grant_ptrace_capability");
   }, []);
 
-  return { attaching, debugging, error, stopped, notifyRun, canRestart, stop, restart, continue_, step, selectThread, grantPtraceAccess };
+  return { attaching, debugging, error, stopped, notifyRun, canRestart, stop, restart, continue_, step, pause, selectThread, selectedFrame, selectFrame, executionLocation, grantPtraceAccess };
 }

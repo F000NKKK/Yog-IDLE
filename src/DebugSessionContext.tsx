@@ -18,14 +18,15 @@ export function useDebugSessionContext(): DebugSessionValue {
   return ctx;
 }
 
-/** Visual Studio's debugger keys, app-wide (capture phase, so the editor doesn't swallow them): F5 Continue, F10/F11/Shift+F11 Step Over/Into/Out, Shift+F5 Stop, Ctrl+Shift+F5 Restart. Only active during a debug session. */
-function useDebugShortcuts({ debugging, stopped, canRestart, continue_, step, stop, restart }: DebugSessionValue) {
+/** Visual Studio's debugger keys, app-wide (capture phase, so the editor doesn't swallow them): F5 Continue, F10/F11/Shift+F11 Step Over/Into/Out, Ctrl+Alt+Break (or Ctrl+Alt+Pause) Break All, Shift+F5 Stop, Ctrl+Shift+F5 Restart. Only active during a debug session. */
+function useDebugShortcuts({ debugging, stopped, canRestart, continue_, step, pause, stop, restart }: DebugSessionValue) {
   useEffect(() => {
     if (!debugging) return;
     const paused = !!stopped && stopped.reason !== "exited";
     const onKeyDown = (e: KeyboardEvent) => {
       let action: (() => unknown) | null = null;
-      if (e.key === "F5" && e.shiftKey && e.ctrlKey) action = canRestart ? restart : null;
+      if ((e.key === "Pause" || e.key === "Cancel") && e.ctrlKey && e.altKey) action = paused ? null : pause;
+      else if (e.key === "F5" && e.shiftKey && e.ctrlKey) action = canRestart ? restart : null;
       else if (e.key === "F5" && e.shiftKey) action = stop;
       else if (e.key === "F5" && !e.ctrlKey && paused) action = continue_;
       else if (e.key === "F10" && !e.shiftKey && paused) action = () => step("over");
@@ -38,5 +39,5 @@ function useDebugShortcuts({ debugging, stopped, canRestart, continue_, step, st
     };
     window.addEventListener("keydown", onKeyDown, true);
     return () => window.removeEventListener("keydown", onKeyDown, true);
-  }, [debugging, stopped, canRestart, continue_, step, stop, restart]);
+  }, [debugging, stopped, canRestart, continue_, step, pause, stop, restart]);
 }

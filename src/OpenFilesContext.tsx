@@ -263,7 +263,12 @@ export function OpenFilesProvider({ children }: { children: ReactNode }) {
           continue;
         }
         const current = tabsRef.current.find((t) => t.id === tab.id);
-        if (!current || disk === current.diskContent) continue;
+        if (!current) continue;
+        if (disk === current.diskContent) {
+          // Back again (restored by git, say) — no longer "deleted".
+          if (current.missing) setTabs((prev) => prev.map((t) => (t.id === tab.id ? { ...t, missing: false } : t)));
+          continue;
+        }
         if (!current.dirty) {
           setTabs((prev) =>
             prev.map((t) =>
