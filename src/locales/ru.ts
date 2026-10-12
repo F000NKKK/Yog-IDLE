@@ -620,6 +620,7 @@ registerTranslations("ru", {
   // Project Properties
   "Open yog.toml in the editor": "Открыть yog.toml в редакторе",
   "View Code": "Просмотреть код",
+  "View Designer": "Открыть конструктор",
   "Couldn't read yog.toml: {error}": "Не удалось прочитать yog.toml: {error}",
   Application: "Приложение",
   "This project uses the legacy [package] table — yog still reads it; new projects use [mod].":

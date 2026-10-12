@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FocusEvent, type KeyboardEvent, type MouseEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FocusEvent, type KeyboardEvent, type MouseEvent } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { emit } from "@tauri-apps/api/event";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
@@ -8,6 +8,7 @@ import {
   FileTree,
   confirmDialog,
   matchesShortcut,
+  nestFiles,
   openTerminalIn,
   promptDialog,
   useContextMenu,
@@ -101,6 +102,29 @@ async function readModId(project: ProjectInfo): Promise<string> {
   return project.name.toLowerCase().replace(/[^a-z0-9_-]+/g, "_");
 }
 
+/**
+ * Visual Studio's file nesting (`Form1.cs` ▸ `Form1.Designer.cs`, `Form1.resx`):
+ * a screen's code-behind `foo.rs` and generated `foo.designer.rs` go under
+ * `foo.yui`, a lock file under its manifest.
+ */
+function nestParent(name: string, siblings: Set<string>): string | null {
+  const lower = name.toLowerCase();
+  const designer = /^(.*)\.designer\.rs$/.exec(lower);
+  if (designer) return siblings.has(`${designer[1]}.yui`) ? `${designer[1]}.yui` : `${designer[1]}.rs`;
+  const code = /^(.*)\.rs$/.exec(lower);
+  if (code && siblings.has(`${code[1]}.yui`)) return `${code[1]}.yui`;
+  if (lower === "yog.lock") return "yog.toml";
+  if (lower === "cargo.lock") return "cargo.toml";
+  return null;
+}
+
+/** For `foo.yui` its code-behind `foo.rs`, and the other way round — F7 / Shift+F7 in Visual Studio. */
+function codeBehindPair(path: string): { screen: string; code: string } | null {
+  const m = /^(.*)\.(yui|rs)$/i.exec(path);
+  if (!m || /\.designer$/i.test(m[1])) return null;
+  return { screen: `${m[1]}.yui`, code: `${m[1]}.rs` };
+}
+
 const copyText = (text: string) =>
   navigator.clipboard.writeText(text).catch((err) => reportError(t("Couldn't copy to the clipboard: {error}", { error: String(err) })));
 
@@ -117,6 +141,7 @@ function ProjectExplorerTree({ project }: { project: ProjectInfo }) {
   const backgroundMenu = useContextMenu<FileTreeNode>();
   const treeRef = useRef(tree);
   treeRef.current = tree;
+  const shownNodes = useMemo(() => nestFiles(tree.nodes, nestParent), [tree.nodes]);
 
   // Properties' "File Name" renames through here while the path is in the
   // tree, so the tree re-lists its folder.
@@ -324,6 +349,17 @@ function ProjectExplorerTree({ project }: { project: ProjectInfo }) {
         label: t("Open With"),
         submenu: openWithItems(node.id, current, (view) => openFile({ path: node.id, name: node.name, view })),
       });
+      // A screen and its code-behind: View Code (F7) / View Designer (Shift+F7).
+      const pair = codeBehindPair(node.id);
+      const siblings = findNode(tree.nodes, parentOf(node.id))?.children ?? [];
+      if (pair && siblings.some((n) => n.id === pair.screen) && siblings.some((n) => n.id === pair.code)) {
+        const isScreen = node.id === pair.screen;
+        items.push(
+          isScreen
+            ? { label: t("View Code"), shortcut: "F7", onSelect: () => openFile({ path: pair.code, name: baseName(pair.code) }) }
+            : { label: t("View Designer"), shortcut: "Shift+F7", onSelect: () => openFile({ path: pair.screen, name: baseName(pair.screen) }) }
+        );
+      }
     }
     if (isRoot && project.kind === "yog-mod") {
       // Visual Studio's project node starts with Build/Clean.
@@ -417,7 +453,7 @@ function ProjectExplorerTree({ project }: { project: ProjectInfo }) {
       onContextMenu={handleBackgroundContextMenu}
     >
       <FileTree
-        nodes={tree.nodes}
+        nodes={shownNodes}
         expandedIds={tree.expandedIds}
         onExpandedChange={tree.onExpandedChange}
         selectedIds={selectedIds}
