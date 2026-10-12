@@ -55,23 +55,23 @@ export function PublishWindow({ projectRoot, onClose }: { projectRoot: string; o
   }
 
   return (
-    <div className="sp-publish-window" style={{ left: pos.x, top: pos.y }}>
-      <div className="sp-publish-header" {...handlers}>
-        <span className="sp-publish-title">Publish</span>
+    <div className="yi-publish-window" style={{ left: pos.x, top: pos.y }}>
+      <div className="yi-publish-header" {...handlers}>
+        <span className="yi-publish-title">Publish</span>
         <IconButton size={24} aria-label="Close" onClick={onClose}>
           <Icon name="close" size={18} />
         </IconButton>
       </div>
 
-      <div className="sp-publish-body">
-        <div className="sp-publish-section">
-          <div className="sp-publish-label">Profiles</div>
-          {profiles.length === 0 && <p className="sp-publish-empty">No publish profiles yet — create one below.</p>}
+      <div className="yi-publish-body">
+        <div className="yi-publish-section">
+          <div className="yi-publish-label">Profiles</div>
+          {profiles.length === 0 && <p className="yi-publish-empty">No publish profiles yet — create one below.</p>}
           {profiles.map((p) => (
-            <div key={p.id} className="sp-publish-profile-row">
-              <div className="sp-publish-profile-info">
-                <span className="sp-publish-profile-name">{p.name}</span>
-                <span className="sp-publish-profile-mode">
+            <div key={p.id} className="yi-publish-profile-row">
+              <div className="yi-publish-profile-info">
+                <span className="yi-publish-profile-name">{p.name}</span>
+                <span className="yi-publish-profile-mode">
                   {p.mode === "package" ? "Package as .yog" : `Publish exports${p.dryRun ? " (dry run)" : ""}`}
                 </span>
               </div>
@@ -85,23 +85,23 @@ export function PublishWindow({ projectRoot, onClose }: { projectRoot: string; o
           ))}
         </div>
 
-        <div className="sp-publish-divider" />
+        <div className="yi-publish-divider" />
 
-        <div className="sp-publish-section">
-          <div className="sp-publish-label">New Profile</div>
+        <div className="yi-publish-section">
+          <div className="yi-publish-label">New Profile</div>
           <TextField placeholder="Profile name" value={name} onChange={(e) => setName(e.target.value)} />
-          <div className="sp-publish-mode-row">
-            <label className="sp-publish-radio">
+          <div className="yi-publish-mode-row">
+            <label className="yi-publish-radio">
               <input type="radio" checked={mode === "package"} onChange={() => setMode("package")} />
               Package mod as .yog
             </label>
-            <label className="sp-publish-radio">
+            <label className="yi-publish-radio">
               <input type="radio" checked={mode === "exports"} onChange={() => setMode("exports")} />
               Publish exports
             </label>
           </div>
           {mode === "exports" && (
-            <label className="sp-publish-radio">
+            <label className="yi-publish-radio">
               <input type="checkbox" checked={dryRun} onChange={(e) => setDryRun(e.target.checked)} />
               Dry run
             </label>
