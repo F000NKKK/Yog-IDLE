@@ -321,8 +321,9 @@ interface RunActions {
 
 /**
  * The toolbar's run-time section — Hot Reload/Restart/Stop only appear once
- * something is actually running: Stop/Restart work for any game launch,
- * Release or Debug (`debug_stop` kills a plain run too); Hot Reload needs
+ * something is actually running: Stop/Restart work for any launch — a game,
+ * Release or Debug, or a `workflow.toml` target (see `Shell` for which
+ * backend call each uses); Hot Reload needs
  * the game to have connected its control socket (`gameStage === "ready"`) —
  * it rebuilds and swaps the new build in over that socket
  * (`mod_hot_reload`). The editing sections before it come from
@@ -340,8 +341,8 @@ function runToolbarSections(run: RunActions): ToolbarSection[] {
         disabled: !hotReload || run.gameStage !== "ready" || run.hotReloading,
         onClick: hotReload ?? undefined,
       },
-      { icon: "restart", label: "Restart", disabled: !gameUp || !run.canRestart, onClick: run.onRestart },
-      { icon: "stop", label: run.debugging ? "Stop Debugging" : "Stop", disabled: !gameUp, onClick: run.onStop },
+      { icon: "restart", label: "Restart", disabled: !run.canRestart, onClick: run.onRestart },
+      { icon: "stop", label: run.debugging ? "Stop Debugging" : "Stop", onClick: run.onStop },
     ]);
   }
   return sections;
@@ -362,12 +363,13 @@ function ShellChrome({ onOpenSettings, onOpenPublish, run, onRunningChange }: Om
 
 function Shell({ onOpenSettings, onOpenPublish }: { onOpenSettings: () => void; onOpenPublish: () => void }) {
   const { panels, closeTab } = useOpenFiles();
-  const { debugging, canRestart, restart, stop } = useDebugSessionContext();
+  const { debugging, canRestart, restart, restartWorkflow, stop } = useDebugSessionContext();
   const { project } = useProject();
   const gameStatus = useGameStatus();
   const hotReload = useHotReload();
   const [running, setRunning] = useState(false);
   const modRoot = project?.kind === "yog-mod" ? project.root : null;
+  const gameUp = gameStatus.stage !== "idle" || debugging;
   const runActions: RunActions = {
     running,
     gameStage: gameStatus.stage,
@@ -375,8 +377,11 @@ function Shell({ onOpenSettings, onOpenPublish }: { onOpenSettings: () => void; 
     canRestart,
     onHotReload: modRoot ? () => hotReload.trigger(modRoot) : null,
     hotReloading: hotReload.busy,
-    onRestart: restart,
-    onStop: stop,
+    // A game (Release or Debug) is stopped through `debug_stop`; anything
+    // else still running — a `workflow.toml` target, a mod run that hasn't
+    // launched its game yet — is a workflow run, cancelled as such.
+    onRestart: gameUp ? restart : () => void restartWorkflow(),
+    onStop: gameUp ? stop : () => void invoke("workflow_cancel"),
   };
   return (
     <PlatformShell

@@ -71,6 +71,16 @@ function ModRunToolbar({ root, onRunningChange }: { root: string } & RunToolbarP
 
 function WorkflowRunToolbar({ root, onRunningChange }: { root: string } & RunToolbarProps) {
   const runner = useWorkflowRunner(root);
+  const { notifyRun } = useDebugSessionContext();
   useEffect(() => onRunningChange?.(runner.running), [runner.running, onRunningChange]);
-  return <RunBar targets={runner.workflows} running={runner.running} onRun={runner.run} />;
+  return (
+    <RunBar
+      targets={runner.workflows}
+      running={runner.running}
+      onRun={(name) => {
+        notifyRun(() => runner.run(name));
+        runner.run(name);
+      }}
+    />
+  );
 }

@@ -113,6 +113,29 @@ export function useDebugSession() {
     stop().finally(() => relaunch().catch((err) => setError(String(err))));
   }, [stop]);
 
+  /**
+   * Restart for a run that never became a game — a `workflow.toml` target
+   * (or a mod run still building): cancel it, wait for its `workflow-exit`
+   * so the relaunch doesn't race the old run's end, then start it again.
+   */
+  const restartWorkflow = useCallback(async () => {
+    const relaunch = relaunchRef.current;
+    if (!relaunch) return;
+    let exit = () => {};
+    const exited = new Promise<void>((resolve) => (exit = resolve));
+    // Listening before cancelling, so the exit can't slip past.
+    const unlisten = await listen("workflow-exit", () => exit());
+    try {
+      await invoke("workflow_cancel");
+      await exited;
+      await relaunch();
+    } catch (err) {
+      setError(String(err));
+    } finally {
+      unlisten();
+    }
+  }, []);
+
   // Resuming invalidates the last stop: the panel shows "Running…" and the
   // editor drops its execution marker until the next `debug-stopped`.
   const continue_ = useCallback(() => {
@@ -153,5 +176,5 @@ export function useDebugSession() {
     return invoke("debug_grant_ptrace_capability");
   }, []);
 
-  return { attaching, debugging, error, stopped, notifyRun, canRestart, stop, restart, continue_, step, pause, selectThread, selectedFrame, selectFrame, executionLocation, grantPtraceAccess };
+  return { attaching, debugging, error, stopped, notifyRun, canRestart, stop, restart, restartWorkflow, continue_, step, pause, selectThread, selectedFrame, selectFrame, executionLocation, grantPtraceAccess };
 }
