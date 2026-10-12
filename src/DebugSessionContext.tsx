@@ -22,14 +22,12 @@ export function useDebugSessionContext(): DebugSessionValue {
 /** Visual Studio's debugger keys, app-wide (capture phase, so the editor doesn't swallow them): F5 Continue, F10/F11/Shift+F11 Step Over/Into/Out, Ctrl+Alt+Break (or Ctrl+Alt+Pause) Break All, Shift+F5 Stop, Ctrl+Shift+F5 Restart. Only active during a debug session. */
 function useDebugShortcuts({ debugging, stopped, canRestart, continue_, step, pause, stop, restart }: DebugSessionValue) {
   const paused = !!stopped && stopped.reason !== "exited";
-  const bind = (keys: string | string[], id: string, enabled: boolean, run: () => unknown) =>
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    useKeybinding(keys, () => void run(), { id, enabled: debugging && enabled });
-  bind(["Ctrl+Alt+Pause", "Ctrl+Alt+Cancel"], "debug.breakAll", !paused, pause);
-  bind("Ctrl+Shift+F5", "debug.restart", canRestart, restart);
-  bind("Shift+F5", "debug.stop", true, stop);
-  bind("F5", "debug.continue", paused, continue_);
-  bind("F10", "debug.stepOver", paused, () => step("over"));
-  bind("Shift+F11", "debug.stepOut", paused, () => step("out"));
-  bind("F11", "debug.stepInto", paused, () => step("into"));
+  const on = (enabled: boolean) => ({ enabled: debugging && enabled });
+  useKeybinding(["Ctrl+Alt+Pause", "Ctrl+Alt+Cancel"], () => void pause(), { id: "debug.breakAll", ...on(!paused) });
+  useKeybinding("Ctrl+Shift+F5", () => void restart(), { id: "debug.restart", ...on(canRestart) });
+  useKeybinding("Shift+F5", () => void stop(), { id: "debug.stop", ...on(true) });
+  useKeybinding("F5", () => void continue_(), { id: "debug.continue", ...on(paused) });
+  useKeybinding("F10", () => void step("over"), { id: "debug.stepOver", ...on(paused) });
+  useKeybinding("Shift+F11", () => void step("out"), { id: "debug.stepOut", ...on(paused) });
+  useKeybinding("F11", () => void step("into"), { id: "debug.stepInto", ...on(paused) });
 }

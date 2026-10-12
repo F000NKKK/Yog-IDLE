@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import {
   MenuBarItem,
@@ -15,6 +15,7 @@ import {
   editorToggleComment,
   editorUndo,
   useEditorView,
+  useKeybinding,
   type MenuBarDropdownEntry,
   type ToolbarSection,
 } from "substrate-platform-ui";
