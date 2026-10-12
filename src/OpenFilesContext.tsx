@@ -1,15 +1,21 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ComponentType, type ReactNode } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import {
+  editorProvidersFor,
   getEditorView,
   isBinaryFile,
+  MultiViewEditor,
   notify,
-  resolveEditor,
   revealLine,
   showDialog,
+  useEditorProviders,
   useShell,
   type CodeEditorProps,
+  type ContextMenuItem,
+  type EditorProps,
+  type EditorProvider,
   type PanelDef,
+  type TabMenuContext,
 } from "substrate-platform-ui";
 import { useBreakpoints } from "./BreakpointsContext";
 import { useDebugSessionContext } from "./DebugSessionContext";
@@ -18,6 +24,7 @@ import { onOpenFileRequest, type FileOpenRequest } from "./fileOpenBus";
 import { baseName, isWithin } from "./paths";
 import { reportError } from "./reportError";
 import { addCloseGuard } from "./windowClose";
+import { useGlobalState } from "./WorkspaceContext";
 
 interface FileTab {
   /** Stable for the tab's lifetime (survives a rename) — the dock panel id. */
@@ -33,6 +40,10 @@ interface FileTab {
   contentVersion: number;
   /** The file was deleted (or renamed away) on disk while this tab had unsaved edits — kept open so they aren't lost; saving recreates it. */
   missing: boolean;
+  /** Kept at the front of the tab strip, and out of "Close All But This" and the like. */
+  pinned: boolean;
+  /** The editor provider this tab shows ("Open With…" / the view switcher) — unset means the default for its kind of file. */
+  view?: string;
   /** The latest request to show this tab — a new `seq` activates it and, with `line`, moves the cursor there. */
   reveal?: { seq: number; line?: number; column?: number; activate: boolean };
 }
@@ -51,8 +62,13 @@ interface OpenFilesContextValue {
   updateContent: (id: string, content: string) => void;
   /** Closes a tab, first asking Save / Don't Save / Cancel if it has unsaved edits — resolves `false` if it stayed open. */
   closeTab: (id: string) => Promise<boolean>;
+  /** Closes these tabs, asking once about all unsaved ones among them — resolves `false` if cancelled (nothing closed). */
+  closeTabs: (ids: string[]) => Promise<boolean>;
   /** Closes every tab, asking once about all unsaved ones — resolves `false` if cancelled (nothing closed). */
   closeAll: () => Promise<boolean>;
+  setPinned: (id: string, pinned: boolean) => void;
+  /** Shows a tab through another editor provider (by id). */
+  setView: (id: string, view: string) => void;
   /** Writes a tab to disk — resolves `false` (tab stays dirty, error reported) if that failed. */
   save: (id: string) => Promise<boolean>;
   saveAll: () => Promise<boolean>;
@@ -142,7 +158,7 @@ export function OpenFilesProvider({ children }: { children: ReactNode }) {
         return null;
       }
       const id = `file-${++nextTabId}`;
-      const tab: FileTab = { id, path, name, content, diskContent: content, dirty: false, contentVersion: 0, missing: false, reveal };
+      const tab: FileTab = { id, path, name, content, diskContent: content, dirty: false, contentVersion: 0, missing: false, pinned: false, reveal };
       // Into the ref right away, not on the next render: once this promise
       // settles `pendingOpens` forgets the path, and an `open` of the same
       // path before React re-renders (restoring the active tab does exactly
@@ -211,21 +227,43 @@ export function OpenFilesProvider({ children }: { children: ReactNode }) {
     [save, removeTabs]
   );
 
-  /** Asks about every dirty tab at once — resolves `false` if the user cancelled or a save failed. */
-  const confirmDiscardAll = useCallback(async (): Promise<boolean> => {
-    const dirty = tabsRef.current.filter((t) => t.dirty);
-    if (dirty.length === 0) return true;
-    const choice = await askToSave(dirty.map((t) => t.name));
-    if (choice === "cancel") return false;
-    if (choice === "save") return saveAll();
-    return true;
-  }, [saveAll]);
+  /** Asks about the dirty ones among `ids` at once — resolves `false` if the user cancelled or a save failed. */
+  const confirmDiscard = useCallback(
+    async (ids: string[]): Promise<boolean> => {
+      const dirty = tabsRef.current.filter((t) => t.dirty && ids.includes(t.id));
+      if (dirty.length === 0) return true;
+      const choice = await askToSave(dirty.map((t) => t.name));
+      if (choice === "cancel") return false;
+      if (choice === "save") {
+        let ok = true;
+        for (const tab of dirty) if (!(await save(tab.id))) ok = false;
+        return ok;
+      }
+      return true;
+    },
+    [save]
+  );
 
-  const closeAll = useCallback(async (): Promise<boolean> => {
-    if (!(await confirmDiscardAll())) return false;
-    removeTabs(tabsRef.current.map((t) => t.id));
-    return true;
-  }, [confirmDiscardAll, removeTabs]);
+  const confirmDiscardAll = useCallback(() => confirmDiscard(tabsRef.current.map((t) => t.id)), [confirmDiscard]);
+
+  const closeTabs = useCallback(
+    async (ids: string[]): Promise<boolean> => {
+      if (!(await confirmDiscard(ids))) return false;
+      removeTabs(ids);
+      return true;
+    },
+    [confirmDiscard, removeTabs]
+  );
+
+  const closeAll = useCallback(() => closeTabs(tabsRef.current.map((t) => t.id)), [closeTabs]);
+
+  const setPinned = useCallback((id: string, pinned: boolean) => {
+    setTabs((prev) => prev.map((t) => (t.id === id ? { ...t, pinned } : t)));
+  }, []);
+
+  const setView = useCallback((id: string, view: string) => {
+    setTabs((prev) => prev.map((t) => (t.id === id ? { ...t, view } : t)));
+  }, []);
 
   useEffect(() => addCloseGuard(confirmDiscardAll), [confirmDiscardAll]);
 
