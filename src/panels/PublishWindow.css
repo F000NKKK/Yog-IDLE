@@ -3,12 +3,15 @@
   z-index: 150;
   display: flex;
   flex-direction: column;
-  width: 420px;
-  max-height: 70vh;
+  width: 480px;
+  max-height: 80vh;
+  overflow: hidden;
   background: var(--sp-surface-1);
   border: 1px solid var(--sp-border-strong);
   border-radius: var(--sp-radius-md);
   box-shadow: var(--sp-shadow-md);
+  font-size: var(--sp-font-size);
+  color: var(--sp-text);
 }
 
 .yi-publish-header {
@@ -20,7 +23,6 @@
   padding: 0 var(--sp-space-sm) 0 var(--sp-space-md);
   background: var(--sp-surface-2);
   border-bottom: 1px solid var(--sp-border);
-  color: var(--sp-text-muted);
   cursor: grab;
   user-select: none;
 }
@@ -31,47 +33,64 @@
 
 .yi-publish-title {
   flex: 1;
-  font-size: var(--sp-font-size);
-  color: var(--sp-text);
+  font-weight: 600;
 }
 
 .yi-publish-body {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-space-sm);
-  padding: var(--sp-space-md);
+  gap: var(--sp-space-lg);
+  padding: var(--sp-space-md) var(--sp-space-lg) var(--sp-space-lg);
   overflow: auto;
 }
 
 .yi-publish-section {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-space-xs);
+  gap: var(--sp-space-sm);
 }
 
 .yi-publish-label {
-  font-size: 0.85em;
+  font-size: 0.8em;
+  font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.06em;
   color: var(--sp-text-faint);
+}
+
+.yi-publish-list {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--sp-border);
+  border-radius: var(--sp-radius-md);
+  background: var(--sp-surface-2);
+  overflow: hidden;
 }
 
 .yi-publish-empty {
+  margin: 0;
+  padding: var(--sp-space-lg) var(--sp-space-md);
+  text-align: center;
   color: var(--sp-text-faint);
-  font-size: var(--sp-font-size);
-}
-
-.yi-publish-divider {
-  height: 1px;
-  margin: var(--sp-space-xs) 0;
-  background: var(--sp-border);
 }
 
 .yi-publish-profile-row {
   display: flex;
   align-items: center;
-  gap: var(--sp-space-xs);
-  padding: var(--sp-space-xs) 0;
+  gap: var(--sp-space-sm);
+  padding: var(--sp-space-sm) var(--sp-space-sm) var(--sp-space-sm) var(--sp-space-md);
+}
+
+.yi-publish-profile-row + .yi-publish-profile-row {
+  border-top: 1px solid var(--sp-border);
+}
+
+.yi-publish-profile-row:hover {
+  background: var(--sp-surface-1);
+}
+
+.yi-publish-profile-row.is-editing {
+  box-shadow: inset 2px 0 0 var(--sp-accent);
 }
 
 .yi-publish-profile-info {
@@ -82,38 +101,101 @@
 }
 
 .yi-publish-profile-name {
-  color: var(--sp-text);
-  font-size: var(--sp-font-size);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .yi-publish-profile-mode {
-  color: var(--sp-text-faint);
   font-size: 0.85em;
+  color: var(--sp-text-faint);
 }
 
-.yi-publish-mode-row {
+.yi-publish-profile-buttons {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 2px;
+}
+
+.yi-publish-field {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--sp-space-xs);
 }
 
-.yi-publish-radio {
+.yi-publish-field-label {
+  color: var(--sp-text-muted);
+}
+
+.yi-publish-field .sp-textfield {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.yi-publish-option {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-space-sm);
+  padding: var(--sp-space-sm) var(--sp-space-md);
+  border: 1px solid var(--sp-border);
+  border-radius: var(--sp-radius-md);
+  cursor: pointer;
+}
+
+.yi-publish-option:hover {
+  border-color: var(--sp-border-strong);
+}
+
+.yi-publish-option.is-selected {
+  border-color: var(--sp-accent);
+  background: var(--sp-accent-soft);
+}
+
+.yi-publish-option input,
+.yi-publish-check input {
+  margin: 2px 0 0;
+  accent-color: var(--sp-accent);
+}
+
+.yi-publish-option-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.yi-publish-option-detail {
+  font-size: 0.85em;
+  color: var(--sp-text-faint);
+}
+
+.yi-publish-check {
   display: flex;
   align-items: center;
-  gap: 6px;
-  color: var(--sp-text);
-  font-size: var(--sp-font-size);
+  gap: var(--sp-space-sm);
+  padding-left: var(--sp-space-md);
   cursor: pointer;
+}
+
+.yi-publish-check input {
+  margin: 0;
 }
 
 .yi-publish-error {
   margin: 0;
+  padding: var(--sp-space-sm) var(--sp-space-md);
+  border: 1px solid var(--sp-danger);
+  border-radius: var(--sp-radius-md);
   color: var(--sp-danger);
-  font-size: var(--sp-font-size);
   white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
-.yi-publish-actions {
+.yi-publish-footer {
   display: flex;
-  gap: var(--sp-space-xs);
+  justify-content: flex-end;
+  gap: var(--sp-space-sm);
+  flex: 0 0 auto;
+  padding: var(--sp-space-sm) var(--sp-space-lg);
+  background: var(--sp-surface-2);
+  border-top: 1px solid var(--sp-border);
 }

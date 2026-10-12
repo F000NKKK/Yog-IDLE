@@ -11,6 +11,11 @@ interface PublishProfile {
   dryRun: boolean;
 }
 
+const MODES: Record<PublishProfile["mode"], { title: string; detail: string }> = {
+  package: { title: "Package as .yog", detail: "yog build — the mod archive, ready to drop into yog-mods/" },
+  exports: { title: "Publish exports", detail: "yog publish exports — the generated exports crate, to crates.io" },
+};
+
 function randomId(): string {
   return `profile-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
@@ -112,63 +117,75 @@ export function PublishWindow({ projectRoot, onClose }: { projectRoot: string; o
       </div>
 
       <div className="yi-publish-body">
-        <div className="yi-publish-section">
-          {error && <p className="yi-publish-error">{error}</p>}
+        {error && <p className="yi-publish-error">{error}</p>}
+
+        <section className="yi-publish-section">
           <div className="yi-publish-label">Profiles</div>
-          {profiles.length === 0 && <p className="yi-publish-empty">No publish profiles yet — create one below.</p>}
-          {profiles.map((p) => (
-            <div key={p.id} className="yi-publish-profile-row">
-              <div className="yi-publish-profile-info">
-                <span className="yi-publish-profile-name">{p.name}</span>
-                <span className="yi-publish-profile-mode">
-                  {p.mode === "package" ? "Package as .yog" : `Publish exports${p.dryRun ? " (dry run)" : ""}`}
-                </span>
+          <div className="yi-publish-list">
+            {profiles.length === 0 && <p className="yi-publish-empty">No publish profiles yet — create one below.</p>}
+            {profiles.map((p) => (
+              <div key={p.id} className={`yi-publish-profile-row${editingId === p.id ? " is-editing" : ""}`}>
+                <div className="yi-publish-profile-info">
+                  <span className="yi-publish-profile-name">{p.name}</span>
+                  <span className="yi-publish-profile-mode">{MODES[p.mode].title}{p.mode === "exports" && p.dryRun ? " (dry run)" : ""}</span>
+                </div>
+                <div className="yi-publish-profile-buttons">
+                  <Button variant="primary" onClick={() => runProfile(p)}>
+                    Run
+                  </Button>
+                  <Button variant="ghost" onClick={() => editProfile(p)}>
+                    Edit
+                  </Button>
+                  <Button variant="ghost" onClick={() => deleteProfile(p)}>
+                    Delete
+                  </Button>
+                </div>
               </div>
-              <Button variant="ghost" onClick={() => runProfile(p)}>
-                Run
-              </Button>
-              <Button variant="ghost" onClick={() => editProfile(p)}>
-                Edit
-              </Button>
-              <Button variant="ghost" onClick={() => deleteProfile(p)}>
-                Delete
-              </Button>
-            </div>
-          ))}
-        </div>
-
-        <div className="yi-publish-divider" />
-
-        <div className="yi-publish-section">
-          <div className="yi-publish-label">{editingId ? "Edit Profile" : "New Profile"}</div>
-          <TextField placeholder="Profile name" value={name} onChange={(e) => setName(e.target.value)} />
-          <div className="yi-publish-mode-row">
-            <label className="yi-publish-radio">
-              <input type="radio" checked={mode === "package"} onChange={() => setMode("package")} />
-              Package mod as .yog
-            </label>
-            <label className="yi-publish-radio">
-              <input type="radio" checked={mode === "exports"} onChange={() => setMode("exports")} />
-              Publish exports
-            </label>
+            ))}
           </div>
-          {mode === "exports" && (
-            <label className="yi-publish-radio">
-              <input type="checkbox" checked={dryRun} onChange={(e) => setDryRun(e.target.checked)} />
-              Dry run
-            </label>
-          )}
-          <div className="yi-publish-actions">
-            <Button variant="subtle" disabled={!name.trim()} onClick={saveProfile}>
-              {editingId ? "Save Changes" : "Save Profile"}
-            </Button>
-            {editingId && (
-              <Button variant="ghost" onClick={resetForm}>
-                Cancel
-              </Button>
+        </section>
+
+        <section className="yi-publish-section">
+          <div className="yi-publish-label">{editingId ? "Edit Profile" : "New Profile"}</div>
+          <label className="yi-publish-field">
+            <span className="yi-publish-field-label">Name</span>
+            <TextField
+              placeholder="e.g. Release package"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && saveProfile()}
+            />
+          </label>
+          <div className="yi-publish-field">
+            <span className="yi-publish-field-label">Action</span>
+            {(Object.keys(MODES) as PublishProfile["mode"][]).map((m) => (
+              <label key={m} className={`yi-publish-option${mode === m ? " is-selected" : ""}`}>
+                <input type="radio" name="yi-publish-mode" checked={mode === m} onChange={() => setMode(m)} />
+                <span className="yi-publish-option-text">
+                  <span className="yi-publish-option-title">{MODES[m].title}</span>
+                  <span className="yi-publish-option-detail">{MODES[m].detail}</span>
+                </span>
+              </label>
+            ))}
+            {mode === "exports" && (
+              <label className="yi-publish-check">
+                <input type="checkbox" checked={dryRun} onChange={(e) => setDryRun(e.target.checked)} />
+                Dry run (don't upload)
+              </label>
             )}
           </div>
-        </div>
+        </section>
+      </div>
+
+      <div className="yi-publish-footer">
+        {editingId && (
+          <Button variant="ghost" onClick={resetForm}>
+            Cancel
+          </Button>
+        )}
+        <Button variant="primary" disabled={!name.trim()} onClick={saveProfile}>
+          {editingId ? "Save Changes" : "Save Profile"}
+        </Button>
       </div>
     </div>
   );
