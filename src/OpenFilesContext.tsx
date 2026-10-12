@@ -1,6 +1,8 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ComponentType, type ReactNode } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import {
+  allEditorProviders,
+  editorProviderById,
   editorProvidersFor,
   getEditorView,
   isBinaryFile,
@@ -40,6 +42,8 @@ interface FileTab {
   contentVersion: number;
   /** The file was deleted (or renamed away) on disk while this tab had unsaved edits — kept open so they aren't lost; saving recreates it. */
   missing: boolean;
+  /** `content` holds the file's text — false for a file opened only in a binary editor (an image preview), until a text editor is chosen for it. */
+  textLoaded: boolean;
   /** Kept at the front of the tab strip, and out of "Close All But This" and the like. */
   pinned: boolean;
   /** The editor provider this tab shows ("Open With…" / the view switcher) — unset means the default for its kind of file. */
@@ -68,7 +72,7 @@ interface OpenFilesContextValue {
   closeAll: () => Promise<boolean>;
   setPinned: (id: string, pinned: boolean) => void;
   /** Shows a tab through another editor provider (by id). */
-  setView: (id: string, view: string) => void;
+  setView: (id: string, view: string) => Promise<void>;
   /** Writes a tab to disk — resolves `false` (tab stays dirty, error reported) if that failed. */
   save: (id: string) => Promise<boolean>;
   saveAll: () => Promise<boolean>;
@@ -92,6 +96,26 @@ function isViewMap(value: unknown): boolean {
 
 function extensionOf(name: string): string {
   return name.includes(".") ? (name.split(".").pop()?.toLowerCase() ?? "") : "";
+}
+
+/**
+ * "Open With…" entries for `path`: the editors made for it first (the
+ * default marked), then every other registered editor — the user may know
+ * better than the extension.
+ */
+export function openWithItems(path: string, current: string | undefined, pick: (view: string) => void): ContextMenuItem[] {
+  const matching = editorProvidersFor(path);
+  const others = allEditorProviders().filter((p) => !matching.includes(p));
+  const item = (p: EditorProvider, label: string, separatorBefore = false): ContextMenuItem => ({
+    label,
+    checked: p.id === current,
+    separatorBefore,
+    onSelect: () => pick(p.id),
+  });
+  return [
+    ...matching.map((p, i) => item(p, `${p.name ?? p.label}${i === 0 ? " (default)" : ""}`)),
+    ...others.map((p, i) => item(p, p.name ?? p.label, i === 0)),
+  ];
 }
 
 let nextTabId = 0;
@@ -144,14 +168,17 @@ export function OpenFilesProvider({ children }: { children: ReactNode }) {
   // Paths being read for opening right now — a second request for one
   // (a double-click) waits for the same read instead of opening it twice.
   const pendingOpens = useRef(new Map<string, Promise<string | null>>());
+  // `open` is created before `setView` — reached through a ref.
+  const setViewRef = useRef<(id: string, view: string) => Promise<void>>(async () => {});
 
   const open = useCallback(async (request: FileOpenRequest, options: OpenOptions = {}): Promise<string | null> => {
-    const { path, line, column } = request;
+    const { path, line, column, view } = request;
     const activate = options.activate ?? true;
     const reveal = { seq: ++nextRevealSeq, line, column, activate };
     const existing = tabsRef.current.find((t) => t.path === path);
     if (existing) {
       setTabs((prev) => prev.map((t) => (t.id === existing.id ? { ...t, reveal } : t)));
+      if (view) await setViewRef.current(existing.id, view);
       return existing.id;
     }
     const inFlight = pendingOpens.current.get(path);
@@ -160,17 +187,18 @@ export function OpenFilesProvider({ children }: { children: ReactNode }) {
     const name = request.name ?? baseName(path);
     const opening = (async () => {
       let content: string;
+      // A binary file's editor (e.g. `ImageEditor`, via the asset protocol)
+      // reads the file itself and ignores `content` — reading it as UTF-8
+      // text here would just fail, unless a text editor was asked for.
+      const textLoaded = view ? editorProviderById(view)?.kind !== "binary" : !isBinaryFile(name);
       try {
-        // A binary file's editor (e.g. `ImageEditor`, via the asset
-        // protocol) reads the file itself and ignores `content` — reading
-        // it as UTF-8 text here would just fail.
-        content = isBinaryFile(name) ? "" : await invoke<string>("file_read", { path });
+        content = textLoaded ? await invoke<string>("file_read", { path }) : "";
       } catch (err) {
         if (!options.silent) reportError(`Failed to open ${path}: ${err}`);
         return null;
       }
       const id = `file-${++nextTabId}`;
-      const tab: FileTab = { id, path, name, content, diskContent: content, dirty: false, contentVersion: 0, missing: false, pinned: false, reveal };
+      const tab: FileTab = { id, path, name, content, diskContent: content, dirty: false, contentVersion: 0, missing: false, textLoaded, pinned: false, view, reveal };
       // Into the ref right away, not on the next render: once this promise
       // settles `pendingOpens` forgets the path, and an `open` of the same
       // path before React re-renders (restoring the active tab does exactly
@@ -198,7 +226,7 @@ export function OpenFilesProvider({ children }: { children: ReactNode }) {
     if (!tab || !tab.dirty) return true;
     // Its `content` is a placeholder "" (see `open`) — writing it would
     // wipe the file.
-    if (isBinaryFile(tab.name)) return true;
+    if (!tab.textLoaded) return true;
     const written = tab.content;
     try {
       await invoke("file_write", { path: tab.path, contents: written });
@@ -273,9 +301,28 @@ export function OpenFilesProvider({ children }: { children: ReactNode }) {
     setTabs((prev) => prev.map((t) => (t.id === id ? { ...t, pinned } : t)));
   }, []);
 
-  const setView = useCallback((id: string, view: string) => {
+  const setView = useCallback(async (id: string, view: string) => {
+    const tab = tabsRef.current.find((t) => t.id === id);
+    if (!tab) return;
+    // A text editor picked for a file opened only as binary needs its text first.
+    if (!tab.textLoaded && editorProviderById(view)?.kind !== "binary") {
+      let content: string;
+      try {
+        content = await invoke<string>("file_read", { path: tab.path });
+      } catch (err) {
+        reportError(`Can't open ${tab.path} as text: ${err}`);
+        return;
+      }
+      setTabs((prev) =>
+        prev.map((t) =>
+          t.id === id ? { ...t, view, content, diskContent: content, textLoaded: true, dirty: false, contentVersion: t.contentVersion + 1 } : t
+        )
+      );
+      return;
+    }
     setTabs((prev) => prev.map((t) => (t.id === id ? { ...t, view } : t)));
   }, []);
+  setViewRef.current = setView;
 
   useEffect(() => addCloseGuard(confirmDiscardAll), [confirmDiscardAll]);
 
@@ -312,7 +359,7 @@ export function OpenFilesProvider({ children }: { children: ReactNode }) {
     async function recheck() {
       const vanished = new Set<string>();
       for (const tab of tabsRef.current) {
-        if (isBinaryFile(tab.name)) continue;
+        if (!tab.textLoaded) continue;
         let disk: string;
         try {
           disk = await invoke<string>("file_read", { path: tab.path });
@@ -354,10 +401,14 @@ export function OpenFilesProvider({ children }: { children: ReactNode }) {
         const { activateCenterPanel } = useShell();
         const [rememberedViews, setRememberedViews] = useGlobalState<Record<string, string>>(VIEWS_KEY, {}, isViewMap);
         const tab = tabs.find((t) => t.id === tabId);
-        const providers = useEditorProviders(tab?.path ?? "");
+        const matching = useEditorProviders(tab?.path ?? "");
         const reveal = tab?.reveal;
         const ext = tab ? extensionOf(tab.name) : "";
         const view = tab?.view ?? rememberedViews[ext];
+        // A view picked through "Open With…" that isn't one of this file's
+        // own joins the switcher.
+        const picked = view && !matching.some((p) => p.id === view) ? editorProviderById(view) : undefined;
+        const providers = picked ? [...matching, picked] : matching;
         const active = providers.find((p) => p.id === view) ?? providers[0];
         const textView = providers.find((p) => p.kind === "text");
         // A line to go to, waiting for a text view to be mounted — a reveal
@@ -390,7 +441,7 @@ export function OpenFilesProvider({ children }: { children: ReactNode }) {
         if (!tab) return null;
         const onChange = (next: string) => updateContent(tab.id, next);
         const chooseView = (id: string) => {
-          setView(tab.id, id);
+          void setView(tab.id, id);
           setRememberedViews((prev) => ({ ...prev, [ext]: id }));
         };
         // Only Rust source is actually debuggable (see the debugger backend —
@@ -437,7 +488,7 @@ export function OpenFilesProvider({ children }: { children: ReactNode }) {
     const providers = editorProvidersFor(tab.path);
     const remembered = globalStore.get(VIEWS_KEY) as Record<string, string> | undefined;
     const wanted = tab.view ?? remembered?.[extensionOf(tab.name)];
-    const current = (providers.find((p) => p.id === wanted) ?? providers[0]).id;
+    const current = (editorProviderById(wanted ?? "") ?? providers[0]).id;
     const copy = (text: string) => navigator.clipboard.writeText(text).catch((err) => reportError(`Couldn't copy to the clipboard: ${err}`));
     return [
       { label: "Close", onSelect: () => void closeTab(tab.id) },
@@ -448,16 +499,7 @@ export function OpenFilesProvider({ children }: { children: ReactNode }) {
       { label: tab.pinned ? "Unpin Tab" : "Pin Tab", separatorBefore: true, onSelect: () => setPinned(tab.id, !tab.pinned) },
       { label: "Copy Full Path", separatorBefore: true, onSelect: () => void copy(tab.path) },
       { label: "Copy File Name", onSelect: () => void copy(tab.name) },
-      {
-        label: "Open With",
-        separatorBefore: true,
-        disabled: providers.length < 2,
-        submenu: providers.map((p, i) => ({
-          label: i === 0 ? `${p.label} (default)` : p.label,
-          checked: p.id === current,
-          onSelect: () => setView(tab.id, p.id),
-        })),
-      },
+      { label: "Open With", separatorBefore: true, submenu: openWithItems(tab.path, current, (view) => void setView(tab.id, view)) },
     ];
   }
 

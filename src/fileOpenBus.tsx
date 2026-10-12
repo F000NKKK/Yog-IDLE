@@ -14,6 +14,8 @@ export interface FileOpenRequest {
   line?: number;
   /** 1-based column on `line` (default: the line's start). */
   column?: number;
+  /** Editor provider id to show the file with ("Open With…") — omitted, the tab keeps its view (a new one opens in the default). */
+  view?: string;
 }
 
 type Listener = (request: FileOpenRequest) => void;

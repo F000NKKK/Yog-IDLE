@@ -7,6 +7,7 @@ import { isLangFile, LangFileEditor } from "./LangFileEditor";
 registerEditorProvider({
   id: "yog.lang",
   label: "Translations",
+  name: "Translations Designer",
   extensions: ["json"],
   match: isLangFile,
   component: LangFileEditor,
