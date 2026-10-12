@@ -112,20 +112,24 @@ export function DebugPanel() {
                 </div>
               ))}
             </Section>
-            <Section title={`Threads (${stopped.threads.length})`}>
-              {stopped.threads.map((t) => (
+            <Section title={`Threads (${stopped.threads.filter((t) => t.stopped).length} stopped / ${stopped.threads.length})`}>
+              {/* Stopped ones first: only they can be inspected; the rest keep running. */}
+              {[...stopped.threads].sort((a, b) => Number(b.stopped) - Number(a.stopped)).map((t) => (
                 <div
                   key={t.id}
-                  onClick={() => t.id !== stopped.thread && selectThread(t.id)}
+                  onClick={() => t.stopped && t.id !== stopped.thread && selectThread(t.id)}
+                  title={t.stopped ? undefined : "Running — only stopped threads can be inspected"}
                   style={{
                     ...row,
-                    cursor: "pointer",
+                    cursor: t.stopped ? "pointer" : "default",
+                    color: t.stopped ? undefined : "var(--sp-text-faint)",
                     fontWeight: t.id === stopped.thread ? 600 : undefined,
                     background: t.id === stopped.thread ? "var(--sp-accent-soft)" : undefined,
                   }}
                 >
                   {t.id === stopped.thread ? "➜ " : "   "}
                   {t.id} {t.name || "<unnamed>"}
+                  {!t.stopped && " (running)"}
                 </div>
               ))}
             </Section>

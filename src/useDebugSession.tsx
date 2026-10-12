@@ -13,6 +13,8 @@ export interface DebugStackFrame {
 export interface DebugThread {
   id: number;
   name: string;
+  /** Stopped and inspectable — the debugger is non-stop, so most threads keep running. */
+  stopped: boolean;
 }
 
 export type StepKind = "over" | "into" | "out";
