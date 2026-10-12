@@ -330,6 +330,8 @@ registerTranslations(
     "Replace in Files": "Заменить в файлах",
     "Go To": "Перейти",
     "Code Search…": "Поиск кода…",
+    "Code Search": "Поиск кода",
+    "Keep open as a tool window": "Оставить открытым как окно инструментов",
     "Find Results": "Результаты поиска",
     "Find what:": "Найти:",
     "Search text": "Искомый текст",

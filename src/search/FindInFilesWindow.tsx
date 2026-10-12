@@ -2,8 +2,6 @@ import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import {
   Button,
-  FloatingWindow,
-  IconSearch,
   SearchField,
   TextField,
   confirmDialog,
@@ -22,7 +20,7 @@ import { useProject } from "../ProjectContext";
 import { useGlobalState } from "../WorkspaceContext";
 import { reportError } from "../reportError";
 import { runFind, showReplaceResults, type FindQuery, type LookIn, type OpenDocument, type ReplaceSummary } from "./findStore";
-import type { FindWindowMode } from "./searchUi";
+import { FIND_IN_FILES_PANEL, searchDrafts, useSearchUi, type FindWindowMode } from "./searchUi";
 import "./search.css";
 
 /** The Find Results tool window's id (declared in `App`). */
@@ -65,19 +63,21 @@ function lookInLabel(lookIn: LookIn): string {
 
 /**
  * Visual Studio's Find and Replace window (Find in Files / Replace in Files):
- * modeless and draggable. Find All lists every hit in Find Results; Replace
- * All rewrites them — open documents in their editors (undoable, left
- * unsaved), every other file on disk, after a confirmation.
+ * a tool window that opens floating and docks anywhere, like any other.
+ * Find All lists every hit in Find Results; Replace All rewrites them —
+ * open documents in their editors (undoable, left unsaved), every other
+ * file on disk, after a confirmation.
  */
-export function FindInFilesWindow({ mode: requestedMode, seq, onClose }: { mode: FindWindowMode; seq: number; onClose: () => void }) {
+export function FindInFilesWindow() {
   const t = useT();
+  const request = useSearchUi().find;
   const { project } = useProject();
   const { tabs, updateContent, recheckDisk } = useOpenFiles();
   const activeTab = useActiveFileTab();
   const shell = useShell();
-  const [mode, setMode] = useState(requestedMode);
+  const [mode, setModeState] = useState(searchDrafts.findMode);
   const [remembered, setRemembered] = useGlobalState<Remembered>("search.findInFiles", DEFAULTS, isRemembered);
-  const [pattern, setPattern] = useState(() => seedText(activeTab?.path));
+  const [pattern, setPatternState] = useState(searchDrafts.findPattern);
   const [replacement, setReplacement] = useGlobalState<string>("search.replaceWith", "", (v) => typeof v === "string");
   const [busy, setBusy] = useState(false);
   const findRef = useRef<HTMLInputElement>(null);
@@ -88,17 +88,30 @@ export function FindInFilesWindow({ mode: requestedMode, seq, onClose }: { mode:
   // A remembered choice that isn't possible right now falls back to the widest one that is.
   const lookIn: LookIn = available[remembered.lookIn] ? remembered.lookIn : project ? "project" : hasCurrent ? "current" : "open";
 
-  // Another Ctrl+Shift+F/H while open: switch tab, re-seed from the editor, focus.
+  function setMode(next: FindWindowMode) {
+    searchDrafts.findMode = next;
+    setModeState(next);
+  }
+
+  function setPattern(next: string) {
+    searchDrafts.findPattern = next;
+    setPatternState(next);
+  }
+
+  // Ctrl+Shift+F/H: switch tab, re-seed from the editor, focus. Only on a
+  // new request — the window remounts whenever it's moved to another dock.
   useEffect(() => {
-    setMode(requestedMode);
+    if (!request || request.seq === searchDrafts.findSeq) return;
+    searchDrafts.findSeq = request.seq;
+    setMode(request.mode);
     const seed = seedText(activeTab?.path);
     if (seed) setPattern(seed);
     requestAnimationFrame(() => {
       findRef.current?.focus();
       findRef.current?.select();
     });
-    // Only on a new open request, not as the active tab changes.
-  }, [seq, requestedMode]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [request?.seq]);
 
   const options: SearchOptions = { matchCase: remembered.matchCase, wholeWord: remembered.wholeWord, regex: remembered.regex };
   const canRun = pattern !== "" && available[lookIn] && !busy;
@@ -171,6 +184,12 @@ export function FindInFilesWindow({ mode: requestedMode, seq, onClose }: { mode:
   }
 
   function onKeyDown(e: KeyboardEvent) {
+    // Escape closes it while it floats, like a dialog; docked, it stays.
+    if (e.key === "Escape" && shell.isToolWindowFloating(FIND_IN_FILES_PANEL)) {
+      e.preventDefault();
+      shell.hideToolWindow(FIND_IN_FILES_PANEL);
+      return;
+    }
     // Alt+C / Alt+W / Alt+E toggle the options, as in Quick Find.
     if (e.altKey && !e.ctrlKey && !e.metaKey) {
       const key = eventKey(e.nativeEvent);
@@ -189,109 +208,100 @@ export function FindInFilesWindow({ mode: requestedMode, seq, onClose }: { mode:
   }
 
   return (
-    <FloatingWindow
-      title={mode === "replace" ? t("Replace in Files") : t("Find in Files")}
-      icon={<IconSearch size={14} />}
-      onClose={onClose}
-      width={480}
-      className="idle-fif"
-    >
-      <div className="idle-fif-body" onKeyDown={onKeyDown}>
-        <div className="idle-fif-tabs" role="tablist">
-          {(["find", "replace"] as const).map((m) => (
-            <button
-              key={m}
-              type="button"
-              role="tab"
-              aria-selected={mode === m}
-              className="idle-fif-tab"
-              data-active={mode === m || undefined}
-              onClick={() => setMode(m)}
-            >
-              {m === "find" ? t("Find in Files") : t("Replace in Files")}
-            </button>
-          ))}
+    <div className="idle-fif-body" onKeyDown={onKeyDown}>
+      <div className="idle-fif-tabs" role="tablist">
+        {(["find", "replace"] as const).map((m) => (
+          <button
+            key={m}
+            type="button"
+            role="tab"
+            aria-selected={mode === m}
+            className="idle-fif-tab"
+            data-active={mode === m || undefined}
+            onClick={() => setMode(m)}
+          >
+            {m === "find" ? t("Find in Files") : t("Replace in Files")}
+          </button>
+        ))}
+      </div>
+
+      <label className="idle-fif-label" htmlFor="idle-fif-find">
+        {t("Find what:")}
+      </label>
+      <SearchField
+        id="idle-fif-find"
+        inputRef={findRef}
+        value={pattern}
+        onValueChange={setPattern}
+        options={options}
+        onOptionsChange={(o) => setRemembered((r) => ({ ...r, ...o }))}
+        placeholder={t("Search text")}
+      />
+
+      {mode === "replace" && (
+        <>
+          <label className="idle-fif-label" htmlFor="idle-fif-replace">
+            {t("Replace with:")}
+          </label>
+          <TextField id="idle-fif-replace" className="idle-fif-input" value={replacement} spellCheck={false} onChange={(e) => setReplacement(e.target.value)} />
+          {options.regex && <div className="idle-fif-hint">{t("$1, $2, ${name} insert the captured groups.")}</div>}
+        </>
+      )}
+
+      <div className="idle-fif-row">
+        <div className="idle-fif-col">
+          <label className="idle-fif-label" htmlFor="idle-fif-lookin">
+            {t("Look in:")}
+          </label>
+          <select
+            id="idle-fif-lookin"
+            className="idle-fif-select"
+            value={lookIn}
+            onChange={(e) => setRemembered((r) => ({ ...r, lookIn: e.target.value as LookIn }))}
+          >
+            <option value="current" disabled={!available.current}>
+              {t("Current document")}
+            </option>
+            <option value="open" disabled={!available.open}>
+              {t("All open documents")}
+            </option>
+            <option value="project" disabled={!available.project}>
+              {t("Entire project")}
+            </option>
+          </select>
         </div>
-
-        <label className="idle-fif-label" htmlFor="idle-fif-find">
-          {t("Find what:")}
-        </label>
-        <SearchField
-          id="idle-fif-find"
-          inputRef={findRef}
-          autoFocus
-          value={pattern}
-          onValueChange={setPattern}
-          options={options}
-          onOptionsChange={(o) => setRemembered((r) => ({ ...r, ...o }))}
-          placeholder={t("Search text")}
-        />
-
-        {mode === "replace" && (
-          <>
-            <label className="idle-fif-label" htmlFor="idle-fif-replace">
-              {t("Replace with:")}
-            </label>
-            <TextField id="idle-fif-replace" className="idle-fif-input" value={replacement} spellCheck={false} onChange={(e) => setReplacement(e.target.value)} />
-            {options.regex && <div className="idle-fif-hint">{t("$1, $2, ${name} insert the captured groups.")}</div>}
-          </>
-        )}
-
-        <div className="idle-fif-row">
-          <div className="idle-fif-col">
-            <label className="idle-fif-label" htmlFor="idle-fif-lookin">
-              {t("Look in:")}
-            </label>
-            <select
-              id="idle-fif-lookin"
-              className="idle-fif-select"
-              value={lookIn}
-              onChange={(e) => setRemembered((r) => ({ ...r, lookIn: e.target.value as LookIn }))}
-            >
-              <option value="current" disabled={!available.current}>
-                {t("Current document")}
-              </option>
-              <option value="open" disabled={!available.open}>
-                {t("All open documents")}
-              </option>
-              <option value="project" disabled={!available.project}>
-                {t("Entire project")}
-              </option>
-            </select>
-          </div>
-          <div className="idle-fif-col">
-            <label className="idle-fif-label" htmlFor="idle-fif-mask">
-              {t("File types:")}
-            </label>
-            <TextField
-              id="idle-fif-mask"
-              className="idle-fif-input"
-              value={remembered.fileMask}
-              spellCheck={false}
-              placeholder="*.rs;*.toml;!*.lock"
-              onChange={(e) => setRemembered((r) => ({ ...r, fileMask: e.target.value }))}
-            />
-          </div>
-        </div>
-        {lookIn === "project" && <div className="idle-fif-hint">{t("Includes subfolders; skips .gitignore'd files, target/, node_modules/ and binaries.")}</div>}
-
-        <div className="idle-fif-buttons">
-          {mode === "find" ? (
-            <Button variant="primary" disabled={!canRun} onClick={findAll}>
-              {t("Find All")}
-            </Button>
-          ) : (
-            <>
-              <Button disabled={!canRun} onClick={findAll}>
-                {t("Find All")}
-              </Button>
-              <Button variant="primary" disabled={!canRun} onClick={() => void replaceAll()}>
-                {t("Replace All")}
-              </Button>
-            </>
-          )}
+        <div className="idle-fif-col">
+          <label className="idle-fif-label" htmlFor="idle-fif-mask">
+            {t("File types:")}
+          </label>
+          <TextField
+            id="idle-fif-mask"
+            className="idle-fif-input"
+            value={remembered.fileMask}
+            spellCheck={false}
+            placeholder="*.rs;*.toml;!*.lock"
+            onChange={(e) => setRemembered((r) => ({ ...r, fileMask: e.target.value }))}
+          />
         </div>
       </div>
-    </FloatingWindow>
+      {lookIn === "project" && <div className="idle-fif-hint">{t("Includes subfolders; skips .gitignore'd files, target/, node_modules/ and binaries.")}</div>}
+
+      <div className="idle-fif-buttons">
+        {mode === "find" ? (
+          <Button variant="primary" disabled={!canRun} onClick={findAll}>
+            {t("Find All")}
+          </Button>
+        ) : (
+          <>
+            <Button disabled={!canRun} onClick={findAll}>
+              {t("Find All")}
+            </Button>
+            <Button variant="primary" disabled={!canRun} onClick={() => void replaceAll()}>
+              {t("Replace All")}
+            </Button>
+          </>
+        )}
+      </div>
+    </div>
   );
 }

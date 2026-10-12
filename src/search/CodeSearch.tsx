@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { QuickPick, SymbolIcon, getEditorView, revealLine, useT, type QuickPickFilter, type QuickPickItem } from "substrate-platform-ui";
+import { Icon, IconButton, QuickPick, SymbolIcon, getEditorView, revealLine, useT, type QuickPickFilter, type QuickPickItem } from "substrate-platform-ui";
 import { openFile } from "../fileOpenBus";
 import { useActiveFileTab, useOpenFiles } from "../OpenFilesContext";
 import { useProject } from "../ProjectContext";
 import { bufferText } from "./FindInFilesWindow";
+import { searchDrafts, useSearchUi } from "./searchUi";
 import "./search.css";
 
 type Mode = "all" | "files" | "types" | "members" | "text";
@@ -38,14 +39,17 @@ function parseLineQuery(query: string): { line: number; column?: number } | null
  * text across the project, as in Visual Studio 2022+. `f:`, `t:`, `m:`,
  * `x:` switch the mode (or the tabs, or Tab), `:42` goes to a line in the
  * current document.
+ *
+ * A popup that closes once a result is opened — or, docked (`onDock`, the
+ * button in its field), a tool window that stays open across navigations.
  */
-export function CodeSearch({ onClose }: { onClose: () => void }) {
+export function CodeSearch({ onClose, onDock, embedded, focusKey }: { onClose?: () => void; onDock?: () => void; embedded?: boolean; focusKey?: unknown }) {
   const t = useT();
   const { project } = useProject();
   const { tabs } = useOpenFiles();
   const activeTab = useActiveFileTab();
-  const [mode, setMode] = useState<Mode>("all");
-  const [query, setQuery] = useState("");
+  const [mode, setModeState] = useState<Mode>(searchDrafts.codeMode as Mode);
+  const [query, setQueryState] = useState(searchDrafts.codeQuery);
   const [results, setResults] = useState<CodeSearchResult[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -63,6 +67,16 @@ export function CodeSearch({ onClose }: { onClose: () => void }) {
     { id: "members", label: t("Members"), prefix: "m:" },
     { id: "text", label: t("Text"), prefix: "x:" },
   ];
+
+  function setMode(next: Mode) {
+    searchDrafts.codeMode = next;
+    setModeState(next);
+  }
+
+  function setQuery(next: string) {
+    searchDrafts.codeQuery = next;
+    setQueryState(next);
+  }
 
   function onQueryChange(value: string) {
     const prefix = Object.keys(PREFIXES).find((p) => value.toLowerCase().startsWith(p));
@@ -123,7 +137,7 @@ export function CodeSearch({ onClose }: { onClose: () => void }) {
 
   function accept(item: Item) {
     const r = item.result;
-    onClose();
+    onClose?.();
     openFile({ path: r.path, line: r.line ?? undefined, column: r.column ?? undefined });
   }
 
@@ -131,7 +145,7 @@ export function CodeSearch({ onClose }: { onClose: () => void }) {
     if (!lineQuery || !activeTab) return false;
     const view = getEditorView(activeTab.path);
     if (!view) return false;
-    onClose();
+    onClose?.();
     revealLine(view, lineQuery.line, lineQuery.column);
     return true;
   }
@@ -161,6 +175,15 @@ export function CodeSearch({ onClose }: { onClose: () => void }) {
       onAccept={(item) => accept(item)}
       onAcceptQuery={acceptQuery}
       onClose={onClose}
+      embedded={embedded}
+      focusKey={focusKey}
+      fieldActions={
+        onDock && (
+          <IconButton size={22} title={t("Keep open as a tool window")} onClick={onDock}>
+            <Icon name="float" size={14} />
+          </IconButton>
+        )
+      }
       footer={
         <>
           <span>
@@ -179,5 +202,15 @@ export function CodeSearch({ onClose }: { onClose: () => void }) {
         </>
       }
     />
+  );
+}
+
+/** Code Search docked as a tool window: opening a result leaves it open. */
+export function CodeSearchPanel() {
+  const request = useSearchUi().codeSearch;
+  return (
+    <div className="idle-code-search-panel">
+      <CodeSearch embedded focusKey={request?.seq} />
+    </div>
   );
 }

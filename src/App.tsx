@@ -50,7 +50,15 @@ import { useGameStatus, type GameStage, type WorkflowExitEvent } from "./useGame
 import { useHotReload } from "./useHotReload";
 import { EditMenu, EditorKeybindings, editorToolbarSections, useEditorActions, type EditorActions } from "./EditorActions";
 import { OpenFilesPersistence } from "./OpenFilesPersistence";
-import { FIND_RESULTS_PANEL, FindResultsPanel, SearchHost } from "./search/SearchHost";
+import {
+  CODE_SEARCH_PANEL,
+  CodeSearchPanel,
+  FIND_IN_FILES_PANEL,
+  FIND_RESULTS_PANEL,
+  FindInFilesWindow,
+  FindResultsPanel,
+  SearchHost,
+} from "./search/SearchHost";
 import { ViewMenu } from "./ViewMenu";
 import { WorkspaceProvider } from "./WorkspaceContext";
 import { installCloseHandler } from "./windowClose";
@@ -134,6 +142,9 @@ function makeToolWindows() {
       { id: "terminal", title: t("Terminal"), component: TerminalPanel } satisfies PanelDef,
       { id: "debug", title: t("Debug"), component: DebugPanel } satisfies PanelDef,
       { id: FIND_RESULTS_PANEL, title: t("Find Results"), component: FindResultsPanel } satisfies PanelDef,
+      // Transient: open floating, leave no strip tab when closed — dockable anywhere meanwhile.
+      { id: FIND_IN_FILES_PANEL, title: t("Find and Replace"), component: FindInFilesWindow, floatSize: { w: 500, h: 380 } } satisfies PanelDef,
+      { id: CODE_SEARCH_PANEL, title: t("Code Search"), component: CodeSearchPanel, floatSize: { w: 640, h: 460 } } satisfies PanelDef,
     ],
   };
 }
