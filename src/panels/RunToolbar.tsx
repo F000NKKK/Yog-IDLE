@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { invoke } from "@tauri-apps/api/core";
 import { RunBar, useWorkflowRunner, type RunMode } from "substrate-platform-ui";
 import { useProject } from "../ProjectContext";
 import { useModRunTargets } from "../useModRunTargets";
@@ -32,21 +33,35 @@ const MOD_RUN_MODES: RunMode[] = [
   { name: "debug", label: "Debug" },
 ];
 
+/** Native debugging (`ptrace`) is Linux-only so far — elsewhere the Debug mode isn't offered at all. */
+function useDebugSupported(): boolean {
+  const [supported, setSupported] = useState(false);
+  useEffect(() => {
+    invoke<boolean>("debug_supported")
+      .then(setSupported)
+      .catch(() => setSupported(false));
+  }, []);
+  return supported;
+}
+
 function ModRunToolbar({ root, onRunningChange }: { root: string } & RunToolbarProps) {
   const { targets, running, run } = useModRunTargets(root);
   const { notifyRun } = useDebugSessionContext();
+  const debugSupported = useDebugSupported();
   const [mode, setMode] = useState("release");
   useEffect(() => onRunningChange?.(running), [running, onRunningChange]);
+  const modes = debugSupported ? MOD_RUN_MODES : MOD_RUN_MODES.filter((m) => m.name !== "debug");
+  const effectiveMode = modes.some((m) => m.name === mode) ? mode : "release";
   return (
     <RunBar
       targets={targets}
       running={running}
       onRun={(name) => {
-        notifyRun(() => run(name, mode));
-        run(name, mode);
+        notifyRun(() => run(name, effectiveMode));
+        run(name, effectiveMode);
       }}
-      modes={MOD_RUN_MODES}
-      selectedMode={mode}
+      modes={modes}
+      selectedMode={effectiveMode}
       onModeChange={setMode}
     />
   );

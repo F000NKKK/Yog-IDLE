@@ -11,6 +11,12 @@ use tauri::{AppHandle, Emitter, State};
 
 #[cfg(target_os = "linux")]
 mod debugger;
+// Same command surface (`debug_*`) as the Linux debugger, minus the
+// debugger itself — see `plain_run.rs`.
+#[cfg(not(target_os = "linux"))]
+mod plain_run;
+#[cfg(not(target_os = "linux"))]
+use plain_run as debugger;
 
 /// Every path a `dir_*`/`file_*` command may touch — and every project root a
 /// workflow/`mod_*`/`publish_*` command reads from or runs a process in —
@@ -425,9 +431,9 @@ fn mod_run_targets(
 /// `RunBar`/the generic run-target machinery. On Linux this always
 /// connects `yog-runtime`'s control socket for live status, and — for
 /// `mode == "debug"` — attaches `yog-debugger` the moment it reports the
-/// real pid (see `debugger::run_with_mode`). Other platforms fall back to
-/// the plain fire-and-forget run; the debugger stack is Linux-only there
-/// too (`ptrace`).
+/// real pid (see `debugger::run_with_mode`). Other platforms get a plain,
+/// still stoppable run (`plain_run::run`) — the control socket and the
+/// debugger stack (`ptrace`) are Linux-only so far.
 #[tauri::command]
 fn mod_run(
     app: AppHandle,
@@ -444,11 +450,15 @@ fn mod_run(
     #[cfg(not(target_os = "linux"))]
     {
         let _ = mode;
-        let root = PathBuf::from(project_root);
-        let file = single_step_workflow("yog", vec!["run".to_string(), name.clone()]);
-        run_and_stream(app, file, "run".to_string(), HashMap::new(), root);
-        Ok(())
+        plain_run::run(app, project_root, name)
     }
+}
+
+/// Whether the Debug run mode (and everything behind it) is available on
+/// this platform — the frontend hides it when it isn't.
+#[tauri::command]
+fn debug_supported() -> bool {
+    cfg!(target_os = "linux")
 }
 
 /// The toolbar's Hot Reload: rebuilds the project and swaps the new build
@@ -715,10 +725,8 @@ pub fn run() {
         .manage(PtyState::default())
         .manage(AppState::default());
 
-    #[cfg(target_os = "linux")]
     let builder = builder.manage(debugger::DebugState::default());
 
-    #[cfg(target_os = "linux")]
     let builder = builder.invoke_handler(tauri::generate_handler![
         pty_spawn,
         pty_write,
@@ -750,32 +758,7 @@ pub fn run() {
         debugger::debug_continue,
         debugger::debug_step,
         debugger::debug_grant_ptrace_capability,
-    ]);
-    #[cfg(not(target_os = "linux"))]
-    let builder = builder.invoke_handler(tauri::generate_handler![
-        pty_spawn,
-        pty_write,
-        pty_resize,
-        pty_kill,
-        list_shells,
-        dir_list,
-        dir_create_file,
-        dir_create_dir,
-        dir_rename,
-        dir_remove,
-        file_read,
-        file_write,
-        allow_path,
-        project_open,
-        workflow_list,
-        workflow_run,
-        mod_run_targets,
-        mod_run,
-        mod_build,
-        publish_profiles_list,
-        publish_profile_save,
-        publish_profile_delete,
-        publish_run,
+        debug_supported,
     ]);
 
     builder
