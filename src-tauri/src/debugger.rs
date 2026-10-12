@@ -47,6 +47,9 @@ struct Tracer {
     generations: GenerationAllocator,
     generation: ModuleGeneration,
     breakpoints: SourceBreakpoints,
+    /// Why the tracee last stopped — re-reported when the user switches
+    /// threads, so the UI keeps showing "breakpoint" rather than a new stop.
+    last_stop: StopReason,
 }
 
 /// A request for the tracer thread. Breakpoint edits are applied whether
@@ -64,6 +67,9 @@ enum TracerCmd {
     },
     Continue,
     Step(StepKind),
+    /// Inspect another (stopped) thread: re-emits `debug-stopped` with its
+    /// stack and registers.
+    SelectThread(i32),
     /// The runtime just hot-reloaded the mod: reload symbols from the
     /// freshly built native and re-resolve every breakpoint against them.
     Rebind,
@@ -150,6 +156,22 @@ pub struct StackFrameOut {
 pub struct DebugStoppedEvent {
     pub reason: String,
     pub stack_trace: Vec<StackFrameOut>,
+    /// Every thread of the tracee (all stopped while paused).
+    pub threads: Vec<ThreadOut>,
+    /// The thread `stack_trace`/`registers` describe — the one that hit the
+    /// breakpoint, or whichever the user picked with `debug_select_thread`.
+    pub thread: i32,
+    /// General-purpose registers of `thread`, as `(name, hex value)`.
+    pub registers: Vec<(String, String)>,
+}
+
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ThreadOut {
+    pub id: i32,
+    /// `/proc/<pid>/task/<tid>/comm` — the JVM names its threads
+    /// ("Server thread", "Render thread", ...).
+    pub name: String,
 }
 
 fn to_snake_name(id: &str) -> String {
@@ -936,6 +958,7 @@ fn tracer_main(
                 }
                 Ok(reason) => {
                     let exited = matches!(reason, StopReason::Exited(_) | StopReason::Killed(_));
+                    tracer.last_stop = reason.clone();
                     tracer.emit_stop(&app, reason);
                     if exited {
                         return;
@@ -1003,6 +1026,7 @@ impl Tracer {
             generation: generations.next(),
             generations,
             breakpoints: SourceBreakpoints::new(),
+            last_stop: StopReason::Signal(Signal::SIGSTOP),
         };
         for (file, line) in BREAKPOINTS.lock().unwrap().clone() {
             tracer.set_breakpoint(app, file, line);
@@ -1028,6 +1052,10 @@ impl Tracer {
             }
             // Only meaningful while paused, where `tracer_main` handles
             // them itself — one arriving mid-run is a stale double-click.
+            TracerCmd::SelectThread(tid) => match self.debugger.select_thread(Pid::from_raw(tid)) {
+                Ok(()) => self.emit_stop(app, self.last_stop.clone()),
+                Err(e) => warn(app, format!("selecting thread {tid}: {e}")),
+            },
             TracerCmd::Continue | TracerCmd::Step(_) => {}
         }
     }
@@ -1121,16 +1149,61 @@ impl Tracer {
             StopReason::Signal(_) | StopReason::Interrupted => "signal",
             StopReason::Exited(_) | StopReason::Killed(_) => "exited",
         };
-        let stack_trace = if reason_str == "exited" {
+        let exited = reason_str == "exited";
+        let pid = self.debugger.pid();
+        let thread = self.debugger.current_thread();
+        let threads = if exited {
             Vec::new()
         } else {
-            self.stack_trace()
+            self.debugger
+                .threads()
+                .into_iter()
+                .map(|tid| ThreadOut {
+                    id: tid.as_raw(),
+                    name: std::fs::read_to_string(format!("/proc/{pid}/task/{tid}/comm"))
+                        .map(|s| s.trim_end().to_string())
+                        .unwrap_or_default(),
+                })
+                .collect()
+        };
+        let registers = match self.debugger.registers() {
+            Ok(r) if !exited => [
+                ("rip", r.rip),
+                ("rsp", r.rsp),
+                ("rbp", r.rbp),
+                ("rax", r.rax),
+                ("rbx", r.rbx),
+                ("rcx", r.rcx),
+                ("rdx", r.rdx),
+                ("rsi", r.rsi),
+                ("rdi", r.rdi),
+                ("r8", r.r8),
+                ("r9", r.r9),
+                ("r10", r.r10),
+                ("r11", r.r11),
+                ("r12", r.r12),
+                ("r13", r.r13),
+                ("r14", r.r14),
+                ("r15", r.r15),
+                ("eflags", r.eflags),
+            ]
+            .into_iter()
+            .map(|(name, value)| (name.to_string(), format!("{value:#018x}")))
+            .collect(),
+            _ => Vec::new(),
         };
         let _ = app.emit(
             "debug-stopped",
             DebugStoppedEvent {
                 reason: reason_str.to_string(),
-                stack_trace,
+                stack_trace: if exited {
+                    Vec::new()
+                } else {
+                    self.stack_trace()
+                },
+                threads,
+                thread: thread.as_raw(),
+                registers,
             },
         );
     }
@@ -1185,6 +1258,15 @@ pub fn debug_clear_breakpoint(
         .retain(|(f, l)| !(f == &file && *l == line));
     tracer_send(&state, TracerCmd::ClearBreakpoint { file, line });
     Ok(())
+}
+
+#[tauri::command]
+pub fn debug_select_thread(state: State<DebugState>, thread: i32) -> Result<(), String> {
+    if tracer_send(&state, TracerCmd::SelectThread(thread)) {
+        Ok(())
+    } else {
+        Err("no active debug session".to_string())
+    }
 }
 
 #[tauri::command]
