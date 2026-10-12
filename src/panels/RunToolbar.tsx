@@ -4,6 +4,7 @@ import { RunBar, useWorkflowRunner, type RunMode } from "substrate-platform-ui";
 import { useProject } from "../ProjectContext";
 import { useModRunTargets } from "../useModRunTargets";
 import { useDebugSessionContext } from "../DebugSessionContext";
+import { useWorkspaceState } from "../WorkspaceContext";
 
 export interface RunToolbarProps {
   /** Reports the run-target source's live `running` state up to the shell, so it can conditionally show Restart/Stop instead of leaving them permanently visible-but-disabled. */
@@ -48,7 +49,8 @@ function ModRunToolbar({ root, onRunningChange }: { root: string } & RunToolbarP
   const { targets, running, run } = useModRunTargets(root);
   const { notifyRun } = useDebugSessionContext();
   const debugSupported = useDebugSupported();
-  const [mode, setMode] = useState("release");
+  // Remembered per project, like the target itself (see `RunBar`).
+  const [mode, setMode] = useWorkspaceState("run.mode", "release", (v) => typeof v === "string");
   useEffect(() => onRunningChange?.(running), [running, onRunningChange]);
   const modes = debugSupported ? MOD_RUN_MODES : MOD_RUN_MODES.filter((m) => m.name !== "debug");
   const effectiveMode = modes.some((m) => m.name === mode) ? mode : "release";
