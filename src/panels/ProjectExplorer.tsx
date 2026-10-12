@@ -29,6 +29,7 @@ import { baseName, isWithin, renamedPath, validateEntryName as validateName } fr
 import { openProjectProperties } from "../projectProperties/bus";
 import { registerExplorerRename, renamePath, selectionPathRemoved, selectionPathRenamed, selectMultiple, selectPath } from "../ideSelection";
 import { NewItemDialog, templateFiles, type ItemTemplate } from "./NewItemDialog";
+
 const dirCommands = {
   list: (path: string) => invoke<DirEntry[]>("dir_list", { path }),
   createFile: (path: string) => invoke<void>("dir_create_file", { path }),
