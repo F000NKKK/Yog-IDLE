@@ -1,14 +1,14 @@
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
-use std::time::Duration;
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use serde::{Deserialize, Serialize};
 use substrate_platform::{
     EntryKind, Level, LogLine, LogSink, ProjectStandard, PtyOptions, PtySession, ShellInfo,
-    WorkflowFile,
+    WorkflowFile, WorkflowHandle, WorkflowResult,
 };
-use tauri::{AppHandle, Emitter, State};
+use tauri::{AppHandle, Emitter, Manager, State};
 
 #[cfg(target_os = "linux")]
 mod debugger;
@@ -260,8 +260,26 @@ fn format_log_line(line: &LogLine) -> String {
     }
 }
 
+/// Every workflow run still in flight, keyed by a per-run id — so
+/// `workflow_cancel` can stop a build/publish, and each run removes only its
+/// own entry when it finishes.
+#[derive(Default)]
+struct WorkflowState {
+    next_id: AtomicU64,
+    running: Mutex<HashMap<u64, WorkflowHandle>>,
+}
+
+/// Payload of `workflow-exit` for a workflow run — how it ended.
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct WorkflowExit {
+    success: bool,
+    cancelled: bool,
+}
+
 /// Shared "run this workflow's named entry, stream its output live, fire
-/// `workflow-exit` when done" body — `workflow_run`, `mod_run`, and
+/// `workflow-start` now and `workflow-exit` (with a `WorkflowExit`) when
+/// done" body — `workflow_run`, `mod_build`, and
 /// `publish_run` all funnel through this instead of each re-wiring the
 /// sink/event plumbing themselves.
 fn run_and_stream(
@@ -278,12 +296,35 @@ fn run_and_stream(
     });
 
     let handle = substrate_platform::run_workflow(file, name, vars, root, sink);
+    let state = app.state::<WorkflowState>();
+    let id = state.next_id.fetch_add(1, Ordering::Relaxed);
+    state.running.lock().unwrap().insert(id, handle.clone());
+    let _ = app.emit("workflow-start", ());
     std::thread::spawn(move || {
-        while handle.is_running() {
-            std::thread::sleep(Duration::from_millis(50));
-        }
-        let _ = app.emit("workflow-exit", ());
+        let result = handle.wait();
+        app.state::<WorkflowState>()
+            .running
+            .lock()
+            .unwrap()
+            .remove(&id);
+        let _ = app.emit(
+            "workflow-exit",
+            WorkflowExit {
+                success: result.is_success(),
+                cancelled: result == WorkflowResult::Cancelled,
+            },
+        );
     });
+}
+
+/// Stops every workflow run still in flight (a Build or Publish) — kills
+/// the running step and skips the rest; each run then fires its own
+/// `workflow-exit` with `cancelled: true`. A no-op when nothing is running.
+#[tauri::command]
+fn workflow_cancel(state: State<WorkflowState>) {
+    for handle in state.running.lock().unwrap().values() {
+        handle.cancel();
+    }
 }
 
 /// Runs `name` in the background (non-blocking) — output streams live via
@@ -712,6 +753,7 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .manage(PtyState::default())
+        .manage(WorkflowState::default())
         .manage(AppState::default());
 
     let builder = builder.manage(debugger::DebugState::default());
@@ -733,6 +775,7 @@ pub fn run() {
         project_open,
         workflow_list,
         workflow_run,
+        workflow_cancel,
         mod_run_targets,
         mod_run,
         mod_build,
