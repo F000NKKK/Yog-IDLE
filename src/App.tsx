@@ -136,6 +136,7 @@ const EMPTY_LABELS: Record<OutputSource, string> = {
   debug: "Debugger messages appear here.",
   ide: "No messages.",
   environment: "Installs from Tools > Install Components show their output here.",
+  git: "Fetch, pull, push and other Git operations show their output here.",
 };
 
 /** The tool windows, titled in the active locale — rebuilt when it changes. */

@@ -14,6 +14,7 @@ export const OUTPUT_SOURCES = [
   { id: "debug", label: "Debug", event: "debug-output" },
   { id: "ide", label: "General", event: "ide-output" },
   { id: "environment", label: "Environment", event: "environment-output" },
+  { id: "git", label: "Source Control - Git", event: "git-output" },
 ] as const;
 
 export type OutputSource = (typeof OUTPUT_SOURCES)[number]["id"];
