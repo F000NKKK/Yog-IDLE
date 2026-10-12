@@ -34,7 +34,7 @@ let nextUid = 0;
 export const newUid = () => `n${++nextUid}`;
 
 /** Where attributes go when written — anything else follows in its own order. */
-const ATTR_ORDER = [
+export const ATTR_ORDER = [
   "id",
   "x",
   "y",
@@ -85,30 +85,64 @@ export function parseYui(text: string): YuiDoc {
   return { prolog: start > 0 ? text.slice(0, start) : "", root: fromElement(root) };
 }
 
-function escapeAttr(value: string): string {
+export function escapeAttr(value: string): string {
   return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/\n/g, "&#10;");
 }
 
-function orderedAttrs(attrs: Record<string, string>): [string, string][] {
+/** Where an attribute goes in `ATTR_ORDER` — unknown ones after every known one. */
+export function attrRank(name: string): number {
+  const i = ATTR_ORDER.indexOf(name);
+  return i < 0 ? ATTR_ORDER.length : i;
+}
+
+export function orderedAttrs(attrs: Record<string, string>): [string, string][] {
   const keys = Object.keys(attrs);
   const known = ATTR_ORDER.filter((k) => k in attrs);
   return [...known, ...keys.filter((k) => !ATTR_ORDER.includes(k))].map((k) => [k, attrs[k]]);
 }
 
+// ── Writing (Visual Studio's XAML formatting) ────────────────────────────────
+
+/** One level of indentation — Visual Studio's XAML default. */
+export const INDENT = "    ";
+/** More attributes than this, or a longer line, and each attribute gets its own line. */
+const MAX_INLINE_ATTRS = 3;
+const MAX_LINE = 110;
+
+/**
+ * A start tag laid out like Visual Studio's "Position each attribute on a
+ * separate line" XAML formatting: short ones on one line, else the first
+ * attribute beside the name and every other one on its own line, aligned
+ * under it. `attrs` values are already escaped; `indent` is where the tag
+ * starts (for the alignment and the line length).
+ */
+export function formatStartTag(kind: string, attrs: [string, string][], indent: string, close: ">" | " />"): string {
+  if (attrs.length === 0) return `<${kind}${close}`;
+  const parts = attrs.map(([k, v]) => `${k}="${v}"`);
+  const inline = `<${kind} ${parts.join(" ")}${close}`;
+  if (parts.length <= MAX_INLINE_ATTRS && indent.length + inline.length <= MAX_LINE) return inline;
+  return `<${kind} ${parts.join(`\n${indent}${" ".repeat(kind.length + 2)}`)}${close}`;
+}
+
 function writeNode(node: YuiNode, indent: string, out: string[]) {
-  const attrs = orderedAttrs(node.attrs)
-    .map(([k, v]) => ` ${k}="${escapeAttr(v)}"`)
-    .join("");
+  const attrs = orderedAttrs(node.attrs).map(([k, v]): [string, string] => [k, escapeAttr(v)]);
   if (node.children.length === 0) {
-    out.push(`${indent}<${node.kind}${attrs}/>`);
+    out.push(indent + formatStartTag(node.kind, attrs, indent, " />"));
     return;
   }
-  out.push(`${indent}<${node.kind}${attrs}>`);
-  for (const child of node.children) writeNode(child, indent + "  ", out);
+  out.push(indent + formatStartTag(node.kind, attrs, indent, ">"));
+  for (const child of node.children) writeNode(child, indent + INDENT, out);
   out.push(`${indent}</${node.kind}>`);
 }
 
-/** Writes a document back: its prolog as it was, then the tree, two-space indented. */
+/** `node` written as markup starting at `indent` — the first line without the indent (it's where the caller already is). */
+export function writeYuiNode(node: YuiNode, indent: string): string {
+  const out: string[] = [];
+  writeNode(node, indent, out);
+  return out.join("\n").slice(indent.length);
+}
+
+/** Writes a document out whole: its prolog as it was, then the tree, formatted (see `formatStartTag`). */
 export function serializeYui(doc: YuiDoc): string {
   const out: string[] = [];
   writeNode(doc.root, "", out);
@@ -130,6 +164,49 @@ export function parseNodes(text: string): YuiNode[] | null {
   } catch {
     return null;
   }
+}
+
+/**
+ * `next` (a fresh parse of edited text) with `prev`'s uids wherever it still
+ * has the same node — matched by id, else by position and kind — so the
+ * designer's selection survives typing in the XAML.
+ */
+export function adoptUids(prev: YuiNode, next: YuiNode): YuiNode {
+  if (prev.kind !== next.kind) return next;
+  const used = new Set<YuiNode>();
+  const matches = next.children.map((c) => {
+    const match = c.attrs.id ? prev.children.find((p) => !used.has(p) && p.kind === c.kind && p.attrs.id === c.attrs.id) : undefined;
+    if (match) used.add(match);
+    return match;
+  });
+  const children = next.children.map((c, i) => {
+    let match = matches[i];
+    if (!match) {
+      const at = prev.children[i];
+      if (at && !used.has(at) && at.kind === c.kind && (!at.attrs.id || !c.attrs.id)) {
+        used.add(at);
+        match = at;
+      }
+    }
+    return match ? adoptUids(match, c) : c;
+  });
+  return { ...next, uid: prev.uid, children };
+}
+
+/** Child indices from the root down to `uid` — `null` if it isn't in the tree. */
+export function pathOf(root: YuiNode, uid: string): number[] | null {
+  if (root.uid === uid) return [];
+  for (let i = 0; i < root.children.length; i++) {
+    const rest = pathOf(root.children[i], uid);
+    if (rest) return [i, ...rest];
+  }
+  return null;
+}
+
+export function nodeAtPath(root: YuiNode, path: readonly number[]): YuiNode | null {
+  let node: YuiNode | undefined = root;
+  for (const i of path) node = node?.children[i];
+  return node ?? null;
 }
 
 /** A copy with fresh uids throughout (pasting, duplicating). */

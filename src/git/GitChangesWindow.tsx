@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type KeyboardEvent, type MouseEvent, type ReactNode } from "react";
+import { useEffect, useState, type KeyboardEvent, type MouseEvent, type ReactNode } from "react";
 import { Button, CheckField, ContextMenu, Icon, IconButton, useContextMenu, useT, type ContextMenuItem } from "substrate-platform-ui";
 import { openFile } from "../fileOpenBus";
 import { openBranchPicker } from "./BranchPicker";

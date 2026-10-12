@@ -4,6 +4,7 @@ import { openFile } from "../fileOpenBus";
 import { gitApi, type DiffTexts } from "./gitApi";
 import type { DiffRequest } from "./gitDocuments";
 import { useGit } from "./gitStore";
+import "./git.css";
 
 /** Remembered across diff tabs, like Visual Studio's diff layout toggle. */
 let lastLayout: DiffLayout = "sideBySide";
