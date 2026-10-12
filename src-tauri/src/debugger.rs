@@ -145,11 +145,11 @@ fn to_snake_name(id: &str) -> String {
     let mut out = String::with_capacity(id.len());
     for c in id.chars() {
         if c == '-' || c == '_' {
-            if out.chars().last() != Some('_') {
+            if !out.ends_with('_') {
                 out.push('_');
             }
         } else if c.is_uppercase() {
-            if !out.is_empty() && out.chars().last() != Some('_') {
+            if !out.is_empty() && !out.ends_with('_') {
                 out.push('_');
             }
             out.extend(c.to_lowercase());

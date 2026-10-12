@@ -340,13 +340,13 @@ struct ModRunTarget {
 // Parsing this the strict way would silently disagree with what yog-cli
 // itself does with the same file.
 fn parse_mod_run_targets(contents: &str) -> Vec<ModRunTarget> {
-    let mut targets: Vec<ModRunTarget> = Vec::new();
-    let mut current: Option<(String, Option<String>, Option<String>, Vec<String>)> = None;
+    /// `[run.<name>]` while it's being read: name, `name =`, `command =`, `args =`.
+    type PendingTarget = (String, Option<String>, Option<String>, Vec<String>);
 
-    fn flush(
-        current: Option<(String, Option<String>, Option<String>, Vec<String>)>,
-        targets: &mut Vec<ModRunTarget>,
-    ) {
+    let mut targets: Vec<ModRunTarget> = Vec::new();
+    let mut current: Option<PendingTarget> = None;
+
+    fn flush(current: Option<PendingTarget>, targets: &mut Vec<ModRunTarget>) {
         if let Some((name, display_name, command, args)) = current {
             let description = command.map(|c| {
                 if args.is_empty() {
