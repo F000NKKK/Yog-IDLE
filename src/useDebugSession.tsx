@@ -39,6 +39,14 @@ interface DebugStoppedEvent {
  * side emits. `restart`/`stop` are still owned here since Stop/Restart
  * live in the toolbar, not next to the target picker.
  */
+/**
+ * `std` frames come as `/rustc/<commit>/library/...` when the backend found
+ * no local `rust-src` to map them into — there's no file to open then.
+ */
+function missingRustSrc(path: string): boolean {
+  return path.startsWith("/rustc/");
+}
+
 export function useDebugSession() {
   const [attaching, setAttaching] = useState(false);
   const [debugging, setDebugging] = useState(false);
@@ -48,6 +56,19 @@ export function useDebugSession() {
   const [selectedFrame, setSelectedFrame] = useState(0);
   const relaunchRef = useRef<(() => Promise<unknown>) | null>(null);
   const [canRestart, setCanRestart] = useState(false);
+  /** Mirrors `stopped` for the memoized step/continue callbacks. */
+  const stoppedRef = useRef<DebugStoppedEvent | null>(null);
+  stoppedRef.current = stopped;
+  /** A Continue/Step was sent and the backend hasn't answered yet. */
+  const resumingRef = useRef(false);
+
+  const openSource = useCallback((frame: DebugStackFrame) => {
+    if (missingRustSrc(frame.file)) {
+      setError(`Can't open ${frame.file}: Rust's standard library sources aren't installed — install rust-src (\`rustup component add rust-src\`).`);
+      return;
+    }
+    openFile({ path: frame.file, line: frame.line });
+  }, []);
 
   useEffect(() => {
     const unlistenStarting = listen<{ stage: string }>("game-status", (event) => {
@@ -84,7 +105,7 @@ export function useDebugSession() {
       }
       // Like any IDE: bring up where it stopped.
       const top = event.payload.stackTrace[0];
-      if (top) openFile({ path: top.file, line: top.line });
+      if (top) openSource(top);
     });
     return () => {
       unlistenStarting.then((f) => f());
@@ -143,18 +164,27 @@ export function useDebugSession() {
   }, []);
 
   // Resuming invalidates the last stop: the panel shows "Running…" and the
-  // editor drops its execution marker until the next `debug-stopped`.
-  const continue_ = useCallback(() => {
-    invoke("debug_continue")
-      .then(() => setStopped(null))
-      .catch((err) => setError(String(err)));
+  // editor drops its execution marker until the next `debug-stopped`. The
+  // stop is dropped *before* invoking — a quick step's `debug-stopped` can
+  // arrive before the invoke resolves, and clearing it afterwards would
+  // leave the UI "running" with the game paused. Only one resume at a time,
+  // and only from a stop: a held-down F10 auto-repeats far faster than
+  // steps complete (the backend rejects extras too).
+  const resume = useCallback((command: string, args?: Record<string, unknown>) => {
+    if (!stoppedRef.current || stoppedRef.current.reason === "exited" || resumingRef.current) return;
+    resumingRef.current = true;
+    stoppedRef.current = null;
+    setStopped(null);
+    invoke(command, args)
+      .catch((err) => setError(String(err)))
+      .finally(() => {
+        resumingRef.current = false;
+      });
   }, []);
 
-  const step = useCallback((kind: StepKind = "over") => {
-    invoke("debug_step", { kind })
-      .then(() => setStopped(null))
-      .catch((err) => setError(String(err)));
-  }, []);
+  const continue_ = useCallback(() => resume("debug_continue"), [resume]);
+
+  const step = useCallback((kind: StepKind = "over") => resume("debug_step", { kind }), [resume]);
 
   /** Break All — stops the running game wherever it is; the stop arrives as a `debug-stopped` with reason `"pause"`. */
   const pause = useCallback(() => {
@@ -166,9 +196,9 @@ export function useDebugSession() {
       const frame = stopped?.stackTrace[index];
       if (!frame) return;
       setSelectedFrame(index);
-      openFile({ path: frame.file, line: frame.line });
+      openSource(frame);
     },
-    [stopped],
+    [stopped, openSource],
   );
 
   /** Where the editor should draw the execution arrow: the selected frame's file/line while paused. */

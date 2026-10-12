@@ -30,7 +30,7 @@ use nix::sys::signal::Signal;
 use nix::unistd::Pid;
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager, State};
-use yog_debugger::{is_library_source, Debugger, SourceBreakpoints, StepKind, StopReason};
+use yog_debugger::{Debugger, SourceBreakpoints, StepKind, StopReason, is_library_source};
 use yog_hot_reload::{GenerationAllocator, ModuleGeneration};
 use yog_symbols::{FrameRegs, SymbolTable, TargetMemory};
 
