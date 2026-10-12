@@ -159,6 +159,11 @@ pub fn debug_step(kind: Option<String>) -> Result<(), String> {
 }
 
 #[tauri::command]
+pub fn debug_pause() -> Result<(), String> {
+    Err(UNSUPPORTED.to_string())
+}
+
+#[tauri::command]
 pub fn debug_select_thread(thread: i32) -> Result<(), String> {
     let _ = thread;
     Err(UNSUPPORTED.to_string())

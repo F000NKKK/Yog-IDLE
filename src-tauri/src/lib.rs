@@ -1037,6 +1037,7 @@ pub fn run() {
         debugger::debug_continue,
         debugger::debug_step,
         debugger::debug_select_thread,
+        debugger::debug_pause,
         debugger::debug_grant_ptrace_capability,
         debug_supported,
     ]);

@@ -67,6 +67,8 @@ enum TracerCmd {
     },
     Continue,
     Step(StepKind),
+    /// Break All: stop the running game wherever it is.
+    Pause,
     /// Inspect another (stopped) thread: re-emits `debug-stopped` with its
     /// stack and registers.
     SelectThread(i32),
@@ -102,7 +104,10 @@ impl TracerHandle {
     fn send(&self, cmd: TracerCmd) -> bool {
         let urgent = matches!(
             cmd,
-            TracerCmd::SetBreakpoint { .. } | TracerCmd::ClearBreakpoint { .. } | TracerCmd::Rebind
+            TracerCmd::SetBreakpoint { .. }
+                | TracerCmd::ClearBreakpoint { .. }
+                | TracerCmd::Rebind
+                | TracerCmd::Pause
         );
         if self.tx.send(cmd).is_err() {
             return false;
@@ -956,11 +961,24 @@ fn tracer_main(
                 // Our own interrupt (see `TracerHandle::send`): apply what
                 // was queued and carry on with whatever was in progress.
                 Ok(StopReason::Interrupted) => {
+                    let mut pause = false;
                     while let Ok(cmd) = rx.try_recv() {
-                        tracer.apply(&app, cmd);
+                        match cmd {
+                            TracerCmd::Pause => pause = true,
+                            cmd => tracer.apply(&app, cmd),
+                        }
                     }
-                    resume = Some(kind);
-                    continue;
+                    if !pause {
+                        resume = Some(kind);
+                        continue;
+                    }
+                    if let Err(e) = tracer.debugger.pause() {
+                        emit_failed(&app, e.to_string());
+                        break;
+                    }
+                    tracer.select_interesting_thread();
+                    tracer.last_stop = StopReason::Interrupted;
+                    tracer.emit_stop(&app, StopReason::Interrupted);
                 }
                 Ok(reason) => {
                     let exited = matches!(reason, StopReason::Exited(_) | StopReason::Killed(_));
@@ -1062,6 +1080,8 @@ impl Tracer {
                 Ok(()) => self.emit_stop(app, self.last_stop.clone()),
                 Err(e) => warn(app, format!("selecting thread {tid}: {e}")),
             },
+            // Already paused (a Pause racing a breakpoint hit) — nothing to do.
+            TracerCmd::Pause => {}
             TracerCmd::Continue | TracerCmd::Step(_) => {}
         }
     }
@@ -1128,6 +1148,17 @@ impl Tracer {
         }
     }
 
+    /// After a pause, show a thread that's actually in the mod's code if
+    /// there is one; otherwise the main thread.
+    fn select_interesting_thread(&mut self) {
+        for tid in self.debugger.threads() {
+            if self.debugger.select_thread(tid).is_ok() && !self.stack_trace().is_empty() {
+                return;
+            }
+        }
+        let _ = self.debugger.select_thread(self.debugger.pid());
+    }
+
     fn stack_trace(&self) -> Vec<StackFrameOut> {
         let Ok(addrs) = self.debugger.backtrace(64) else {
             return Vec::new();
@@ -1152,7 +1183,8 @@ impl Tracer {
         let reason_str = match reason {
             StopReason::Breakpoint(_) => "breakpoint",
             StopReason::Signal(Signal::SIGTRAP) => "step",
-            StopReason::Signal(_) | StopReason::Interrupted => "signal",
+            StopReason::Interrupted => "pause",
+            StopReason::Signal(_) => "signal",
             StopReason::Exited(_) | StopReason::Killed(_) => "exited",
         };
         let exited = reason_str == "exited";
@@ -1264,6 +1296,15 @@ pub fn debug_clear_breakpoint(
         .retain(|(f, l)| !(f == &file && *l == line));
     tracer_send(&state, TracerCmd::ClearBreakpoint { file, line });
     Ok(())
+}
+
+#[tauri::command]
+pub fn debug_pause(state: State<DebugState>) -> Result<(), String> {
+    if tracer_send(&state, TracerCmd::Pause) {
+        Ok(())
+    } else {
+        Err("no active debug session".to_string())
+    }
 }
 
 #[tauri::command]
