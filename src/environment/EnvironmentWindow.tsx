@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { Button, ComponentList, FloatingWindow, Icon, t, useT, type ComponentListItem, type ComponentStatus } from "substrate-platform-ui";
+import { Button, ComponentList, FloatingWindow, Icon, t, useT, type ComponentListItem, type ComponentListSection, type ComponentStatus } from "substrate-platform-ui";
 import { useProject } from "../ProjectContext";
 import {
   canInstall,
@@ -32,6 +32,14 @@ const STATUS_LABELS: Record<EnvironmentComponent["status"], string> = {
   outdated: "Update available",
   partial: "Incomplete",
 };
+
+/** The installer's sections, in order — a component goes to the first whose test matches its id. */
+const SECTIONS: { id: string; title: string; test: (id: string) => boolean }[] = [
+  { id: "rust", title: "Rust", test: (id) => ["rust", "toolchain", "targets"].includes(id) },
+  { id: "build", title: "Build Tools", test: (id) => ["cargo-zigbuild", "zig"].includes(id) || id.startsWith("jdk-") },
+  { id: "yog", title: "Yog Components", test: (id) => ["yog", "loader"].includes(id) },
+  { id: "general", title: "General Tools", test: () => true },
+];
 
 /**
  * Tools > Install Components — Visual Studio Installer for the Yog
@@ -116,6 +124,12 @@ export function EnvironmentWindow({ onClose, onOpenOptions }: { onClose: () => v
     };
   });
 
+  const sections: ComponentListSection[] = SECTIONS.map((section) => ({
+    id: section.id,
+    title: t(section.title),
+    items: items.filter((item) => SECTIONS.find((s) => s.test(item.id)) === section),
+  }));
+
   const missing = report ? missingRequired(report) : [];
   const summary = !report
     ? env.error
@@ -136,7 +150,7 @@ export function EnvironmentWindow({ onClose, onOpenOptions }: { onClose: () => v
       <div className="environment-body">
         <p className={`environment-summary${report && missing.length > 0 ? " is-warning" : ""}`}>{summary}</p>
         <div className="environment-list">
-          <ComponentList items={items} emptyLabel={env.checking ? t("Checking…") : undefined} />
+          <ComponentList sections={sections} emptyLabel={env.checking ? t("Checking…") : undefined} />
         </div>
         {report && (
           <details className="environment-details">
