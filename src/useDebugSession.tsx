@@ -28,7 +28,8 @@ export function useDebugSession() {
   const [debugging, setDebugging] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [stopped, setStopped] = useState<DebugStoppedEvent | null>(null);
-  const lastRef = useRef<{ projectRoot: string; name: string; mode: string } | null>(null);
+  const relaunchRef = useRef<(() => Promise<unknown>) | null>(null);
+  const [canRestart, setCanRestart] = useState(false);
 
   useEffect(() => {
     const unlistenStarting = listen<{ stage: string }>("game-status", (event) => {
@@ -64,9 +65,15 @@ export function useDebugSession() {
     };
   }, []);
 
-  /** Called by `RunToolbar` right when its Start button fires `mod_run`, so `restart` knows what to relaunch. */
-  const notifyRun = useCallback((projectRoot: string, name: string, mode: string) => {
-    lastRef.current = { projectRoot, name, mode };
+  /**
+   * Called by `RunToolbar` right when its Start button fires, with a
+   * callback that repeats that exact launch through the same path (its
+   * `useModRunTargets.run`), so `restart` keeps that hook's `running`
+   * state honest instead of invoking `mod_run` behind its back.
+   */
+  const notifyRun = useCallback((relaunch: () => Promise<unknown>) => {
+    relaunchRef.current = relaunch;
+    setCanRestart(true);
   }, []);
 
   const stop = useCallback(() => {
@@ -78,9 +85,9 @@ export function useDebugSession() {
   }, []);
 
   const restart = useCallback(() => {
-    const last = lastRef.current;
-    if (!last) return;
-    stop().finally(() => invoke("mod_run", last).catch((err) => setError(String(err))));
+    const relaunch = relaunchRef.current;
+    if (!relaunch) return;
+    stop().finally(() => relaunch().catch((err) => setError(String(err))));
   }, [stop]);
 
   const continue_ = useCallback(() => {
@@ -95,5 +102,5 @@ export function useDebugSession() {
     return invoke("debug_grant_ptrace_capability");
   }, []);
 
-  return { attaching, debugging, error, stopped, notifyRun, stop, restart, continue_, step, grantPtraceAccess };
+  return { attaching, debugging, error, stopped, notifyRun, canRestart, stop, restart, continue_, step, grantPtraceAccess };
 }

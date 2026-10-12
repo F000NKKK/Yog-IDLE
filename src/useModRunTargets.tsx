@@ -19,10 +19,20 @@ export function useModRunTargets(projectRoot: string) {
       .catch(() => setTargets([]));
   }, [projectRoot]);
 
+  // Driven by the backend's own lifecycle events rather than only by who
+  // called `run` — so a relaunch from anywhere (the toolbar's Restart goes
+  // through `run` too, see `useDebugSession.restart`) can't leave this
+  // stale: `game-status` "starting" always follows the previous session's
+  // `workflow-exit` on the same event stream.
   useEffect(() => {
-    const unlistenPromise = listen("workflow-exit", () => setRunning(false));
+    const unlistens = [
+      listen("workflow-exit", () => setRunning(false)),
+      listen<{ stage: string }>("game-status", (e) => {
+        if (e.payload.stage === "starting") setRunning(true);
+      }),
+    ];
     return () => {
-      unlistenPromise.then((unlisten) => unlisten());
+      unlistens.forEach((p) => p.then((unlisten) => unlisten()));
     };
   }, []);
 

@@ -42,7 +42,7 @@ function ModRunToolbar({ root, onRunningChange }: { root: string } & RunToolbarP
       targets={targets}
       running={running}
       onRun={(name) => {
-        notifyRun(root, name, mode);
+        notifyRun(() => run(name, mode));
         run(name, mode);
       }}
       modes={MOD_RUN_MODES}
