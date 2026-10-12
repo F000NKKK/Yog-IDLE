@@ -10,8 +10,9 @@ use tauri::{AppHandle, Emitter, State};
 #[cfg(target_os = "linux")]
 mod debugger;
 
-/// Every path a `dir_*`/workflow command may touch must resolve under one of
-/// these — populated by `project_open`. An IDE should never read/write
+/// Every path a `dir_*`/`file_*` command may touch — and every project root a
+/// workflow/`mod_*`/`publish_*` command reads from or runs a process in —
+/// must resolve under one of these, populated by `project_open`. An IDE should never read/write
 /// outside a project the user actually opened; this boundary is deliberately
 /// enforced here rather than in `substrate-platform`, which stays
 /// path-policy-agnostic.
@@ -204,8 +205,10 @@ struct WorkflowSummary {
 }
 
 #[tauri::command]
-fn workflow_list(project_root: String) -> Result<Vec<WorkflowSummary>, String> {
-    let file = resolve_workflow_file(&PathBuf::from(project_root))?;
+fn workflow_list(state: State<AppState>, project_root: String) -> Result<Vec<WorkflowSummary>, String> {
+    let root = PathBuf::from(project_root);
+    validate_within_roots(&state, &root)?;
+    let file = resolve_workflow_file(&root)?;
     let mut list: Vec<WorkflowSummary> =
         file.workflow.into_iter().map(|(name, def)| WorkflowSummary { name, description: def.description }).collect();
     list.sort_by(|a, b| a.name.cmp(&b.name));
@@ -246,8 +249,9 @@ fn run_and_stream(app: AppHandle, file: WorkflowFile, name: String, vars: HashMa
 /// every step has finished, mirroring the existing `pty-output`/`pty-exit`
 /// pattern.
 #[tauri::command]
-fn workflow_run(app: AppHandle, project_root: String, name: String, vars: HashMap<String, String>) -> Result<(), String> {
+fn workflow_run(app: AppHandle, state: State<AppState>, project_root: String, name: String, vars: HashMap<String, String>) -> Result<(), String> {
     let root = PathBuf::from(project_root);
+    validate_within_roots(&state, &root)?;
     let file = resolve_workflow_file(&root)?;
     run_and_stream(app, file, name, vars, root);
     Ok(())
@@ -333,7 +337,8 @@ fn parse_mod_run_targets(contents: &str) -> Vec<ModRunTarget> {
 }
 
 #[tauri::command]
-fn mod_run_targets(project_root: String) -> Result<Vec<ModRunTarget>, String> {
+fn mod_run_targets(state: State<AppState>, project_root: String) -> Result<Vec<ModRunTarget>, String> {
+    validate_within_roots(&state, Path::new(&project_root))?;
     let path = PathBuf::from(&project_root).join("yog.toml");
     let contents = std::fs::read_to_string(&path).map_err(|e| e.to_string())?;
     Ok(parse_mod_run_targets(&contents))
@@ -348,7 +353,8 @@ fn mod_run_targets(project_root: String) -> Result<Vec<ModRunTarget>, String> {
 /// the plain fire-and-forget run; the debugger stack is Linux-only there
 /// too (`ptrace`).
 #[tauri::command]
-fn mod_run(app: AppHandle, project_root: String, name: String, mode: String) -> Result<(), String> {
+fn mod_run(app: AppHandle, state: State<AppState>, project_root: String, name: String, mode: String) -> Result<(), String> {
+    validate_within_roots(&state, Path::new(&project_root))?;
     #[cfg(target_os = "linux")]
     {
         debugger::run_with_mode(app, project_root, name, mode)
@@ -365,8 +371,9 @@ fn mod_run(app: AppHandle, project_root: String, name: String, mode: String) -> 
 
 /// The Build menu's plain "Build" action for a `yog-mod` project — `yog build`.
 #[tauri::command]
-fn mod_build(app: AppHandle, project_root: String) -> Result<(), String> {
+fn mod_build(app: AppHandle, state: State<AppState>, project_root: String) -> Result<(), String> {
     let root = PathBuf::from(project_root);
+    validate_within_roots(&state, &root)?;
     let file = single_step_workflow("yog", vec!["build".to_string()]);
     run_and_stream(app, file, "run".to_string(), HashMap::new(), root);
     Ok(())
@@ -408,7 +415,8 @@ fn ensure_gitignored(project_root: &Path) {
 }
 
 #[tauri::command]
-fn publish_profiles_list(project_root: String) -> Result<Vec<PublishProfile>, String> {
+fn publish_profiles_list(state: State<AppState>, project_root: String) -> Result<Vec<PublishProfile>, String> {
+    validate_within_roots(&state, Path::new(&project_root))?;
     let dir = publish_profiles_dir(&PathBuf::from(project_root));
     if !dir.exists() {
         return Ok(Vec::new());
@@ -428,11 +436,14 @@ fn publish_profiles_list(project_root: String) -> Result<Vec<PublishProfile>, St
 }
 
 #[tauri::command]
-fn publish_profile_save(project_root: String, profile: PublishProfile) -> Result<(), String> {
+fn publish_profile_save(state: State<AppState>, project_root: String, profile: PublishProfile) -> Result<(), String> {
     let root = PathBuf::from(&project_root);
+    validate_within_roots(&state, &root)?;
     let dir = publish_profiles_dir(&root);
     std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
     let path = dir.join(format!("{}.json", profile.id));
+    // `id` is caller-supplied — a `../` in it must not escape the project.
+    validate_within_roots(&state, &path)?;
     let json = serde_json::to_string_pretty(&profile).map_err(|e| e.to_string())?;
     std::fs::write(path, json).map_err(|e| e.to_string())?;
     ensure_gitignored(&root);
@@ -440,8 +451,10 @@ fn publish_profile_save(project_root: String, profile: PublishProfile) -> Result
 }
 
 #[tauri::command]
-fn publish_profile_delete(project_root: String, id: String) -> Result<(), String> {
+fn publish_profile_delete(state: State<AppState>, project_root: String, id: String) -> Result<(), String> {
+    validate_within_roots(&state, Path::new(&project_root))?;
     let path = publish_profiles_dir(&PathBuf::from(project_root)).join(format!("{id}.json"));
+    validate_within_roots(&state, &path)?;
     if path.exists() {
         std::fs::remove_file(path).map_err(|e| e.to_string())?;
     }
@@ -449,8 +462,9 @@ fn publish_profile_delete(project_root: String, id: String) -> Result<(), String
 }
 
 #[tauri::command]
-fn publish_run(app: AppHandle, project_root: String, profile: PublishProfile) -> Result<(), String> {
+fn publish_run(app: AppHandle, state: State<AppState>, project_root: String, profile: PublishProfile) -> Result<(), String> {
     let root = PathBuf::from(project_root);
+    validate_within_roots(&state, &root)?;
     let (program, args) = match profile.mode.as_str() {
         "exports" => {
             let mut args = vec!["publish".to_string(), "exports".to_string()];
