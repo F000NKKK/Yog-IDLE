@@ -74,10 +74,13 @@ export function OpenFilesPersistence() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [store]);
 
+  // Saved when the set/order of tabs or the front one changes — not on
+  // every edit (`tabs` changes with each keystroke).
+  const tabPaths = tabs.map((t) => t.path).join("\n");
   useEffect(() => {
     if (restoredScope.current === store.scope) store.set(OPEN_FILES_KEY, snapshot());
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tabs, activeCenterId, store]);
+  }, [tabPaths, activeCenterId, store]);
 
   // Cursor positions change on every keystroke — gathered only when the
   // workspace is about to be written.
