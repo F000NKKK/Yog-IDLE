@@ -18,6 +18,24 @@ export default defineConfig(async () => ({
     // "Invalid hook call" despite both copies being the same version.
     dedupe: ["react", "react-dom"],
   },
+  // The Markdown preview's dependencies, reached only through the symlinked
+  // `substrate-platform-ui` (and Mermaid only via a dynamic import), so the
+  // dependency scan doesn't reliably find them — prebundled up front instead
+  // of being served file by file (Mermaid is hundreds of modules), which also
+  // drops the dangling `sourceMappingURL` @vscode/markdown-it-katex ships
+  // without its map.
+  optimizeDeps: {
+    include: [
+      "substrate-platform-ui > markdown-it",
+      "substrate-platform-ui > markdown-it-footnote",
+      "substrate-platform-ui > markdown-it-github-alerts",
+      "substrate-platform-ui > @vscode/markdown-it-katex",
+      "substrate-platform-ui > katex",
+      "substrate-platform-ui > highlight.js",
+      "substrate-platform-ui > dompurify",
+      "substrate-platform-ui > mermaid",
+    ],
+  },
 
   // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
   //
