@@ -16,6 +16,7 @@
 //! The same socket carries hot reload the other way: `hot_reload` rebuilds
 //! the project and asks the runtime to swap in the new `.yog` in place.
 
+use std::collections::HashMap;
 use std::io::{BufRead, BufReader, Write};
 use std::os::unix::net::UnixStream;
 use std::path::{Path, PathBuf};
@@ -29,7 +30,7 @@ use nix::sys::signal::Signal;
 use nix::unistd::Pid;
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager, State};
-use yog_debugger::{Debugger, SourceBreakpoints, StepKind, StopReason};
+use yog_debugger::{is_library_source, Debugger, SourceBreakpoints, StepKind, StopReason};
 use yog_hot_reload::{GenerationAllocator, ModuleGeneration};
 use yog_symbols::{FrameRegs, SymbolTable, TargetMemory};
 
@@ -88,6 +89,13 @@ enum TracerCmd {
     },
 }
 
+/// The state `TracerHandle` shares with its tracer thread.
+struct TracerFlags {
+    running: Arc<AtomicBool>,
+    paused: Arc<AtomicBool>,
+    pause_request: Arc<AtomicBool>,
+}
+
 #[derive(Clone, Copy)]
 enum Resume {
     Continue,
@@ -98,12 +106,17 @@ enum Resume {
 struct TracerHandle {
     tx: Sender<TracerCmd>,
     pid: i32,
-    /// `true` while the tracee is executing a Continue and the tracer
-    /// thread is blocked in `waitpid` — the only state in which it can't
-    /// pick up a command on its own. (A source step is short, and
-    /// interrupting one would restart it from a different line, so
-    /// commands sent during a step simply wait for it to finish.)
+    /// `true` while the tracee is executing a Continue or a step and the
+    /// tracer thread is blocked in `waitpid` — the only state in which it
+    /// can't pick up a command on its own.
     running: Arc<AtomicBool>,
+    /// `true` while the tracer is parked waiting for the user — the only
+    /// time a Continue/Step is accepted (see `TracerHandle::resume`).
+    paused: Arc<AtomicBool>,
+    /// Raised with a Pause sent while running, so a step in progress gives
+    /// up for it (`Debugger::set_pause_request`) instead of absorbing it
+    /// like a breakpoint edit's interrupt.
+    pause_request: Arc<AtomicBool>,
 }
 
 impl TracerHandle {
@@ -121,13 +134,34 @@ impl TracerHandle {
                 | TracerCmd::Pause
                 | TracerCmd::Detach { .. }
         );
+        let pause = matches!(cmd, TracerCmd::Pause);
         if self.tx.send(cmd).is_err() {
             return false;
         }
         if urgent && self.running.load(Ordering::SeqCst) {
+            if pause {
+                self.pause_request.store(true, Ordering::SeqCst);
+            }
             yog_debugger::ptrace_debugger::interrupt(self.pid);
         }
         true
+    }
+
+    /// Queues a Continue/Step — only while the tracer is paused waiting for
+    /// one, and only one per pause: a held-down F10 must not pile up steps
+    /// that then run back to back (or after a step that turned into a free
+    /// run) long after the key was let go.
+    fn resume(&self, cmd: TracerCmd) -> Result<(), String> {
+        if self
+            .paused
+            .compare_exchange(true, false, Ordering::SeqCst, Ordering::SeqCst)
+            .is_err()
+        {
+            return Err("not paused".to_string());
+        }
+        self.tx
+            .send(cmd)
+            .map_err(|_| "no active debug session".to_string())
     }
 }
 
@@ -228,11 +262,6 @@ impl ProcMem {
         std::fs::File::open(format!("/proc/{pid}/mem"))
             .map(Self)
             .map_err(|e| format!("opening /proc/{pid}/mem: {e}"))
-    }
-
-    fn read_u64(&self, addr: u64) -> Option<u64> {
-        let mut buf = [0u8; 8];
-        self.read(addr, &mut buf).then(|| u64::from_ne_bytes(buf))
     }
 }
 
@@ -951,6 +980,8 @@ fn start_tracer(
 ) {
     let (tx, rx) = mpsc::channel();
     let running = Arc::new(AtomicBool::new(false));
+    let paused = Arc::new(AtomicBool::new(false));
+    let pause_request = Arc::new(AtomicBool::new(false));
     {
         let debug_state = app.state::<DebugState>();
         let mut guard = debug_state.0.lock().unwrap();
@@ -960,15 +991,20 @@ fn start_tracer(
                     tx,
                     pid: real_pid,
                     running: running.clone(),
+                    paused: paused.clone(),
+                    pause_request: pause_request.clone(),
                 });
             }
             _ => return,
         }
     }
     let app = app.clone();
-    std::thread::spawn(move || {
-        tracer_main(app, real_pid, mod_id, native_path, ptracer, rx, running)
-    });
+    let flags = TracerFlags {
+        running,
+        paused,
+        pause_request,
+    };
+    std::thread::spawn(move || tracer_main(app, real_pid, mod_id, native_path, ptracer, rx, flags));
 }
 
 /// The one thread that ever touches the tracee. Linux `ptrace` binds a
@@ -988,8 +1024,13 @@ fn tracer_main(
     native_path: PathBuf,
     ptracer: Option<bool>,
     rx: Receiver<TracerCmd>,
-    running: Arc<AtomicBool>,
+    flags: TracerFlags,
 ) {
+    let TracerFlags {
+        running,
+        paused,
+        pause_request,
+    } = flags;
     let mut tracer = match Tracer::attach(&app, real_pid, &mod_id, &native_path, ptracer) {
         Ok(t) => t,
         Err(e) => {
@@ -997,6 +1038,7 @@ fn tracer_main(
             return;
         }
     };
+    tracer.debugger.set_pause_request(pause_request.clone());
     // Anything toggled while attach was in progress — already reflected in
     // `BREAKPOINTS` (and therefore armed above) or not, applying it again
     // is idempotent.
@@ -1032,7 +1074,7 @@ fn tracer_main(
                 // Our own interrupt (see `TracerHandle::send`): apply what
                 // was queued and carry on with whatever was in progress.
                 Ok(StopReason::Interrupted) => {
-                    let mut pause = false;
+                    let mut pause = pause_request.swap(false, Ordering::SeqCst);
                     while let Ok(cmd) = rx.try_recv() {
                         match cmd {
                             TracerCmd::Pause => pause = true,
@@ -1066,7 +1108,10 @@ fn tracer_main(
             }
         }
         // Paused — wait for the user. The channel closing means the
-        // session itself is gone (Stop, or the game exiting).
+        // session itself is gone (Stop, or the game exiting). A Pause that
+        // raced the stop is moot now.
+        pause_request.store(false, Ordering::SeqCst);
+        paused.store(true, Ordering::SeqCst);
         match rx.recv() {
             Ok(TracerCmd::Continue) => resume = Some(Resume::Continue),
             Ok(TracerCmd::Step(step)) => resume = Some(Resume::Step(step)),
@@ -1220,65 +1265,68 @@ impl Tracer {
         }
     }
 
-    /// After a pause, show a thread that's actually in the mod's code if
-    /// there is one; otherwise the main thread.
+    /// After a pause, show a thread that's actually in the mod's own code
+    /// if there is one; otherwise the main thread.
     fn select_interesting_thread(&mut self) {
         for tid in self.debugger.threads() {
-            if self.debugger.select_thread(tid).is_ok() && !self.stack_trace().is_empty() {
+            if self.debugger.select_thread(tid).is_ok()
+                && self
+                    .stack_trace()
+                    .iter()
+                    .any(|f| !is_library_source(Path::new(&f.file)))
+            {
                 return;
             }
         }
         let _ = self.debugger.select_thread(self.debugger.pid());
     }
 
-    fn stack_trace(&self) -> Vec<StackFrameOut> {
-        let Ok(addrs) = self.debugger.backtrace(64) else {
-            return Vec::new();
-        };
-        addrs
-            .into_iter()
-            .enumerate()
-            .filter_map(|(i, addr)| {
-                let offset = addr.checked_sub(self.module_base)?;
-                let location = self.symbols.resolve_addr(offset)?;
-                Some(StackFrameOut {
-                    id: i as i64,
-                    name: location.function.unwrap_or_else(|| "<unknown>".to_string()),
-                    file: location.file.to_string_lossy().into_owned(),
-                    line: location.line,
-                })
-            })
-            .collect()
+    /// The selected thread's physical frames, unwound by CFI — through
+    /// `std`, which keeps no frame pointers.
+    fn frames(&self) -> Vec<FrameRegs> {
+        self.debugger
+            .backtrace_with(&self.symbols, self.module_base, 64)
+            .unwrap_or_default()
     }
 
-    /// Locals of the selected thread's backtrace frame `frame` (the same
-    /// numbering `stack_trace` reports as `id`). The innermost frame has
-    /// every register; outer ones are recovered by walking the `rbp` chain
-    /// exactly as `Debugger::backtrace` does, so only `rip`/`rsp`/`rbp` are
-    /// known there and variables kept in other registers read as
-    /// `<unavailable>`.
-    fn variables(&self, frame: usize) -> Result<Vec<VariableOut>, String> {
-        let r = self.debugger.registers().map_err(|e| e.to_string())?;
-        let mem = ProcMem::open(self.debugger.pid())?;
-        let mut regs = FrameRegs::from_dwarf_order([
-            r.rax, r.rdx, r.rcx, r.rbx, r.rsi, r.rdi, r.rbp, r.rsp, r.r8, r.r9, r.r10, r.r11,
-            r.r12, r.r13, r.r14, r.r15, r.rip,
-        ]);
-        let mut bp = r.rbp;
-        for _ in 0..frame {
-            let (Some(saved_bp), Some(return_addr)) =
-                (mem.read_u64(bp), mem.read_u64(bp.wrapping_add(8)))
-            else {
-                return Err(format!("frame {frame} is past the end of the stack"));
+    /// Every frame in the mod's native — user code and the `std` statically
+    /// linked into it — innermost first, with inlined calls as frames of
+    /// their own. `id` encodes the physical frame (see `FRAME_ID_STRIDE`);
+    /// `std`'s `/rustc/<commit>/...` paths point into the local `rust-src`.
+    fn stack_trace(&self) -> Vec<StackFrameOut> {
+        let mut out = Vec::new();
+        for (i, regs) in self.frames().iter().enumerate() {
+            let Some(offset) = regs.pc().checked_sub(self.module_base) else {
+                continue;
             };
-            // `return_addr - 1`: still inside the call instruction, so the
-            // scope lookup lands in the caller's block for that call.
-            regs = FrameRegs::new(return_addr.wrapping_sub(1), bp.wrapping_add(16), saved_bp);
-            bp = saved_bp;
+            for (j, location) in self.symbols.resolve_inlined(offset).into_iter().enumerate() {
+                if location.line == 0 || j >= FRAME_ID_STRIDE {
+                    continue;
+                }
+                out.push(StackFrameOut {
+                    id: (i * FRAME_ID_STRIDE + j) as i64,
+                    name: location.function.unwrap_or_else(|| "<unknown>".to_string()),
+                    file: map_rust_src(&location.file.to_string_lossy()),
+                    line: location.line,
+                });
+            }
         }
+        out
+    }
+
+    /// Locals of the selected thread's frame `frame` (a `stack_trace` id).
+    /// The innermost frame has every register; outer ones have what CFI
+    /// recovered (`rsp`, `rip` and the callee-saved registers), so
+    /// variables kept in other registers read as `<unavailable>`.
+    fn variables(&self, frame: usize) -> Result<Vec<VariableOut>, String> {
+        let mem = ProcMem::open(self.debugger.pid())?;
+        let frames = self.frames();
+        let regs = frames
+            .get(frame / FRAME_ID_STRIDE)
+            .ok_or_else(|| format!("frame {frame} is past the end of the stack"))?;
         Ok(self
             .symbols
-            .read_locals(&regs, self.module_base, &mem)
+            .read_locals(regs, self.module_base, &mem)
             .into_iter()
             .map(VariableOut::from)
             .collect())
@@ -1361,6 +1409,69 @@ fn warn(app: &AppHandle, message: String) {
 /// after Restart) arms exactly what the gutter shows, same as any IDE lets
 /// you set breakpoints before pressing Start.
 static BREAKPOINTS: Mutex<Vec<(String, u32)>> = Mutex::new(Vec::new());
+
+/// `StackFrameOut::id` = physical frame * this + inline depth.
+const FRAME_ID_STRIDE: usize = 64;
+
+/// `std`'s DWARF paths (`/rustc/<commit>/library/...`) mapped into an
+/// installed `rust-src`: the toolchain whose `rustc` was built from that
+/// commit, else any toolchain that has `rust-src`. Unchanged when nothing
+/// matches (the UI then suggests installing `rust-src`).
+fn map_rust_src(path: &str) -> String {
+    let Some(rest) = path.strip_prefix("/rustc/") else {
+        return path.to_string();
+    };
+    let Some((commit, rel)) = rest.split_once('/') else {
+        return path.to_string();
+    };
+    let Some(rel) = rel.strip_prefix("library/") else {
+        return path.to_string();
+    };
+    static CACHE: Mutex<Option<HashMap<String, Option<PathBuf>>>> = Mutex::new(None);
+    let library = CACHE
+        .lock()
+        .unwrap()
+        .get_or_insert_with(HashMap::new)
+        .entry(commit.to_string())
+        .or_insert_with(|| rust_src_library(commit))
+        .clone();
+    match library.map(|lib| lib.join(rel)) {
+        Some(mapped) if mapped.is_file() => mapped.to_string_lossy().into_owned(),
+        _ => path.to_string(),
+    }
+}
+
+/// `<toolchain>/lib/rustlib/src/rust/library` of the toolchain built from
+/// `commit`, or of any toolchain with `rust-src`.
+fn rust_src_library(commit: &str) -> Option<PathBuf> {
+    let rustup_home = std::env::var_os("RUSTUP_HOME")
+        .map(PathBuf::from)
+        .or_else(|| std::env::var_os("HOME").map(|h| PathBuf::from(h).join(".rustup")))?;
+    let mut toolchains: Vec<PathBuf> = std::fs::read_dir(rustup_home.join("toolchains"))
+        .ok()?
+        .filter_map(|e| Some(e.ok()?.path()))
+        .filter(|t| t.join("lib/rustlib/src/rust/library").is_dir())
+        .collect();
+    toolchains.sort();
+    let built_from = |toolchain: &Path| {
+        Command::new(toolchain.join("bin/rustc"))
+            .arg("-vV")
+            .stdin(Stdio::null())
+            .stderr(Stdio::null())
+            .output()
+            .ok()
+            .is_some_and(|out| {
+                String::from_utf8_lossy(&out.stdout)
+                    .lines()
+                    .any(|l| l.strip_prefix("commit-hash: ") == Some(commit))
+            })
+    };
+    let toolchain = toolchains
+        .iter()
+        .find(|t| built_from(t))
+        .or(toolchains.first())?;
+    Some(toolchain.join("lib/rustlib/src/rust/library"))
+}
 
 fn tracer_send(state: &State<DebugState>, cmd: TracerCmd) -> bool {
     let guard = state.inner().0.lock().unwrap();
@@ -1455,11 +1566,18 @@ pub async fn debug_variables(
 
 #[tauri::command]
 pub fn debug_continue(state: State<DebugState>) -> Result<(), String> {
-    if tracer_send(&state, TracerCmd::Continue) {
-        Ok(())
-    } else {
-        Err("no active debug session".to_string())
-    }
+    tracer_resume(&state, TracerCmd::Continue)
+}
+
+/// Continue/Step: rejected unless the tracer is paused (see
+/// `TracerHandle::resume`).
+fn tracer_resume(state: &State<DebugState>, cmd: TracerCmd) -> Result<(), String> {
+    let guard = state.inner().0.lock().unwrap();
+    guard
+        .as_ref()
+        .and_then(|s| s.tracer.as_ref())
+        .ok_or("no active debug session")?
+        .resume(cmd)
 }
 
 /// `kind`: `"over"` (F10, the default), `"into"` (F11) or `"out"`
@@ -1472,11 +1590,7 @@ pub fn debug_step(state: State<DebugState>, kind: Option<String>) -> Result<(), 
         Some("out") => StepKind::Out,
         Some(other) => return Err(format!("unknown step kind {other:?}")),
     };
-    if tracer_send(&state, TracerCmd::Step(kind)) {
-        Ok(())
-    } else {
-        Err("no active debug session".to_string())
-    }
+    tracer_resume(&state, TracerCmd::Step(kind))
 }
 
 /// Kills the whole instance, whether or not it's a debug-mode run: signals
