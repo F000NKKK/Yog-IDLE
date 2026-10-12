@@ -10,7 +10,9 @@ interface Variable {
 }
 
 const mono: CSSProperties = { fontFamily: "var(--sp-font-mono)", fontSize: "12px" };
-const cell: CSSProperties = { whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", padding: "1px var(--sp-space-xs)" };
+/** A value the debugger couldn't produce (`yog-symbols` placeholders), as opposed to a real one. */
+const PLACEHOLDER = /^<[a-z ]+>$/;
+const cell: CSSProperties ={ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", padding: "1px var(--sp-space-xs)" };
 
 /**
  * Visual Studio's Locals window: the selected frame's parameters and
@@ -75,7 +77,11 @@ export function LocalsView({ stopKey, frame }: { stopKey: unknown; frame: number
             <span style={{ display: "inline-block", width: 12, color: "var(--sp-text-muted)" }}>{hasChildren ? (open ? "▾" : "▸") : ""}</span>
             {v.name}
           </div>
-          <div title={v.value} style={{ ...cell, userSelect: "text" }}>
+          <div
+            title={v.value}
+            // `<not in scope>`, `<optimized out>`, `<unavailable>`...: no value, so dim it.
+            style={{ ...cell, userSelect: "text", ...(PLACEHOLDER.test(v.value) ? { color: "var(--sp-text-muted)" } : {}) }}
+          >
             {v.value}
           </div>
           <div title={v.typeName} style={{ ...cell, color: "var(--sp-text-muted)" }}>
