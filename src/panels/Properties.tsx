@@ -5,6 +5,7 @@ import { useActiveFileTab, useOpenFiles } from "../OpenFilesContext";
 import { useProject } from "../ProjectContext";
 import { renamePath, selectPath, type IdeSelectionData } from "../ideSelection";
 import { baseName, extensionOf, samePath, validateEntryName } from "../paths";
+import type { YuiSelectionData } from "../designer/ScreenDesigner";
 
 /** `path_info`'s answer (see `properties.rs`). */
 interface PathInfo {
@@ -113,7 +114,8 @@ export function Properties() {
   const { project } = useProject();
   const [loaded, setLoaded] = useState<Loaded | null>(null);
   const [reloads, setReloads] = useState(0);
-  const path = selection && selection.kind !== "multiple" ? selection.data.path : null;
+  const isWidget = selection?.kind === "yui.widget";
+  const path = selection && selection.kind !== "multiple" && !isWidget ? selection.data.path : null;
   const tab = path ? tabs.find((t) => t.path === path) : undefined;
   // Saving the file changes its size and timestamp — re-read then too.
   const savedText = tab?.diskContent;
@@ -149,6 +151,13 @@ export function Properties() {
   }, [selection, path, reloads, savedText]);
 
   if (!selection) return <PropertyGrid properties={[]} emptyLabel={t("Select a file or folder in Project Explorer, or click into an editor.")} />;
+  if (isWidget) {
+    // The screen designer's selected widgets — it builds the rows itself.
+    const widget = selection.data as unknown as YuiSelectionData;
+    return (
+      <PropertyGrid objectName={widget.objectName} objectType={widget.objectType} objectKey={widget.objectKey} properties={widget.properties} persistKey="properties" />
+    );
+  }
   if (selection.kind === "multiple") return <PropertyGrid properties={[]} emptyLabel={t("Multiple items are selected.")} />;
   if (!loaded || !path) return <PropertyGrid properties={[]} emptyLabel={t("Loading…")} />;
 

@@ -39,6 +39,7 @@ import type { PanelDef, SettingsSection } from "substrate-platform-ui";
 
 import { EmptyEditorState } from "./panels/EmptyEditorState";
 import { Toolbox } from "./panels/Toolbox";
+import { DocumentOutline } from "./panels/DocumentOutline";
 import { ProjectExplorer } from "./panels/ProjectExplorer";
 import { ActiveDocumentSelection, Properties } from "./panels/Properties";
 import { RunToolbar } from "./panels/RunToolbar";
@@ -140,7 +141,10 @@ const EMPTY_LABELS: Record<OutputSource, string> = {
 /** The tool windows, titled in the active locale — rebuilt when it changes. */
 function makeToolWindows() {
   return {
-    left: [{ id: "toolbox", title: t("Toolbox"), component: Toolbox } satisfies PanelDef],
+    left: [
+      { id: "toolbox", title: t("Toolbox"), component: Toolbox } satisfies PanelDef,
+      { id: "documentOutline", title: t("Document Outline"), component: DocumentOutline } satisfies PanelDef,
+    ],
     right: [
       { id: "projectExplorer", title: t("Project Explorer"), component: ProjectExplorer } satisfies PanelDef,
       { id: "properties", title: t("Properties"), component: Properties } satisfies PanelDef,

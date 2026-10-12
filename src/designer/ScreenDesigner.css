@@ -1,0 +1,138 @@
+/* Screen designer (.yui) — toolbar over a DesignSurface showing a Minecraft-like GUI. */
+.yui-designer {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  background: var(--sp-surface-0);
+}
+
+.yui-designer-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-space-md);
+  padding: var(--sp-space-xs) var(--sp-space-md);
+  border-bottom: 1px solid var(--sp-border);
+  background: var(--sp-surface-1);
+  color: var(--sp-text-muted);
+  font: var(--sp-font-size) var(--sp-font-ui);
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.yui-designer-toolbar label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-space-xs);
+}
+
+.yui-designer-toolbar select,
+.yui-designer-toolbar button {
+  font: inherit;
+  color: var(--sp-text);
+  background: var(--sp-surface-2);
+  border: 1px solid var(--sp-border);
+  border-radius: var(--sp-radius-sm);
+  padding: 1px var(--sp-space-sm);
+}
+
+.yui-designer-toolbar button:hover:not(:disabled) {
+  border-color: var(--sp-border-strong);
+  background: var(--sp-surface-3);
+}
+
+.yui-designer-toolbar button:disabled {
+  color: var(--sp-text-faint);
+}
+
+.yui-designer-sep {
+  width: 1px;
+  align-self: stretch;
+  background: var(--sp-border);
+}
+
+.yui-designer-status {
+  margin-left: auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: var(--sp-font-mono);
+}
+
+.yui-designer-canvas {
+  flex: 1;
+  min-height: 0;
+}
+
+.yui-designer-error {
+  padding: var(--sp-space-lg);
+  color: var(--sp-text-muted);
+  font: var(--sp-font-size) var(--sp-font-ui);
+}
+
+.yui-designer-error pre {
+  color: var(--sp-danger);
+  white-space: pre-wrap;
+  font-family: var(--sp-font-mono);
+}
+
+/* The game world behind a screen, dimmed the way Minecraft dims it. */
+.yui-world {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(rgba(16, 16, 16, 0.75), rgba(16, 16, 16, 0.82)),
+    repeating-conic-gradient(#3b5a2c 0% 25%, #4a6b37 0% 50%) 0 0 / 32px 32px;
+}
+
+.yui-box {
+  position: absolute;
+  box-sizing: border-box;
+}
+
+.yui-outline {
+  border: 1px dashed rgba(255, 255, 255, 0.25);
+}
+
+.yui-char {
+  position: absolute;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  line-height: 1;
+  font-family: "Minecraft", "Monocraft", var(--sp-font-mono);
+  white-space: pre;
+}
+
+.yui-item-slot {
+  background: #888888;
+  border: 1px solid #444444;
+}
+
+.yui-inv-slot {
+  background: #8b8b8b;
+  border-style: solid;
+  border-color: #373737 #ffffff #ffffff #373737;
+}
+
+.yui-item {
+  position: absolute;
+  inset: 12%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(60, 180, 200, 0.55);
+  color: #ffffff;
+  font-family: var(--sp-font-mono);
+  text-transform: uppercase;
+}
+
+.yui-image {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  color: #ffffff;
+  font-family: var(--sp-font-mono);
+  background: repeating-conic-gradient(#d040d0 0% 25%, #202020 0% 50%) 0 0 / 50% 50%;
+  opacity: 0.8;
+}

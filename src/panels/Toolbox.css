@@ -1,0 +1,72 @@
+/* Toolbox — the screen designer's widget palette, Visual Studio style. */
+.toolbox {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  font: var(--sp-font-size) var(--sp-font-ui);
+  color: var(--sp-text);
+}
+
+.toolbox-search {
+  margin: var(--sp-space-sm);
+}
+
+.toolbox-hint {
+  margin: 0 var(--sp-space-md) var(--sp-space-sm);
+  color: var(--sp-text-faint);
+}
+
+.toolbox-list {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.toolbox-group-header {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-space-xs);
+  width: 100%;
+  padding: 2px var(--sp-space-sm);
+  border: none;
+  background: var(--sp-surface-1);
+  color: var(--sp-text);
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.toolbox-chevron {
+  width: 1em;
+  color: var(--sp-text-muted);
+}
+
+.toolbox-item {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-space-sm);
+  padding: 2px var(--sp-space-md) 2px calc(var(--sp-space-md) + 1em);
+  cursor: grab;
+  outline: none;
+}
+
+.toolbox-item:hover {
+  background: var(--sp-surface-2);
+}
+
+.toolbox-item:focus-visible {
+  background: var(--sp-accent-soft);
+}
+
+.toolbox-item.disabled {
+  color: var(--sp-text-faint);
+  cursor: default;
+}
+
+.toolbox-glyph {
+  width: 1.2em;
+  text-align: center;
+  color: var(--sp-accent);
+}

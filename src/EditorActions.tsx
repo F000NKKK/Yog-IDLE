@@ -20,6 +20,7 @@ import {
   editorSetText,
   editorToggleComment,
   editorUndo,
+  useDocumentCommands,
   useEditorView,
   useKeybinding,
   formatShortcut,
@@ -70,6 +71,8 @@ function useFormatSupported(path: string | null): boolean {
 export function useEditorActions() {
   const tab = useActiveFileTab();
   const view = useEditorView(tab?.path);
+  // A designer (no CodeMirror view) offers its own undo/clipboard commands.
+  const doc = useDocumentCommands(view ? null : tab?.path);
   const { save, saveAll, hasDirty, closeTab } = useOpenFiles();
   const canFormat = useFormatSupported(view && tab ? tab.path : null) && !!view && !view.state.readOnly;
 
@@ -93,20 +96,25 @@ export function useEditorActions() {
     hasDirty,
     saveAll,
     close: () => (tab ? closeTab(tab.id) : Promise.resolve(true)),
-    canUndo: !!view && editorCanUndo(view),
-    undo: () => view && editorUndo(view),
-    canRedo: !!view && editorCanRedo(view),
-    redo: () => view && editorRedo(view),
-    hasSelection: !!view && editorHasSelection(view),
-    cut: () => view && editorCut(view).catch((err) => reportError(t("Cut failed: {error}", { error: String(err) }))),
-    copy: () => view && editorCopy(view).catch((err) => reportError(t("Copy failed: {error}", { error: String(err) }))),
-    canPaste: !!view && !view.state.readOnly,
-    paste: () => view && editorPaste(view).catch((err) => reportError(t("Paste failed: {error}", { error: String(err) }))),
+    canUndo: view ? editorCanUndo(view) : !!doc?.canUndo(),
+    undo: () => (view ? editorUndo(view) : doc?.undo()),
+    canRedo: view ? editorCanRedo(view) : !!doc?.canRedo(),
+    redo: () => (view ? editorRedo(view) : doc?.redo()),
+    hasSelection: view ? editorHasSelection(view) : !!doc?.hasSelection(),
+    canCut: view ? editorHasSelection(view) && !view.state.readOnly : !!doc?.hasSelection(),
+    cut: () =>
+      view ? editorCut(view).catch((err) => reportError(t("Cut failed: {error}", { error: String(err) }))) : doc?.cut(),
+    copy: () =>
+      view ? editorCopy(view).catch((err) => reportError(t("Copy failed: {error}", { error: String(err) }))) : doc?.copy(),
+    canPaste: view ? !view.state.readOnly : !!doc?.canPaste(),
+    paste: () =>
+      view ? editorPaste(view).catch((err) => reportError(t("Paste failed: {error}", { error: String(err) }))) : doc?.paste(),
     canFind: !!view,
     find: () => view && editorFind(view),
     replace: () => view && editorReplace(view),
     goToLine: () => view && editorGoToLine(view),
-    selectAll: () => view && editorSelectAll(view),
+    canSelectAll: !!view || !!doc,
+    selectAll: () => (view ? editorSelectAll(view) : doc?.selectAll()),
     canEdit: !!view && !view.state.readOnly,
     lowercase: () => view && editorChangeCase(view, false),
     uppercase: () => view && editorChangeCase(view, true),
@@ -135,10 +143,10 @@ export function EditMenu({ actions: a }: { actions: EditorActions }) {
   const items: MenuBarDropdownEntry[] = [
     { label: t("Undo"), shortcut: "Ctrl+Z", disabled: !a.canUndo, onClick: a.undo },
     { label: t("Redo"), shortcut: "Ctrl+Y", disabled: !a.canRedo, onClick: a.redo },
-    { label: t("Cut"), shortcut: "Ctrl+X", disabled: !a.hasSelection || !a.canPaste, onClick: a.cut, separatorBefore: true },
+    { label: t("Cut"), shortcut: "Ctrl+X", disabled: !a.canCut, onClick: a.cut, separatorBefore: true },
     { label: t("Copy"), shortcut: "Ctrl+C", disabled: !a.hasSelection, onClick: a.copy },
     { label: t("Paste"), shortcut: "Ctrl+V", disabled: !a.canPaste, onClick: a.paste },
-    { label: t("Select All"), shortcut: "Ctrl+A", disabled: !a.canFind, onClick: a.selectAll },
+    { label: t("Select All"), shortcut: "Ctrl+A", disabled: !a.canSelectAll, onClick: a.selectAll },
     {
       label: t("Find and Replace"),
       separatorBefore: true,

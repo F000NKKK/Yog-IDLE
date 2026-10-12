@@ -15,6 +15,7 @@ mod project_properties;
 mod properties;
 mod search;
 mod symbols;
+mod yui;
 
 #[cfg(target_os = "linux")]
 mod debugger;
@@ -508,6 +509,15 @@ async fn format_supported(path: String) -> bool {
 /// the result. Runs in the file's own folder so the formatter picks up a
 /// `rustfmt.toml`/`taplo.toml` there. A syntax error comes back as `Err`
 /// with the formatter's own message.
+/// Regenerates a saved `.yui` screen's `*.designer.rs` (see `yui.rs`).
+#[tauri::command]
+async fn yui_codegen(state: State<'_, AppState>, path: String) -> Result<String, String> {
+    validate_within_roots(&state, Path::new(&path))?;
+    tauri::async_runtime::spawn_blocking(move || yui::codegen(&path))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
 #[tauri::command]
 async fn format_document(path: String, contents: String) -> Result<String, String> {
     let target = PathBuf::from(&path);
@@ -1288,6 +1298,7 @@ pub fn run() {
     let builder = builder.manage(debugger::DebugState::default());
 
     let builder = builder.invoke_handler(tauri::generate_handler![
+        yui_codegen,
         pty_spawn,
         pty_write,
         pty_resize,

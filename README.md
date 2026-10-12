@@ -3,9 +3,8 @@
 An IDE for [Yog](https://github.com/F000NKKK/Yog-Mod-Loader) Minecraft
 mods — edit, build, run, debug, and hot-reload a mod from a Visual
 Studio–style layout (Project Explorer, editor tabs, Output log, integrated
-Terminal, Debug panel, Properties), with a visual `yog-ui` screen designer
-(Toolbox, a central canvas with live preview in the running game) planned
-on top.
+Terminal, Debug panel, Properties) and a visual `yog-ui` screen designer
+(Toolbox, a WinForms-style design canvas, Properties, Document Outline).
 
 Built with [Tauri](https://tauri.app/) (Rust backend, web frontend) on top
 of [Substrate Platform](https://github.com/F000NKKK/Substrate-Platform), a
@@ -42,6 +41,16 @@ Works today:
 - **Properties** — a Visual Studio–style property grid for the selection
   (project, `yog.toml` entries, files), edited in place and written back
   with formatting preserved.
+- **Screen designer** — `.yui` files (a XAML-like form of a `yog-ui`
+  widget tree, see [docs/yui.md](docs/yui.md)) open in a Visual Studio
+  WinForms–style designer, with the XML in a Source view: the screen drawn
+  Minecraft-style at a chosen GUI size and zoom, laid out exactly as
+  `yog-ui` will; select (click, Ctrl/Shift+click, rubber band), move and
+  resize with handles, snaplines and a grid; drop widgets from the Toolbox
+  (or double-click them); nest them in Canvas/Row/Column containers;
+  arrow-key nudge, cut/copy/paste/duplicate, z-order and undo/redo; every
+  attribute editable in Properties. Saving regenerates the screen's
+  `*.designer.rs` (`yog ui gen`), included by its code-behind module.
 - **Build & publish** — Build (`yog build`) and saved publish profiles
   (package as `.yog`, or `yog publish exports`), with output streamed to
   the Output panel, which keeps a separate source per producer (Build,
@@ -64,8 +73,8 @@ Works today:
 
 Planned:
 
-- The visual `yog-ui` designer — Toolbox, a design canvas, and live
-  preview in the running client (the Toolbox is a placeholder today).
+- Live preview of a designed screen in the running client (hot reload of
+  the regenerated code over the control socket).
 - Watch expressions and values on hover while debugging.
 - Debugging and hot reload on Windows and macOS.
 
