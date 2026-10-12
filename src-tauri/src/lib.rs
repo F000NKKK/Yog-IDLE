@@ -28,6 +28,9 @@ use plain_run as debugger;
 #[derive(Default)]
 struct AppState {
     project_roots: Mutex<Vec<PathBuf>>,
+    /// The project currently shown (set by `project_open`, cleared by
+    /// `project_close`) — new integrated terminals start in its root.
+    current_project: Mutex<Option<PathBuf>>,
 }
 
 /// Walks up to the nearest existing ancestor of `path` (so this also covers
@@ -204,12 +207,188 @@ fn project_open(state: State<AppState>, path: String) -> Result<ProjectOut, Stri
             roots.push(canonical.clone());
         }
     }
+    *state.current_project.lock().unwrap() = Some(canonical.clone());
 
     Ok(ProjectOut {
         name,
         root: canonical.to_string_lossy().into_owned(),
         kind,
     })
+}
+
+/// File > Close Folder — nothing is shown anymore, so new terminals go back
+/// to starting in the process's own directory. The root stays an allowed
+/// path (a tab still open from it can be saved); it only stops being *the*
+/// project.
+#[tauri::command]
+fn project_close(state: State<AppState>) {
+    *state.current_project.lock().unwrap() = None;
+}
+
+/// The project-local folder Yog-IDLE keeps its own per-project data in
+/// (publish profiles, `workspace.json`) — see `ensure_gitignored`.
+fn idle_dir(project_root: &Path) -> PathBuf {
+    project_root.join(".yog-idle")
+}
+
+fn workspace_file(project_root: &Path) -> PathBuf {
+    idle_dir(project_root).join("workspace.json")
+}
+
+/// Reads a JSON object from `path`, treating a missing, unreadable or corrupt
+/// file (or one that isn't an object) as empty — remembered UI state is a
+/// convenience, never a reason to fail.
+fn read_state_file(path: &Path) -> serde_json::Value {
+    std::fs::read_to_string(path)
+        .ok()
+        .and_then(|contents| serde_json::from_str::<serde_json::Value>(&contents).ok())
+        .filter(serde_json::Value::is_object)
+        .unwrap_or_else(|| serde_json::Value::Object(serde_json::Map::new()))
+}
+
+/// Writes `value` as pretty JSON atomically — to a sibling temp file first,
+/// then renamed over `path` — so a crash mid-write can never leave a
+/// half-written (corrupt) state file behind.
+fn write_state_file(path: &Path, value: &serde_json::Value) -> Result<(), String> {
+    if let Some(dir) = path.parent() {
+        std::fs::create_dir_all(dir).map_err(|e| e.to_string())?;
+    }
+    let json = serde_json::to_string_pretty(value).map_err(|e| e.to_string())?;
+    let tmp = path.with_extension("json.tmp");
+    std::fs::write(&tmp, json).map_err(|e| e.to_string())?;
+    std::fs::rename(&tmp, path).map_err(|e| e.to_string())
+}
+
+/// The project's remembered UI state (`.yog-idle/workspace.json` — open
+/// files, layout, expanded folders, ...), like Visual Studio's `.vs`. An
+/// arbitrary JSON object: the frontend owns its keys.
+#[tauri::command]
+fn workspace_load(
+    state: State<AppState>,
+    project_root: String,
+) -> Result<serde_json::Value, String> {
+    let root = PathBuf::from(project_root);
+    validate_within_roots(&state, &root)?;
+    Ok(read_state_file(&workspace_file(&root)))
+}
+
+#[tauri::command]
+fn workspace_save(
+    state: State<AppState>,
+    project_root: String,
+    value: serde_json::Value,
+) -> Result<(), String> {
+    let root = PathBuf::from(project_root);
+    validate_within_roots(&state, &root)?;
+    let dir = idle_dir(&root);
+    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    // Machine-local state, never meant for version control — ignored from
+    // inside the folder itself, so the project's own `.gitignore` is left
+    // alone.
+    let ignore = dir.join(".gitignore");
+    if !ignore.exists() {
+        std::fs::write(&ignore, "*\n").map_err(|e| e.to_string())?;
+    }
+    write_state_file(&workspace_file(&root), &value)
+}
+
+fn app_state_file(app: &AppHandle) -> Result<PathBuf, String> {
+    Ok(app
+        .path()
+        .app_config_dir()
+        .map_err(|e| e.to_string())?
+        .join("state.json"))
+}
+
+/// UI state that isn't tied to any project (the recent projects list, the
+/// last project opened, the layout shown with no project open) — kept in the
+/// app's own config directory.
+#[tauri::command]
+fn app_state_load(app: AppHandle) -> Result<serde_json::Value, String> {
+    Ok(read_state_file(&app_state_file(&app)?))
+}
+
+#[tauri::command]
+fn app_state_save(app: AppHandle, value: serde_json::Value) -> Result<(), String> {
+    write_state_file(&app_state_file(&app)?, &value)
+}
+
+/// The external formatter for a file kind, by extension: the program and its
+/// arguments for reading the document on stdin and writing the formatted
+/// result to stdout.
+fn formatter_for(path: &Path) -> Option<(&'static str, &'static [&'static str])> {
+    match path.extension()?.to_str()?.to_ascii_lowercase().as_str() {
+        "rs" => Some(("rustfmt", &["--edition", "2021", "--emit", "stdout"])),
+        "toml" => Some(("taplo", &["fmt", "-"])),
+        _ => None,
+    }
+}
+
+/// Whether Format Document can work for `path` — a formatter exists for its
+/// kind and is actually installed (it answers `--version`).
+#[tauri::command]
+async fn format_supported(path: String) -> bool {
+    let Some((program, _)) = formatter_for(Path::new(&path)) else {
+        return false;
+    };
+    tauri::async_runtime::spawn_blocking(move || {
+        std::process::Command::new(program)
+            .arg("--version")
+            .stdin(std::process::Stdio::null())
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .status()
+            .is_ok_and(|status| status.success())
+    })
+    .await
+    .unwrap_or(false)
+}
+
+/// Format Document: pipes `contents` (the editor's text — not necessarily
+/// what's saved on disk) through the formatter for `path`'s kind and returns
+/// the result. Runs in the file's own folder so the formatter picks up a
+/// `rustfmt.toml`/`taplo.toml` there. A syntax error comes back as `Err`
+/// with the formatter's own message.
+#[tauri::command]
+async fn format_document(path: String, contents: String) -> Result<String, String> {
+    let target = PathBuf::from(&path);
+    let (program, args) =
+        formatter_for(&target).ok_or_else(|| format!("no formatter for '{path}'"))?;
+    tauri::async_runtime::spawn_blocking(move || {
+        use std::io::Write;
+        use std::process::{Command, Stdio};
+        let mut command = Command::new(program);
+        command
+            .args(args)
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped());
+        if let Some(dir) = target.parent().filter(|d| d.is_dir()) {
+            command.current_dir(dir);
+        }
+        let mut child = command
+            .spawn()
+            .map_err(|e| format!("failed to run {program}: {e}"))?;
+        // Written from its own thread: a large document can fill the stdout
+        // pipe before stdin is fully consumed, which would deadlock a
+        // write-then-read on one thread.
+        let mut stdin = child.stdin.take().expect("stdin is piped");
+        let writer = std::thread::spawn(move || stdin.write_all(contents.as_bytes()));
+        let output = child.wait_with_output().map_err(|e| e.to_string())?;
+        let _ = writer.join();
+        if output.status.success() {
+            String::from_utf8(output.stdout).map_err(|e| e.to_string())
+        } else {
+            let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+            Err(if stderr.is_empty() {
+                format!("{program} exited with {}", output.status)
+            } else {
+                stderr
+            })
+        }
+    })
+    .await
+    .map_err(|e| e.to_string())?
 }
 
 /// A generic escape hatch open to any project (regardless of `kind`): if it
@@ -534,6 +713,51 @@ fn mod_build(app: AppHandle, state: State<AppState>, project_root: String) -> Re
     Ok(())
 }
 
+/// Build > Clean for a `yog-mod` project. `yog-cli` has no clean command of
+/// its own, so this removes what its builds produce: cargo's `target/`, the
+/// generated `.yog-build/` crate, and the packaged `artifacts/`. Reports
+/// through the same `workflow-output`/`workflow-start`/`workflow-exit`
+/// events as a Build.
+#[tauri::command]
+async fn mod_clean(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    project_root: String,
+) -> Result<(), String> {
+    let root = PathBuf::from(project_root);
+    validate_within_roots(&state, &root)?;
+    let _ = app.emit("workflow-start", ());
+    let out_app = app.clone();
+    let success = tauri::async_runtime::spawn_blocking(move || {
+        let mut success = true;
+        for dir in ["target", ".yog-build", "artifacts"] {
+            let path = root.join(dir);
+            if !path.exists() {
+                continue;
+            }
+            let line = match std::fs::remove_dir_all(&path) {
+                Ok(()) => format!("removed {}", path.display()),
+                Err(err) => {
+                    success = false;
+                    format!("[error] failed to remove {}: {err}", path.display())
+                }
+            };
+            let _ = out_app.emit("workflow-output", line);
+        }
+        success
+    })
+    .await
+    .unwrap_or(false);
+    let _ = app.emit(
+        "workflow-exit",
+        WorkflowExit {
+            success,
+            cancelled: false,
+        },
+    );
+    Ok(())
+}
+
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct PublishProfile {
@@ -644,7 +868,8 @@ fn publish_run(
             }
             ("yog".to_string(), args)
         }
-        _ => ("yog".to_string(), vec!["build".to_string()]),
+        "package" => ("yog".to_string(), vec!["build".to_string()]),
+        other => return Err(format!("unknown publish mode '{other}'")),
     };
     let file = single_step_workflow(&program, args);
     run_and_stream(app, file, "run".to_string(), HashMap::new(), root);
@@ -681,6 +906,7 @@ struct PtyExit {
 fn pty_spawn(
     app: AppHandle,
     state: State<PtyState>,
+    app_state: State<AppState>,
     id: String,
     cols: u16,
     rows: u16,
@@ -696,6 +922,7 @@ fn pty_spawn(
     let session = PtySession::spawn_utf8(
         PtyOptions {
             shell,
+            cwd: app_state.current_project.lock().unwrap().clone(),
             ..PtyOptions::default()
         },
         cols,
@@ -752,6 +979,18 @@ pub fn run() {
     let builder = tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
+        // Window size/position/maximized, restored on launch and saved on
+        // close (into the app config dir). Not visibility or decorations —
+        // the window always starts shown, with Yog-IDLE's own title bar.
+        .plugin(
+            tauri_plugin_window_state::Builder::default()
+                .with_state_flags(
+                    tauri_plugin_window_state::StateFlags::SIZE
+                        | tauri_plugin_window_state::StateFlags::POSITION
+                        | tauri_plugin_window_state::StateFlags::MAXIMIZED,
+                )
+                .build(),
+        )
         .manage(PtyState::default())
         .manage(WorkflowState::default())
         .manage(AppState::default());
@@ -773,12 +1012,20 @@ pub fn run() {
         file_write,
         allow_path,
         project_open,
+        project_close,
+        workspace_load,
+        workspace_save,
+        app_state_load,
+        app_state_save,
+        format_supported,
+        format_document,
         workflow_list,
         workflow_run,
         workflow_cancel,
         mod_run_targets,
         mod_run,
         mod_build,
+        mod_clean,
         mod_hot_reload,
         publish_profiles_list,
         publish_profile_save,
