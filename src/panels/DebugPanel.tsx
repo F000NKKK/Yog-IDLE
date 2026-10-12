@@ -1,3 +1,4 @@
+import { invoke } from "@tauri-apps/api/core";
 import { useState, type CSSProperties, type ReactNode } from "react";
 import { Button } from "substrate-platform-ui";
 import { useDebugSessionContext } from "../DebugSessionContext";
@@ -31,31 +32,41 @@ export function DebugPanel() {
   const { debugging, stopped, error, continue_, step, pause, stop, selectThread, selectedFrame, selectFrame, grantPtraceAccess } =
     useDebugSessionContext();
   const [notice, setNotice] = useState<{ text: string; isError: boolean } | null>(null);
+  const [granted, setGranted] = useState(false);
 
   if (!debugging) {
-    const isPermissionError = !!error && /permission denied|EPERM/i.test(error);
+    // `permission_denied_message` (debugger.rs) tags what fixes an EPERM;
+    // only a policy that really refuses us needs the capability grant.
+    const needsCapability = !!error && error.startsWith("[needs-capability]");
+    const message = error?.replace(/^\[[a-z-]+\] /, "");
     return (
       <div style={{ ...muted, display: "flex", flexDirection: "column", gap: "var(--sp-space-sm)" }}>
         <div style={error ? { color: "var(--sp-danger, var(--sp-text))", whiteSpace: "pre-wrap" } : undefined}>
-          {error ? `Attach failed: ${error}` : "Pick Debug mode next to the run target, then press Start."}
+          {error ? `Attach failed: ${message}` : "Pick Debug mode next to the run target, then press Start."}
         </div>
-        {isPermissionError && (
+        {needsCapability && !granted && (
           <Button
             variant="ghost"
             onClick={() =>
               grantPtraceAccess()
-                .then(() =>
-                  setNotice({
-                    text: "Granted. This only takes effect for a new launch of Yog-IDLE — restart the app, then start debugging again.",
-                    isError: false,
-                  }),
-                )
+                .then(() => {
+                  setGranted(true);
+                  setNotice(null);
+                })
                 .catch((err) => setNotice({ text: String(err), isError: true }))
             }
             style={{ alignSelf: "flex-start" }}
           >
             Grant ptrace access…
           </Button>
+        )}
+        {granted && (
+          <>
+            <div style={{ color: "var(--sp-text)" }}>Granted — it applies from the next start of Yog-IDLE.</div>
+            <Button variant="ghost" onClick={() => invoke("app_restart")} style={{ alignSelf: "flex-start" }}>
+              Restart Yog-IDLE
+            </Button>
+          </>
         )}
         {notice && <div style={{ color: notice.isError ? "var(--sp-danger, var(--sp-text))" : "var(--sp-text)" }}>{notice.text}</div>}
       </div>

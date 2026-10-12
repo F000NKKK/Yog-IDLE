@@ -495,6 +495,9 @@ fn connect_and_watch(
         return;
     };
     let mods = parse_mods(&ready);
+    // Whether the runtime handed us `PR_SET_PTRACER` — absent from runtimes
+    // that predate it, which is what an `EPERM` attach then means.
+    let ptracer = ready.get("ptracer").and_then(|v| v.as_bool());
 
     {
         let debug_state = app.state::<DebugState>();
@@ -518,7 +521,7 @@ fn connect_and_watch(
     );
 
     if debug {
-        start_tracer(&app, session_id, real_pid, mod_id, native_path);
+        start_tracer(&app, session_id, real_pid, mod_id, native_path, ptracer);
     }
 
     // Keep reading further event lines for the rest of the session: a
@@ -899,6 +902,7 @@ fn start_tracer(
     real_pid: i32,
     mod_id: String,
     native_path: PathBuf,
+    ptracer: Option<bool>,
 ) {
     let (tx, rx) = mpsc::channel();
     let running = Arc::new(AtomicBool::new(false));
@@ -917,7 +921,9 @@ fn start_tracer(
         }
     }
     let app = app.clone();
-    std::thread::spawn(move || tracer_main(app, real_pid, mod_id, native_path, rx, running));
+    std::thread::spawn(move || {
+        tracer_main(app, real_pid, mod_id, native_path, ptracer, rx, running)
+    });
 }
 
 /// The one thread that ever touches the tracee. Linux `ptrace` binds a
@@ -935,10 +941,11 @@ fn tracer_main(
     real_pid: i32,
     mod_id: String,
     native_path: PathBuf,
+    ptracer: Option<bool>,
     rx: Receiver<TracerCmd>,
     running: Arc<AtomicBool>,
 ) {
-    let mut tracer = match Tracer::attach(&app, real_pid, &mod_id, &native_path) {
+    let mut tracer = match Tracer::attach(&app, real_pid, &mod_id, &native_path, ptracer) {
         Ok(t) => t,
         Err(e) => {
             emit_failed(&app, e);
@@ -1024,20 +1031,14 @@ impl Tracer {
         real_pid: i32,
         mod_id: &str,
         native_path: &Path,
+        ptracer: Option<bool>,
     ) -> Result<Self, String> {
         let symbols = SymbolTable::load(native_path)
             .map_err(|e| format!("loading symbols from {}: {e}", native_path.display()))?;
         let mut debugger = Debugger::attach(real_pid).map_err(|e| {
             let raw = e.to_string();
             if raw.contains("EPERM") {
-                format!(
-                    "attaching to pid {real_pid}: permission denied. Linux's ptrace policy (Yama) only lets a process \
-                     trace its own descendants, and the game usually isn't one of Yog-IDLE's (Gradle's daemon launches it). \
-                     yog-runtime lifts that for Yog-IDLE itself the moment it connects to the control socket \
-                     (`PR_SET_PTRACER`) — so this game is running an older runtime: rebuild the loader (`./dev.sh`) \
-                     and relaunch. If it still fails, `kernel.yama.ptrace_scope` is 2 (admin-only) here, which only root can \
-                     relax — use the Debug panel's \"Grant ptrace access\"."
-                )
+                permission_denied_message(real_pid, ptracer)
             } else {
                 format!("attaching to pid {real_pid}: {raw}")
             }
@@ -1390,6 +1391,42 @@ pub fn debug_stop(app: AppHandle, state: State<DebugState>) -> Result<(), String
     let _ = app.emit("debug-stopped", DebugStoppedEvent::exited());
     let _ = app.emit("workflow-exit", ());
     Ok(())
+}
+
+/// Why an attach got `EPERM`, and the one thing that fixes it here. Yama
+/// (`kernel.yama.ptrace_scope`) only lets a process trace its descendants,
+/// and the game isn't one of ours — Gradle's daemon launches it. The
+/// runtime lifts that for us when we connect (`PR_SET_PTRACER`, reported as
+/// `ready.ptracer`); the messages start with a stable tag the Debug panel
+/// keys its actions on.
+fn permission_denied_message(pid: i32, ptracer: Option<bool>) -> String {
+    let scope = std::fs::read_to_string("/proc/sys/kernel/yama/ptrace_scope")
+        .ok()
+        .and_then(|s| s.trim().parse::<u8>().ok());
+    match (ptracer, scope) {
+        (_, Some(3)) => format!(
+            "[ptrace-disabled] attaching to pid {pid}: permission denied — ptrace is disabled on this system \
+             (kernel.yama.ptrace_scope = 3) until the next reboot; no debugger can attach."
+        ),
+        (None, Some(0 | 1) | None) => format!(
+            "[runtime-outdated] attaching to pid {pid}: permission denied — this game runs a yog-runtime from \
+             before it let the IDE trace it (PR_SET_PTRACER). Rebuild the runtime (`./build.sh build rust` in \
+             Yog-Mod-Loader, or `./dev.sh`) and launch again."
+        ),
+        _ => format!(
+            "[needs-capability] attaching to pid {pid}: permission denied — kernel.yama.ptrace_scope = {} here, \
+             which only lets privileged processes trace. Grant Yog-IDLE the ptrace capability (once), restart it, \
+             and launch again.",
+            scope.map_or_else(|| "?".to_string(), |s| s.to_string())
+        ),
+    }
+}
+
+/// Restarts Yog-IDLE — after `debug_grant_ptrace_capability`, which only
+/// takes effect for a fresh `exec()`.
+#[tauri::command]
+pub fn app_restart(app: AppHandle) {
+    app.restart();
 }
 
 /// A capability can only be granted to a binary's on-disk file (checked at
