@@ -7,30 +7,64 @@ export interface ProjectInfo {
   kind: string | null;
 }
 
+/** How something was opened — Open Project and Open Folder keep separate recent lists. */
+export type OpenKind = "project" | "folder";
+
+export interface RecentEntry {
+  root: string;
+  /** Shown in the menu instead of the path: the project's name for projects, the folder's name for folders. */
+  name: string;
+}
+
 interface ProjectContextValue {
   project: ProjectInfo | null;
   error: string | null;
-  /** Opens a folder as the current project — used by the File menu's Open Folder/Open Project/recent entries and the startup reopen. Yog-IDLE has no "solution" grouping concept, just a single project identified by `yog.toml`. */
-  openPath: (path: string) => Promise<void>;
-  /** Recently opened project roots, most recent first. */
-  recent: string[];
-  clearRecent: () => void;
+  /** Opens a folder as the current project — used by the File menu's Open Folder/Open Project/recent entries and the startup reopen. Yog-IDLE has no "solution" grouping concept, just a single project identified by `yog.toml`. `kind` picks which recent list it goes to. */
+  openPath: (path: string, kind: OpenKind) => Promise<void>;
+  /** Recently opened entries per kind, most recent first. */
+  recent: Record<OpenKind, RecentEntry[]>;
+  clearRecent: (kind: OpenKind) => void;
 }
 
-const RECENT_KEY = "yog-idle.recentProjects";
+const RECENT_KEYS: Record<OpenKind, string> = {
+  project: "yog-idle.recentProjects",
+  folder: "yog-idle.recentFolders",
+};
+/** Whatever was opened last, of either kind — reopened on startup. */
+const LAST_KEY = "yog-idle.lastOpened";
 const MAX_RECENT = 8;
 
-function loadRecent(): string[] {
+function baseName(path: string): string {
+  return path.split(/[/\\]/).filter(Boolean).pop() ?? path;
+}
+
+function loadRecent(kind: OpenKind): RecentEntry[] {
   try {
-    const parsed: unknown = JSON.parse(localStorage.getItem(RECENT_KEY) ?? "[]");
-    return Array.isArray(parsed) ? parsed.filter((p): p is string => typeof p === "string") : [];
+    const parsed: unknown = JSON.parse(localStorage.getItem(RECENT_KEYS[kind]) ?? "[]");
+    if (!Array.isArray(parsed)) return [];
+    // Older builds stored bare root paths.
+    return parsed.flatMap((e): RecentEntry[] => {
+      if (typeof e === "string") return [{ root: e, name: baseName(e) }];
+      if (e && typeof e.root === "string" && typeof e.name === "string") return [{ root: e.root, name: e.name }];
+      return [];
+    });
   } catch {
     return [];
   }
 }
 
-function saveRecent(recent: string[]) {
-  localStorage.setItem(RECENT_KEY, JSON.stringify(recent));
+function loadLast(): { root: string; kind: OpenKind } | null {
+  try {
+    const parsed: unknown = JSON.parse(localStorage.getItem(LAST_KEY) ?? "null");
+    if (parsed && typeof parsed === "object" && "root" in parsed && "kind" in parsed) {
+      const { root, kind } = parsed as { root: unknown; kind: unknown };
+      if (typeof root === "string" && (kind === "project" || kind === "folder")) return { root, kind };
+    }
+  } catch {
+    // fall through
+  }
+  const legacy = loadRecent("project")[0];
+  return legacy ? { root: legacy.root, kind: "project" } : null;
 }
 
 const ProjectContext = createContext<ProjectContextValue | null>(null);
@@ -38,44 +72,49 @@ const ProjectContext = createContext<ProjectContextValue | null>(null);
 /**
  * The single source of truth for "what project is currently open" — Project
  * Explorer, the Build menu, and the Run toolbar all read from here, and the
- * File menu writes to it. Every successfully opened project goes to the
- * front of a small recent list (persisted in `localStorage`); on startup
- * the most recent one is reopened, if it still exists.
+ * File menu writes to it. Every successfully opened project/folder goes
+ * to the front of its own small recent list (persisted in `localStorage`);
+ * on startup whatever was opened last is reopened, if it still exists.
  */
 export function ProjectProvider({ children }: { children: ReactNode }) {
   const [project, setProject] = useState<ProjectInfo | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [recent, setRecent] = useState<string[]>(loadRecent);
+  const [recent, setRecent] = useState<Record<OpenKind, RecentEntry[]>>(() => ({
+    project: loadRecent("project"),
+    folder: loadRecent("folder"),
+  }));
 
-  function updateRecent(update: (prev: string[]) => string[]) {
+  function updateRecent(kind: OpenKind, update: (prev: RecentEntry[]) => RecentEntry[]) {
     setRecent((prev) => {
-      const next = update(prev);
-      saveRecent(next);
-      return next;
+      const next = update(prev[kind]);
+      localStorage.setItem(RECENT_KEYS[kind], JSON.stringify(next));
+      return { ...prev, [kind]: next };
     });
   }
 
-  async function openPath(path: string) {
+  async function openPath(path: string, kind: OpenKind) {
     try {
       const opened = await invoke<ProjectInfo>("project_open", { path });
       setProject(opened);
       setError(null);
-      updateRecent((prev) => [opened.root, ...prev.filter((p) => p !== opened.root && p !== path)].slice(0, MAX_RECENT));
+      const entry: RecentEntry = { root: opened.root, name: kind === "project" ? opened.name : baseName(opened.root) };
+      updateRecent(kind, (prev) => [entry, ...prev.filter((e) => e.root !== opened.root && e.root !== path)].slice(0, MAX_RECENT));
+      localStorage.setItem(LAST_KEY, JSON.stringify({ root: opened.root, kind }));
     } catch (err) {
       setError(String(err));
       // Moved or deleted since — no point offering it again.
-      updateRecent((prev) => prev.filter((p) => p !== path));
+      updateRecent(kind, (prev) => prev.filter((e) => e.root !== path));
     }
   }
 
   useEffect(() => {
-    const last = loadRecent()[0];
-    if (last) openPath(last);
+    const last = loadLast();
+    if (last) openPath(last.root, last.kind);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
-    <ProjectContext.Provider value={{ project, error, openPath, recent, clearRecent: () => updateRecent(() => []) }}>
+    <ProjectContext.Provider value={{ project, error, openPath, recent, clearRecent: (kind) => updateRecent(kind, () => []) }}>
       {children}
     </ProjectContext.Provider>
   );

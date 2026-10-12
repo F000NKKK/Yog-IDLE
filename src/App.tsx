@@ -30,7 +30,7 @@ import { Properties } from "./panels/Properties";
 import { RunToolbar } from "./panels/RunToolbar";
 import { PublishWindow } from "./panels/PublishWindow";
 import { DebugPanel } from "./panels/DebugPanel";
-import { ProjectProvider, useProject } from "./ProjectContext";
+import { ProjectProvider, useProject, type RecentEntry } from "./ProjectContext";
 import { OpenFilesProvider, useOpenFiles } from "./OpenFilesContext";
 import { BreakpointsProvider } from "./BreakpointsContext";
 import { DebugSessionProvider, useDebugSessionContext } from "./DebugSessionContext";
@@ -148,13 +148,22 @@ function WorkflowBuildMenu({ root }: { root: string }) {
   return <MenuBarItem label="Build" items={[...items, cancelItem]} />;
 }
 
-/** File > Open Folder/Open Project/Open File, backed by the native OS picker (`@tauri-apps/plugin-dialog`), plus the recent projects list. Open Folder/Project/a recent entry all replace the current project via `ProjectContext`; Open File just opens a single file as an editor tab, expanding the allowed-path boundary to cover it (see `allow_path` on the Rust side) since it needn't belong to any open project. */
+/** Recent entries as submenu items, labelled by name only; same-named entries get their parent folder's name appended so they stay tellable apart. */
+function recentItems(entries: RecentEntry[], open: (root: string) => void) {
+  return entries.map((entry) => {
+    const clash = entries.some((other) => other !== entry && other.name === entry.name);
+    const parent = entry.root.split(/[/\\]/).filter(Boolean).slice(-2, -1)[0];
+    return { label: clash && parent ? `${entry.name} (${parent})` : entry.name, onClick: () => open(entry.root) };
+  });
+}
+
+/** File > Open Project/Open Folder (each a submenu: Browse… plus its own recent list) and Open File, backed by the native OS picker (`@tauri-apps/plugin-dialog`). Projects and folders replace the current project via `ProjectContext`; Open File just opens a single file as an editor tab, expanding the allowed-path boundary to cover it (see `allow_path` on the Rust side) since it needn't belong to any open project. */
 function FileMenu() {
   const { openPath, recent, clearRecent } = useProject();
 
   async function openFolder() {
     const chosen = await open({ directory: true });
-    if (typeof chosen === "string") await openPath(chosen);
+    if (typeof chosen === "string") await openPath(chosen, "folder");
   }
 
   async function openProject() {
@@ -165,7 +174,7 @@ function FileMenu() {
     const chosen = await open({ filters: [{ name: "Yog Project (yog.toml)", extensions: ["toml"] }] });
     if (typeof chosen !== "string") return;
     const dir = chosen.slice(0, Math.max(chosen.lastIndexOf("/"), chosen.lastIndexOf("\\")));
-    await openPath(dir);
+    await openPath(dir, "project");
   }
 
   async function openFile() {
@@ -180,12 +189,23 @@ function FileMenu() {
     <MenuBarItem
       label="File"
       items={[
-        { label: "Open Folder...", onClick: openFolder },
-        { label: "Open Project...", onClick: openProject },
+        {
+          label: "Open Project",
+          items: [
+            { label: "Browse...", onClick: openProject },
+            ...recentItems(recent.project, (root) => openPath(root, "project")).map((item, i) => ({ ...item, separatorBefore: i === 0 })),
+            { label: "Clear Recent Projects", onClick: () => clearRecent("project"), disabled: recent.project.length === 0, separatorBefore: true },
+          ],
+        },
+        {
+          label: "Open Folder",
+          items: [
+            { label: "Browse...", onClick: openFolder },
+            ...recentItems(recent.folder, (root) => openPath(root, "folder")).map((item, i) => ({ ...item, separatorBefore: i === 0 })),
+            { label: "Clear Recent Folders", onClick: () => clearRecent("folder"), disabled: recent.folder.length === 0, separatorBefore: true },
+          ],
+        },
         { label: "Open File...", onClick: openFile },
-        // `MenuBarItem` has no submenus/separators — recent entries are listed inline.
-        ...recent.map((root) => ({ label: `Recent: ${root.split(/[/\\]/).pop() || root} — ${root}`, onClick: () => openPath(root) })),
-        ...(recent.length > 0 ? [{ label: "Clear Recent Projects", onClick: clearRecent }] : []),
       ]}
     />
   );
