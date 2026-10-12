@@ -561,6 +561,10 @@ registerTranslations("ru", {
   "Downloads go to your user account only (rustup, ~/.cargo, and {dir}) — nothing needs administrator rights.":
     "Все устанавливается только в вашу учетную запись (rustup, ~/.cargo и {dir}) — права администратора не нужны.",
   "Progress is shown in the Output window (Environment).": "Ход установки отображается в окне вывода (Среда).",
+  "Install the JDK just for you (into {dir}), or for all users of this computer (asks for the administrator password)?":
+    "Установить JDK только для вас (в {dir}) или для всех пользователей компьютера (потребуется пароль администратора)?",
+  "For All Users": "Для всех пользователей",
+  "Just for Me": "Только для меня",
   "Waiting…": "Ожидание…",
   "Install failed to start: {error}": "Не удалось начать установку: {error}",
   "{name} installed.": "{name}: установлено.",

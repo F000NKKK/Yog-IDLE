@@ -1,7 +1,7 @@
 import { useSyncExternalStore } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import { confirmDialog, notify, t } from "substrate-platform-ui";
+import { notify, showDialog, t } from "substrate-platform-ui";
 import { setOutputSource } from "../outputSource";
 import { reportError } from "../reportError";
 
@@ -190,26 +190,39 @@ export async function installComponents(ids: string[], projectRoot: string | nul
     const version = c.status === "outdated" && c.latest ? ` → ${c.latest}` : "";
     return `• ${action}: ${t(c.name)}${version}`;
   });
-  const confirmed = await confirmDialog({
+  // A JDK can go to this user's tools folder or to the OS's JDK folder for
+  // every user (which asks for the administrator password) — the rest is per-user anyway.
+  const withJdk = chosen.some((c) => c.id.startsWith("jdk-"));
+  const answer = await showDialog({
     title: chosen.length === 1 ? t("Install {name}", { name: t(chosen[0].name) }) : t("Install Components"),
-    message: (
-      [
-        ...lines,
-        "",
-        t("Downloads go to your user account only (rustup, ~/.cargo, and {dir}) — nothing needs administrator rights.", { dir: report.toolsDir }),
-        t("Progress is shown in the Output window (Environment)."),
-      ].join("\n")
-    ),
-    confirmLabel: t("Install"),
+    message: [
+      ...lines,
+      "",
+      withJdk
+        ? t("Install the JDK just for you (into {dir}), or for all users of this computer (asks for the administrator password)?", { dir: report.toolsDir })
+        : t("Downloads go to your user account only (rustup, ~/.cargo, and {dir}) — nothing needs administrator rights.", { dir: report.toolsDir }),
+      t("Progress is shown in the Output window (Environment)."),
+    ].join("\n"),
+    buttons: withJdk
+      ? [
+          { id: "cancel", label: t("Cancel"), cancel: true },
+          { id: "machine", label: t("For All Users") },
+          { id: "user", label: t("Just for Me"), variant: "primary", default: true },
+        ]
+      : [
+          { id: "cancel", label: t("Cancel"), cancel: true },
+          { id: "user", label: t("Install"), variant: "primary", default: true },
+        ],
   });
-  if (!confirmed) return;
+  if (answer.button !== "user" && answer.button !== "machine") return;
+  const scope = answer.button;
   const queue = chosen.map((c) => c.id);
   const failed = { ...state.failed };
   for (const id of queue) delete failed[id];
   update({ queue, failed, progress: Object.fromEntries(queue.map((id) => [id, { fraction: null, message: t("Waiting…") }])) });
   setOutputSource("environment");
   try {
-    await invoke("environment_install", { components: queue, projectRoot });
+    await invoke("environment_install", { components: queue, projectRoot, scope });
   } catch (err) {
     update({ queue: [], progress: {} });
     reportError(t("Install failed to start: {error}", { error: String(err) }));

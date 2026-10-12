@@ -10,8 +10,21 @@ import "./search.css";
 
 type Mode = "all" | "files" | "types" | "members" | "text";
 
-/** Visual Studio's Code Search prefixes: typing one switches the mode. */
+/** Visual Studio's Code Search prefixes: the box's text starting with one is what selects the mode. */
 const PREFIXES: Record<string, Mode> = { "f:": "files", "t:": "types", "m:": "members", "x:": "text" };
+
+/** The mode a query's prefix selects (none: All) and the text searched for. */
+function splitQuery(text: string): { mode: Mode; query: string } {
+  const prefix = Object.keys(PREFIXES).find((p) => text.toLowerCase().startsWith(p));
+  return prefix ? { mode: PREFIXES[prefix], query: text.slice(prefix.length).trimStart() } : { mode: "all", query: text };
+}
+
+/** `text` with its prefix swapped for `mode`'s — what clicking a tab does to the box. */
+function withMode(text: string, mode: Mode): string {
+  const rest = splitQuery(text).mode === "all" ? text : text.replace(/^\s*[a-z]:\s*/i, "");
+  const prefix = Object.keys(PREFIXES).find((p) => PREFIXES[p] === mode);
+  return prefix ? `${prefix} ${rest}` : rest;
+}
 
 interface CodeSearchResult {
   kind: string;
@@ -48,8 +61,9 @@ export function CodeSearch({ onClose, onDock, embedded, focusKey }: { onClose?: 
   const { project } = useProject();
   const { tabs } = useOpenFiles();
   const activeTab = useActiveFileTab();
-  const [mode, setModeState] = useState<Mode>(searchDrafts.codeMode as Mode);
-  const [query, setQueryState] = useState(searchDrafts.codeQuery);
+  // The box's whole text, prefix included — editing `x:` into `f:` switches the tab.
+  const [text, setTextState] = useState(searchDrafts.codeQuery);
+  const { mode, query } = splitQuery(text);
   const [results, setResults] = useState<CodeSearchResult[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -68,22 +82,9 @@ export function CodeSearch({ onClose, onDock, embedded, focusKey }: { onClose?: 
     { id: "text", label: t("Text"), prefix: "x:" },
   ];
 
-  function setMode(next: Mode) {
-    searchDrafts.codeMode = next;
-    setModeState(next);
-  }
-
-  function setQuery(next: string) {
+  function setText(next: string) {
     searchDrafts.codeQuery = next;
-    setQueryState(next);
-  }
-
-  function onQueryChange(value: string) {
-    const prefix = Object.keys(PREFIXES).find((p) => value.toLowerCase().startsWith(p));
-    if (prefix) {
-      setMode(PREFIXES[prefix]);
-      setQuery(value.slice(prefix.length).trimStart());
-    } else setQuery(value);
+    setTextState(next);
   }
 
   useEffect(() => {
@@ -163,12 +164,12 @@ export function CodeSearch({ onClose, onDock, embedded, focusKey }: { onClose?: 
 
   return (
     <QuickPick<Item>
-      query={query}
-      onQueryChange={onQueryChange}
+      query={text}
+      onQueryChange={setText}
       placeholder={t("Search code (Ctrl+T) — f: files, t: types, m: members, x: text, :line")}
       filters={filters}
       activeFilter={mode}
-      onFilterChange={(id) => setMode(id as Mode)}
+      onFilterChange={(id) => setText(withMode(text, id as Mode))}
       items={lineQuery ? [] : items}
       busy={busy}
       emptyText={emptyText}

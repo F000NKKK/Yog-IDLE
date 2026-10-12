@@ -62,6 +62,6 @@ export const searchDrafts = {
   findMode: "find" as FindWindowMode,
   /** The `find.seq` the Find and Replace window last acted on. */
   findSeq: 0,
+  /** Code Search's text, its `f:`/`t:`/... prefix included. */
   codeQuery: "",
-  codeMode: "all",
 };
