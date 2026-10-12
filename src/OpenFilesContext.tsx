@@ -20,6 +20,7 @@ import {
   type PanelAction,
   type PanelDef,
   type TabMenuContext,
+  useKeybinding,
 } from "substrate-platform-ui";
 import { useBreakpoints } from "./BreakpointsContext";
 import { useDebugSessionContext } from "./DebugSessionContext";
@@ -464,32 +465,21 @@ export function OpenFilesProvider({ children }: { children: ReactNode }) {
         // VS Code's Markdown keys, for any file with more than one view:
         // Ctrl+Shift+V flips between the source and the preview/designer,
         // Ctrl+K V opens the preview to the side.
-        const isActive = activeCenterId === tabId;
-        useEffect(() => {
-          if (!isActive || !tab || providers.length < 2) return;
-          let chord = 0;
-          const onKey = (e: KeyboardEvent) => {
-            const mod = e.ctrlKey || e.metaKey;
-            const key = e.key.toLowerCase();
-            const toggleTarget = active.kind === "text" && active === textView ? providers.find((p) => p.kind !== "text") : textView;
-            const side = providers.find((p) => editorProviderIcon(p) === "previewSide");
-            let target: EditorProvider | undefined;
-            if (mod && e.shiftKey && key === "v") target = toggleTarget;
-            else if (mod && !e.shiftKey && key === "k") {
-              chord = Date.now();
-              if (side) e.preventDefault();
-              return;
-            } else if (key === "v" && !e.shiftKey && Date.now() - chord < 1500) target = active === side ? textView : side;
-            chord = 0;
-            if (!target) return;
-            e.preventDefault();
-            e.stopPropagation();
-            chooseView(tab.id, target.id);
-          };
-          window.addEventListener("keydown", onKey, true);
-          return () => window.removeEventListener("keydown", onKey, true);
-          // eslint-disable-next-line react-hooks/exhaustive-deps
-        }, [isActive, tab?.id, active?.id, providers.length]);
+        const multiView = activeCenterId === tabId && !!tab && providers.length > 1;
+        const side = providers.find((p) => editorProviderIcon(p) === "previewSide");
+        const showView = (target: EditorProvider | undefined) => {
+          if (!tab || !target) return false;
+          chooseView(tab.id, target.id);
+        };
+        useKeybinding(
+          "Ctrl+Shift+V",
+          () => showView(active.kind === "text" && active === textView ? providers.find((p) => p.kind !== "text") : textView),
+          { id: "editor.togglePreview", enabled: multiView },
+        );
+        useKeybinding("Ctrl+K V", () => showView(active === side ? textView : side), {
+          id: "editor.previewToSide",
+          enabled: multiView && !!side,
+        });
         // A line to go to, waiting for a text view to be mounted — a reveal
         // into a tab showing a designer switches it to its text view first.
         const pendingLine = useRef<{ line: number; column?: number } | null>(null);

@@ -104,29 +104,10 @@ export type EditorActions = ReturnType<typeof useEditorActions>;
 
 /** Keybindings that act on the active editor tab beyond CodeMirror's own (undo, find, toggle comment, ... are already bound inside each editor): Ctrl+S saves it, Ctrl+Shift+S saves every file, Ctrl+F4 / Ctrl+W closes it, Shift+Alt+F formats it. Renders nothing. */
 export function EditorKeybindings({ actions }: { actions: EditorActions }) {
-  // A fresh `actions` every render (it tracks the live editor) — read
-  // through a ref so the listener isn't re-added on each keystroke.
-  const actionsRef = useRef(actions);
-  actionsRef.current = actions;
-  useEffect(() => {
-    function onKeyDown(e: KeyboardEvent) {
-      const actions = actionsRef.current;
-      const key = e.key.toLowerCase();
-      if ((e.ctrlKey || e.metaKey) && !e.altKey && key === "s") {
-        e.preventDefault();
-        if (e.shiftKey) actions.saveAll();
-        else actions.save();
-      } else if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && (key === "f4" || key === "w")) {
-        e.preventDefault();
-        actions.close();
-      } else if (e.shiftKey && e.altKey && !e.ctrlKey && key === "f") {
-        e.preventDefault();
-        actions.format();
-      }
-    }
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, []);
+  useKeybinding("Ctrl+S", () => actions.save(), { id: "file.save" });
+  useKeybinding("Ctrl+Shift+S", () => actions.saveAll(), { id: "file.saveAll" });
+  useKeybinding(["Ctrl+F4", "Ctrl+W"], () => actions.close(), { id: "file.close" });
+  useKeybinding("Shift+Alt+F", () => actions.format(), { id: "edit.format" });
   return null;
 }
 

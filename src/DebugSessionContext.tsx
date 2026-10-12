@@ -1,4 +1,5 @@
-import { createContext, useContext, useEffect, type ReactNode } from "react";
+import { createContext, useContext, type ReactNode } from "react";
+import { useKeybinding } from "substrate-platform-ui";
 import { useDebugSession } from "./useDebugSession";
 
 type DebugSessionValue = ReturnType<typeof useDebugSession>;
@@ -20,24 +21,15 @@ export function useDebugSessionContext(): DebugSessionValue {
 
 /** Visual Studio's debugger keys, app-wide (capture phase, so the editor doesn't swallow them): F5 Continue, F10/F11/Shift+F11 Step Over/Into/Out, Ctrl+Alt+Break (or Ctrl+Alt+Pause) Break All, Shift+F5 Stop, Ctrl+Shift+F5 Restart. Only active during a debug session. */
 function useDebugShortcuts({ debugging, stopped, canRestart, continue_, step, pause, stop, restart }: DebugSessionValue) {
-  useEffect(() => {
-    if (!debugging) return;
-    const paused = !!stopped && stopped.reason !== "exited";
-    const onKeyDown = (e: KeyboardEvent) => {
-      let action: (() => unknown) | null = null;
-      if ((e.key === "Pause" || e.key === "Cancel") && e.ctrlKey && e.altKey) action = paused ? null : pause;
-      else if (e.key === "F5" && e.shiftKey && e.ctrlKey) action = canRestart ? restart : null;
-      else if (e.key === "F5" && e.shiftKey) action = stop;
-      else if (e.key === "F5" && !e.ctrlKey && paused) action = continue_;
-      else if (e.key === "F10" && !e.shiftKey && paused) action = () => step("over");
-      else if (e.key === "F11" && e.shiftKey && paused) action = () => step("out");
-      else if (e.key === "F11" && paused) action = () => step("into");
-      if (!action) return;
-      e.preventDefault();
-      e.stopPropagation();
-      action();
-    };
-    window.addEventListener("keydown", onKeyDown, true);
-    return () => window.removeEventListener("keydown", onKeyDown, true);
-  }, [debugging, stopped, canRestart, continue_, step, pause, stop, restart]);
+  const paused = !!stopped && stopped.reason !== "exited";
+  const bind = (keys: string | string[], id: string, enabled: boolean, run: () => unknown) =>
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    useKeybinding(keys, () => void run(), { id, enabled: debugging && enabled });
+  bind(["Ctrl+Alt+Pause", "Ctrl+Alt+Cancel"], "debug.breakAll", !paused, pause);
+  bind("Ctrl+Shift+F5", "debug.restart", canRestart, restart);
+  bind("Shift+F5", "debug.stop", true, stop);
+  bind("F5", "debug.continue", paused, continue_);
+  bind("F10", "debug.stepOver", paused, () => step("over"));
+  bind("Shift+F11", "debug.stepOut", paused, () => step("out"));
+  bind("F11", "debug.stepInto", paused, () => step("into"));
 }
