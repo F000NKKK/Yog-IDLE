@@ -161,7 +161,8 @@ pub struct StackFrameOut {
 pub struct DebugStoppedEvent {
     pub reason: String,
     pub stack_trace: Vec<StackFrameOut>,
-    /// Every thread of the tracee (all stopped while paused).
+    /// Every thread of the tracee — only some are stopped (see
+    /// `ThreadOut::stopped`): the debugger runs non-stop.
     pub threads: Vec<ThreadOut>,
     /// The thread `stack_trace`/`registers` describe — the one that hit the
     /// breakpoint, or whichever the user picked with `debug_select_thread`.
@@ -189,6 +190,17 @@ pub struct ThreadOut {
     /// `/proc/<pid>/task/<tid>/comm` — the JVM names its threads
     /// ("Server thread", "Render thread", ...).
     pub name: String,
+    /// Stopped (inspectable), as opposed to still running: a breakpoint
+    /// stops only the thread that hit it, Break All only `is_game_thread`s.
+    pub stopped: bool,
+}
+
+/// The threads Break All stops: the ones mod code runs on — the client's
+/// render thread and the integrated server's tick thread. Everything else
+/// (sound, networking, GC, ...) keeps going, so pausing the game doesn't
+/// stall the system's audio or drop the connection.
+fn is_game_thread(name: &str) -> bool {
+    matches!(name, "Render thread" | "Server thread")
 }
 
 fn to_snake_name(id: &str) -> String {
@@ -1030,6 +1042,7 @@ impl Tracer {
                 format!("attaching to pid {real_pid}: {raw}")
             }
         })?;
+        debugger.set_pause_filter(is_game_thread);
         let Some(module_base) = find_latest_module_base(debugger.pid(), mod_id) else {
             // Attached but unusable — let the game go rather than leaving
             // it stopped.
@@ -1197,9 +1210,8 @@ impl Tracer {
                 .into_iter()
                 .map(|tid| ThreadOut {
                     id: tid.as_raw(),
-                    name: std::fs::read_to_string(format!("/proc/{pid}/task/{tid}/comm"))
-                        .map(|s| s.trim_end().to_string())
-                        .unwrap_or_default(),
+                    name: yog_debugger::thread_name(pid, tid),
+                    stopped: self.debugger.is_stopped(tid),
                 })
                 .collect()
         };
