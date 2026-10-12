@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { getVersion } from "@tauri-apps/api/app";
-import { message, open } from "@tauri-apps/plugin-dialog";
+import { message, open, save as saveDialog } from "@tauri-apps/plugin-dialog";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import {
   PlatformShell,
@@ -224,8 +225,25 @@ function recentItems(entries: RecentEntry[], open: (root: string) => void) {
 }
 
 /** File > Open Project/Open Folder (each a submenu: Browse… plus its own recent list) and Open File, backed by the native OS picker (`@tauri-apps/plugin-dialog`). Projects and folders replace the current project via `ProjectContext`; Open File just opens a single file as an editor tab, expanding the allowed-path boundary to cover it (see `allow_path` on the Rust side) since it needn't belong to any open project. */
-function FileMenu() {
-  const { openPath, recent, clearRecent } = useProject();
+function FileMenu({ editor }: { editor: EditorActions }) {
+  const { project, openPath, recent, clearRecent, closeProject } = useProject();
+  const { tabs, closeTab, closeAll, saveAs, confirmUnsaved, discardAll } = useOpenFiles();
+  const tab = editor.tab;
+
+  async function saveTabAs() {
+    if (!tab) return;
+    const chosen = await saveDialog({ defaultPath: tab.path });
+    if (typeof chosen === "string") await saveAs(tab.id, chosen);
+  }
+
+  async function closeFolder() {
+    // Asked here, while the project's tabs are still what its workspace
+    // remembers; closing the project saves that before the tabs go.
+    if (!(await confirmUnsaved())) return;
+    closeProject();
+    // After the switch has written the outgoing workspace (an effect of it).
+    setTimeout(discardAll, 0);
+  }
 
   async function openFolder() {
     const chosen = await open({ directory: true });
@@ -272,6 +290,14 @@ function FileMenu() {
           ],
         },
         { label: "Open File...", onClick: openFile },
+        { label: "Close", shortcut: "Ctrl+F4", disabled: !tab, onClick: () => tab && void closeTab(tab.id), separatorBefore: true },
+        { label: "Close All", disabled: tabs.length === 0, onClick: () => void closeAll() },
+        { label: "Close Folder", disabled: !project, onClick: () => void closeFolder() },
+        { label: "Save", shortcut: "Ctrl+S", disabled: !editor.canSave, onClick: () => void editor.save(), separatorBefore: true },
+        { label: "Save As...", disabled: !tab, onClick: () => void saveTabAs() },
+        { label: "Save All", shortcut: "Ctrl+Shift+S", disabled: !editor.hasDirty, onClick: () => void editor.saveAll() },
+        // Through the window's close request, so unsaved tabs are asked about first.
+        { label: "Exit", shortcut: "Alt+F4", onClick: () => void getCurrentWindow().close(), separatorBefore: true },
       ]}
     />
   );
@@ -326,7 +352,7 @@ interface MenuProps {
 function Menu({ onOpenSettings, onOpenPublish, editor }: MenuProps) {
   return (
     <MenuBar title="Yog IDLE" windowControls={<WindowControls />}>
-      <FileMenu />
+      <FileMenu editor={editor} />
       <EditMenu actions={editor} />
       <ViewMenu />
       <BuildMenu onOpenPublish={onOpenPublish} />

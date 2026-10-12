@@ -24,6 +24,8 @@ interface ProjectContextValue {
   /** Recently opened entries per kind, most recent first. */
   recent: Record<OpenKind, RecentEntry[]>;
   clearRecent: (kind: OpenKind) => void;
+  /** File > Close Folder: back to no project, and none reopened on the next start. Unsaved tabs are the caller's to settle first. */
+  closeProject: () => void;
 }
 
 const RECENT_KEYS: Record<OpenKind, string> = {
@@ -107,6 +109,12 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  function closeProject() {
+    setProject(null);
+    setError(null);
+    localStorage.removeItem(LAST_KEY);
+  }
+
   useEffect(() => {
     const last = loadLast();
     if (last) openPath(last.root, last.kind);
@@ -114,7 +122,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <ProjectContext.Provider value={{ project, error, openPath, recent, clearRecent: (kind) => updateRecent(kind, () => []) }}>
+    <ProjectContext.Provider value={{ project, error, openPath, recent, clearRecent: (kind) => updateRecent(kind, () => []), closeProject }}>
       {children}
     </ProjectContext.Provider>
   );

@@ -78,6 +78,12 @@ interface OpenFilesContextValue {
   setView: (id: string, view: string) => Promise<void>;
   /** Writes a tab to disk — resolves `false` (tab stays dirty, error reported) if that failed. */
   save: (id: string) => Promise<boolean>;
+  /** Writes a tab's text to `path` and makes the tab that file (the original stays as it was on disk) — resolves `false` if the write failed. */
+  saveAs: (id: string, path: string) => Promise<boolean>;
+  /** Save / Don't Save / Cancel about every unsaved tab at once — resolves `false` if cancelled or a save failed. Nothing is closed. */
+  confirmUnsaved: () => Promise<boolean>;
+  /** Closes every tab without asking — after `confirmUnsaved`. */
+  discardAll: () => void;
   saveAll: () => Promise<boolean>;
   hasDirty: boolean;
   /** Explorer renamed `from` (a file, or a folder containing open files) to `to` — open tabs follow it. */
@@ -265,6 +271,24 @@ export function OpenFilesProvider({ children }: { children: ReactNode }) {
     // Still dirty if the user kept typing while the write was in flight.
     setTabs((prev) =>
       prev.map((t) => (t.id === id ? { ...t, diskContent: written, missing: false, dirty: t.content !== written } : t))
+    );
+    return true;
+  }, []);
+
+  const saveAs = useCallback(async (id: string, path: string): Promise<boolean> => {
+    const tab = tabsRef.current.find((t) => t.id === id);
+    if (!tab || !tab.textLoaded) return false;
+    const written = tab.content;
+    try {
+      await invoke("file_write", { path, contents: written });
+    } catch (err) {
+      reportError(`Failed to save ${path}: ${err}`);
+      return false;
+    }
+    setTabs((prev) =>
+      prev.map((t) =>
+        t.id === id ? { ...t, path, name: baseName(path), diskContent: written, missing: false, dirty: t.content !== written } : t
+      )
     );
     return true;
   }, []);
@@ -608,7 +632,26 @@ export function OpenFilesProvider({ children }: { children: ReactNode }) {
 
   return (
     <OpenFilesContext.Provider
-      value={{ tabs, open, updateContent, closeTab, closeTabs, closeAll, setPinned, setView, save, saveAll, hasDirty, pathRenamed, pathRemoved, recheckDisk, panels }}
+      value={{
+        tabs,
+        open,
+        updateContent,
+        closeTab,
+        closeTabs,
+        closeAll,
+        setPinned,
+        setView,
+        save,
+        saveAs,
+        confirmUnsaved: confirmDiscardAll,
+        discardAll: () => removeTabs(tabsRef.current.map((t) => t.id)),
+        saveAll,
+        hasDirty,
+        pathRenamed,
+        pathRemoved,
+        recheckDisk,
+        panels,
+      }}
     >
       {children}
     </OpenFilesContext.Provider>

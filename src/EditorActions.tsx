@@ -59,7 +59,7 @@ function useFormatSupported(path: string | null): boolean {
 export function useEditorActions() {
   const tab = useActiveFileTab();
   const view = useEditorView(tab?.path);
-  const { save, saveAll, hasDirty } = useOpenFiles();
+  const { save, saveAll, hasDirty, closeTab } = useOpenFiles();
   const canFormat = useFormatSupported(view && tab ? tab.path : null) && !!view && !view.state.readOnly;
 
   async function format() {
@@ -81,6 +81,7 @@ export function useEditorActions() {
     save: () => (tab ? save(tab.id) : Promise.resolve(true)),
     hasDirty,
     saveAll,
+    close: () => (tab ? closeTab(tab.id) : Promise.resolve(true)),
     canUndo: !!view && editorCanUndo(view),
     undo: () => view && editorUndo(view),
     canRedo: !!view && editorCanRedo(view),
@@ -101,7 +102,7 @@ export function useEditorActions() {
 
 export type EditorActions = ReturnType<typeof useEditorActions>;
 
-/** Keybindings that act on the active editor tab beyond CodeMirror's own (undo, find, toggle comment, ... are already bound inside each editor): Ctrl+S saves it, Ctrl+Shift+S saves every file, Shift+Alt+F formats it. Renders nothing. */
+/** Keybindings that act on the active editor tab beyond CodeMirror's own (undo, find, toggle comment, ... are already bound inside each editor): Ctrl+S saves it, Ctrl+Shift+S saves every file, Ctrl+F4 / Ctrl+W closes it, Shift+Alt+F formats it. Renders nothing. */
 export function EditorKeybindings({ actions }: { actions: EditorActions }) {
   // A fresh `actions` every render (it tracks the live editor) — read
   // through a ref so the listener isn't re-added on each keystroke.
@@ -115,6 +116,9 @@ export function EditorKeybindings({ actions }: { actions: EditorActions }) {
         e.preventDefault();
         if (e.shiftKey) actions.saveAll();
         else actions.save();
+      } else if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && (key === "f4" || key === "w")) {
+        e.preventDefault();
+        actions.close();
       } else if (e.shiftKey && e.altKey && !e.ctrlKey && key === "f") {
         e.preventDefault();
         actions.format();
