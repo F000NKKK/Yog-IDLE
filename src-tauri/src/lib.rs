@@ -11,6 +11,8 @@ use substrate_platform::{
 use tauri::{AppHandle, Emitter, Manager, State};
 
 mod properties;
+mod search;
+mod symbols;
 
 #[cfg(target_os = "linux")]
 mod debugger;
@@ -1143,7 +1145,9 @@ pub fn run() {
         )
         .manage(PtyState::default())
         .manage(WorkflowState::default())
-        .manage(AppState::default());
+        .manage(AppState::default())
+        .manage(search::SearchState::default())
+        .manage(symbols::SymbolIndexState::default());
 
     let builder = builder.manage(debugger::DebugState::default());
 
@@ -1196,6 +1200,10 @@ pub fn run() {
         debugger::debug_grant_ptrace_capability,
         debugger::app_restart,
         debug_supported,
+        search::find_in_files,
+        search::find_cancel,
+        search::replace_in_files,
+        symbols::code_search,
     ]);
 
     builder
