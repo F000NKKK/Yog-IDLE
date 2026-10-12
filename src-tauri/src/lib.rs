@@ -5,7 +5,8 @@ use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
 use substrate_platform::{
-    EntryKind, Level, LogLine, LogSink, ProjectStandard, PtyOptions, PtySession, WorkflowFile,
+    EntryKind, Level, LogLine, LogSink, ProjectStandard, PtyOptions, PtySession, ShellInfo,
+    WorkflowFile,
 };
 use tauri::{AppHandle, Emitter, State};
 
@@ -609,27 +610,11 @@ fn publish_run(
     Ok(())
 }
 
-/// A shell available to spawn, serialized for the frontend's "new terminal" menu.
-#[derive(Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct ShellInfo {
-    id: String,
-    label: String,
-    command: String,
-    clear_command: String,
-}
-
+/// Every shell available to spawn, for the frontend's "new terminal" menu —
+/// `ShellInfo` already serializes camelCase, ready for the frontend as-is.
 #[tauri::command]
 fn list_shells() -> Vec<ShellInfo> {
     substrate_platform::detect_shells()
-        .into_iter()
-        .map(|s| ShellInfo {
-            id: s.id,
-            label: s.label,
-            command: s.command,
-            clear_command: s.clear_command,
-        })
-        .collect()
 }
 
 /// Every open integrated terminal, keyed by a frontend-chosen id, so the UI
