@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from "react";
 import { invoke } from "@tauri-apps/api/core";
 
 interface BreakpointsContextValue {
@@ -15,31 +15,34 @@ const BreakpointsContext = createContext<BreakpointsContextValue | null>(null);
  * Owns every breakpoint the user has set, keyed by absolute file path —
  * independent of whether a debug session is currently attached (an IDE
  * lets you set breakpoints before pressing Start, same as the Rust side's
- * own "pending breakpoints" list, applied the moment attach succeeds — see
- * `try_attach` in `src-tauri/src/debugger.rs`). Toggling always calls
- * through to `debug_set_breakpoint`/`debug_clear_breakpoint`, which
- * itself decides whether to arm it immediately (session live) or just
- * remember it for later (no session yet).
+ * own `BREAKPOINTS` mirror, armed the moment attach succeeds — see
+ * `Tracer::attach` in `src-tauri/src/debugger.rs`). Every toggle calls
+ * through to `debug_set_breakpoint`/`debug_clear_breakpoint`, which keep
+ * that mirror in sync and also arm/disarm it immediately if a session is
+ * live; failures to arm surface in the Output panel.
  */
 export function BreakpointsProvider({ children }: { children: ReactNode }) {
   const [byFile, setByFile] = useState<Map<string, Set<number>>>(new Map());
+  // The latest map, read synchronously by `toggle` — the backend call has to
+  // happen outside the state updater (which StrictMode deliberately runs
+  // twice) so each click reaches the Rust side exactly once.
+  const byFileRef = useRef(byFile);
 
   const forFile = useCallback((path: string) => byFile.get(path) ?? EMPTY, [byFile]);
 
   const toggle = useCallback((path: string, line: number) => {
-    setByFile((prev) => {
-      const next = new Map(prev);
-      const lines = new Set(next.get(path) ?? []);
-      if (lines.has(line)) {
-        lines.delete(line);
-        invoke("debug_clear_breakpoint", { file: path, line }).catch((err) => console.error("clearing breakpoint:", err));
-      } else {
-        lines.add(line);
-        invoke("debug_set_breakpoint", { file: path, line }).catch((err) => console.error("setting breakpoint:", err));
-      }
-      next.set(path, lines);
-      return next;
-    });
+    const next = new Map(byFileRef.current);
+    const lines = new Set(next.get(path) ?? []);
+    if (lines.has(line)) {
+      lines.delete(line);
+      invoke("debug_clear_breakpoint", { file: path, line }).catch((err) => console.error("clearing breakpoint:", err));
+    } else {
+      lines.add(line);
+      invoke("debug_set_breakpoint", { file: path, line }).catch((err) => console.error("setting breakpoint:", err));
+    }
+    next.set(path, lines);
+    byFileRef.current = next;
+    setByFile(next);
   }, []);
 
   const value = useMemo(() => ({ forFile, toggle }), [forFile, toggle]);
