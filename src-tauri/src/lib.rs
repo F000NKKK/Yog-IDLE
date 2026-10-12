@@ -134,6 +134,36 @@ fn dir_remove(state: State<AppState>, path: String) -> Result<(), String> {
     substrate_platform::dir::remove(&target).map_err(|e| e.to_string())
 }
 
+/// Copies a file or a whole folder to `to`, which mustn't exist yet — the
+/// explorer's Copy/Paste and Add Existing Item. The source may be anywhere
+/// (like `file_read`); only the destination must be in an open project.
+#[tauri::command]
+fn dir_copy(state: State<AppState>, from: String, to: String) -> Result<(), String> {
+    let from_path = PathBuf::from(&from);
+    let to_path = PathBuf::from(&to);
+    validate_within_roots(&state, &to_path)?;
+    if to_path.exists() {
+        return Err(format!("'{}' already exists", to_path.display()));
+    }
+    if to_path.starts_with(&from_path) {
+        return Err("can't copy a folder into itself".to_string());
+    }
+    copy_recursive(&from_path, &to_path).map_err(|e| e.to_string())
+}
+
+fn copy_recursive(from: &Path, to: &Path) -> std::io::Result<()> {
+    if from.is_dir() {
+        std::fs::create_dir(to)?;
+        for entry in std::fs::read_dir(from)? {
+            let entry = entry?;
+            copy_recursive(&entry.path(), &to.join(entry.file_name()))?;
+        }
+        Ok(())
+    } else {
+        std::fs::copy(from, to).map(|_| ())
+    }
+}
+
 #[tauri::command]
 fn file_read(path: String) -> Result<String, String> {
     // Any file may be *read* — a debugger frame in `std` or a dependency,
@@ -1201,7 +1231,17 @@ fn pty_spawn(
     cols: u16,
     rows: u16,
     shell: Option<String>,
+    cwd: Option<String>,
 ) -> Result<(), String> {
+    // "Open in Terminal" on a folder of the project; otherwise its root.
+    let cwd = match cwd {
+        Some(dir) => {
+            let dir = PathBuf::from(dir);
+            validate_within_roots(&app_state, &dir)?;
+            Some(dir)
+        }
+        None => app_state.current_project.lock().unwrap().clone(),
+    };
     let out_app = app.clone();
     let out_id = id.clone();
     let exit_app = app.clone();
@@ -1212,7 +1252,7 @@ fn pty_spawn(
     let session = PtySession::spawn_utf8(
         PtyOptions {
             shell,
-            cwd: app_state.current_project.lock().unwrap().clone(),
+            cwd,
             ..PtyOptions::default()
         },
         cols,
@@ -1310,6 +1350,7 @@ pub fn run() {
         dir_create_dir,
         dir_rename,
         dir_remove,
+        dir_copy,
         file_read,
         file_write,
         allow_path,
