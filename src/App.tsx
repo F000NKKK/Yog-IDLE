@@ -103,9 +103,9 @@ function WorkflowBuildMenu({ root }: { root: string }) {
   return <MenuBarItem label="Build" items={items} />;
 }
 
-/** File > Open Folder/Open Project/Open File, backed by the native OS picker (`@tauri-apps/plugin-dialog`). Open Folder/Project both replace the current project via `ProjectContext`; Open File just opens a single file as an editor tab, expanding the allowed-path boundary to cover it (see `allow_path` on the Rust side) since it needn't belong to any open project. */
+/** File > Open Folder/Open Project/Open File, backed by the native OS picker (`@tauri-apps/plugin-dialog`), plus the recent projects list. Open Folder/Project/a recent entry all replace the current project via `ProjectContext`; Open File just opens a single file as an editor tab, expanding the allowed-path boundary to cover it (see `allow_path` on the Rust side) since it needn't belong to any open project. */
 function FileMenu() {
-  const { openPath } = useProject();
+  const { openPath, recent, clearRecent } = useProject();
 
   async function openFolder() {
     const chosen = await open({ directory: true });
@@ -138,6 +138,9 @@ function FileMenu() {
         { label: "Open Folder...", onClick: openFolder },
         { label: "Open Project...", onClick: openProject },
         { label: "Open File...", onClick: openFile },
+        // `MenuBarItem` has no submenus/separators — recent entries are listed inline.
+        ...recent.map((root) => ({ label: `Recent: ${root.split(/[/\\]/).pop() || root} — ${root}`, onClick: () => openPath(root) })),
+        ...(recent.length > 0 ? [{ label: "Clear Recent Projects", onClick: clearRecent }] : []),
       ]}
     />
   );
