@@ -2,9 +2,9 @@
 
 A `.yui` file is a mod's GUI screen in declarative form: a small XAML-like
 XML document describing a [`yog-ui`](https://crates.io/crates/yog-ui) widget
-tree. Yog-IDLE opens it in the **Screen Designer** (Toolbox, design canvas,
-Properties, Document Outline — Visual Studio's WinForms designer), with the
-XML itself one click away in the **Source** view.
+tree. Yog-IDLE opens it the way Visual Studio opens XAML: the **Screen
+Designer** (Toolbox, design canvas, Properties, Document Outline) and the
+markup together in one tab, kept in step both ways — see [Designer](#designer).
 
 `yog build` (and `yog ui gen`) turns every `src/**/foo.yui` into a sibling
 `foo.designer.rs` — the counterpart of WinForms' `Form1.Designer.cs`:
@@ -16,16 +16,49 @@ saved.
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
-<Screen id="mymod:main_menu" width="176" height="166" anchor="center" bg="#C0101010" padding="8">
-  <Label id="title" x="8" y="6" text="Main Menu" color="#FFFFFF" no_wrap="true"/>
-  <Button id="play" x="38" y="40" w="100" h="20" text="Play" bg="#FF555555" color="#FFFFFF" on_click="play"/>
-  <Row x="8" y="70" w="160" h="22" gap="2" align="center">
-    <InvSlot item="minecraft:diamond" count="3"/>
-    <Spacer flex="1"/>
-    <ItemSlot item="minecraft:apple"/>
-  </Row>
+<Screen id="mymod:main_menu"
+        width="176"
+        height="166"
+        anchor="center"
+        bg="#C0101010"
+        padding="8">
+    <Label id="title"
+           x="8"
+           y="6"
+           text="Main Menu"
+           color="#FFFFFF"
+           no_wrap="true" />
+    <!-- Starts the game. -->
+    <Button id="play"
+            x="38"
+            y="40"
+            w="100"
+            h="20"
+            text="Play"
+            bg="#FF555555"
+            color="#FFFFFF"
+            on_click="play" />
+    <Row x="8"
+         y="70"
+         w="160"
+         h="22"
+         gap="2"
+         align="center">
+        <InvSlot item="minecraft:diamond" count="3" />
+        <Spacer flex="1" />
+        <ItemSlot item="minecraft:apple" />
+    </Row>
 </Screen>
 ```
+
+That's the layout **Format Document** (Ctrl+K Ctrl+D or Shift+Alt+F)
+writes, Visual Studio's XAML style: four-space indentation, attributes in a
+fixed order (`id`, then position and size, then content, layout,
+appearance, behavior), all on the start tag's line when there are at most
+three and it fits in ~110 columns, otherwise one per line aligned under the
+first; empty elements close with ` />`. Comments, the prolog and single
+blank lines between elements are kept. Any layout parses — `yog build`
+doesn't care.
 
 ## Elements
 
@@ -83,8 +116,10 @@ Kind-specific: `text` (Label, Button), `item` (ItemSlot, InvSlot), `count`
 (InvSlot), `texture`, `tex_w`, `tex_h` (Image). Unknown elements or
 attributes are errors, reported with their line by `yog ui gen`/`yog build`.
 
-Comments before the root element are kept by the designer; comments inside
-the tree are dropped when the designer rewrites the file.
+The designer never rewrites the whole file: an edit there changes only the
+attributes or elements it touched (a start tag that gains or loses
+attributes is laid out again), so comments, attribute order and your own
+formatting elsewhere stay as they were.
 
 ## Generated code
 
@@ -129,6 +164,26 @@ Call `main_menu::register(registry)` from the mod's `Mod::register`, and
 to show it.
 
 ## Designer
+
+The tab shows **Design and XAML** split, Visual Studio's XAML designer
+layout; the buttons on the tab strip switch to the designer or the XAML
+alone. In the split:
+
+- **Design / ⇅ / XAML** on the boundary: the tabs focus a pane (or pick the
+  one shown when collapsed), ⇅ swaps them; on the right, vertical or
+  horizontal split and collapse/expand. Layout and splitter position are
+  remembered.
+- **Two-way sync** — what's typed in the XAML reaches the designer after a
+  short pause; while the markup is invalid the last valid layout stays, with
+  an *Invalid markup* bar (click it to go to the error). Designer edits are
+  written into the XAML as patches, each its own undo step — Ctrl+Z in
+  either pane undoes both kinds of edit.
+- **Selection sync** — selecting a widget marks its tag in the XAML and
+  moves the cursor there; moving the cursor into a tag selects that widget
+  (Properties and Document Outline follow).
+- **XAML editing** — highlighting, auto-closed tags, and completion of
+  element names, the attributes each element has, and enum/boolean values
+  (descriptions as in Properties).
 
 - **GUI size / Zoom** — the screen is drawn at a chosen GUI resolution
   (the game window divided by its GUI scale) and zoom; layout is a port of

@@ -11,6 +11,8 @@ import {
   Icon,
   IconButton,
   linkedRangeHighlight,
+  notifyDocumentCommands,
+  pt,
   revealLine,
   SplitPane,
   TextEditor,
@@ -96,11 +98,19 @@ function cleanError(message: string): string {
  * element in either selects it in the other.
  */
 export function YuiSplitEditor(props: EditorProps) {
-  const { path, content, readOnly } = props;
+  const { content, readOnly } = props;
   const t = useT();
   const language = useYuiLanguage();
   const [layout, setLayout] = useStoredState<SplitLayout>("yui.splitLayout", DEFAULT_LAYOUT, isLayout);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(() => {
+    if (content.trim() === "") return null; // a new file: the designer fills it in
+    try {
+      parseYui(content);
+      return null;
+    } catch (err) {
+      return cleanError(String(err instanceof Error ? err.message : err));
+    }
+  });
   const [focusedPane, setFocusedPane] = useState<"design" | "xaml">("design");
   const viewRef = useRef<EditorView | null>(null);
   const designerRef = useRef<LinkedDesigner | null>(null);
@@ -207,8 +217,11 @@ export function YuiSplitEditor(props: EditorProps) {
   };
 
   const focusPane = (pane: "design" | "xaml") => {
+    if (lastPane.current === pane) return;
     lastPane.current = pane;
     setFocusedPane(pane);
+    // The Edit menu now acts on the other pane.
+    notifyDocumentCommands();
   };
 
   const showPane = (pane: "design" | "xaml") => {
@@ -254,6 +267,9 @@ export function YuiSplitEditor(props: EditorProps) {
         extensions={extensions}
         onViewReady={(view) => {
           viewRef.current = view;
+          // As CodeMirror holds it (line breaks normalized).
+          const text = view.state.doc.toString();
+          synced.current = { text, root: scanYui(text) };
         }}
       />
     </div>
@@ -262,7 +278,7 @@ export function YuiSplitEditor(props: EditorProps) {
   const bar = (
     <div className="yui-split-bar" role="tablist">
       <button type="button" role="tab" className="yui-split-tab" data-active={(layout.only ?? focusedPane) === "design"} onClick={() => showPane("design")}>
-        {t("Design")}
+        {pt("view", "Design")}
       </button>
       <IconButton title={t("Swap Panes")} onClick={() => setLayout({ ...layout, swapped: !layout.swapped })}>
         <Icon name="swap" size={14} />

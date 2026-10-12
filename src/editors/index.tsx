@@ -22,7 +22,7 @@ registerEditorProvider({
 // id the designer used to have, so a remembered "designer" choice becomes it.)
 registerEditorProvider({
   id: "yog.yui",
-  label: "Split",
+  label: "Design and XAML",
   name: "Screen Designer",
   icon: "splitRows",
   extensions: ["yui"],
@@ -34,7 +34,7 @@ registerEditorProvider({
 
 registerEditorProvider({
   id: "yog.yui.design",
-  label: "Design",
+  label: "Designer",
   name: "Screen Designer (Design Only)",
   extensions: ["yui"],
   component: ScreenDesigner,
