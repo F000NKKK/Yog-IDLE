@@ -5163,9 +5163,9 @@ dependencies = [
 
 [[package]]
 name = "yog-debugger"
-version = "0.8.2"
+version = "0.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "234f903bbd96c9e1b8c40fc31a19c2d9d81141075e0a38ba488ba5f685e1d04c"
+checksum = "0f45f989e8387c5cf70e3bb3fa3f9c760a277907adc316eb1ffb9c397b5fb2f5"
 dependencies = [
  "iced-x86",
  "nix 0.31.3",
