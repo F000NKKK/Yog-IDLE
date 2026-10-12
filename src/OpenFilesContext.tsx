@@ -27,6 +27,8 @@ import {
 } from "substrate-platform-ui";
 import { useBreakpoints } from "./BreakpointsContext";
 import { useDebugSessionContext } from "./DebugSessionContext";
+import { addWatchItem, dataTipProvider } from "./debugger/DataTip";
+import { useWatches } from "./debugger/WatchesContext";
 import { samePath } from "./paths";
 import { onOpenFileRequest, type FileOpenRequest } from "./fileOpenBus";
 import { baseName, isWithin } from "./paths";
@@ -458,8 +460,9 @@ export function OpenFilesProvider({ children }: { children: ReactNode }) {
       component = function FileEditorPanel() {
         const { tabs, updateContent } = useOpenFiles();
         const { forFile, toggle } = useBreakpoints();
-        const { executionLocation } = useDebugSessionContext();
-        const { activateCenterPanel } = useShell();
+        const { executionLocation, debugging } = useDebugSessionContext();
+        const watches = useWatches();
+        const { activateCenterPanel, showToolWindow } = useShell();
         const { activeCenterId } = useShell();
         const tab = tabs.find((t) => t.id === tabId);
         // Re-renders when editors are registered; the views themselves come from `tabViews`.
@@ -530,6 +533,18 @@ export function OpenFilesProvider({ children }: { children: ReactNode }) {
                 breakpoints={forFile(tab.path)}
                 onToggleBreakpoint={(line) => toggle(tab.path, line)}
                 executionLine={executionLocation && samePath(executionLocation.file, tab.path) ? executionLocation.line : null}
+                // DataTips while paused, evaluated in the selected frame.
+                hoverTip={executionLocation ? dataTipProvider(executionLocation.id) : undefined}
+                contextMenu={(request) =>
+                  debugging
+                    ? [
+                        addWatchItem(request, (expr) => {
+                          watches.add(expr);
+                          showToolWindow("debug");
+                        }),
+                      ]
+                    : []
+                }
               />
             );
           }

@@ -2,13 +2,13 @@ import { invoke } from "@tauri-apps/api/core";
 import { useState, type CSSProperties, type ReactNode } from "react";
 import { Button, formatShortcut, t, useT } from "substrate-platform-ui";
 import { useDebugSessionContext } from "../DebugSessionContext";
-import { LocalsView } from "./LocalsView";
+import { AutosView, LocalsView, useLocals, WatchView } from "../debugger/VariableWindows";
 
 const muted: CSSProperties = { padding: "var(--sp-space-sm)", color: "var(--sp-text-muted)" };
 const mono: CSSProperties = { fontFamily: "var(--sp-font-mono)", fontSize: "12px" };
 const row: CSSProperties = { ...mono, padding: "2px var(--sp-space-sm)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" };
 
-/** A collapsible block of the Debug panel (Locals / Call Stack / Threads / Registers). */
+/** A collapsible block of the Debug panel (Watch / Autos / Locals / Call Stack / Threads / Registers). */
 function Section({ title, children }: { title: string; children: ReactNode }) {
   const [open, setOpen] = useState(true);
   return (
@@ -45,6 +45,14 @@ export function DebugPanel() {
   const withShortcut = (label: string, shortcut: string) => `${t(label)} (${formatShortcut(shortcut)})`;
   const [notice, setNotice] = useState<{ text: string; isError: boolean } | null>(null);
   const [granted, setGranted] = useState(false);
+  // What's expanded in each variable window, kept across stops (the
+  // windows themselves unmount while the game runs).
+  const watchExpanded = useState<ReadonlySet<string>>(new Set());
+  const autosExpanded = useState<ReadonlySet<string>>(new Set());
+  const localsExpanded = useState<ReadonlySet<string>>(new Set());
+  const paused = !!stopped && stopped.reason !== "exited";
+  const frame = paused && stopped ? (stopped.stackTrace[selectedFrame] ?? null) : null;
+  const { locals, error: localsError } = useLocals(stopped, frame?.id ?? null);
 
   if (!debugging) {
     // `permission_denied_message` (debugger.rs) tags what fixes an EPERM;
@@ -85,7 +93,6 @@ export function DebugPanel() {
     );
   }
 
-  const paused = !!stopped && stopped.reason !== "exited";
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
       <div style={{ display: "flex", gap: "var(--sp-space-xs)", padding: "var(--sp-space-xs)", borderBottom: "1px solid var(--sp-border)", flexWrap: "wrap" }}>
@@ -114,8 +121,14 @@ export function DebugPanel() {
         {stopped?.reason === "exited" && <div style={muted}>{t("Process exited.")}</div>}
         {stopped && paused && (
           <>
+            <Section title={t("Watch")}>
+              <WatchView stopKey={stopped} frame={frame?.id ?? null} expanded={watchExpanded} />
+            </Section>
+            <Section title={t("Autos")}>
+              <AutosView locals={locals} file={frame?.file ?? null} line={frame?.line ?? null} expanded={autosExpanded} />
+            </Section>
             <Section title={t("Locals")}>
-              <LocalsView stopKey={stopped} frame={stopped.stackTrace[selectedFrame]?.id ?? null} />
+              <LocalsView locals={locals} error={localsError} expanded={localsExpanded} />
             </Section>
             <Section title={t("Call Stack")}>
               {stopped.stackTrace.length === 0 && (

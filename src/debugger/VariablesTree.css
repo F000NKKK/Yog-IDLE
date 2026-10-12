@@ -1,0 +1,97 @@
+.yi-vt {
+  display: grid;
+  grid-template-columns: minmax(80px, 1fr) minmax(80px, 2fr) minmax(60px, 1fr);
+  font-family: var(--sp-font-mono);
+  font-size: 12px;
+  outline: none;
+}
+
+.yi-vt--compact {
+  grid-template-columns: max-content minmax(80px, max-content);
+  column-gap: var(--sp-space-sm);
+  padding: 2px 0;
+}
+
+.yi-vt-row {
+  display: contents;
+}
+
+.yi-vt-cell {
+  min-width: 0;
+  padding: 1px var(--sp-space-xs);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: default;
+}
+
+.yi-vt--compact .yi-vt-cell {
+  max-width: 480px;
+}
+
+.yi-vt-row:hover > .yi-vt-cell {
+  background: var(--sp-surface-2);
+}
+
+.yi-vt-selected > .yi-vt-cell,
+.yi-vt-selected:hover > .yi-vt-cell {
+  background: var(--sp-accent-soft);
+}
+
+.yi-vt-header > .yi-vt-cell,
+.yi-vt-header:hover > .yi-vt-cell {
+  color: var(--sp-text-muted);
+  background: none;
+}
+
+.yi-vt-twisty {
+  display: inline-block;
+  width: 12px;
+  color: var(--sp-text-muted);
+  cursor: pointer;
+}
+
+.yi-vt-value {
+  user-select: text;
+}
+
+.yi-vt-muted {
+  color: var(--sp-text-muted);
+}
+
+.yi-vt-error {
+  color: var(--sp-danger, var(--sp-text));
+}
+
+.yi-vt-add {
+  padding-left: calc(var(--sp-space-xs) + 12px);
+  color: var(--sp-text-faint);
+  font-style: italic;
+  cursor: text;
+}
+
+.yi-vt-edit {
+  padding: 0 var(--sp-space-xs) 0 calc(var(--sp-space-xs) + 12px);
+}
+
+.yi-vt-edit input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0 2px;
+  font: inherit;
+  color: var(--sp-text);
+  background: var(--sp-surface-1);
+  border: 1px solid var(--sp-accent);
+  outline: none;
+}
+
+.yi-vt-empty {
+  padding: 2px var(--sp-space-sm);
+  font-family: var(--sp-font-mono);
+  font-size: 12px;
+  color: var(--sp-text-muted);
+}
+
+.yi-vt--compact .yi-vt-row:hover > .yi-vt-cell {
+  background: var(--sp-surface-3, var(--sp-accent-soft));
+}

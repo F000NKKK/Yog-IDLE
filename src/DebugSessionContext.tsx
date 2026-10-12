@@ -1,16 +1,21 @@
 import { createContext, useContext, type ReactNode } from "react";
 import { useKeybinding } from "substrate-platform-ui";
 import { useDebugSession } from "./useDebugSession";
+import { WatchesProvider } from "./debugger/WatchesContext";
 
 type DebugSessionValue = ReturnType<typeof useDebugSession>;
 
 const DebugSessionContext = createContext<DebugSessionValue | null>(null);
 
-/** Shares one `useDebugSession` instance across the Debug menu, the toolbar's Restart/Stop section, and `DebugPanel` — all three need the same live state, not independent copies. */
+/** Shares one `useDebugSession` instance across the Debug menu, the toolbar's Restart/Stop section, and `DebugPanel` — all three need the same live state, not independent copies. Also holds the Watch list, which the editor adds to. */
 export function DebugSessionProvider({ children }: { children: ReactNode }) {
   const value = useDebugSession();
   useDebugShortcuts(value);
-  return <DebugSessionContext.Provider value={value}>{children}</DebugSessionContext.Provider>;
+  return (
+    <DebugSessionContext.Provider value={value}>
+      <WatchesProvider>{children}</WatchesProvider>
+    </DebugSessionContext.Provider>
+  );
 }
 
 export function useDebugSessionContext(): DebugSessionValue {
