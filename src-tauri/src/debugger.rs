@@ -29,7 +29,6 @@ use nix::sys::signal::Signal;
 use nix::unistd::Pid;
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager, State};
-use yog_debugger::maps::find_module_base_by_prefix;
 use yog_debugger::{Debugger, SourceBreakpoints, StopReason};
 use yog_hot_reload::{GenerationAllocator, ModuleGeneration};
 use yog_symbols::SymbolTable;
@@ -211,7 +210,7 @@ fn read_mod_id(contents: &str) -> Option<String> {
 /// The local, just-built unstripped native's path — `target/<triple>/
 /// release/<lib>`, exactly how `yog-cli`'s `Builder`/`package()` name it for
 /// the host platform. Not the runtime-extracted temp copy (unpredictable —
-/// see `find_module_base_by_prefix`'s doc comment) — this is only used for
+/// see `find_latest_module_base`) — this is only used for
 /// its DWARF data, which is byte-identical between the two.
 ///
 /// `release` is correct for debug-mode runs too: `yog run --debug` (like
@@ -229,6 +228,55 @@ fn local_native_path(project_root: &Path, mod_id: &str) -> PathBuf {
         .join(triple)
         .join("release")
         .join(lib)
+}
+
+/// Load base of `mod_id`'s native in `pid`. The runtime extracts each load
+/// to a fresh `yog-<mod_id>-<pid>-<n>.<ext>` in the temp dir, so after a hot
+/// reload several copies can be mapped at once — pick the newest (highest
+/// `n`). Matching the whole name, not a prefix, keeps `yog-pipes` from
+/// matching a `yog-pipes-extra` mod.
+fn find_latest_module_base(pid: Pid, mod_id: &str) -> Option<u64> {
+    let maps = std::fs::read_to_string(format!("/proc/{}/maps", pid.as_raw())).ok()?;
+    let prefix = format!("yog-{mod_id}-");
+    let mut best: Option<(u64, u64)> = None; // (n, base)
+    for line in maps.lines() {
+        let mut fields = line.split_whitespace();
+        let range = fields.next()?;
+        let Some(path) = fields.nth(4) else { continue };
+        let Some(name) = Path::new(path).file_name().and_then(|f| f.to_str()) else {
+            continue;
+        };
+        let Some(rest) = name.strip_prefix(&prefix) else {
+            continue;
+        };
+        let stem = rest.split('.').next().unwrap_or("");
+        // `<pid>-<n>`; older runtimes wrote just `<pid>` (n = 0).
+        let mut parts = stem.split('-');
+        let pid_ok = parts.next().is_some_and(|p| p.parse::<u32>().is_ok());
+        let n = match parts.next() {
+            Some(n) => match n.parse::<u64>() {
+                Ok(n) => n,
+                Err(_) => continue,
+            },
+            None => 0,
+        };
+        if !pid_ok || parts.next().is_some() {
+            continue;
+        }
+        let Some(base) = range
+            .split('-')
+            .next()
+            .and_then(|h| u64::from_str_radix(h, 16).ok())
+        else {
+            continue;
+        };
+        // The first mapping of a file is its lowest address — the load base.
+        match best {
+            Some((bn, _)) if bn >= n => {}
+            _ => best = Some((n, base)),
+        }
+    }
+    best.map(|(_, base)| base)
 }
 
 fn control_socket_path() -> PathBuf {
@@ -939,8 +987,7 @@ impl Tracer {
                 format!("attaching to pid {real_pid}: {raw}")
             }
         })?;
-        let prefix = format!("yog-{mod_id}-");
-        let Some(module_base) = find_module_base_by_prefix(debugger.pid(), &prefix) else {
+        let Some(module_base) = find_latest_module_base(debugger.pid(), mod_id) else {
             // Attached but unusable — let the game go rather than leaving
             // it stopped.
             let _ = debugger.detach();
@@ -991,8 +1038,7 @@ impl Tracer {
     fn rebind(&mut self) -> Result<(), String> {
         let symbols = SymbolTable::load(&self.native_path)
             .map_err(|e| format!("loading symbols from {}: {e}", self.native_path.display()))?;
-        let prefix = format!("yog-{}-", self.mod_id);
-        let module_base = find_module_base_by_prefix(self.debugger.pid(), &prefix)
+        let module_base = find_latest_module_base(self.debugger.pid(), &self.mod_id)
             .ok_or_else(|| format!("couldn't locate {}'s reloaded native", self.mod_id))?;
         let generation = self.generations.next();
         self.breakpoints
