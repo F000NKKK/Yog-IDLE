@@ -71,11 +71,7 @@ function ProjectExplorerTree({ project }: { project: ProjectInfo }) {
       const current = tabs.find((t) => t.path === node.id)?.view;
       items.push({
         label: "Open With",
-        submenu: openWithItems(node.id, current, (view) => openFile({ path: node.id, name: node.name, view })).map((item) => ({
-          ...item,
-          label: String(item.label),
-          onSelect: item.onSelect && (() => item.onSelect!()),
-        })),
+        submenu: openWithItems(node.id, current, (view) => openFile({ path: node.id, name: node.name, view })),
       });
     }
     if (node.kind === "folder") {

@@ -98,16 +98,24 @@ function extensionOf(name: string): string {
   return name.includes(".") ? (name.split(".").pop()?.toLowerCase() ?? "") : "";
 }
 
+/** Plain enough to be both a dock tab's `ContextMenuItem` and Project Explorer's `FileTreeMenuItem`. */
+interface OpenWithItem {
+  label: string;
+  checked: boolean;
+  separatorBefore: boolean;
+  onSelect: () => void;
+}
+
 /**
  * "Open With…" entries for `path`: the editors made for it first (the
  * default marked), then every editor that can open any file — the user may
  * know better than the extension. Designers and viewers made for one format
  * only appear for their own files.
  */
-export function openWithItems(path: string, current: string | undefined, pick: (view: string) => void): ContextMenuItem[] {
+export function openWithItems(path: string, current: string | undefined, pick: (view: string) => void): OpenWithItem[] {
   const matching = editorProvidersFor(path);
   const others = generalEditorProviders().filter((p) => !matching.includes(p));
-  const item = (p: EditorProvider, label: string, separatorBefore = false): ContextMenuItem => ({
+  const item = (p: EditorProvider, label: string, separatorBefore = false): OpenWithItem => ({
     label,
     checked: p.id === current,
     separatorBefore,
