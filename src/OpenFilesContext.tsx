@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ComponentType, type ReactNode } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { resolveEditor, type CodeEditorProps, type PanelDef } from "substrate-platform-ui";
+import { isBinaryFile, resolveEditor, type CodeEditorProps, type PanelDef } from "substrate-platform-ui";
 import { useBreakpoints } from "./BreakpointsContext";
 import { onOpenFileRequest } from "./fileOpenBus";
 
@@ -42,7 +42,11 @@ export function OpenFilesProvider({ children }: { children: ReactNode }) {
     () =>
       onOpenFileRequest(({ path, name }) => {
         if (tabsRef.current.some((t) => t.path === path)) return;
-        invoke<string>("file_read", { path })
+        // A binary file's editor (e.g. `ImageEditor`, via the asset
+        // protocol) reads the file itself and ignores `content` — reading it
+        // as UTF-8 text here would just fail.
+        const read = isBinaryFile(name) ? Promise.resolve("") : invoke<string>("file_read", { path });
+        read
           .then((content) => setTabs((prev) => [...prev, { id: path, path, name, content, dirty: false }]))
           .catch((err) => console.error(`failed to open ${path}:`, err));
       }),
@@ -61,6 +65,9 @@ export function OpenFilesProvider({ children }: { children: ReactNode }) {
   const save = useCallback(async (id: string) => {
     const tab = tabsRef.current.find((t) => t.id === id);
     if (!tab || !tab.dirty) return;
+    // Its `content` is a placeholder "" (see the open handler) — writing it
+    // would wipe the file.
+    if (isBinaryFile(tab.name)) return;
     await invoke("file_write", { path: tab.path, contents: tab.content }).catch((err) => console.error(`failed to save ${tab.path}:`, err));
     setTabs((prev) => prev.map((t) => (t.id === id ? { ...t, dirty: false } : t)));
   }, []);
