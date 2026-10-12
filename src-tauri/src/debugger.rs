@@ -29,7 +29,7 @@ use nix::sys::signal::Signal;
 use nix::unistd::Pid;
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager, State};
-use yog_debugger::{Debugger, SourceBreakpoints, StopReason};
+use yog_debugger::{Debugger, SourceBreakpoints, StepKind, StopReason};
 use yog_hot_reload::{GenerationAllocator, ModuleGeneration};
 use yog_symbols::SymbolTable;
 
@@ -63,7 +63,7 @@ enum TracerCmd {
         line: u32,
     },
     Continue,
-    Step,
+    Step(StepKind),
     /// The runtime just hot-reloaded the mod: reload symbols from the
     /// freshly built native and re-resolve every breakpoint against them.
     Rebind,
@@ -72,26 +72,27 @@ enum TracerCmd {
 #[derive(Clone, Copy)]
 enum Resume {
     Continue,
-    Step,
+    Step(StepKind),
 }
 
 /// The rest of the app's way to reach a debug-mode run's tracer thread.
 struct TracerHandle {
     tx: Sender<TracerCmd>,
     pid: i32,
-    /// `true` while the tracee is executing and the tracer thread is
-    /// blocked in `waitpid` (inside `continue_`/`single_step`) — the only
-    /// state in which it can't pick up a command on its own.
+    /// `true` while the tracee is executing a Continue and the tracer
+    /// thread is blocked in `waitpid` — the only state in which it can't
+    /// pick up a command on its own. (A source step is short, and
+    /// interrupting one would restart it from a different line, so
+    /// commands sent during a step simply wait for it to finish.)
     running: Arc<AtomicBool>,
 }
 
 impl TracerHandle {
     /// Queues `cmd`; if it's one that has to take effect *now* (a
-    /// breakpoint edit) and the tracee is running, also stops the traced
-    /// thread with a thread-directed `SIGSTOP` so the tracer's `waitpid`
-    /// returns and it can drain its queue — `tracer_main` treats that stop
-    /// as its own and resumes straight afterward. Returns `false` once the
-    /// tracer thread is gone.
+    /// breakpoint edit) and the tracee is running, also interrupts it so
+    /// the tracer's `waitpid` returns and it can drain its queue —
+    /// `tracer_main` gets `StopReason::Interrupted` and resumes straight
+    /// afterward. Returns `false` once the tracer thread is gone.
     fn send(&self, cmd: TracerCmd) -> bool {
         let urgent = matches!(
             cmd,
@@ -101,18 +102,7 @@ impl TracerHandle {
             return false;
         }
         if urgent && self.running.load(Ordering::SeqCst) {
-            // `tgkill`, not `kill`: a process-directed SIGSTOP would
-            // group-stop every (untraced) thread of the JVM, and nothing
-            // here would ever SIGCONT them again.
-            // SAFETY: a plain syscall taking only integer arguments.
-            unsafe {
-                nix::libc::syscall(
-                    nix::libc::SYS_tgkill,
-                    self.pid,
-                    self.pid,
-                    nix::libc::SIGSTOP,
-                );
-            }
+            yog_debugger::ptrace_debugger::interrupt(self.pid);
         }
         true
     }
@@ -921,16 +911,23 @@ fn tracer_main(
     let mut resume = Some(Resume::Continue);
     loop {
         if let Some(kind) = resume.take() {
-            running.store(true, Ordering::SeqCst);
             let result = match kind {
-                Resume::Continue => tracer.debugger.continue_(),
-                Resume::Step => tracer.debugger.single_step(),
+                Resume::Continue => {
+                    running.store(true, Ordering::SeqCst);
+                    let result = tracer.debugger.continue_();
+                    running.store(false, Ordering::SeqCst);
+                    result
+                }
+                Resume::Step(step) => {
+                    tracer
+                        .debugger
+                        .source_step(step, &tracer.symbols, tracer.module_base)
+                }
             };
-            running.store(false, Ordering::SeqCst);
             match result {
                 // Our own interrupt (see `TracerHandle::send`): apply what
                 // was queued and carry on with whatever was in progress.
-                Ok(StopReason::Signal(Signal::SIGSTOP)) => {
+                Ok(StopReason::Interrupted) => {
                     while let Ok(cmd) = rx.try_recv() {
                         tracer.apply(&app, cmd);
                     }
@@ -954,7 +951,7 @@ fn tracer_main(
         // session itself is gone (Stop, or the game exiting).
         match rx.recv() {
             Ok(TracerCmd::Continue) => resume = Some(Resume::Continue),
-            Ok(TracerCmd::Step) => resume = Some(Resume::Step),
+            Ok(TracerCmd::Step(step)) => resume = Some(Resume::Step(step)),
             Ok(cmd) => tracer.apply(&app, cmd),
             Err(_) => break,
         }
@@ -1031,7 +1028,7 @@ impl Tracer {
             }
             // Only meaningful while paused, where `tracer_main` handles
             // them itself — one arriving mid-run is a stale double-click.
-            TracerCmd::Continue | TracerCmd::Step => {}
+            TracerCmd::Continue | TracerCmd::Step(_) => {}
         }
     }
 
@@ -1120,7 +1117,8 @@ impl Tracer {
     fn emit_stop(&self, app: &AppHandle, reason: StopReason) {
         let reason_str = match reason {
             StopReason::Breakpoint(_) => "breakpoint",
-            StopReason::Signal(_) => "signal",
+            StopReason::Signal(Signal::SIGTRAP) => "step",
+            StopReason::Signal(_) | StopReason::Interrupted => "signal",
             StopReason::Exited(_) | StopReason::Killed(_) => "exited",
         };
         let stack_trace = if reason_str == "exited" {
@@ -1198,9 +1196,17 @@ pub fn debug_continue(state: State<DebugState>) -> Result<(), String> {
     }
 }
 
+/// `kind`: `"over"` (F10, the default), `"into"` (F11) or `"out"`
+/// (Shift+F11) — a source-level step, not a single instruction.
 #[tauri::command]
-pub fn debug_step(state: State<DebugState>) -> Result<(), String> {
-    if tracer_send(&state, TracerCmd::Step) {
+pub fn debug_step(state: State<DebugState>, kind: Option<String>) -> Result<(), String> {
+    let kind = match kind.as_deref() {
+        None | Some("over") => StepKind::Over,
+        Some("into") => StepKind::Into,
+        Some("out") => StepKind::Out,
+        Some(other) => return Err(format!("unknown step kind {other:?}")),
+    };
+    if tracer_send(&state, TracerCmd::Step(kind)) {
         Ok(())
     } else {
         Err("no active debug session".to_string())
