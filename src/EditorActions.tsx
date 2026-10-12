@@ -10,6 +10,7 @@ import {
   editorChangeCase,
   editorCommentSelection,
   editorFind,
+  editorReplace,
   editorGoToLine,
   editorSelectAll,
   editorUncommentSelection,
@@ -21,6 +22,9 @@ import {
   editorUndo,
   useEditorView,
   useKeybinding,
+  formatShortcut,
+  t,
+  useT,
   type MenuBarDropdownEntry,
   type ToolbarSection,
 } from "substrate-platform-ui";
@@ -77,7 +81,7 @@ export function useEditorActions() {
       // would silently undo that.
       if (view.state.doc.toString() === contents) editorSetText(view, formatted);
     } catch (err) {
-      reportError(`Format Document failed for ${tab.name}: ${err}`);
+      reportError(t("Format Document failed for {name}: {error}", { name: tab.name, error: String(err) }));
     }
   }
 
@@ -93,12 +97,13 @@ export function useEditorActions() {
     canRedo: !!view && editorCanRedo(view),
     redo: () => view && editorRedo(view),
     hasSelection: !!view && editorHasSelection(view),
-    cut: () => view && editorCut(view).catch((err) => reportError(`Cut failed: ${err}`)),
-    copy: () => view && editorCopy(view).catch((err) => reportError(`Copy failed: ${err}`)),
+    cut: () => view && editorCut(view).catch((err) => reportError(t("Cut failed: {error}", { error: String(err) }))),
+    copy: () => view && editorCopy(view).catch((err) => reportError(t("Copy failed: {error}", { error: String(err) }))),
     canPaste: !!view && !view.state.readOnly,
-    paste: () => view && editorPaste(view).catch((err) => reportError(`Paste failed: ${err}`)),
+    paste: () => view && editorPaste(view).catch((err) => reportError(t("Paste failed: {error}", { error: String(err) }))),
     canFind: !!view,
     find: () => view && editorFind(view),
+    replace: () => view && editorReplace(view),
     goToLine: () => view && editorGoToLine(view),
     selectAll: () => view && editorSelectAll(view),
     canEdit: !!view && !view.state.readOnly,
@@ -125,39 +130,41 @@ export function EditorKeybindings({ actions }: { actions: EditorActions }) {
 }
 
 export function EditMenu({ actions: a }: { actions: EditorActions }) {
+  const t = useT();
   const items: MenuBarDropdownEntry[] = [
-    { label: "Undo", shortcut: "Ctrl+Z", disabled: !a.canUndo, onClick: a.undo },
-    { label: "Redo", shortcut: "Ctrl+Y", disabled: !a.canRedo, onClick: a.redo },
-    { label: "Cut", shortcut: "Ctrl+X", disabled: !a.hasSelection || !a.canPaste, onClick: a.cut, separatorBefore: true },
-    { label: "Copy", shortcut: "Ctrl+C", disabled: !a.hasSelection, onClick: a.copy },
-    { label: "Paste", shortcut: "Ctrl+V", disabled: !a.canPaste, onClick: a.paste },
-    { label: "Select All", shortcut: "Ctrl+A", disabled: !a.canFind, onClick: a.selectAll },
-    { label: "Find", shortcut: "Ctrl+F", disabled: !a.canFind, onClick: a.find, separatorBefore: true },
-    { label: "Replace", shortcut: "Ctrl+H", disabled: !a.canPaste, onClick: a.find },
-    { label: "Go To Line…", shortcut: "Ctrl+G", disabled: !a.canFind, onClick: a.goToLine },
-    { label: "Toggle Comment", shortcut: "Ctrl+/", disabled: !a.canToggleComment, onClick: a.toggleComment, separatorBefore: true },
-    { label: "Comment Selection", shortcut: "Ctrl+K Ctrl+C", disabled: !a.canToggleComment || !a.canEdit, onClick: a.commentSelection },
-    { label: "Uncomment Selection", shortcut: "Ctrl+K Ctrl+U", disabled: !a.canToggleComment || !a.canEdit, onClick: a.uncommentSelection },
-    { label: "Make Lowercase", shortcut: "Ctrl+U", disabled: !a.hasSelection || !a.canEdit, onClick: a.lowercase },
-    { label: "Make Uppercase", shortcut: "Ctrl+Shift+U", disabled: !a.hasSelection || !a.canEdit, onClick: a.uppercase },
-    { label: "Format Document", shortcut: "Shift+Alt+F", disabled: !a.canFormat, onClick: a.format },
+    { label: t("Undo"), shortcut: "Ctrl+Z", disabled: !a.canUndo, onClick: a.undo },
+    { label: t("Redo"), shortcut: "Ctrl+Y", disabled: !a.canRedo, onClick: a.redo },
+    { label: t("Cut"), shortcut: "Ctrl+X", disabled: !a.hasSelection || !a.canPaste, onClick: a.cut, separatorBefore: true },
+    { label: t("Copy"), shortcut: "Ctrl+C", disabled: !a.hasSelection, onClick: a.copy },
+    { label: t("Paste"), shortcut: "Ctrl+V", disabled: !a.canPaste, onClick: a.paste },
+    { label: t("Select All"), shortcut: "Ctrl+A", disabled: !a.canFind, onClick: a.selectAll },
+    { label: t("Find"), shortcut: "Ctrl+F", disabled: !a.canFind, onClick: a.find, separatorBefore: true },
+    { label: t("Replace"), shortcut: "Ctrl+H", disabled: !a.canPaste, onClick: a.replace },
+    { label: t("Go To Line…"), shortcut: "Ctrl+G", disabled: !a.canFind, onClick: a.goToLine },
+    { label: t("Toggle Comment"), shortcut: "Ctrl+/", disabled: !a.canToggleComment, onClick: a.toggleComment, separatorBefore: true },
+    { label: t("Comment Selection"), shortcut: "Ctrl+K Ctrl+C", disabled: !a.canToggleComment || !a.canEdit, onClick: a.commentSelection },
+    { label: t("Uncomment Selection"), shortcut: "Ctrl+K Ctrl+U", disabled: !a.canToggleComment || !a.canEdit, onClick: a.uncommentSelection },
+    { label: t("Make Lowercase"), shortcut: "Ctrl+U", disabled: !a.hasSelection || !a.canEdit, onClick: a.lowercase },
+    { label: t("Make Uppercase"), shortcut: "Ctrl+Shift+U", disabled: !a.hasSelection || !a.canEdit, onClick: a.uppercase },
+    { label: t("Format Document"), shortcut: "Shift+Alt+F", disabled: !a.canFormat, onClick: a.format },
   ];
-  return <MenuBarItem label="Edit" items={items} />;
+  return <MenuBarItem label={t("Edit")} items={items} />;
 }
 
 /** The toolbar's editing sections — Save/Save All, Undo/Redo, Format/Toggle Comment — enabled by the active editor's state. */
 export function editorToolbarSections(a: EditorActions): ToolbarSection[] {
+  const withShortcut = (label: string, shortcut: string) => `${t(label)} (${formatShortcut(shortcut)})`;
   return [
     [
-      { icon: "save", label: "Save All (Ctrl+Shift+S)", disabled: !a.hasDirty, onClick: a.saveAll },
+      { icon: "save", label: withShortcut("Save All", "Ctrl+Shift+S"), disabled: !a.hasDirty, onClick: a.saveAll },
     ],
     [
-      { icon: "undo", label: "Undo (Ctrl+Z)", disabled: !a.canUndo, onClick: a.undo },
-      { icon: "redo", label: "Redo (Ctrl+Y)", disabled: !a.canRedo, onClick: a.redo },
+      { icon: "undo", label: withShortcut("Undo", "Ctrl+Z"), disabled: !a.canUndo, onClick: a.undo },
+      { icon: "redo", label: withShortcut("Redo", "Ctrl+Y"), disabled: !a.canRedo, onClick: a.redo },
     ],
     [
-      { icon: "format", label: "Format Document (Shift+Alt+F)", disabled: !a.canFormat, onClick: a.format },
-      { icon: "comment", label: "Toggle Comment (Ctrl+/)", disabled: !a.canToggleComment, onClick: a.toggleComment },
+      { icon: "format", label: withShortcut("Format Document", "Shift+Alt+F"), disabled: !a.canFormat, onClick: a.format },
+      { icon: "comment", label: withShortcut("Toggle Comment", "Ctrl+/"), disabled: !a.canToggleComment, onClick: a.toggleComment },
     ],
   ];
 }
