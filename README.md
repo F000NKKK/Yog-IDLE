@@ -3,8 +3,8 @@
 An IDE for [Yog](https://github.com/F000NKKK/Yog-Mod-Loader) Minecraft
 mods — edit, build, run, debug, and hot-reload a mod from a Visual
 Studio–style layout (Project Explorer, editor tabs, Output log, integrated
-Terminal, Debug panel), with a visual `yog-ui` screen designer (Toolbox,
-Properties, a central canvas with live preview in the running game) planned
+Terminal, Debug panel, Properties), with a visual `yog-ui` screen designer
+(Toolbox, a central canvas with live preview in the running game) planned
 on top.
 
 Built with [Tauri](https://tauri.app/) (Rust backend, web frontend) on top
@@ -28,31 +28,45 @@ npm run tauri dev
 Works today:
 
 - **Projects** — open a folder or a `yog.toml`; the last project is
-  reopened on startup and recent ones are listed in the File menu. Project
-  Explorer with create/rename/delete, multi-tab code editor with Save All.
+  reopened on startup and recent ones are listed in the File menu, along
+  with Close / Close All / Close Folder, Save / Save As / Save All and
+  Exit. Project Explorer with create/rename/delete and Open With.
+- **Editor** — CodeMirror tabs with pinning and a Visual Studio–style tab
+  menu (close others / to the right / unpinned, copy path, Open With);
+  Undo/Redo, Toggle Comment (Ctrl+/) and the rest of the Edit menu act on
+  the focused editor. Files can have several views, switched from buttons
+  in the tab strip: Markdown has Source, Preview and Preview to the Side
+  (Ctrl+Shift+V, Ctrl+K V) with GFM, footnotes, alerts, KaTeX math,
+  highlighted code and Mermaid diagrams; `yog.lang` files open in a
+  translation designer. The chosen view is remembered per extension.
+- **Properties** — a Visual Studio–style property grid for the selection
+  (project, `yog.toml` entries, files), edited in place and written back
+  with formatting preserved.
 - **Build & publish** — Build (`yog build`) and saved publish profiles
   (package as `.yog`, or `yog publish exports`), with output streamed to
-  the Output panel.
+  the Output panel, which keeps a separate source per producer (Build,
+  Run, Debug, Game) like Visual Studio's "Show output from".
 - **Run** — `[run.<name>]` targets from `yog.toml` (`yog run <name>`),
-  Release or Debug mode; Stop/Restart from the toolbar. On Linux the game
-  reports in over `yog-runtime`'s control socket, driving the status bar
-  (pid, loaded mods).
+  Release or Debug mode; Stop/Restart from the toolbar. The game outlives
+  the IDE if it's closed. On Linux the game reports in over
+  `yog-runtime`'s control socket, driving the status bar (pid, loaded
+  mods).
 - **Hot reload** (Linux) — rebuilds the mod and swaps the new `.yog` into
   the running game over the control socket; only works while the ABI
   version is unchanged.
 - **Native debugging** (Linux, `ptrace`) — Debug-mode runs attach
   `yog-debugger` to the game: gutter breakpoints (settable before or during
-  a session), Continue/Step, and a call stack in the Debug panel.
-  Experimental: only the game's main thread is traced so far.
+  a session), Break All (stops the render and server threads only, so
+  audio and networking keep going), Continue and Step Over/Into/Out, a
+  per-thread call stack unwound with DWARF CFI, Just My Code (frames
+  outside the mod collapsed), and a Locals view.
 - Integrated terminal(s), settings window, and the Substrate docking shell.
 
 Planned:
 
-- The visual `yog-ui` designer — Toolbox, Properties, a design canvas, and
-  live preview in the running client (the Toolbox/Properties panels are
-  placeholders today).
-- Editor commands (Undo/Redo/Format/Toggle Comment) wired to the focused
-  editor.
+- The visual `yog-ui` designer — Toolbox, a design canvas, and live
+  preview in the running client (the Toolbox is a placeholder today).
+- Watch expressions and values on hover while debugging.
 - Debugging and hot reload on Windows and macOS.
 
 ## License
