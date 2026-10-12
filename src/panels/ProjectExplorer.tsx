@@ -1,4 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
+import { emit } from "@tauri-apps/api/event";
 import { FileTree, useDirectoryTree, type DirEntry, type FileTreeMenuItem, type FileTreeNode } from "substrate-platform-ui";
 import { useProject, type ProjectInfo } from "../ProjectContext";
 import { requestOpenFile } from "../fileOpenBus";
@@ -10,6 +11,11 @@ const dirCommands = {
   rename: (from: string, to: string) => invoke<void>("dir_rename", { from, to }),
   remove: (path: string) => invoke<void>("dir_remove", { path }),
 };
+
+/** A folder that failed to list stays unloaded in the tree (expanding it again retries) — say why in Output rather than only the devtools console. */
+function reportListError(error: unknown, path: string) {
+  emit("workflow-output", `[error] failed to list ${path}: ${error}`);
+}
 
 export function ProjectExplorer() {
   const { project, error } = useProject();
@@ -25,7 +31,7 @@ export function ProjectExplorer() {
 }
 
 function ProjectExplorerTree({ project }: { project: ProjectInfo }) {
-  const tree = useDirectoryTree(project.root, project.name, dirCommands);
+  const tree = useDirectoryTree(project.root, project.name, dirCommands, reportListError);
 
   function getMenuItems(node: FileTreeNode): FileTreeMenuItem[] {
     const items: FileTreeMenuItem[] = [];
