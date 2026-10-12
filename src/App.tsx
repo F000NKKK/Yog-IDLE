@@ -199,10 +199,12 @@ function DebugMenu() {
     <MenuBarItem
       label="Debug"
       items={[
-        { label: "Continue", onClick: continue_, disabled: !paused },
-        { label: "Step", onClick: step, disabled: !paused },
-        { label: "Restart", onClick: restart, disabled: !debugging || !canRestart },
-        { label: "Stop Debugging", onClick: stop, disabled: !debugging },
+        { label: "Continue", onClick: continue_, disabled: !paused, shortcut: "F5" },
+        { label: "Step Over", onClick: () => step("over"), disabled: !paused, shortcut: "F10", separatorBefore: true },
+        { label: "Step Into", onClick: () => step("into"), disabled: !paused, shortcut: "F11" },
+        { label: "Step Out", onClick: () => step("out"), disabled: !paused, shortcut: "Shift+F11" },
+        { label: "Restart", onClick: restart, disabled: !debugging || !canRestart, shortcut: "Ctrl+Shift+F5", separatorBefore: true },
+        { label: "Stop Debugging", onClick: stop, disabled: !debugging, shortcut: "Shift+F5" },
       ]}
     />
   );
