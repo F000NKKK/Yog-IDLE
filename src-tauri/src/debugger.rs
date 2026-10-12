@@ -17,10 +17,12 @@ use std::io::{BufRead, BufReader, Write};
 use std::os::unix::net::UnixStream;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
-use std::sync::Mutex;
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::mpsc::{self, Receiver, Sender};
+use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
+use nix::sys::signal::Signal;
 use nix::unistd::Pid;
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager, State};
@@ -29,7 +31,9 @@ use yog_debugger::{Debugger, SourceBreakpoints, StopReason};
 use yog_hot_reload::{GenerationAllocator, ModuleGeneration};
 use yog_symbols::SymbolTable;
 
-struct DebugBits {
+/// Everything the tracer thread owns for one attached debug session — see
+/// `tracer_main`. Never leaves that thread.
+struct Tracer {
     debugger: Debugger,
     symbols: SymbolTable,
     module_base: u64,
@@ -38,9 +42,62 @@ struct DebugBits {
     breakpoints: SourceBreakpoints,
 }
 
+/// A request for the tracer thread. Breakpoint edits are applied whether
+/// the tracee is paused or running (a running one is briefly interrupted —
+/// see `TracerHandle::send`); `Continue`/`Step` only mean anything while
+/// it's paused.
+enum TracerCmd {
+    SetBreakpoint { file: String, line: u32 },
+    ClearBreakpoint { file: String, line: u32 },
+    Continue,
+    Step,
+}
+
+#[derive(Clone, Copy)]
+enum Resume {
+    Continue,
+    Step,
+}
+
+/// The rest of the app's way to reach a debug-mode run's tracer thread.
+struct TracerHandle {
+    tx: Sender<TracerCmd>,
+    pid: i32,
+    /// `true` while the tracee is executing and the tracer thread is
+    /// blocked in `waitpid` (inside `continue_`/`single_step`) — the only
+    /// state in which it can't pick up a command on its own.
+    running: Arc<AtomicBool>,
+}
+
+impl TracerHandle {
+    /// Queues `cmd`; if it's one that has to take effect *now* (a
+    /// breakpoint edit) and the tracee is running, also stops the traced
+    /// thread with a thread-directed `SIGSTOP` so the tracer's `waitpid`
+    /// returns and it can drain its queue — `tracer_main` treats that stop
+    /// as its own and resumes straight afterward. Returns `false` once the
+    /// tracer thread is gone.
+    fn send(&self, cmd: TracerCmd) -> bool {
+        let urgent = matches!(cmd, TracerCmd::SetBreakpoint { .. } | TracerCmd::ClearBreakpoint { .. });
+        if self.tx.send(cmd).is_err() {
+            return false;
+        }
+        if urgent && self.running.load(Ordering::SeqCst) {
+            // `tgkill`, not `kill`: a process-directed SIGSTOP would
+            // group-stop every (untraced) thread of the JVM, and nothing
+            // here would ever SIGCONT them again.
+            // SAFETY: a plain syscall taking only integer arguments.
+            unsafe {
+                nix::libc::syscall(nix::libc::SYS_tgkill, self.pid, self.pid, nix::libc::SIGSTOP);
+            }
+        }
+        true
+    }
+}
+
 /// One `yog run` launch — always present while the process is up, whether
-/// or not it's a debug-mode run. `debug` is only `Some` once a debug-mode
-/// run has actually attached.
+/// or not it's a debug-mode run. `tracer` is only `Some` for a debug-mode
+/// run, from the moment the game reported its pid (attach itself then
+/// happens on the tracer thread).
 pub struct RunSession {
     /// Distinguishes this launch from whatever replaces it — a Restart
     /// starts a new session while the old one's socket reader/exit watcher
@@ -49,7 +106,7 @@ pub struct RunSession {
     id: u64,
     wrapper: Child,
     real_pid: Option<i32>,
-    debug: Option<DebugBits>,
+    tracer: Option<TracerHandle>,
 }
 
 static NEXT_SESSION_ID: AtomicU64 = AtomicU64::new(1);
@@ -197,7 +254,7 @@ pub fn run_with_mode(app: AppHandle, project_root: String, config_name: String, 
     }
 
     let id = NEXT_SESSION_ID.fetch_add(1, Ordering::Relaxed);
-    *app.state::<DebugState>().0.lock().unwrap() = Some(RunSession { id, wrapper: child, real_pid: None, debug: None });
+    *app.state::<DebugState>().0.lock().unwrap() = Some(RunSession { id, wrapper: child, real_pid: None, tracer: None });
     let _ = app.emit("game-status", GameStatus { stage: "starting", pid: None, mods: Vec::new() });
 
     spawn_exit_watcher(app.clone(), id);
@@ -284,13 +341,10 @@ fn connect_and_watch(app: AppHandle, session_id: u64, socket_path: PathBuf, mod_
             _ => return,
         }
     }
-    *ACTIVE_PID.lock().unwrap() = Some(real_pid);
     let _ = app.emit("game-status", GameStatus { stage: "ready", pid: Some(real_pid), mods });
 
     if debug {
-        if let Err(e) = try_attach(&app, real_pid, &mod_id, &native_path) {
-            emit_failed(&app, e);
-        }
+        start_tracer(&app, session_id, real_pid, mod_id, native_path);
     }
 
     // Keep reading further event lines (hot-reload-done, ...) for the rest
@@ -337,7 +391,6 @@ fn mark_exited(app: &AppHandle, session_id: u64) {
         }
     };
     if had_session {
-        *ACTIVE_PID.lock().unwrap() = None;
         let _ = app.emit("game-status", GameStatus { stage: "exited", pid: None, mods: Vec::new() });
         let _ = app.emit("debug-stopped", DebugStoppedEvent { reason: "exited".to_string(), stack_trace: Vec::new() });
         // `useModRunTargets`'s `running` flag only ever resets on this
@@ -384,187 +437,269 @@ fn emit_failed(app: &AppHandle, message: impl Into<String>) {
     let _ = app.emit("workflow-output", format!("[error] debug: {message}"));
 }
 
-fn try_attach(app: &AppHandle, real_pid: i32, mod_id: &str, native_path: &Path) -> Result<(), String> {
-    let symbols = SymbolTable::load(native_path).map_err(|e| format!("loading symbols from {}: {e}", native_path.display()))?;
-    let mut debugger = Debugger::attach(real_pid).map_err(|e| {
-        let raw = e.to_string();
-        if raw.contains("EPERM") {
-            format!(
-                "attaching to pid {real_pid}: permission denied. Linux's ptrace security policy (Yama) only allows a process \
-                 to attach to its own descendants by default — the game process the control socket found is very likely not \
-                 a descendant of Yog-IDLE (e.g. an existing Gradle daemon reused across launches). Either run \
-                 `echo 0 | sudo tee /proc/sys/kernel/yama/ptrace_scope` (session-only, resets on reboot) or grant Yog-IDLE's \
-                 own binary the capability directly: `sudo setcap cap_sys_ptrace+ep <path to the yog-idle binary>` — either \
-                 way, a capability granted to the binary only takes effect the *next* time Yog-IDLE itself is launched, not \
-                 the currently-running instance, so restart it before trying again."
-            )
-        } else {
-            format!("attaching to pid {real_pid}: {raw}")
+/// Registers a `TracerHandle` on the session (so breakpoint toggles made
+/// while attach is still in progress queue up instead of being lost) and
+/// spawns the tracer thread itself.
+fn start_tracer(app: &AppHandle, session_id: u64, real_pid: i32, mod_id: String, native_path: PathBuf) {
+    let (tx, rx) = mpsc::channel();
+    let running = Arc::new(AtomicBool::new(false));
+    {
+        let debug_state = app.state::<DebugState>();
+        let mut guard = debug_state.0.lock().unwrap();
+        match guard.as_mut() {
+            Some(session) if session.id == session_id => {
+                session.tracer = Some(TracerHandle { tx, pid: real_pid, running: running.clone() });
+            }
+            _ => return,
         }
-    })?;
-    let prefix = format!("yog-{mod_id}-");
-    let module_base =
-        find_module_base_by_prefix(debugger.pid(), &prefix).ok_or_else(|| format!("couldn't locate {mod_id}'s native in pid {real_pid}'s memory map"))?;
-
-    let generation = GenerationAllocator::new().next();
-    let mut breakpoints = SourceBreakpoints::new();
-    for (file, line) in PENDING_BREAKPOINTS.lock().unwrap().iter().cloned().collect::<Vec<_>>() {
-        let _ = breakpoints.set(&mut debugger, mod_id, generation, module_base, &symbols, &file, line);
     }
-
-    let debug_bits = DebugBits { debugger, symbols, module_base, mod_id: mod_id.to_string(), generation, breakpoints };
-    if let Some(session) = app.state::<DebugState>().0.lock().unwrap().as_mut() {
-        session.debug = Some(debug_bits);
-    }
-
-    let _ = app.emit("debug-attached", real_pid);
-    Ok(())
+    let app = app.clone();
+    std::thread::spawn(move || tracer_main(app, real_pid, mod_id, native_path, rx, running));
 }
 
-/// The pid `debug_stop` signals directly, kept outside `DebugState`'s own
-/// mutex on purpose: `debug_continue`/`debug_step` hold that mutex (via
-/// `Option::take`) for as long as the tracee is actually running — which
-/// can be indefinite — so `debug_stop` needs a way to interrupt a running
-/// target that doesn't depend on acquiring the same lock. Killing the real
-/// process also naturally unblocks whatever `waitpid` call is in flight,
-/// which is what lets a "continue" in progress actually stop.
-static ACTIVE_PID: Mutex<Option<i32>> = Mutex::new(None);
+/// The one thread that ever touches the tracee. Linux `ptrace` binds a
+/// tracee to the *thread* that attached, not the process — every later
+/// `PTRACE_*` request from any other thread fails with `ESRCH` — so attach,
+/// breakpoint edits, continue/step, and backtraces all have to run here,
+/// fed by `TracerCmd`s, rather than on whichever Tauri command thread
+/// happened to ask.
+///
+/// `Debugger::attach` leaves the tracee stopped (attach + `waitpid`), so
+/// right after arming breakpoints this resumes it — otherwise the game
+/// would sit frozen with nothing in the UI able to continue it.
+fn tracer_main(app: AppHandle, real_pid: i32, mod_id: String, native_path: PathBuf, rx: Receiver<TracerCmd>, running: Arc<AtomicBool>) {
+    let mut tracer = match Tracer::attach(&app, real_pid, &mod_id, &native_path) {
+        Ok(t) => t,
+        Err(e) => {
+            emit_failed(&app, e);
+            return;
+        }
+    };
+    // Anything toggled while attach was in progress — already reflected in
+    // `BREAKPOINTS` (and therefore armed above) or not, applying it again
+    // is idempotent.
+    while let Ok(cmd) = rx.try_recv() {
+        tracer.apply(&app, cmd);
+    }
+    let _ = app.emit("debug-attached", real_pid);
 
-/// Breakpoints requested before a debug session is attached — applied the
-/// moment attach succeeds, same as any IDE lets you set breakpoints before
-/// pressing Start.
-static PENDING_BREAKPOINTS: Mutex<Vec<(String, u32)>> = Mutex::new(Vec::new());
+    let mut resume = Some(Resume::Continue);
+    loop {
+        if let Some(kind) = resume.take() {
+            running.store(true, Ordering::SeqCst);
+            let result = match kind {
+                Resume::Continue => tracer.debugger.continue_(),
+                Resume::Step => tracer.debugger.single_step(),
+            };
+            running.store(false, Ordering::SeqCst);
+            match result {
+                // Our own interrupt (see `TracerHandle::send`): apply what
+                // was queued and carry on with whatever was in progress.
+                Ok(StopReason::Signal(Signal::SIGSTOP)) => {
+                    while let Ok(cmd) = rx.try_recv() {
+                        tracer.apply(&app, cmd);
+                    }
+                    resume = Some(kind);
+                    continue;
+                }
+                Ok(reason) => {
+                    let exited = matches!(reason, StopReason::Exited(_) | StopReason::Killed(_));
+                    tracer.emit_stop(&app, reason);
+                    if exited {
+                        return;
+                    }
+                }
+                Err(e) => {
+                    emit_failed(&app, e.to_string());
+                    break;
+                }
+            }
+        }
+        // Paused — wait for the user. The channel closing means the
+        // session itself is gone (Stop, or the game exiting).
+        match rx.recv() {
+            Ok(TracerCmd::Continue) => resume = Some(Resume::Continue),
+            Ok(TracerCmd::Step) => resume = Some(Resume::Step),
+            Ok(cmd) => tracer.apply(&app, cmd),
+            Err(_) => break,
+        }
+    }
+    let _ = tracer.debugger.detach();
+}
+
+impl Tracer {
+    fn attach(app: &AppHandle, real_pid: i32, mod_id: &str, native_path: &Path) -> Result<Self, String> {
+        let symbols = SymbolTable::load(native_path).map_err(|e| format!("loading symbols from {}: {e}", native_path.display()))?;
+        let mut debugger = Debugger::attach(real_pid).map_err(|e| {
+            let raw = e.to_string();
+            if raw.contains("EPERM") {
+                format!(
+                    "attaching to pid {real_pid}: permission denied. Linux's ptrace security policy (Yama) only allows a process \
+                     to attach to its own descendants by default — the game process the control socket found is very likely not \
+                     a descendant of Yog-IDLE (e.g. an existing Gradle daemon reused across launches). Either run \
+                     `echo 0 | sudo tee /proc/sys/kernel/yama/ptrace_scope` (session-only, resets on reboot) or grant Yog-IDLE's \
+                     own binary the capability directly: `sudo setcap cap_sys_ptrace+ep <path to the yog-idle binary>` — either \
+                     way, a capability granted to the binary only takes effect the *next* time Yog-IDLE itself is launched, not \
+                     the currently-running instance, so restart it before trying again."
+                )
+            } else {
+                format!("attaching to pid {real_pid}: {raw}")
+            }
+        })?;
+        let prefix = format!("yog-{mod_id}-");
+        let Some(module_base) = find_module_base_by_prefix(debugger.pid(), &prefix) else {
+            // Attached but unusable — let the game go rather than leaving
+            // it stopped.
+            let _ = debugger.detach();
+            return Err(format!("couldn't locate {mod_id}'s native in pid {real_pid}'s memory map"));
+        };
+
+        let mut tracer = Tracer {
+            debugger,
+            symbols,
+            module_base,
+            mod_id: mod_id.to_string(),
+            generation: GenerationAllocator::new().next(),
+            breakpoints: SourceBreakpoints::new(),
+        };
+        for (file, line) in BREAKPOINTS.lock().unwrap().clone() {
+            tracer.set_breakpoint(app, file, line);
+        }
+        Ok(tracer)
+    }
+
+    fn apply(&mut self, app: &AppHandle, cmd: TracerCmd) {
+        match cmd {
+            TracerCmd::SetBreakpoint { file, line } => self.set_breakpoint(app, file, line),
+            TracerCmd::ClearBreakpoint { file, line } => {
+                if let Err(e) = self.breakpoints.clear(&mut self.debugger, &self.mod_id, &file, line) {
+                    warn(app, format!("clearing breakpoint {file}:{line}: {e}"));
+                }
+            }
+            // Only meaningful while paused, where `tracer_main` handles
+            // them itself — one arriving mid-run is a stale double-click.
+            TracerCmd::Continue | TracerCmd::Step => {}
+        }
+    }
+
+    /// Arms `file:line` unless it's already tracked (`SourceBreakpoints`
+    /// itself would happily track a duplicate), reporting both outright
+    /// failures and lines that don't map to any code in the native.
+    fn set_breakpoint(&mut self, app: &AppHandle, file: String, line: u32) {
+        if self.breakpoints.all().iter().any(|bp| bp.file == file && bp.line == line) {
+            return;
+        }
+        match self.breakpoints.set(&mut self.debugger, &self.mod_id, self.generation, self.module_base, &self.symbols, &file, line) {
+            Err(e) => warn(app, format!("setting breakpoint {file}:{line}: {e}")),
+            Ok(()) => {
+                if self.breakpoints.all().last().is_some_and(|bp| bp.addr.is_none()) {
+                    warn(app, format!("breakpoint {file}:{line} doesn't map to any code in {}'s native — it won't be hit", self.mod_id));
+                }
+            }
+        }
+    }
+
+    fn stack_trace(&self) -> Vec<StackFrameOut> {
+        let Ok(addrs) = self.debugger.backtrace(64) else { return Vec::new() };
+        addrs
+            .into_iter()
+            .enumerate()
+            .filter_map(|(i, addr)| {
+                let offset = addr.checked_sub(self.module_base)?;
+                let location = self.symbols.resolve_addr(offset)?;
+                Some(StackFrameOut {
+                    id: i as i64,
+                    name: location.function.unwrap_or_else(|| "<unknown>".to_string()),
+                    file: location.file.to_string_lossy().into_owned(),
+                    line: location.line,
+                })
+            })
+            .collect()
+    }
+
+    fn emit_stop(&self, app: &AppHandle, reason: StopReason) {
+        let reason_str = match reason {
+            StopReason::Breakpoint(_) => "breakpoint",
+            StopReason::Signal(_) => "signal",
+            StopReason::Exited(_) | StopReason::Killed(_) => "exited",
+        };
+        let stack_trace = if reason_str == "exited" { Vec::new() } else { self.stack_trace() };
+        let _ = app.emit("debug-stopped", DebugStoppedEvent { reason: reason_str.to_string(), stack_trace });
+    }
+}
+
+fn warn(app: &AppHandle, message: String) {
+    let _ = app.emit("workflow-output", format!("[warn] debug: {message}"));
+}
+
+/// Mirrors the editor gutter: every breakpoint the user currently has set,
+/// whether or not a debug session is attached — kept in sync on every
+/// toggle (deduplicated), so a session attaching later (or a second one
+/// after Restart) arms exactly what the gutter shows, same as any IDE lets
+/// you set breakpoints before pressing Start.
+static BREAKPOINTS: Mutex<Vec<(String, u32)>> = Mutex::new(Vec::new());
+
+fn tracer_send(state: &State<DebugState>, cmd: TracerCmd) -> bool {
+    let guard = state.inner().0.lock().unwrap();
+    guard.as_ref().and_then(|s| s.tracer.as_ref()).is_some_and(|tracer| tracer.send(cmd))
+}
 
 #[tauri::command]
 pub fn debug_set_breakpoint(state: State<DebugState>, file: String, line: u32) -> Result<(), String> {
-    let mut guard = state.inner().0.lock().unwrap();
-    match guard.as_mut().and_then(|s| s.debug.as_mut()) {
-        Some(bits) => bits.breakpoints.set(&mut bits.debugger, &bits.mod_id, bits.generation, bits.module_base, &bits.symbols, &file, line).map_err(|e| e.to_string()),
-        None => {
-            PENDING_BREAKPOINTS.lock().unwrap().push((file, line));
-            Ok(())
+    {
+        let mut breakpoints = BREAKPOINTS.lock().unwrap();
+        if !breakpoints.iter().any(|(f, l)| f == &file && *l == line) {
+            breakpoints.push((file.clone(), line));
         }
     }
+    // Errors from actually arming it surface in Output from the tracer
+    // thread; with no session, remembering it above is all there is to do.
+    tracer_send(&state, TracerCmd::SetBreakpoint { file, line });
+    Ok(())
 }
 
 #[tauri::command]
 pub fn debug_clear_breakpoint(state: State<DebugState>, file: String, line: u32) -> Result<(), String> {
-    let mut guard = state.inner().0.lock().unwrap();
-    match guard.as_mut().and_then(|s| s.debug.as_mut()) {
-        Some(bits) => bits.breakpoints.clear(&mut bits.debugger, &bits.mod_id, &file, line).map_err(|e| e.to_string()),
-        None => {
-            PENDING_BREAKPOINTS.lock().unwrap().retain(|(f, l)| !(f == &file && *l == line));
-            Ok(())
-        }
-    }
-}
-
-fn stack_trace_of(bits: &DebugBits) -> Vec<StackFrameOut> {
-    let Ok(addrs) = bits.debugger.backtrace(64) else { return Vec::new() };
-    addrs
-        .into_iter()
-        .enumerate()
-        .filter_map(|(i, addr)| {
-            let offset = addr.checked_sub(bits.module_base)?;
-            let location = bits.symbols.resolve_addr(offset)?;
-            Some(StackFrameOut {
-                id: i as i64,
-                name: location.function.unwrap_or_else(|| "<unknown>".to_string()),
-                file: location.file.to_string_lossy().into_owned(),
-                line: location.line,
-            })
-        })
-        .collect()
-}
-
-fn emit_stop(app: &AppHandle, bits: &DebugBits, reason: StopReason) {
-    let reason_str = match reason {
-        StopReason::Breakpoint(_) => "breakpoint",
-        StopReason::Signal(_) => "signal",
-        StopReason::Exited(_) | StopReason::Killed(_) => "exited",
-    };
-    let stack_trace = if reason_str == "exited" { Vec::new() } else { stack_trace_of(bits) };
-    let _ = app.emit("debug-stopped", DebugStoppedEvent { reason: reason_str.to_string(), stack_trace });
-}
-
-/// Takes the whole `RunSession` out of `DebugState` (so the mutex is free
-/// for `debug_stop`/`debug_set_breakpoint` to at least *observe* "nothing
-/// to act on" instead of deadlocking) and runs `op` — `Debugger::continue_`
-/// or `single_step`, both of which block on `waitpid` for as long as the
-/// tracee keeps running — on a background thread. The session goes back
-/// into `DebugState` afterward unless the tracee exited.
-fn run_in_background(app: AppHandle, state: State<DebugState>, op: impl FnOnce(&mut Debugger) -> Result<StopReason, yog_debugger::DebugError> + Send + 'static) -> Result<(), String> {
-    let mut guard = state.inner().0.lock().unwrap();
-    if guard.as_ref().and_then(|s| s.debug.as_ref()).is_none() {
-        return Err("no active debug session".to_string());
-    }
-    let mut session = guard.take().unwrap();
-    drop(guard);
-    std::thread::spawn(move || {
-        let mut bits = session.debug.take().expect("checked above");
-        match op(&mut bits.debugger) {
-            Ok(reason) => {
-                let exited = matches!(reason, StopReason::Exited(_) | StopReason::Killed(_));
-                emit_stop(&app, &bits, reason);
-                session.debug = if exited { None } else { Some(bits) };
-                if !exited {
-                    *ACTIVE_PID.lock().unwrap() = Some(session.real_pid.unwrap_or_default());
-                }
-                *app.state::<DebugState>().0.lock().unwrap() = Some(session);
-            }
-            Err(e) => {
-                let _ = app.emit("debug-attach-failed", e.to_string());
-                *app.state::<DebugState>().0.lock().unwrap() = Some(session);
-            }
-        }
-    });
+    BREAKPOINTS.lock().unwrap().retain(|(f, l)| !(f == &file && *l == line));
+    tracer_send(&state, TracerCmd::ClearBreakpoint { file, line });
     Ok(())
 }
 
 #[tauri::command]
-pub fn debug_continue(app: AppHandle, state: State<DebugState>) -> Result<(), String> {
-    run_in_background(app, state, |debugger| debugger.continue_())
+pub fn debug_continue(state: State<DebugState>) -> Result<(), String> {
+    if tracer_send(&state, TracerCmd::Continue) { Ok(()) } else { Err("no active debug session".to_string()) }
 }
 
 #[tauri::command]
-pub fn debug_step(app: AppHandle, state: State<DebugState>) -> Result<(), String> {
-    run_in_background(app, state, |debugger| debugger.single_step())
+pub fn debug_step(state: State<DebugState>) -> Result<(), String> {
+    if tracer_send(&state, TracerCmd::Step) { Ok(()) } else { Err("no active debug session".to_string()) }
 }
 
 /// Kills the whole instance, whether or not it's a debug-mode run: signals
-/// the real pid directly (this is the only thing that can interrupt a
-/// `debug_continue`/`debug_step` currently blocked in `waitpid` on a
-/// background thread, which is why it doesn't depend on acquiring
-/// `DebugState`'s mutex), detaches cleanly if a debugger is attached, and
-/// kills the original wrapper process too — a wrapper like Gradle can hand
-/// off to a persistent background daemon that outlives `./gradlew` by
-/// design, so killing only the real pid discovery found is the more
-/// reliable half of this, with the wrapper cleanup as a best-effort second
-/// step (a lingering Gradle daemon itself is not something this can or
-/// should tear down — `gradlew --stop` is the user's own tool for that).
+/// the real pid directly (which also wakes a tracer thread blocked in
+/// `waitpid` — and dropping the session closes its command channel, ending
+/// one that's waiting on the user instead), then kills the original wrapper
+/// process too — a wrapper like Gradle can hand off to a persistent
+/// background daemon that outlives `./gradlew` by design, so killing only
+/// the real pid is the more reliable half of this, with the wrapper cleanup
+/// as a best-effort second step (a lingering Gradle daemon itself is not
+/// something this can or should tear down — `gradlew --stop` is the user's
+/// own tool for that).
 #[tauri::command]
 pub fn debug_stop(app: AppHandle, state: State<DebugState>) -> Result<(), String> {
-    if let Some(pid) = ACTIVE_PID.lock().unwrap().take() {
-        let _ = nix::sys::signal::kill(nix::unistd::Pid::from_raw(pid), nix::sys::signal::Signal::SIGKILL);
+    let session = state.inner().0.lock().unwrap().take();
+    let Some(mut session) = session else { return Ok(()) };
+    if let Some(pid) = session.real_pid {
+        let _ = nix::sys::signal::kill(Pid::from_raw(pid), Signal::SIGKILL);
     }
+    drop(session.tracer.take());
+    let _ = Command::new("pkill").args(["-P", &session.wrapper.id().to_string()]).status();
+    let _ = session.wrapper.kill();
+    let _ = session.wrapper.wait();
 
-    let had_session = state.inner().0.lock().unwrap().take().map(|mut session| {
-        if let Some(mut bits) = session.debug.take() {
-            let _ = bits.debugger.detach();
-        }
-        if let Some(pid) = session.real_pid {
-            let _ = nix::sys::signal::kill(Pid::from_raw(pid), nix::sys::signal::Signal::SIGKILL);
-        }
-        let _ = Command::new("pkill").args(["-P", &session.wrapper.id().to_string()]).status();
-        let _ = session.wrapper.kill();
-        let _ = session.wrapper.wait();
-    });
-
-    if had_session.is_some() {
-        let _ = app.emit("game-status", GameStatus { stage: "exited", pid: None, mods: Vec::new() });
-        let _ = app.emit("debug-stopped", DebugStoppedEvent { reason: "exited".to_string(), stack_trace: Vec::new() });
-        let _ = app.emit("workflow-exit", ());
-    }
+    let _ = app.emit("game-status", GameStatus { stage: "exited", pid: None, mods: Vec::new() });
+    let _ = app.emit("debug-stopped", DebugStoppedEvent { reason: "exited".to_string(), stack_trace: Vec::new() });
+    let _ = app.emit("workflow-exit", ());
     Ok(())
 }
 
