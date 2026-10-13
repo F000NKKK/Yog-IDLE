@@ -26,7 +26,7 @@ import { openWithItems, useOpenFiles } from "../OpenFilesContext";
 import { openFile } from "../fileOpenBus";
 import { reportError } from "../reportError";
 import { EVENT, emitTo } from "../events";
-import { baseName, generatedCodePath, isWithin, renamedPath, validateEntryName as validateName } from "../paths";
+import { baseName, generatedCodePath, isWithin, parentOf, renamedPath, validateEntryName as validateName } from "../paths";
 import { openProjectProperties } from "../projectProperties/bus";
 import { registerExplorerRename, renamePath, selectionPathRemoved, selectionPathRenamed, selectMultiple, selectPath } from "../ideSelection";
 import { NewItemDialog, templateFiles, type ItemTemplate } from "./NewItemDialog";
@@ -63,11 +63,6 @@ async function attempt(what: string, op: () => Promise<void>) {
 
 /** Cut or Copy in the explorer, waiting for a Paste — module-level so it survives the tree remounting. */
 let explorerClipboard: { paths: string[]; cut: boolean } | null = null;
-
-/** The folder `path` sits in. */
-function parentOf(path: string): string {
-  return path.replace(/[/\\][^/\\]*$/, "");
-}
 
 function joinPath(folder: string, name: string): string {
   return `${folder.replace(/[/\\]+$/, "")}/${name}`;

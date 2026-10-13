@@ -12,6 +12,11 @@ export function baseName(path: string): string {
   return path.split(/[/\\]/).pop() || path;
 }
 
+/** The folder `path` sits in. */
+export function parentOf(path: string): string {
+  return path.replace(/[/\\][^/\\]*$/, "");
+}
+
 /** The lowercased extension of `path` (without the dot), or `""`. */
 export function extensionOf(path: string): string {
   const name = baseName(path);

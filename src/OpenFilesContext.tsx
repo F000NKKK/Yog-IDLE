@@ -34,7 +34,7 @@ import { addWatchItem, dataTipProvider } from "./debugger/DataTip";
 import { useWatches } from "./debugger/WatchesContext";
 import { samePath } from "./paths";
 import { onOpenFileRequest, openFile, type FileOpenRequest } from "./fileOpenBus";
-import { baseName, generatedSource, isGeneratedCode, isWithin } from "./paths";
+import { baseName, generatedSource, isGeneratedCode, isWithin, parentOf } from "./paths";
 import { reportError } from "./reportError";
 import { selectPath } from "./ideSelection";
 import { addCloseGuard } from "./windowClose";
