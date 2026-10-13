@@ -10,6 +10,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { resolvedLocale, type DirEntry } from "substrate-platform-ui";
 import type { YuiNode } from "../designer/yui";
 import { parseYres, splitYresPath, translationKey, type YresEntry } from "./yres";
+import { readModId } from "../files";
 
 interface ResourceSet {
   /** The set's folder relative to `resources/`, `/`-separated (`""` = `resources/` itself). */

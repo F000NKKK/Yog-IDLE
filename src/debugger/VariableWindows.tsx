@@ -6,6 +6,7 @@ import { samePath } from "../paths";
 import { evaluate, fetchLocals, identifiers, type Variable, type WatchResult } from "./variables";
 import { VariablesTree, type RootRow } from "./VariablesTree";
 import { useWatches } from "./WatchesContext";
+import { files } from "../files";
 
 type Expanded = [ReadonlySet<string>, Dispatch<SetStateAction<ReadonlySet<string>>>];
 

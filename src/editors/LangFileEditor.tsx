@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { DataGrid, useLocale, useT, type DataGridColumn, type EditorProps } from "substrate-platform-ui";
+import { files } from "../files";
 
 /** One `"key": "value"` entry, with where its two string literals sit in the file's text. */
 interface LangEntry {

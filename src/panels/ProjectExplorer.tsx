@@ -31,6 +31,7 @@ import { baseName, generatedCodePath, isWithin, renamedPath, validateEntryName a
 import { openProjectProperties } from "../projectProperties/bus";
 import { registerExplorerRename, renamePath, selectionPathRemoved, selectionPathRenamed, selectMultiple, selectPath } from "../ideSelection";
 import { NewItemDialog, templateFiles, type ItemTemplate } from "./NewItemDialog";
+import { files, readModId } from "../files";
 
 /** A folder that failed to list stays unloaded in the tree (expanding it again retries) — say why in Output rather than only the devtools console. */
 function reportListError(error: unknown, path: string) {
@@ -221,7 +222,7 @@ function ProjectExplorerTree({ project }: { project: ProjectInfo }) {
   }
 
   async function addFromTemplate(folder: string, template: ItemTemplate, name: string) {
-    const modId = await readModId(project);
+    const modId = await modIdOf(project);
     if (template.rootFolder && folder === project.root) {
       // `.yres` files live in `resources/`, as a C# project's `.resx` in `Resources/`.
       const inner = joinPath(project.root, template.rootFolder);

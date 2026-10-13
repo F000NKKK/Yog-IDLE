@@ -6,6 +6,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentSelection, setSelection, t } from "substrate-platform-ui";
 import { isWithin, renamedPath } from "./paths";
+import { files } from "./files";
 
 export interface IdeSelectionData {
   path: string;

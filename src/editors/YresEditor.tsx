@@ -39,6 +39,7 @@ import {
   type YresEntry,
 } from "../lang/yres";
 import "./YresEditor.css";
+import { files } from "../files";
 
 /** Another file of the same resource set — the neutral one or a culture variant: a column of texts. */
 interface Sibling {

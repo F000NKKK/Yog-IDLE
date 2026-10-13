@@ -5,6 +5,7 @@ import { newBlockFile, newBlockWithItemFile, newItemFile, titleOf } from "../con
 import { validateEntryName } from "../paths";
 import { pascalName } from "../designer/components";
 import "./NewItemDialog.css";
+import { files } from "../files";
 
 /** One entry of Add > New Item — what file(s) it makes and what goes in them. */
 export interface ItemTemplate {

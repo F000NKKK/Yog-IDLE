@@ -38,6 +38,7 @@ import { reportError } from "./reportError";
 import { selectPath } from "./ideSelection";
 import { addCloseGuard } from "./windowClose";
 import { useGlobalStateStore } from "./WorkspaceContext";
+import { files } from "./files";
 
 interface FileTab {
   /** Stable for the tab's lifetime (survives a rename) — the dock panel id. */

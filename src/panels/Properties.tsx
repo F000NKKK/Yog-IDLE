@@ -6,6 +6,7 @@ import { useProject } from "../ProjectContext";
 import { renamePath, selectPath, type IdeSelectionData } from "../ideSelection";
 import { baseName, extensionOf, samePath, validateEntryName } from "../paths";
 import type { YuiSelectionData } from "../designer/ScreenDesigner";
+import { files } from "../files";
 
 /** `path_info`'s answer (see `properties.rs`). */
 interface PathInfo {
