@@ -151,11 +151,10 @@ pub fn widget(node: &YuiNode, in_canvas: bool, scroll: &HashMap<String, f32>) ->
             _ => w,
         };
     }
-    if node.kind == "ScrollView" {
-        if let Some(offset) = scroll.get(&node.uid) {
+    if node.kind == "ScrollView"
+        && let Some(offset) = scroll.get(&node.uid) {
             w = w.scroll_y(*offset);
         }
-    }
     if is_container(&node.kind) {
         let canvas = matches!(node.kind.as_str(), "Screen" | "Canvas");
         for child in &node.children {

@@ -74,32 +74,29 @@ impl Vanilla {
     /// empty stub; the real one is an asset object).
     pub fn read_all(&self, key: &str) -> Vec<Vec<u8>> {
         let mut out = Vec::new();
-        if let Ok(mut zip) = self.zip.lock() {
-            if let Ok(mut entry) = zip.by_name(&format!("assets/{key}")) {
+        if let Ok(mut zip) = self.zip.lock()
+            && let Ok(mut entry) = zip.by_name(&format!("assets/{key}")) {
                 let mut bytes = Vec::new();
                 if entry.read_to_end(&mut bytes).is_ok() {
                     out.push(bytes);
                 }
             }
-        }
-        if let Some((dir, index)) = &self.objects {
-            if let Some(bytes) = index.get(key).and_then(|hash| std::fs::read(dir.join(&hash[..2]).join(hash)).ok()) {
+        if let Some((dir, index)) = &self.objects
+            && let Some(bytes) = index.get(key).and_then(|hash| std::fs::read(dir.join(&hash[..2]).join(hash)).ok()) {
                 out.push(bytes);
             }
-        }
         out
     }
 
     fn read(&self, key: &str) -> Option<Vec<u8>> {
         // `key` is `namespace/path` — `assets/<key>` in the jar.
-        if let Ok(mut zip) = self.zip.lock() {
-            if let Ok(mut entry) = zip.by_name(&format!("assets/{key}")) {
+        if let Ok(mut zip) = self.zip.lock()
+            && let Ok(mut entry) = zip.by_name(&format!("assets/{key}")) {
                 let mut out = Vec::new();
                 if entry.read_to_end(&mut out).is_ok() {
                     return Some(out);
                 }
             }
-        }
         let (dir, index) = self.objects.as_ref()?;
         let hash = index.get(key)?;
         std::fs::read(dir.join(&hash[..2]).join(hash)).ok()
@@ -276,7 +273,8 @@ impl Resources {
 
     /// A texture by full resource id (`minecraft:textures/item/apple.png`).
     pub fn texture(&self, id: &str) -> Option<Arc<Image>> {
-        static CACHE: OnceLock<Mutex<HashMap<(Option<PathBuf>, String), Option<Arc<Image>>>>> = OnceLock::new();
+        type Cache = Mutex<HashMap<(Option<PathBuf>, String), Option<Arc<Image>>>>;
+        static CACHE: OnceLock<Cache> = OnceLock::new();
         let cache = CACHE.get_or_init(Default::default);
         let key = (self.mod_root.clone(), id.to_string());
         if let Some(hit) = cache.lock().ok()?.get(&key) {

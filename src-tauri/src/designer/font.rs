@@ -58,18 +58,50 @@ pub struct Font {
     cache: Mutex<HashMap<char, Arc<Glyph>>>,
 }
 
+/// JSON the way Minecraft reads it (Gson, lenient): trailing commas, as
+/// in the game's own `font/include/unifont.json`, are fine.
+fn lenient_json(bytes: &[u8]) -> Option<Value> {
+    if let Ok(v) = serde_json::from_slice(bytes) {
+        return Some(v);
+    }
+    let text = std::str::from_utf8(bytes).ok()?;
+    let mut out = String::with_capacity(text.len());
+    let (mut in_str, mut escaped) = (false, false);
+    let chars: Vec<char> = text.chars().collect();
+    for (i, &c) in chars.iter().enumerate() {
+        if in_str {
+            out.push(c);
+            if escaped {
+                escaped = false;
+            } else if c == '\\' {
+                escaped = true;
+            } else if c == '"' {
+                in_str = false;
+            }
+            continue;
+        }
+        if c == '"' {
+            in_str = true;
+        } else if c == ',' && chars[i + 1..].iter().find(|c| !c.is_whitespace()).is_some_and(|&n| n == ']' || n == '}') {
+            continue;
+        }
+        out.push(c);
+    }
+    serde_json::from_str(&out).ok()
+}
+
 fn json(res: &Resources, ns: &str, path: &str) -> Vec<Value> {
     // A mod's own definition first, then vanilla's — both count, like stacked resource packs.
     let mut out = Vec::new();
     if let Some(root) = &res.mod_root {
         for base in [root.join("assets"), root.join("src/assets"), root.join("resources/assets")] {
-            if let Some(v) = std::fs::read(base.join(ns).join(path)).ok().and_then(|b| serde_json::from_slice(&b).ok()) {
+            if let Some(v) = std::fs::read(base.join(ns).join(path)).ok().and_then(|b| lenient_json(&b)) {
                 out.push(v);
             }
         }
     }
     if let Some(v) = &res.vanilla {
-        out.extend(v.read_all(&format!("{ns}/{path}")).iter().filter_map(|b| serde_json::from_slice(b).ok()));
+        out.extend(v.read_all(&format!("{ns}/{path}")).iter().filter_map(|b| lenient_json(b)));
     }
     out
 }
@@ -84,7 +116,8 @@ fn filter_passes(p: &Value) -> bool {
 
 /// Unifont `.hex` files from a zip, cached per resource id (the file is big).
 fn unihex(res: &Resources, file: &str, overrides: &[Value]) -> Option<Arc<UnihexProvider>> {
-    static CACHE: OnceLock<Mutex<HashMap<String, Arc<HashMap<u32, ([u32; 16], u32)>>>>> = OnceLock::new();
+    type Cache = Mutex<HashMap<String, Arc<HashMap<u32, ([u32; 16], u32)>>>>;
+    static CACHE: OnceLock<Cache> = OnceLock::new();
     let cache = CACHE.get_or_init(Default::default);
     let glyphs = if let Some(hit) = cache.lock().ok()?.get(file).cloned() {
         hit
@@ -299,7 +332,8 @@ fn missing_glyph() -> Glyph {
 impl Font {
     /// `font_id` like `minecraft:default`; `""` is the default font.
     pub fn load(res: &Resources, font_id: &str) -> Arc<Font> {
-        static CACHE: OnceLock<Mutex<HashMap<(Option<std::path::PathBuf>, String), Arc<Font>>>> = OnceLock::new();
+        type Cache = Mutex<HashMap<(Option<std::path::PathBuf>, String), Arc<Font>>>;
+        static CACHE: OnceLock<Cache> = OnceLock::new();
         let id = if font_id.trim().is_empty() { "minecraft:default" } else { font_id.trim() };
         let key = (res.mod_root.clone(), id.to_string());
         let cache = CACHE.get_or_init(Default::default);
@@ -345,6 +379,8 @@ impl Font {
     }
 
     /// Width in GUI pixels, as the game's `Font.width` measures it (`§` codes skipped, bold +offset).
+    /// Advance of `text` in GUI px (`Font.width`) — for measuring text the way the game will.
+    #[allow(dead_code)]
     pub fn width(&self, text: &str) -> f32 {
         styled(text, 0xFFFF_FFFF).iter().map(|s| self.glyph(s.ch).advance + if s.bold { self.glyph(s.ch).bold_offset } else { 0.0 }).sum()
     }
@@ -395,22 +431,31 @@ pub fn styled(text: &str, color: u32) -> Vec<Styled> {
     out
 }
 
+
 #[cfg(test)]
-mod debug_tests {
+mod tests {
     use super::*;
+
     #[test]
-    #[ignore]
-    fn dbg_unifont() {
-        let res = Resources::for_mod(None);
-        let v = res.vanilla.as_ref().unwrap();
-        let defs = json(&res, "minecraft", "font/include/unifont.json");
-        eprintln!("defs {}", defs.len());
-        let b = res.read("minecraft", "font/unifont.zip");
-        eprintln!("zip bytes {:?}", b.as_ref().map(|b| b.len()));
-        let z = zip::ZipArchive::new(std::io::Cursor::new(b.unwrap()));
-        eprintln!("zip {:?}", z.as_ref().map(|z| z.len()).map_err(|e| e.to_string()));
-        let _ = v;
-        let f = Font::load(&res, "minecraft:default");
-        eprintln!("providers {}", f.providers.len());
+    fn json_is_read_leniently_like_gson() {
+        let v = lenient_json(br#"{"a": [1, 2,], "s": "x,]",}"#).unwrap();
+        assert_eq!(v["a"][1], 2);
+        assert_eq!(v["s"], "x,]");
+    }
+
+    #[test]
+    fn styled_text_follows_section_codes() {
+        let s = styled("a§cb§lc§rd", 0xFF_FFFFFF);
+        assert_eq!(s.iter().map(|c| c.ch).collect::<String>(), "abcd");
+        assert_eq!(s[1].color, 0xFF_FF5555);
+        assert!(s[2].bold && !s[3].bold);
+        assert_eq!(s[3].color, 0xFF_FFFFFF);
+    }
+
+    #[test]
+    fn without_game_files_text_measures_with_the_missing_glyph() {
+        let f = Font::load(&Resources { mod_root: None, vanilla: None }, "minecraft:default");
+        assert!(!f.is_real());
+        assert_eq!(f.width("ab"), 12.0);
     }
 }
