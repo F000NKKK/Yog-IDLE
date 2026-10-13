@@ -130,10 +130,11 @@ function resolve(model: Model | undefined, kind: "block" | "item", parents: Reco
 const fmt = (n: number) => String(Math.round(n * 1000) / 1000);
 const vecText = (v: readonly number[] | undefined) => (v ? v.map(fmt).join(", ") : "");
 
-function parseVec(text: string, n: number, min = -Infinity, max = Infinity): number[] | string {
+/** `n` numbers from `1, 2, 3` — or what's wrong: `"count"` (not `n` numbers) or `"range"`. */
+function parseVec(text: string, n: number, min = -Infinity, max = Infinity): number[] | "count" | "range" {
   const parts = text.split(/[,\s]+/).filter(Boolean).map(Number);
-  if (parts.length !== n || parts.some((x) => Number.isNaN(x))) return `${n} numbers, comma-separated`;
-  if (parts.some((x) => x < min || x > max)) return `each between ${min} and ${max}`;
+  if (parts.length !== n || parts.some((x) => Number.isNaN(x))) return "count";
+  if (parts.some((x) => x < min || x > max)) return "range";
   return parts;
 }
 
@@ -538,7 +539,9 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
       validate: (v) => {
         if (optional && String(v).trim() === "") return null;
         const r = parseVec(String(v), n, min, max);
-        return typeof r === "string" ? t(r) : null;
+        if (r === "count") return t("{n} numbers, comma-separated.", { n });
+        if (r === "range") return t("Between {min} and {max}.", { min: min ?? "-∞", max: max ?? "∞" });
+        return null;
       },
       onCommit: (v) => {
         if (String(v).trim() === "") return set(undefined);
