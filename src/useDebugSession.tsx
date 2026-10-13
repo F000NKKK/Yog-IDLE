@@ -60,40 +60,40 @@ export function useDebugSession() {
     };
     return listenAll([
       listenTo(EVENT.gameStatus, (status) => {
-      if (status.stage === "starting") {
-        setAttaching(true);
+        if (status.stage === "starting") {
+          setAttaching(true);
+          setError(null);
+          setFailure(null);
+        } else if (status.stage === "exited") {
+          setAttaching(false);
+          setDebugging(false);
+          // However the session ended (crash included), drop the stop — the
+          // editor's execution arrow and the panel go with it.
+          setStopped(null);
+        } else {
+          setAttaching(false);
+        }
+      }),
+      listenTo(EVENT.debugAttached, () => {
+        setAttaching(false);
+        setDebugging(true);
         setError(null);
         setFailure(null);
-      } else if (status.stage === "exited") {
-        setAttaching(false);
-        setDebugging(false);
-        // However the session ended (crash included), drop the stop — the
-        // editor's execution arrow and the panel go with it.
-        setStopped(null);
-      } else {
-        setAttaching(false);
-      }
-    }),
-      listenTo(EVENT.debugAttached, () => {
-      setAttaching(false);
-      setDebugging(true);
-      setError(null);
-      setFailure(null);
-    }),
+      }),
       listenTo(EVENT.debugAttachFailed, onFailed("attach")),
       // The debugger gave up mid-session (the attach itself had worked).
       listenTo(EVENT.debugFailed, onFailed("session")),
       listenTo(EVENT.debugStopped, (stop) => {
-      setStopped(stop);
-      setSelectedFrame(0);
-      if (stop.reason === "exited") {
-        setDebugging(false);
-        return;
-      }
-      // Like any IDE: bring up where it stopped.
-      const top = stop.stackTrace[0];
-      if (top) openSource(top);
-    }),
+        setStopped(stop);
+        setSelectedFrame(0);
+        if (stop.reason === "exited") {
+          setDebugging(false);
+          return;
+        }
+        // Like any IDE: bring up where it stopped.
+        const top = stop.stackTrace[0];
+        if (top) openSource(top);
+      }),
     ]);
   }, []);
 
@@ -194,5 +194,24 @@ export function useDebugSession() {
     return invoke("debug_grant_ptrace_capability");
   }, []);
 
-  return { attaching, debugging, error, errorKind, stopped, notifyRun, canRestart, stop, restart, restartWorkflow, continue_, step, pause, selectThread, selectedFrame, selectFrame, executionLocation, grantPtraceAccess };
+  return {
+    attaching,
+    debugging,
+    error,
+    errorKind,
+    stopped,
+    notifyRun,
+    canRestart,
+    stop,
+    restart,
+    restartWorkflow,
+    continue_,
+    step,
+    pause,
+    selectThread,
+    selectedFrame,
+    selectFrame,
+    executionLocation,
+    grantPtraceAccess,
+  };
 }

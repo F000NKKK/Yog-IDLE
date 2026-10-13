@@ -7,7 +7,7 @@ use std::path::{Path, PathBuf};
 
 use criterion::{Criterion, criterion_group, criterion_main};
 use yog_idle_tauri_lib::bench::{
-    self, CodeIndex, OpenDocument, RenderArgs, extract_symbols, fuzzy_match,
+    self, CodeIndex, OpenDocument, RenderArgs, extract_symbols, fuzzy_match, render,
 };
 
 const WORDS: &[&str] = &[
