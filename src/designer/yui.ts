@@ -72,15 +72,41 @@ export const ATTR_ORDER = [
   "on_submit",
 ];
 
+/** Namespace given to prefixes `.yui` uses without declaring them (`x:Name`, `x:Bind`, ...). */
+const IMPLICIT_NS = "urn:yog-yui:implicit:";
+
+/** An attribute `parseYuiXml` added — not part of the document. */
+export function isImplicitXmlns(a: Attr): boolean {
+  return a.name.startsWith("xmlns:") && a.value.startsWith(IMPLICIT_NS);
+}
+
+/**
+ * Parses `.yui` text as XML. Like XAML's `x:`, `.yui` prefixes need no
+ * `xmlns` declaration (`yog` doesn't require one), so every undeclared prefix
+ * is declared on the root first — flagged by `isImplicitXmlns` so it never
+ * reaches the document.
+ */
+export function parseYuiXml(text: string): Document {
+  const declared = new Set(Array.from(text.matchAll(/\sxmlns:([A-Za-z_][\w.-]*)\s*=/g), (m) => m[1]));
+  const used = new Set(Array.from(text.matchAll(/[<\s]([A-Za-z_][\w.-]*):[A-Za-z_][\w.-]*/g), (m) => m[1]));
+  const missing = [...used].filter((p) => p !== "xml" && p !== "xmlns" && !declared.has(p));
+  const root = missing.length ? /<(?![?!])[A-Za-z_][\w.:-]*/.exec(text) : null;
+  if (root) {
+    const at = root.index + root[0].length;
+    text = text.slice(0, at) + missing.map((p) => ` xmlns:${p}="${IMPLICIT_NS}${p}"`).join("") + text.slice(at);
+  }
+  return new DOMParser().parseFromString(text, "application/xml");
+}
+
 function fromElement(el: Element): YuiNode {
   const attrs: Record<string, string> = {};
-  for (const a of Array.from(el.attributes)) attrs[a.name] = a.value;
+  for (const a of Array.from(el.attributes)) if (!isImplicitXmlns(a)) attrs[a.name] = a.value;
   return { uid: newUid(), kind: el.tagName, attrs, children: Array.from(el.children).map(fromElement) };
 }
 
 /** Parses a `.yui` document — throws with the parser's message when it isn't well-formed XML. */
 export function parseYui(text: string): YuiDoc {
-  const xml = new DOMParser().parseFromString(text, "application/xml");
+  const xml = parseYuiXml(text);
   const error = xml.getElementsByTagName("parsererror")[0];
   if (error) throw new Error((error.textContent ?? "").trim().split("\n").slice(0, 2).join(" "));
   const root = xml.documentElement;

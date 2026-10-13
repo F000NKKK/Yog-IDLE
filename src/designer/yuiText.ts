@@ -3,7 +3,7 @@
 // writing a designer edit back as a patch — everything the edit didn't touch
 // (formatting, comments, attribute order) stays exactly as the user wrote it.
 
-import { attrRank, escapeAttr, formatStartTag, INDENT, orderedAttrs, parseYui, serializeYui, writeYuiNode, type YuiDoc, type YuiNode } from "./yui";
+import { attrRank, escapeAttr, formatStartTag, INDENT, isImplicitXmlns, orderedAttrs, parseYui, parseYuiXml, serializeYui, writeYuiNode, type YuiDoc, type YuiNode } from "./yui";
 
 export interface AttrSpan {
   name: string;
@@ -254,7 +254,7 @@ export function patchYui(text: string, prev: YuiDoc, next: YuiDoc): string {
  */
 export function formatYui(text: string): string {
   parseYui(text);
-  const xml = new DOMParser().parseFromString(text, "application/xml");
+  const xml = parseYuiXml(text);
   const span = scanYui(text);
   const prolog = span ? text.slice(0, span.start).trim() : "";
   const epilogue = span ? text.slice(span.end).trim() : "";
@@ -264,7 +264,7 @@ export function formatYui(text: string): string {
 }
 
 function writeElement(el: Element, indent: string, out: string[]) {
-  const attrs = orderedAttrs(Object.fromEntries(Array.from(el.attributes).map((a) => [a.name, a.value]))).map(([k, v]): [string, string] => [k, escapeAttr(v)]);
+  const attrs = orderedAttrs(Object.fromEntries(Array.from(el.attributes).filter((a) => !isImplicitXmlns(a)).map((a) => [a.name, a.value]))).map(([k, v]): [string, string] => [k, escapeAttr(v)]);
   const nodes = Array.from(el.childNodes).filter((n) => n.nodeType !== Node.TEXT_NODE || (n.textContent ?? "").trim() !== "" || /\n[ \t]*\r?\n/.test(n.textContent ?? ""));
   if (!nodes.some((n) => n.nodeType !== Node.TEXT_NODE || (n.textContent ?? "").trim())) {
     out.push(indent + formatStartTag(el.tagName, attrs, indent, " />"));
