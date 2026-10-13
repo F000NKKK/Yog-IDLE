@@ -112,11 +112,11 @@ function DependencySection({
                 <span className="project-props-dep-name">{dep.name}</span>
                 <span className="project-props-dep-version">{describe(dep, t)}</span>
                 <span className="project-props-spacer" />
-                <IconButton size={22} title={t("Edit")} aria-label={t("Edit")} onClick={() => setEditing((e) => (e === dep.name ? null : dep.name))}>
-                  <Icon name="settings" size={13} />
+                <IconButton title={t("Edit")} aria-label={t("Edit")} onClick={() => setEditing((e) => (e === dep.name ? null : dep.name))}>
+                  <Icon name="settings" />
                 </IconButton>
-                <IconButton size={22} title={t("Remove")} aria-label={t("Remove")} onClick={() => void remove(dep)}>
-                  <Icon name="trash" size={13} />
+                <IconButton title={t("Remove")} aria-label={t("Remove")} onClick={() => void remove(dep)}>
+                  <Icon name="trash" />
                 </IconButton>
               </div>
               {editing === dep.name && (

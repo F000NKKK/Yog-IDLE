@@ -113,8 +113,8 @@ export function PublishWindow({ projectRoot, onClose }: { projectRoot: string; o
     <div className="yi-publish-window" style={{ left: pos.x, top: pos.y }}>
       <div className="yi-publish-header" {...handlers}>
         <span className="yi-publish-title">{t("Publish")}</span>
-        <IconButton size={24} aria-label={t("Close")} onClick={onClose}>
-          <Icon name="close" size={18} />
+        <IconButton aria-label={t("Close")} onClick={onClose}>
+          <Icon name="close" />
         </IconButton>
       </div>
 

@@ -932,8 +932,8 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
           {t("Add Texture Slot…")}
         </Button>
         <span className="content-spacer" />
-        <IconButton size={26} title={`${t("View Code")} (F7)`} onClick={viewCode}>
-          <Icon name="code" size={15} />
+        <IconButton title={`${t("View Code")} (F7)`} onClick={viewCode}>
+          <Icon name="code" />
         </IconButton>
       </div>
       <div className="content-body">
@@ -941,20 +941,20 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
           <div className="content-pane-header">
             <span>{t("Elements")}</span>
             <span className="content-spacer" />
-            <IconButton size={22} title={t("Add Element")} disabled={readOnly || !!resolved.sprite} onClick={addElement}>
-              <Icon name="plus" size={14} />
+            <IconButton title={t("Add Element")} disabled={readOnly || !!resolved.sprite} onClick={addElement}>
+              <Icon name="plus" />
             </IconButton>
-            <IconButton size={22} title={`${t("Duplicate")} (Ctrl+D)`} disabled={readOnly || sel === null} onClick={duplicateElement}>
-              <Icon name="split" size={14} />
+            <IconButton title={`${t("Duplicate")} (Ctrl+D)`} disabled={readOnly || sel === null} onClick={duplicateElement}>
+              <Icon name="split" />
             </IconButton>
-            <IconButton size={22} title={t("Move Up")} disabled={readOnly || sel === null || sel === 0} onClick={() => moveElement(-1)}>
-              <Icon name="arrowUp" size={14} />
+            <IconButton title={t("Move Up")} disabled={readOnly || sel === null || sel === 0} onClick={() => moveElement(-1)}>
+              <Icon name="arrowUp" />
             </IconButton>
-            <IconButton size={22} title={t("Move Down")} disabled={readOnly || sel === null || sel === elements.length - 1} onClick={() => moveElement(1)}>
-              <Icon name="arrowDown" size={14} />
+            <IconButton title={t("Move Down")} disabled={readOnly || sel === null || sel === elements.length - 1} onClick={() => moveElement(1)}>
+              <Icon name="arrowDown" />
             </IconButton>
-            <IconButton size={22} title={`${t("Delete")} (Del)`} disabled={readOnly || sel === null} onClick={deleteElement}>
-              <Icon name="trash" size={14} />
+            <IconButton title={`${t("Delete")} (Del)`} disabled={readOnly || sel === null} onClick={deleteElement}>
+              <Icon name="trash" />
             </IconButton>
           </div>
           {resolved.sprite ? (

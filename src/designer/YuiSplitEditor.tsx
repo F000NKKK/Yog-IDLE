@@ -284,17 +284,17 @@ export function YuiSplitEditor(props: EditorProps) {
         {pt("view", "Design")}
       </button>
       <IconButton title={t("Swap Panes")} onClick={() => setLayout({ ...layout, swapped: !layout.swapped })}>
-        <Icon name="swap" size={14} />
+        <Icon name="swap" />
       </IconButton>
       <button type="button" role="tab" className="yui-split-tab" data-active={(layout.only ?? focusedPane) === "xaml"} onClick={() => showPane("xaml")}>
         XAML
       </button>
       <span className="yui-split-bar-fill" />
       <IconButton title={t("Vertical Split")} data-active={layout.direction === "row" && !layout.only} onClick={() => setLayout({ ...layout, direction: "row", only: null })}>
-        <Icon name="split" size={14} />
+        <Icon name="split" />
       </IconButton>
       <IconButton title={t("Horizontal Split")} data-active={layout.direction === "column" && !layout.only} onClick={() => setLayout({ ...layout, direction: "column", only: null })}>
-        <Icon name="splitRows" size={14} />
+        <Icon name="splitRows" />
       </IconButton>
       <IconButton
         title={layout.only ? t("Expand Pane") : t("Collapse Pane")}
@@ -304,7 +304,7 @@ export function YuiSplitEditor(props: EditorProps) {
           notifyDocumentCommands();
         }}
       >
-        <Icon name={layout.only ? "expand" : "collapse"} size={14} />
+        <Icon name={layout.only ? "expand" : "collapse"} />
       </IconButton>
     </div>
   );

@@ -45,8 +45,26 @@ pub struct Loaded {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct ComponentInfo {
     pub name: String,
+    /// Toolbox tooltip and property grid header (may be `@Set.key`).
     #[serde(default)]
-    pub doc: String,
+    pub description: String,
+    /// The toolbox label (empty: `name`; may be `@Set.key`).
+    #[serde(default)]
+    pub display_name: String,
+    /// The toolbox icon — a Yog image source or `@Icons.x` (empty: a glyph).
+    #[serde(default)]
+    pub icon: String,
+    /// The toolbox category (empty: "<mod> Components"; may be `@Set.key`).
+    #[serde(default)]
+    pub category: String,
+    /// The canvas size for editing it, and an instance's size when dropped (0: unset).
+    #[serde(default)]
+    pub design_w: f32,
+    #[serde(default)]
+    pub design_h: f32,
+    /// Whether the toolbox offers it.
+    #[serde(default = "yes")]
+    pub toolbox: bool,
     #[serde(default)]
     pub props: Vec<PropInfo>,
     /// The `.yui` declaring it (the designer's own listing; not from the host).
@@ -63,8 +81,15 @@ pub struct PropInfo {
     pub default: String,
     #[serde(default)]
     pub doc: String,
+    /// The property grid category (empty: the component's own).
+    #[serde(default)]
+    pub category: String,
     #[serde(default)]
     pub options: Vec<String>,
+}
+
+fn yes() -> bool {
+    true
 }
 
 unsafe extern "C" fn sink(user_data: *mut c_void, text: YogStr) {

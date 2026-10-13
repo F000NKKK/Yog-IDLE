@@ -131,13 +131,33 @@ pub fn definition(root: &YuiNode, file: &Path) -> Option<Def> {
                 "choice" => options.first().cloned().unwrap_or_default(),
                 _ => String::new(),
             });
-            PropInfo { name: c.attr("name").unwrap_or_default().trim().to_string(), kind, default, doc: c.attr("doc").unwrap_or_default().to_string(), options }
+            PropInfo {
+                name: c.attr("name").unwrap_or_default().trim().to_string(),
+                kind,
+                default,
+                doc: c.attr("doc").unwrap_or_default().to_string(),
+                category: c.attr("category").unwrap_or_default().to_string(),
+                options,
+            }
         })
         .collect();
     let body = root.children.iter().find(|c| !DECLARATIONS.contains(&c.kind.as_str())).cloned();
     let names: Vec<&str> = props.iter().map(|p| p.name.as_str()).collect();
     let compiled = body.as_ref().is_some_and(|b| calls_code(b, &names));
-    let info = ComponentInfo { name, doc: root.attr("doc").unwrap_or_default().to_string(), props, file: Some(file.to_string_lossy().into_owned()) };
+    let text = |key: &str| root.attr(key).unwrap_or_default().trim().to_string();
+    let size = |key: &str| root.attr(key).and_then(|v| v.trim().parse::<f32>().ok()).filter(|n| *n > 0.0).unwrap_or(0.0);
+    let info = ComponentInfo {
+        name,
+        description: text("description"),
+        display_name: text("display_name"),
+        icon: text("icon"),
+        category: text("category"),
+        design_w: size("design_w"),
+        design_h: size("design_h"),
+        toolbox: root.attr("toolbox").is_none_or(|v| v.trim() != "false"),
+        props,
+        file: Some(file.to_string_lossy().into_owned()),
+    };
     Some(Def { info, body, compiled })
 }
 
@@ -235,8 +255,8 @@ pub fn design_root(root: &YuiNode) -> YuiNode {
     let def = definition(root, Path::new("component.yui"));
     let values = def.as_ref().map(defaults).unwrap_or_default();
     let mut attrs = HashMap::from([
-        ("width".to_string(), root.attr("width").unwrap_or("120").to_string()),
-        ("height".to_string(), root.attr("height").unwrap_or("40").to_string()),
+        ("width".to_string(), root.attr("design_w").unwrap_or("120").to_string()),
+        ("height".to_string(), root.attr("design_h").unwrap_or("40").to_string()),
         ("anchor".to_string(), "center".to_string()),
     ]);
     if let Some(bg) = root.attr("d:bg") {
@@ -312,8 +332,8 @@ mod tests {
 
     const PILL: &str = r##"<?xml version="1.0"?>
 <!-- a tag -->
-<Component name="Pill" doc="A tag." width="40" height="12">
-    <Property name="label" type="text" default="Yog" doc="Text"/>
+<Component name="Pill" description="@Strings.pill" icon="item:name_tag" design_w="40" design_h="12" toolbox="false">
+    <Property name="label" type="text" default="Yog" doc="Text" category="Data"/>
     <Property name="fill" type="color" default="#FF2D4A8A"/>
     <Event name="on_pick"/>
     <Row bg="{x:Bind fill}" padding="1" on_click="{x:Bind on_pick}" d:min_w="30">
@@ -328,6 +348,9 @@ mod tests {
         assert_eq!(def.info.name, "Pill");
         assert_eq!(def.info.props.len(), 3);
         assert_eq!(def.info.props[2].kind, "event");
+        assert_eq!(def.info.props[0].category, "Data");
+        assert_eq!((def.info.description.as_str(), def.info.icon.as_str()), ("@Strings.pill", "item:name_tag"));
+        assert_eq!((def.info.design_w, def.info.design_h, def.info.toolbox), (40.0, 12.0, false));
         assert!(!def.compiled);
         assert_eq!(def.body.as_ref().unwrap().children[0].uid, "c0/3/0");
 

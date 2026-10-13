@@ -70,7 +70,7 @@ function BrowseButton({ onClick }: { onClick: () => void }) {
   const t = useT();
   return (
     <IconButton size={28} title={t("Browse...")} aria-label={t("Browse...")} onClick={onClick}>
-      <Icon name="folderOpen" size={16} />
+      <Icon name="folderOpen" />
     </IconButton>
   );
 }

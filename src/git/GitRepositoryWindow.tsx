@@ -86,8 +86,8 @@ export function GitRepositoryWindow() {
           <Icon name="history" size={13} />
           <span className="idle-git-section-title">{t("History - {branch}", { branch: shownName })}</span>
           <span className="idle-git-spacer" />
-          <IconButton size={22} title={t("Refresh")} onClick={() => void refreshGit()}>
-            <Icon name="restart" size={13} />
+          <IconButton title={t("Refresh")} onClick={() => void refreshGit()}>
+            <Icon name="restart" />
           </IconButton>
         </div>
         {error && <div className="idle-git-note">{error}</div>}
@@ -136,8 +136,8 @@ function BranchList({ selected, onSelect }: { selected: string; onSelect: (name:
         <Icon name="branch" size={13} />
         <span className="idle-git-section-title">{t("Branches")}</span>
         <span className="idle-git-spacer" />
-        <IconButton size={22} title={t("New Branch...")} onClick={() => void promptNewBranch()}>
-          <Icon name="plus" size={13} />
+        <IconButton title={t("New Branch...")} onClick={() => void promptNewBranch()}>
+          <Icon name="plus" />
         </IconButton>
       </div>
       <div className="idle-git-branch-scroll">

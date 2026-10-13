@@ -666,11 +666,11 @@ export function YresEditor({ path, content, onChange, readOnly, contentVersion }
   return (
     <div className="yres-editor" ref={rootRef}>
       <div className="yres-toolbar">
-        <IconButton size={26} title={t("Add Resource")} disabled={readOnly} onClick={() => gridRef.current?.editCell(NEW_ROW_ID, "name")}>
-          <Icon name="plus" size={15} />
+        <IconButton title={t("Add Resource")} disabled={readOnly} onClick={() => gridRef.current?.editCell(NEW_ROW_ID, "name")}>
+          <Icon name="plus" />
         </IconButton>
-        <IconButton size={26} title={t("Remove Resource")} disabled={readOnly || targetRows().length === 0} onClick={deleteRows}>
-          <Icon name="trash" size={15} />
+        <IconButton title={t("Remove Resource")} disabled={readOnly || targetRows().length === 0} onClick={deleteRows}>
+          <Icon name="trash" />
         </IconButton>
         <span className="yres-divider" />
         <Button variant={showAll ? "primary" : "subtle"} onClick={toggleShowAll} title={t("Show every language of this resource set as a column")}>
@@ -681,8 +681,8 @@ export function YresEditor({ path, content, onChange, readOnly, contentVersion }
         </Button>
         <span className="yres-spacer" />
         <SearchField className="yres-search" value={query} onValueChange={setQuery} placeholder={t("Search resources")} />
-        <IconButton size={26} title={`${t("View Code")} (F7)`} onClick={viewCode}>
-          <Icon name="code" size={15} />
+        <IconButton title={`${t("View Code")} (F7)`} onClick={viewCode}>
+          <Icon name="code" />
         </IconButton>
       </div>
       <div className="yres-grid">

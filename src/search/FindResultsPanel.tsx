@@ -67,14 +67,14 @@ export function FindResultsPanel() {
         <span className="idle-find-results-caption" title={results.caption}>
           {results.caption || t("Find Results")}
         </span>
-        <IconButton size={22} title={t("Find in Files (Ctrl+Shift+F)")} onClick={() => openFindInFiles("find")}>
-          <Icon name="search" size={14} />
+        <IconButton title={t("Find in Files (Ctrl+Shift+F)")} onClick={() => openFindInFiles("find")}>
+          <Icon name="search" />
         </IconButton>
-        <IconButton size={22} title={t("Stop Search")} disabled={!results.running} onClick={cancelFind}>
-          <Icon name="stop" size={14} />
+        <IconButton title={t("Stop Search")} disabled={!results.running} onClick={cancelFind}>
+          <Icon name="stop" />
         </IconButton>
-        <IconButton size={22} title={t("Clear All")} disabled={!results.caption} onClick={clearFindResults}>
-          <Icon name="trash" size={14} />
+        <IconButton title={t("Clear All")} disabled={!results.caption} onClick={clearFindResults}>
+          <Icon name="trash" />
         </IconButton>
       </div>
       {results.running && <div className="idle-find-results-progress" />}

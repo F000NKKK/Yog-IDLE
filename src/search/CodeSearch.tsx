@@ -180,8 +180,8 @@ export function CodeSearch({ onClose, onDock, embedded, focusKey }: { onClose?: 
       focusKey={focusKey}
       fieldActions={
         onDock && (
-          <IconButton size={22} title={t("Keep open as a tool window")} onClick={onDock}>
-            <Icon name="float" size={14} />
+          <IconButton title={t("Keep open as a tool window")} onClick={onDock}>
+            <Icon name="float" />
           </IconButton>
         )
       }

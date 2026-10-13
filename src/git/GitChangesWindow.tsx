@@ -76,8 +76,8 @@ export function GitChangesWindow() {
             title={t("Staged Changes")}
             count={status.staged.length}
             actions={
-              <IconButton size={20} title={t("Unstage All")} onClick={() => void unstage([])}>
-                <Icon name="minus" size={13} />
+              <IconButton size="sm" title={t("Unstage All")} onClick={() => void unstage([])}>
+                <Icon name="minus" />
               </IconButton>
             }
           >
@@ -93,11 +93,11 @@ export function GitChangesWindow() {
           actions={
             status.unstaged.length > 0 && (
               <>
-                <IconButton size={20} title={t("Undo All Changes")} onClick={() => void discard(status.unstaged, false)}>
-                  <Icon name="undo" size={13} />
+                <IconButton size="sm" title={t("Undo All Changes")} onClick={() => void discard(status.unstaged, false)}>
+                  <Icon name="undo" />
                 </IconButton>
-                <IconButton size={20} title={t("Stage All")} onClick={() => void stage([])}>
-                  <Icon name="plus" size={13} />
+                <IconButton size="sm" title={t("Stage All")} onClick={() => void stage([])}>
+                  <Icon name="plus" />
                 </IconButton>
               </>
             )
@@ -373,17 +373,17 @@ function ChangeRow({ file, list }: { file: FileChange; list: ListKind }) {
       {dir && <span className="idle-git-dir">{dir}</span>}
       <span className="idle-git-row-actions">
         {list !== "conflicted" && !staged && (
-          <IconButton size={18} title={t("Undo Changes")} onClick={() => void discard([file], false)}>
-            <Icon name="undo" size={12} />
+          <IconButton size="sm" title={t("Undo Changes")} onClick={() => void discard([file], false)}>
+            <Icon name="undo" />
           </IconButton>
         )}
         {staged ? (
-          <IconButton size={18} title={t("Unstage")} onClick={() => void unstage([file.path])}>
-            <Icon name="minus" size={12} />
+          <IconButton size="sm" title={t("Unstage")} onClick={() => void unstage([file.path])}>
+            <Icon name="minus" />
           </IconButton>
         ) : (
-          <IconButton size={18} title={list === "conflicted" ? t("Mark as Resolved (Stage)") : t("Stage")} onClick={() => void stage([file.path])}>
-            <Icon name="plus" size={12} />
+          <IconButton size="sm" title={list === "conflicted" ? t("Mark as Resolved (Stage)") : t("Stage")} onClick={() => void stage([file.path])}>
+            <Icon name="plus" />
           </IconButton>
         )}
       </span>
@@ -407,14 +407,14 @@ function StashRow({ stash }: { stash: StashInfo }) {
       <span className="idle-git-name">{stash.message}</span>
       <span className="idle-git-dir">{`stash@{${stash.index}}`}</span>
       <span className="idle-git-row-actions">
-        <IconButton size={18} title={t("Apply")} onClick={() => void stashApply(stash.index, false)}>
-          <Icon name="check" size={12} />
+        <IconButton size="sm" title={t("Apply")} onClick={() => void stashApply(stash.index, false)}>
+          <Icon name="check" />
         </IconButton>
-        <IconButton size={18} title={t("Pop")} onClick={() => void stashApply(stash.index, true)}>
-          <Icon name="arrowUp" size={12} />
+        <IconButton size="sm" title={t("Pop")} onClick={() => void stashApply(stash.index, true)}>
+          <Icon name="arrowUp" />
         </IconButton>
-        <IconButton size={18} title={t("Drop")} onClick={() => void stashDrop(stash.index)}>
-          <Icon name="trash" size={12} />
+        <IconButton size="sm" title={t("Drop")} onClick={() => void stashDrop(stash.index)}>
+          <Icon name="trash" />
         </IconButton>
       </span>
       <ContextMenu target={menu.target} items={items} onClose={menu.close} />

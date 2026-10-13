@@ -68,11 +68,11 @@ export function DiffDocument({ request }: { request: DiffRequest }) {
           {path}
         </span>
         <span className="idle-git-spacer" />
-        <IconButton size={22} title={layout === "sideBySide" ? t("Inline Diff") : t("Side-by-Side Diff")} onClick={toggleLayout}>
-          <Icon name={layout === "sideBySide" ? "list" : "split"} size={14} />
+        <IconButton title={layout === "sideBySide" ? t("Inline Diff") : t("Side-by-Side Diff")} onClick={toggleLayout}>
+          <Icon name={layout === "sideBySide" ? "list" : "split"} />
         </IconButton>
-        <IconButton size={22} title={t("Open File")} disabled={missing} onClick={() => openFile({ path: request.absPath })}>
-          <Icon name="file" size={14} />
+        <IconButton title={t("Open File")} disabled={missing} onClick={() => openFile({ path: request.absPath })}>
+          <Icon name="file" />
         </IconButton>
       </div>
       <div className="idle-git-diff-body">{body}</div>

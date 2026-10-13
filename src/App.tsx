@@ -127,8 +127,8 @@ function OutputToolWindow() {
           />
         </div>
         <span className="output-panel-spacer" />
-        <IconButton size={22} title={t("Clear {source} Output", { source: t(current.label) })} onClick={() => clearOutputBuffer(current.event)}>
-          <Icon name="trash" size={14} />
+        <IconButton title={t("Clear {source} Output", { source: t(current.label) })} onClick={() => clearOutputBuffer(current.event)}>
+          <Icon name="trash" />
         </IconButton>
       </div>
       <div className="output-panel-body">
