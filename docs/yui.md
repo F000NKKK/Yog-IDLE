@@ -80,6 +80,31 @@ Inside a `Row`/`Column`, a child with `x` or `y` is taken out of the flow and
 placed at that position (`Style::pos`, `.at(x, y)` — yog-ui 0.35.1+), like a
 `Canvas` child.
 
+### Sizing
+
+How a Row/Column sizes its children (yog-ui 0.35.3+; the designer previews
+the same rules):
+
+- `w`/`h` in percent resolve once, against the container's content box —
+  its size minus `padding` (and a ScrollView's 6px scrollbar strip) — on the
+  same axis, in a Row and a Column alike, at any nesting depth: a `w="50%"`
+  child of a `w="400" padding="0 10"` Row is 190 wide. While the
+  container's own size along that axis is still `auto` and being measured
+  (an auto-width Row inside a Row), the percent counts as `auto` until the
+  container's final size is known. Positioned (`x`/`y`) children resolve
+  percents against the content box too, capped to what is left past their
+  offset.
+- `flex` grows a child into the free space left after every other child
+  (fixed, percent, content-sized and `dock="right"`/`"bottom"` ones) and the
+  gaps; the grown size sticks, and the child's own children lay out against
+  it (so `flex` children inside it grow too).
+- A growing (`flex`) ScrollView with an auto height starts from its
+  `min_h` rather than its content, so it fills exactly the free space and
+  scrolls the rest — `<ScrollView flex="1">` under a header is a list that
+  takes the remaining height.
+- `auto` containers fit their content plus padding; `min_w`/`min_h` are a
+  floor for content-sized widgets.
+
 ## Attributes
 
 Named after the builder methods they become.

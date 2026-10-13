@@ -154,6 +154,8 @@ export interface Style {
   ellipsis: boolean;
   /** Reserves `SCROLLBAR_W` on the right for a scrollbar (ScrollView). */
   scrollbar: boolean;
+  /** Clips its children (ScrollView); a growing clip container starts from its min size. */
+  clip: boolean;
   pos: [number, number] | null;
 }
 
@@ -209,6 +211,7 @@ function defaultStyle(): Style {
     noWrap: false,
     ellipsis: false,
     scrollbar: false,
+    clip: false,
     pos: null,
   };
 }
@@ -288,7 +291,7 @@ export function toWidget(node: YuiNode, inCanvas: boolean): LWidget {
   if (a.shadow === "false") style.shadow = false;
   if (a.no_wrap === "true") style.noWrap = true;
   if (a.ellipsis === "true") style.noWrap = style.ellipsis = true;
-  if (node.kind === "ScrollView") style.scrollbar = true;
+  if (node.kind === "ScrollView") style.scrollbar = style.clip = true;
   const canvas = CANVAS_KINDS.has(node.kind);
   return {
     uid: node.uid,
@@ -355,26 +358,48 @@ export function screenWidget(screen: YuiNode, screenW: number, screenH: number):
 }
 
 // ── Layout (mirrors `layout.rs`) ─────────────────────────────────────────────
+//
+// Percent sizes resolve once, against the parent's content box; along an
+// axis still being measured for content (unbounded) they act as `auto`.
+// Grown (flex) sizes stick: children are re-laid against the final size.
 
 export function compute(w: LWidget, availW: number, availH: number): LNode {
   const node: LNode = { uid: w.uid, rect: { x: 0, y: 0, w: 0, h: 0 }, children: [] };
-  layoutWidget(w, node, 0, 0, availW, availH);
+  layoutWidget(w, node, 0, 0, availW, availH, availW, availH);
   return node;
 }
 
-function layoutWidget(w: LWidget, node: LNode, x: number, y: number, maxW: number, maxH: number) {
+/** "No size cap: measure to content" (`layout::UNBOUNDED`). */
+const UNBOUNDED = F32_MAX;
+const bounded = (v: number) => v < UNBOUNDED / 2;
+
+function resolveSize(u: Units, basis: number): number | null {
+  if (u.t === "pct" && !bounded(basis)) return null;
+  return resolve(u, basis);
+}
+
+interface Shrink {
+  w: boolean;
+  h: boolean;
+  maxW: number;
+  maxH: number;
+}
+
+function layoutWidget(w: LWidget, node: LNode, x: number, y: number, maxW: number, maxH: number, basisW: number, basisH: number) {
   const s = w.style;
   const hasChildren = w.children.length > 0;
-  let ww = resolve(s.w, maxW);
-  ww = ww === null ? maxW : Math.min(ww, maxW);
-  let hh = resolve(s.h, maxH);
-  hh = hh === null ? maxH : Math.min(hh, maxH);
+  const rw = resolveSize(s.w, basisW);
+  const rh = resolveSize(s.h, basisH);
+  const explicitW = rw === null ? null : Math.min(rw, maxW);
+  const explicitH = rh === null ? null : Math.min(rh, maxH);
+  let ww = explicitW ?? maxW;
+  let hh = explicitH ?? maxH;
 
   if (!hasChildren) {
     switch (w.kind) {
       case "label":
       case "button": {
-        const availW = Math.max(0, maxW - s.pad[1] - s.pad[3]);
+        const availW = Math.max(0, (explicitW ?? maxW) - s.pad[1] - s.pad[3]);
         if (availW < 4096 && !s.noWrap) {
           ww = Math.min(Math.max(availW + s.pad[1] + s.pad[3], s.minW), maxW);
           hh = Math.min(Math.max(textHeight(w.text, availW, s.fontScale) + s.pad[0] + s.pad[2], s.minH), maxH);
@@ -395,116 +420,144 @@ function layoutWidget(w: LWidget, node: LNode, x: number, y: number, maxW: numbe
         hh = Math.min(Math.max(s.minH, 1), maxH);
         break;
       case "panel":
+        if (!bounded(ww)) ww = s.minW;
+        if (!bounded(hh)) hh = s.minH;
         break;
       case "image":
         ww = Math.min(Math.max(w.texW + s.pad[1] + s.pad[3], s.minW), maxW);
         hh = Math.min(Math.max(w.texH + s.pad[0] + s.pad[2], s.minH), maxH);
         break;
     }
-    const ew = resolve(s.w, maxW);
-    if (ew !== null) ww = Math.min(ew, maxW);
-    const eh = resolve(s.h, maxH);
-    if (eh !== null) hh = Math.min(eh, maxH);
+    if (explicitW !== null) ww = explicitW;
+    if (explicitH !== null) hh = explicitH;
   }
 
   node.rect = { x, y, w: ww, h: hh };
-  if (!hasChildren) return;
+  if (hasChildren) layoutChildren(w, node, { w: explicitW === null, h: explicitH === null, maxW, maxH });
+}
 
+/** Final rect for an already measured widget; children lay out against it. */
+function arrange(w: LWidget, node: LNode, x: number, y: number) {
+  node.rect.x = x;
+  node.rect.y = y;
+  if (w.children.length > 0) layoutChildren(w, node, null);
+}
+
+function layoutChildren(w: LWidget, node: LNode, shrink: Shrink | null) {
+  const s = w.style;
+  const { x, y, w: ww, h: hh } = node.rect;
   const dir = w.kind === "panel" && w.dir === "row" ? "row" : "column";
   const barW = s.scrollbar ? SCROLLBAR_W : 0;
-  const contentW = Math.max(0, ww - s.pad[1] - s.pad[3] - barW);
-  const contentH = hh - s.pad[0] - s.pad[2];
+  const contentW = bounded(ww) ? Math.max(0, ww - s.pad[1] - s.pad[3] - barW) : UNBOUNDED;
+  const contentH = bounded(hh) ? Math.max(0, hh - s.pad[0] - s.pad[2]) : UNBOUNDED;
+  const mainBounded = bounded(dir === "row" ? contentW : contentH);
+  const crossBounded = bounded(dir === "row" ? contentH : contentW);
+  const crossOffset = (content: number, size: number) =>
+    !crossBounded ? 0 : s.align === "center" ? (content - size) / 2 : s.align === "end" ? content - size : 0;
   const effectiveFlex = (c: LWidget) => (c.style.dock === "fill" ? Math.max(c.style.flex, 1) : c.style.flex);
   const inFlow = (c: LWidget) => c.style.pos === null && !((dir === "row" && c.style.dock === "right") || (dir === "column" && c.style.dock === "bottom"));
+  const stretches = (dock: Dock) =>
+    crossBounded && (dir === "row" ? dock === "fill" || dock === "left" || dock === "right" : dock === "fill" || dock === "top" || dock === "bottom");
 
   const childNodes: LNode[] = [];
   let totalFlex = 0;
   let usedMain = 0;
   for (const child of w.children) {
-    const dock = child.style.dock;
     const cn: LNode = { uid: child.uid, rect: { x: 0, y: 0, w: 0, h: 0 }, children: [] };
     if (child.style.pos) {
       const [px, py] = child.style.pos;
-      layoutWidget(child, cn, 0, 0, Math.max(0, contentW - px), Math.max(0, contentH - py));
+      const mw = bounded(contentW) ? Math.max(0, contentW - px) : UNBOUNDED;
+      const mh = bounded(contentH) ? Math.max(0, contentH - py) : UNBOUNDED;
+      layoutWidget(child, cn, 0, 0, mw, mh, contentW, contentH);
       childNodes.push(cn);
       continue;
     }
     let cmw: number;
     let cmh: number;
-    if (dock === "fill") [cmw, cmh] = [contentW, contentH];
-    else if (dir === "row" && (dock === "left" || dock === "right")) [cmw, cmh] = [F32_MAX, contentH];
-    else if (dir === "column" && (dock === "top" || dock === "bottom")) [cmw, cmh] = [contentW, F32_MAX];
-    else if (dir === "row") [cmw, cmh] = [F32_MAX, contentH];
-    else [cmw, cmh] = [contentW, F32_MAX];
-    layoutWidget(child, cn, 0, 0, cmw, cmh);
-    if (inFlow(child)) usedMain += dir === "row" ? cn.rect.w : cn.rect.h;
-    totalFlex += effectiveFlex(child);
+    if (child.style.dock === "fill") [cmw, cmh] = [contentW, contentH];
+    else if (dir === "row") [cmw, cmh] = [UNBOUNDED, contentH];
+    else [cmw, cmh] = [contentW, UNBOUNDED];
+    layoutWidget(child, cn, 0, 0, cmw, cmh, contentW, contentH);
+    const ef = effectiveFlex(child);
+    if (ef > 0 && child.style.clip && mainBounded && inFlow(child)) {
+      if (dir === "row" && child.style.w.t === "auto") cn.rect.w = child.style.minW;
+      if (dir === "column" && child.style.h.t === "auto") cn.rect.h = child.style.minH;
+    }
+    usedMain += dir === "row" ? cn.rect.w : cn.rect.h;
+    if (inFlow(child)) totalFlex += ef;
     childNodes.push(cn);
   }
-  const flowCount = w.children.filter(inFlow).length;
-  usedMain += s.gap * Math.max(0, flowCount - 1);
-  const available = (dir === "row" ? contentW : contentH) - usedMain;
+  const placed = w.children.filter((c) => c.style.pos === null).length;
+  usedMain += s.gap * Math.max(0, placed - 1);
+  const available = mainBounded ? (dir === "row" ? contentW : contentH) - usedMain : 0;
   let pos = dir === "row" ? s.pad[3] : s.pad[0];
-
-  const crossOffset = (content: number, size: number) => (s.align === "center" ? (content - size) / 2 : s.align === "end" ? content - size : 0);
 
   w.children.forEach((child, i) => {
     if (!inFlow(child)) return;
-    const dock = child.style.dock;
     const cn = childNodes[i];
     const ef = effectiveFlex(child);
+    const grow = ef > 0 && totalFlex > 0 && available > 0 ? (available * ef) / totalFlex : 0;
+    const stretch = stretches(child.style.dock);
+    let cx: number;
+    let cy: number;
     if (dir === "row") {
-      if (ef > 0 && totalFlex > 0 && available > 0) cn.rect.w += (available * ef) / totalFlex;
-      if (dock === "fill" || dock === "left" || dock === "right") cn.rect.h = contentH;
-      cn.rect.x = x + pos;
-      cn.rect.y = y + s.pad[0] + crossOffset(contentH, cn.rect.h);
+      cn.rect.w += grow;
+      if (stretch) cn.rect.h = contentH;
+      cx = x + pos;
+      cy = y + s.pad[0] + crossOffset(contentH, cn.rect.h);
       pos += cn.rect.w + s.gap;
     } else {
-      if (ef > 0 && totalFlex > 0 && available > 0) cn.rect.h += (available * ef) / totalFlex;
-      if (dock === "fill" || dock === "top" || dock === "bottom") cn.rect.w = contentW;
-      cn.rect.x = x + s.pad[3] + crossOffset(contentW, cn.rect.w);
-      cn.rect.y = y + pos;
+      cn.rect.h += grow;
+      if (stretch) cn.rect.w = contentW;
+      cx = x + s.pad[3] + crossOffset(contentW, cn.rect.w);
+      cy = y + pos;
       pos += cn.rect.h + s.gap;
     }
-    if (child.children.length > 0) layoutWidget(child, cn, cn.rect.x, cn.rect.y, cn.rect.w, cn.rect.h);
+    arrange(child, cn, cx, cy);
   });
 
-  let rpos = dir === "row" ? x + s.pad[3] + contentW : y + s.pad[0] + contentH;
+  let rpos: number;
+  if (mainBounded) rpos = dir === "row" ? x + s.pad[3] + contentW : y + s.pad[0] + contentH;
+  else {
+    const docked = w.children.map((c, i) => [c, childNodes[i]] as const).filter(([c]) => !inFlow(c) && c.style.pos === null);
+    const span = docked.reduce((sum, [, n]) => sum + (dir === "row" ? n.rect.w : n.rect.h), 0) + s.gap * Math.max(0, docked.length - 1);
+    rpos = (dir === "row" ? x : y) + pos + span;
+  }
   w.children.forEach((child, i) => {
     if (inFlow(child) || child.style.pos) return;
-    const dock = child.style.dock;
     const cn = childNodes[i];
+    const stretch = stretches(child.style.dock);
+    let cx: number;
+    let cy: number;
     if (dir === "row") {
-      if (dock === "fill" || dock === "left" || dock === "right") cn.rect.h = contentH;
+      if (stretch) cn.rect.h = contentH;
       rpos -= cn.rect.w;
-      cn.rect.x = rpos;
-      cn.rect.y = y + s.pad[0] + crossOffset(contentH, cn.rect.h);
-      rpos -= s.gap;
+      cx = rpos;
+      cy = y + s.pad[0] + crossOffset(contentH, cn.rect.h);
     } else {
-      if (dock === "fill" || dock === "top" || dock === "bottom") cn.rect.w = contentW;
+      if (stretch) cn.rect.w = contentW;
       rpos -= cn.rect.h;
-      cn.rect.y = rpos;
-      cn.rect.x = x + s.pad[3] + crossOffset(contentW, cn.rect.w);
-      rpos -= s.gap;
+      cx = x + s.pad[3] + crossOffset(contentW, cn.rect.w);
+      cy = rpos;
     }
-    if (child.children.length > 0) layoutWidget(child, cn, cn.rect.x, cn.rect.y, cn.rect.w, cn.rect.h);
+    rpos -= s.gap;
+    arrange(child, cn, cx, cy);
   });
 
   w.children.forEach((child, i) => {
     if (!child.style.pos) return;
-    const cn = childNodes[i];
-    cn.rect.x = x + s.pad[3] + child.style.pos[0];
-    cn.rect.y = y + s.pad[0] + child.style.pos[1];
-    if (child.children.length > 0) layoutWidget(child, cn, cn.rect.x, cn.rect.y, cn.rect.w, cn.rect.h);
+    arrange(child, childNodes[i], x + s.pad[3] + child.style.pos[0], y + s.pad[0] + child.style.pos[1]);
   });
 
-  if (s.w.t === "auto") {
-    const cw = childNodes.reduce((m, c) => Math.max(m, c.rect.x - x + c.rect.w), 0);
-    node.rect.w = Math.min(Math.max(cw + s.pad[1] + s.pad[3] + barW, s.minW), maxW);
-  }
-  if (s.h.t === "auto") {
-    const ch = childNodes.reduce((m, c) => Math.max(m, c.rect.y - y + c.rect.h), 0);
-    node.rect.h = Math.min(Math.max(ch + s.pad[0] + s.pad[2], s.minH), maxH);
+  if (shrink) {
+    if (shrink.w) {
+      const cw = childNodes.reduce((m, c) => Math.max(m, c.rect.x - x + c.rect.w), 0);
+      node.rect.w = Math.min(Math.max(cw + s.pad[1] + barW, s.minW), shrink.maxW);
+    }
+    if (shrink.h) {
+      const ch = childNodes.reduce((m, c) => Math.max(m, c.rect.y - y + c.rect.h), 0);
+      node.rect.h = Math.min(Math.max(ch + s.pad[2], s.minH), shrink.maxH);
+    }
   }
   node.children = childNodes;
 }
