@@ -92,14 +92,11 @@ async function modIdOf(project: ProjectInfo): Promise<string> {
 
 /**
  * Visual Studio's file nesting (`Form1.cs` ▸ `Form1.Designer.cs`, `Form1.resx`):
- * a screen's code-behind `foo.rs` goes under `foo.yui`, a lock file under its
- * manifest, and the `lib.designer.rs` facade `yog build` writes (for mod
- * dependencies) under `lib.rs`.
+ * a screen's code-behind `foo.rs` goes under `foo.yui`, and a lock file under
+ * its manifest.
  */
 function nestParent(name: string, siblings: Set<string>): string | null {
   const lower = name.toLowerCase();
-  const designer = /^(.*)\.designer\.rs$/.exec(lower);
-  if (designer) return `${designer[1]}.rs`;
   const code = /^(.*)\.rs$/.exec(lower);
   if (code && siblings.has(`${code[1]}.yui`)) return `${code[1]}.yui`;
   // A resource set's culture variants under its neutral file: `Strings.ru_ru.yres` ▸ under `Strings.yres`.

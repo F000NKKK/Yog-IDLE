@@ -373,11 +373,7 @@ fn sources(root: &Path) -> Vec<PathBuf> {
         for entry in walk.flatten() {
             let p = entry.path();
             let ext = p.extension().and_then(|e| e.to_str()).unwrap_or_default();
-            let name = p.file_name().and_then(|n| n.to_str()).unwrap_or_default();
-            if p.is_file()
-                && matches!(ext, "rs" | "yui" | "toml" | "yres" | "json" | "png")
-                && !name.ends_with(".designer.rs")
-            {
+            if p.is_file() && matches!(ext, "rs" | "yui" | "toml" | "yres" | "json" | "png") {
                 out.push(p.to_path_buf());
             }
         }
