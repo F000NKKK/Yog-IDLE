@@ -32,14 +32,6 @@ import { openProjectProperties } from "../projectProperties/bus";
 import { registerExplorerRename, renamePath, selectionPathRemoved, selectionPathRenamed, selectMultiple, selectPath } from "../ideSelection";
 import { NewItemDialog, templateFiles, type ItemTemplate } from "./NewItemDialog";
 
-const dirCommands = {
-  list: (path: string) => invoke<DirEntry[]>("dir_list", { path }),
-  createFile: (path: string) => invoke<void>("dir_create_file", { path }),
-  createDir: (path: string) => invoke<void>("dir_create_dir", { path }),
-  rename: (from: string, to: string) => invoke<void>("dir_rename", { from, to }),
-  remove: (path: string) => invoke<void>("dir_remove", { path }),
-};
-
 /** A folder that failed to list stays unloaded in the tree (expanding it again retries) — say why in Output rather than only the devtools console. */
 function reportListError(error: unknown, path: string) {
   emitTo(EVENT.ideOutput, `[error] failed to list ${path}: ${error}`);
@@ -92,14 +84,9 @@ function copyName(name: string, taken: Set<string>): string {
 }
 
 /** The mod's id from `yog.toml` — new UI screens are named under it. */
-async function readModId(project: ProjectInfo): Promise<string> {
-  try {
-    const toml = await files.read(joinPath(project.root, "yog.toml"));
-    const id = /^\s*id\s*=\s*"([^"]+)"/m.exec(toml)?.[1];
-    if (id) return id;
-  } catch {
-    // no yog.toml — fall through
-  }
+async function modIdOf(project: ProjectInfo): Promise<string> {
+  const id = await readModId(project.root);
+  if (id) return id;
   return project.name.toLowerCase().replace(/[^a-z0-9_-]+/g, "_");
 }
 
@@ -174,7 +161,7 @@ function ProjectExplorerTree({ project }: { project: ProjectInfo }) {
   // Expanded folders are remembered per project (see `WorkspaceProvider`).
   useT();
   const shell = useShell();
-  const tree = useDirectoryTree(project.root, project.name, dirCommands, reportListError, "explorer.expanded");
+  const tree = useDirectoryTree(project.root, project.name, files, reportListError, "explorer.expanded");
   const { tabs, pathRenamed, pathRemoved } = useOpenFiles();
   // Controlled, so a rename (here or from Properties) can carry the
   // selection over to the new path instead of losing it.

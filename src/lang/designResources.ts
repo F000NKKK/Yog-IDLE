@@ -50,13 +50,8 @@ async function listYres(dir: string, rel: string, out: { path: string; rel: stri
 
 async function load(root: string) {
   loading = root;
-  let modId = "";
-  try {
-    const toml = await invoke<string>("file_read", { path: `${root}/yog.toml` });
-    modId = /^\s*id\s*=\s*"([^"]+)"/m.exec(toml)?.[1] ?? "";
-  } catch {
-    // no yog.toml — keys can't be resolved, set references still can
-  }
+  // Without a mod id keys can't be resolved; set references still can.
+  const modId = (await readModId(root)) ?? "";
   const files: { path: string; rel: string }[] = [];
   await listYres(`${root}/resources`, "", files);
   const sets = new Map<string, ResourceSet>();

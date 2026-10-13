@@ -83,7 +83,7 @@ export function LangFileEditor({ path, content, onChange, readOnly }: EditorProp
   useEffect(() => {
     if (isReference) return;
     let cancelled = false;
-    invoke<string>("file_read", { path: `${dir}${separator}${REFERENCE_LOCALE}.json` })
+    files.read(`${dir}${separator}${REFERENCE_LOCALE}.json`)
       .then((text) => {
         const scanned = scanLangFile(text);
         if (!cancelled && scanned) setReference(new Map(scanned.map((e) => [e.key, e.value])));
