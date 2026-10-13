@@ -150,6 +150,28 @@ pub struct TextureChoice {
     pub group: &'static str,
 }
 
+/// The `@<Set>.<name>` texts of the mod's `.yres` files — the name/tooltip picker's choices.
+pub fn strings(file: &Path) -> Vec<String> {
+    let mut out = Vec::new();
+    let Some(root) = mod_root(file) else { return out };
+    for p in find(&root.join("resources"), "yres") {
+        let Some(set) = p.file_stem().and_then(|s| s.to_str()) else { continue };
+        if set.contains('.') {
+            continue; // a culture variant
+        }
+        let Ok(text) = std::fs::read_to_string(&p) else { continue };
+        let Ok(doc) = serde_json::from_str::<Map<String, Value>>(&text) else { continue };
+        for (name, e) in &doc {
+            let ty = e.get("type").and_then(Value::as_str);
+            if e.is_string() || ty.is_none_or(|t| t == "string") {
+                out.push(format!("@{set}.{name}"));
+            }
+        }
+    }
+    out.sort();
+    out
+}
+
 /// Everything the texture picker offers.
 pub fn textures(file: &Path) -> Vec<TextureChoice> {
     let mut out = Vec::new();

@@ -576,6 +576,15 @@ async fn content_textures(state: State<'_, AppState>, path: String) -> Result<Ve
         .map_err(|e| e.to_string())
 }
 
+/// The name/tooltip picker's choices for a content file.
+#[tauri::command]
+async fn content_strings(state: State<'_, AppState>, path: String) -> Result<Vec<String>, String> {
+    validate_within_roots(&state, Path::new(&path))?;
+    tauri::async_runtime::spawn_blocking(move || content::strings(Path::new(&path)))
+        .await
+        .map_err(|e| e.to_string())
+}
+
 /// A model by id with its parents flattened, for previewing a raw parent.
 #[tauri::command]
 async fn content_parent_model(state: State<'_, AppState>, path: String, id: String) -> Result<serde_json::Value, String> {
@@ -1471,6 +1480,7 @@ pub fn run() {
         content_info,
         content_texture,
         content_textures,
+        content_strings,
         content_parent_model,
         content_import,
         yui_designer_render,
