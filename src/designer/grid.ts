@@ -23,9 +23,6 @@ export const AXES: Record<Axis, { attr: string; prop: string; def: string; size:
   cols: { attr: "columns", prop: "Grid.ColumnDefinitions", def: "ColumnDefinition", size: "width", min: "min_width", max: "max_width", cell: "Grid.Column", span: "Grid.ColumnSpan" },
 };
 
-/** The attached properties a Grid's children take. */
-export const ATTACHED = ["Grid.Row", "Grid.Column", "Grid.RowSpan", "Grid.ColumnSpan"] as const;
-
 /** `Auto`, `*`, `2*`, `26` — `null` if it's none of them. */
 export function parseLength(text: string): GridLength | null {
   const v = text.trim();

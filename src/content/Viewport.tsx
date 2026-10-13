@@ -3,7 +3,6 @@ import * as THREE from "three";
 import {
   autoUv,
   DIRS,
-  DIR_NORMAL,
   FACE_SHADE,
   faceCorners,
   type Dir,
@@ -859,6 +858,3 @@ export function Viewport({
     </div>
   );
 }
-
-/** Normal of a face — for UI (which way a face points). */
-export const faceNormal = (d: Dir) => DIR_NORMAL[d];

@@ -181,11 +181,6 @@ export function isLocaleName(name: string): boolean {
   return /^[a-z]{2,3}_[a-z0-9]{2,4}$/.test(name);
 }
 
-/** A resource set's name: `Strings`, `Icons`, `MenuTexts`. */
-export function isSetName(name: string): boolean {
-  return /^[A-Za-z_][A-Za-z0-9_]*$/.test(name);
-}
-
 /** An entry name: identifiers, optionally dotted (`title`, `screen.title`). */
 export function isEntryName(name: string): boolean {
   return /^[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)*$/.test(name);

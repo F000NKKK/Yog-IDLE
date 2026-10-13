@@ -122,10 +122,6 @@ export function useEnvironment(): EnvironmentStore {
   return useSyncExternalStore(subscribe, () => state);
 }
 
-export function getEnvironment(): EnvironmentStore {
-  return state;
-}
-
 /** Hands the Options to the backend — every `yog`/`cargo` it spawns from now on uses them. */
 export function applyEnvironmentSettings(settings: EnvironmentSettings): Promise<void> {
   return invoke<void>("environment_settings_set", { settings }).catch((err) => reportError(t("Failed to apply the Environment options: {error}", { error: String(err) })));

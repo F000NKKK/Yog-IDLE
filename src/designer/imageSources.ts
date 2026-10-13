@@ -70,13 +70,6 @@ export function imagePreview(path: string, source: string): string | null | unde
   return undefined;
 }
 
-/** Drops cached lists and previews (a texture was added or edited). */
-export function refreshImageSources() {
-  lists.clear();
-  previews.clear();
-  changed();
-}
-
 /** Raw resource path → the alias to use instead (mirrors `yog_gfx::image::suggest_alias`). */
 export function suggestImageAlias(value: string): string | null {
   const m = /^([a-z0-9_.-]+):textures\/(.+?)(\.png)?$/.exec(value.trim());

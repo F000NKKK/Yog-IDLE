@@ -110,11 +110,6 @@ export function useComponents(path: string | null | undefined): ComponentsSnapsh
   return useSyncExternalStore(subscribe, () => (path ? (snapshots.get(path) ?? null) : null));
 }
 
-/** The latest known snapshot for `path`, outside React. */
-export function componentsOf(path: string | null | undefined): ComponentsSnapshot | null {
-  return path ? (snapshots.get(path) ?? null) : null;
-}
-
 export function findComponent(snapshot: ComponentsSnapshot | null, kind: string): ComponentInfo | null {
   return snapshot?.components.find((c) => c.name === kind) ?? null;
 }

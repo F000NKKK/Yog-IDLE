@@ -4,7 +4,7 @@
 
 import { designImage, designText } from "../lang/designResources";
 import { gridDefs, type GridLength, type TrackDef } from "./grid";
-import { CANVAS_KINDS, isPropertyElement, parseColor, parseNumber, type YuiNode } from "./yui";
+import { CANVAS_KINDS, parseColor, parseNumber, widgetChildren, type YuiNode } from "./yui";
 
 export const LINE_H = 9;
 export const LINE_GAP = 1;
@@ -355,7 +355,7 @@ export function toWidget(node: YuiNode, inCanvas: boolean): LWidget {
       colSpacing: Math.max(0, parseNumber(a.column_spacing) ?? 0),
     },
     visible: designFlag(a["d:visible"] ?? a.visible),
-    children: LEAF_OF[node.kind] === "panel" ? node.children.filter((c) => !isPropertyElement(c)).map((c) => toWidget(c, canvas)) : [],
+    children: LEAF_OF[node.kind] === "panel" ? widgetChildren(node).map((c) => toWidget(c, canvas)) : [],
   };
 }
 

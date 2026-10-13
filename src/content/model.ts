@@ -211,15 +211,6 @@ export function faceCorners(dir: Dir, from: Vec3, to: Vec3): Vec3[] {
 /** Minecraft's face brightness with shading on. */
 export const FACE_SHADE: Record<Dir, number> = { up: 1, down: 0.5, north: 0.8, south: 0.8, west: 0.6, east: 0.6 };
 
-export const DIR_NORMAL: Record<Dir, Vec3> = {
-  down: [0, -1, 0],
-  up: [0, 1, 0],
-  north: [0, 0, -1],
-  south: [0, 0, 1],
-  west: [-1, 0, 0],
-  east: [1, 0, 0],
-};
-
 /** The display transforms a model inherits from vanilla's `block/block` or `item/generated|handheld`. */
 export function defaultDisplay(kind: "block" | "generated" | "handheld"): Partial<Record<DisplaySlot, DisplayTransform>> {
   if (kind === "block") {
