@@ -187,14 +187,10 @@ pub struct RenderArgs {
 pub fn render(args: &RenderArgs) -> Result<Rendered, String> {
     let (sw, sh) = (args.screen_w.clamp(1, 4096), args.screen_h.clamp(1, 4096));
     let scroll = offsets(&args.path, args.preview);
-    images::set_document(mod_root(Path::new(&args.path)).as_deref());
+    let root = mod_root(Path::new(&args.path));
+    images::set_document(root.as_deref());
     // The mod's own components: expanded from markup, or marked spacers here drawn by the designer host below.
-    let prepared = custom::prepare(
-        &args.root,
-        mod_root(Path::new(&args.path)).as_deref(),
-        sw as f32,
-        sh as f32,
-    );
+    let prepared = custom::prepare(&args.root, root.as_deref(), sw as f32, sh as f32);
     let laid = lay_out(&prepared.root, sw as f32, sh as f32, &scroll);
     let mut ops = gfx::record(sw as i32, sh as i32, |ctx| laid.render(ctx));
     let mut node_rects = rects(&prepared.root, &laid);
@@ -207,7 +203,7 @@ pub fn render(args: &RenderArgs) -> Result<Rendered, String> {
     }
     // The inside of an expanded component instance isn't the document's.
     node_rects.retain(|r| !r.uid.contains(components::INNER));
-    let res = Resources::for_mod(mod_root(Path::new(&args.path)).as_deref());
+    let res = Resources::for_mod(root.as_deref());
     let scale = args.scale.clamp(1, 8);
     let canvas = raster::rasterize(&ops, sw, sh, scale, &res);
     let real_font = res.vanilla.is_some() || canvas_font_real(&res);
@@ -264,8 +260,10 @@ fn hit<'a>(node: &'a YuiNode, l: &'a LayoutNode, mx: f32, my: f32) -> Option<&'a
         return None;
     }
     if markup::is_container(&node.kind) {
-        for (i, child) in node.children.iter().enumerate().rev() {
-            if let Some(found) = l.children.get(i).and_then(|cl| hit(child, cl, mx, my)) {
+        // Laid out from the widget children only — property elements have no layout node.
+        let children: Vec<_> = markup::widget_children(node).zip(&l.children).collect();
+        for (child, cl) in children.into_iter().rev() {
+            if let Some(found) = hit(child, cl, mx, my) {
                 return Some(found);
             }
         }
@@ -284,12 +282,10 @@ pub fn event(args: &EventArgs) -> EventResult {
         args.screen_h.clamp(1, 4096) as f32,
     );
     let scroll = offsets(&args.path, true);
-    let prepared = custom::prepare(
-        &args.root,
-        mod_root(Path::new(&args.path)).as_deref(),
-        sw,
-        sh,
-    );
+    let mod_root = mod_root(Path::new(&args.path));
+    // Laid out like `render` does: images size by the same mod's resources.
+    images::set_document(mod_root.as_deref());
+    let prepared = custom::prepare(&args.root, mod_root.as_deref(), sw, sh);
     let root = &prepared.root;
     let laid = lay_out(root, sw, sh, &scroll);
     let mut out = EventResult::default();
@@ -523,6 +519,44 @@ mod tests {
         assert!(offsets(path, true)["sv"] > 0.0);
         reset(path);
         assert!(offsets(path, true).is_empty());
+    }
+
+    #[test]
+    fn clicks_skip_property_elements() {
+        let defs = node(
+            "d",
+            "Grid.ColumnDefinitions",
+            &[],
+            vec![node("c0", "ColumnDefinition", &[], vec![])],
+        );
+        let button = node(
+            "b",
+            "Button",
+            &[("w", "40"), ("h", "20"), ("on_click", "go")],
+            vec![],
+        );
+        let root = node(
+            "s",
+            "Screen",
+            &[("width", "100"), ("height", "60")],
+            vec![node(
+                "g",
+                "Grid",
+                &[("w", "100"), ("h", "60")],
+                vec![defs, button],
+            )],
+        );
+        let r = event(&EventArgs {
+            path: "/nowhere/src/grid_click.yui".into(),
+            root,
+            screen_w: 100,
+            screen_h: 60,
+            event: "click:50:30".into(),
+            x: 0.0,
+            y: 0.0,
+        });
+        assert_eq!(r.hit.as_deref(), Some("b"));
+        assert_eq!(r.clicked.as_deref(), Some("go"));
     }
 }
 
