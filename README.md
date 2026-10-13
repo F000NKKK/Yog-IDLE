@@ -52,7 +52,8 @@ Works today:
   (or double-click them); nest them in Canvas/Row/Column containers;
   arrow-key nudge, cut/copy/paste/duplicate, z-order and undo/redo; every
   attribute editable in Properties. Saving regenerates the screen's
-  `*.designer.rs` (`yog ui gen`), included by its code-behind module.
+  `.yog-build/generated/<name>.g.rs` (`yog ui gen`), pulled in by its
+  code-behind module with `yog_api::ui_include!`.
 - **Build & publish** — Build (`yog build`) and saved publish profiles
   (package as `.yog`, or `yog publish exports`), with output streamed to
   the Output panel, which keeps a separate source per producer (Build,

@@ -386,15 +386,11 @@ fn find_latest_module_base(pid: Pid, mod_id: &str) -> Option<u64> {
             continue;
         };
         let stem = rest.split('.').next().unwrap_or("");
-        // `<pid>-<n>`; older runtimes wrote just `<pid>` (n = 0).
+        // `<pid>-<n>`.
         let mut parts = stem.split('-');
         let pid_ok = parts.next().is_some_and(|p| p.parse::<u32>().is_ok());
-        let n = match parts.next() {
-            Some(n) => match n.parse::<u64>() {
-                Ok(n) => n,
-                Err(_) => continue,
-            },
-            None => 0,
+        let Some(Ok(n)) = parts.next().map(str::parse::<u64>) else {
+            continue;
         };
         if !pid_ok || parts.next().is_some() {
             continue;
@@ -539,9 +535,8 @@ fn connect_and_watch(
     };
 
     let Some(stream) = stream else {
-        // Not fatal for a plain run — an older yog-runtime without socket
-        // support, or a mod that never got as far as `nativeInit`, just
-        // means no live status/attach for this session, not that the game
+        // Not fatal for a plain run — a game that never got as far as
+        // `nativeInit` just means no live status/attach for this session, not that the game
         // itself failed to launch.
         let _ = app.emit(
             crate::OUTPUT_DEBUG,
@@ -900,8 +895,7 @@ fn run_hot_reload(
 /// Clears whatever's left of the session and reports "the game is gone" —
 /// called both when the control socket drops (the common, prompt path) and
 /// by `spawn_exit_watcher`'s `try_wait` polling (the backstop for a run
-/// whose socket never connected in the first place, e.g. an older
-/// `yog-runtime` without control-socket support). Safe to call more than
+/// whose socket never connected in the first place). Safe to call more than
 /// once — a session that's already gone (or already replaced by a newer
 /// one, e.g. after Restart) is simply a no-op.
 fn mark_exited(app: &AppHandle, session_id: u64) {

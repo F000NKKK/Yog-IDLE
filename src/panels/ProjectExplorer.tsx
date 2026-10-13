@@ -106,13 +106,13 @@ async function readModId(project: ProjectInfo): Promise<string> {
 /**
  * Visual Studio's file nesting (`Form1.cs` ▸ `Form1.Designer.cs`, `Form1.resx`):
  * a screen's code-behind `foo.rs` goes under `foo.yui`, a lock file under its
- * manifest. (`foo.designer.rs` is what older `yog` generated next to the
- * screen — still nested, should one be left over.)
+ * manifest, and the `lib.designer.rs` facade `yog build` writes (for mod
+ * dependencies) under `lib.rs`.
  */
 function nestParent(name: string, siblings: Set<string>): string | null {
   const lower = name.toLowerCase();
   const designer = /^(.*)\.designer\.rs$/.exec(lower);
-  if (designer) return siblings.has(`${designer[1]}.yui`) ? `${designer[1]}.yui` : `${designer[1]}.rs`;
+  if (designer) return `${designer[1]}.rs`;
   const code = /^(.*)\.rs$/.exec(lower);
   if (code && siblings.has(`${code[1]}.yui`)) return `${code[1]}.yui`;
   // A resource set's culture variants under its neutral file: `Strings.ru_ru.yres` ▸ under `Strings.yres`.

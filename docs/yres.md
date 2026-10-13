@@ -280,5 +280,5 @@ file), the build looks it up in the player's.
   (F7, or the toolbar's code button) switches the tab to the JSON.
 - The screen designer shows `@Strings.title` and `@<key>` texts from the
   mod's `.yres` files in the IDE's language (the matching culture variant,
-  else the neutral text), and `texture="@Icons.logo"` as the bundled
+  else the neutral text), and `source="@Icons.logo"` as the bundled
   image.

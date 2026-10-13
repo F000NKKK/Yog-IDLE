@@ -177,7 +177,7 @@ NeoForge and Forge.
 | `sprite:<name>` | A vanilla GUI sprite by Yog's stable name (table below): `sprite:button`, `sprite:icon/heart`. |
 | `mod:<path>` | This mod's own image, `assets/<mod id>/textures/<path>.png`: `mod:gui/logo`. `yog build` fills in the mod id. |
 | `<ns>:<path>` | `assets/<ns>/textures/<path>.png` — another mod's image (or yours, spelled out): `othermod:gui/logo`. |
-| `<ns>:textures/<path>.png` | A raw resource path — the escape hatch. Version-dependent; `yog build` warns and suggests the alias (`minecraft:textures/item/apple.png` → `item:apple`). |
+| `<ns>:textures/<path>.png` | Not accepted — a raw resource path depends on the Minecraft version; `yog build` fails naming the alias to write instead (`minecraft:textures/item/apple.png` → `item:apple`, `mymod:textures/gui/logo.png` → `mymod:gui/logo`). |
 
 Ids without a namespace are `minecraft:`. Unknown sprite names are build
 errors; an image that can't be found in game is logged once and skipped.
@@ -193,11 +193,8 @@ errors; an image that can't be found in game is logged once and skipped.
 Images are drawn nearest-neighbour (pixel-art stays crisp), clipped by
 scroll views like everything else.
 
-**Deprecated:** `texture` (a raw path — still works, with a warning; use
-`source`), `tex_w`/`tex_h` (a default `w`/`h` now; the image's size comes
-from its source). In Rust, `widget::mc_image(texture, w, h)` is kept as is;
-new code uses `widget::image(source).stretch(Stretch::Fill).region([u, v,
-w, h]).tint(c)`, or `Draw2D::image(source, x, y, w, h)` /
+In Rust: `widget::image(source).stretch(Stretch::Fill).region([u, v, w,
+h]).tint(c)`, or `Draw2D::image(source, x, y, w, h)` /
 `Draw2D::image_region` outside yog-ui.
 
 ### Sprites
@@ -265,14 +262,6 @@ In Yog-IDLE the generated file shows in Project Explorer nested under its
 `.yui` (greyed, italic) and opens read-only, under a notice that it's
 generated. Code Search (Ctrl+T) indexes its symbols; Find in Files searches
 it when *Include generated files* is ticked.
-
-**Upgrading from `.designer.rs`** (yog-cli 0.25 and older generated
-`src/foo.designer.rs` next to the screen): `yog build` deletes a stale
-`foo.designer.rs` next to a `.yui`, and stops with
-`src/foo.rs:1: include!("foo.designer.rs") — ... replace it with
-yog_api::ui_include!("foo");` for each code-behind still including one —
-replace the line as it says. (A `lib.designer.rs` is something else: the
-exports facade `yog build` writes for `[dependencies.exports]`.)
 
 It defines:
 
@@ -427,7 +416,7 @@ alone. In the split:
   (the game window divided by its GUI scale) and zoom.
 - **Drawn as in game** — the picture comes from `yog-ui` itself (the crate
   mods render with): the `.yui` is built into the same widget tree the
-  generated `*.designer.rs` builds, laid out and rendered by yog-ui into a
+  generated `.g.rs` builds, laid out and rendered by yog-ui into a
   recording `YogGfxApi`, and rasterized with Minecraft's own font (bitmap,
   Unifont, `font=` ids such as `minecraft:alt`, `§` codes, drop shadow) and
   textures/items — read at run time from the local client jar

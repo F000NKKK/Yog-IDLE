@@ -17,8 +17,8 @@
 //! JDK's `release` file (never runs `java`). Installs go into user-level
 //! locations (rustup's own `~/.cargo`, the IDE's tools dir) and only ever
 //! start from an explicit `environment_install` call the user confirmed.
-//! Prefers `yog doctor --json` (yog-cli 0.24+) for the toolchain/targets
-//! yog wants, and falls back to its own checks with older CLIs.
+//! Asks `yog doctor --json` for the toolchain/targets yog wants, and falls
+//! back to its own checks when `yog` isn't installed (or can't answer).
 
 use std::collections::{BTreeMap, HashMap};
 use std::io::{BufRead, BufReader};
@@ -38,8 +38,8 @@ pub const OUTPUT_ENVIRONMENT: &str = "environment-output";
 /// the frontend's global store; read here at startup).
 pub const SETTINGS_KEY: &str = "environment.settings";
 
-/// The Rust toolchain mods build with when the installed `yog` can't say
-/// (pre-0.24 CLIs have no `yog doctor`) — the yog crates' `rust-version`.
+/// The Rust toolchain mods build with when no `yog` can say — the yog
+/// crates' `rust-version`.
 const FALLBACK_TOOLCHAIN: &str = "1.99";
 
 /// Every platform a `.yog` bundles natives for: `(tag, triple)` — the same
@@ -465,7 +465,7 @@ fn parse_java_version_property(text: &str) -> Option<u32> {
     })
 }
 
-/// `yog doctor --json` (yog-cli 0.24+).
+/// `yog doctor --json`.
 #[derive(Deserialize, Debug, Default)]
 struct Doctor {
     rust_toolchain: String,
