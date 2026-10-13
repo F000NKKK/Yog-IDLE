@@ -189,9 +189,9 @@ async function askToSave(names: string[]): Promise<string> {
 }
 
 /**
- * A saved `.yui` screen or `.yres` resource file: regenerate its
- * `.yog-build/generated/**` code (`yog ui gen` / `yog res check`), so the
- * code-behind sees it without a build.
+ * A saved `.yui` screen, `.yres` resource file or `.yblock`/`.yitem`: regenerate its
+ * `.yog-build/generated/**` code (`yog ui gen` / `yog res check` / `yog content check`),
+ * so the code-behind sees it without a build.
  */
 function regenerateScreen(path: string) {
   invoke<string>("yui_codegen", { path }).catch((err) =>
@@ -292,7 +292,7 @@ export function OpenFilesProvider({ children }: { children: ReactNode }) {
     setTabs((prev) =>
       prev.map((t) => (t.id === id ? { ...t, diskContent: written, missing: false, dirty: t.content !== written } : t))
     );
-    if (/\.(yui|yres)$/i.test(tab.path)) regenerateScreen(tab.path);
+    if (/\.(yui|yres|yblock|yitem)$/i.test(tab.path)) regenerateScreen(tab.path);
     if (/\.yres$/i.test(tab.path)) invalidateDesignResources();
     return true;
   }, []);

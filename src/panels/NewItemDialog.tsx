@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { Button, FloatingWindow, Icon, SearchField, TextField, useT, type DirEntry } from "substrate-platform-ui";
+import { newBlockFile, newBlockWithItemFile, newItemFile, titleOf } from "../content/model";
 import { validateEntryName } from "../paths";
 import "./NewItemDialog.css";
 
@@ -78,6 +79,37 @@ export const ITEM_TEMPLATES: ItemTemplate[] = [
         `{\n  "example": { "value": "Example", "comment": "Translation key ${modId}.example; ${stem}::example() in code, @${stem}.example in .yui" }\n}\n`,
       ],
     ],
+  },
+  {
+    id: "yog-block",
+    category: "Yog",
+    name: "Block",
+    description:
+      "A block (.yblock): its properties, 3D model, block states and item form in one file, opened in the 3D model editor; yog build turns it into Minecraft's models, blockstates, loot table and tags, and registers it. Goes into content/.",
+    extension: ".yblock",
+    baseName: "block",
+    rootFolder: "content",
+    files: (stem) => [[`${stem}.yblock`, newBlockFile(titleOf(stem))]],
+  },
+  {
+    id: "yog-item",
+    category: "Yog",
+    name: "Item",
+    description: "An item (.yitem): its properties and model (a sprite or 3D), opened in the 3D model editor; yog build registers it. Goes into content/.",
+    extension: ".yitem",
+    baseName: "item",
+    rootFolder: "content",
+    files: (stem) => [[`${stem}.yitem`, newItemFile(titleOf(stem))]],
+  },
+  {
+    id: "yog-block-item",
+    category: "Yog",
+    name: "Block with Item",
+    description: "A block (.yblock) whose item has its own sprite (item_model) instead of the block's 3D model in hand. Goes into content/.",
+    extension: ".yblock",
+    baseName: "block",
+    rootFolder: "content",
+    files: (stem) => [[`${stem}.yblock`, newBlockWithItemFile(titleOf(stem))]],
   },
   {
     id: "yog-lang",

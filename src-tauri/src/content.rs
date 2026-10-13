@@ -273,19 +273,27 @@ pub fn parent_model(file: &Path, id: &str) -> Result<Value, String> {
     Ok(Value::Object(out))
 }
 
-/// `yog import <kind> <source> [--model <id>] [--force]` in the mod of
+/// `yog import <kind> <source> [--model <id>] [--force]` (`kind`: `resourcepack`,
+/// `bbmodel`, or `bbmodel-item`) in the mod of
 /// `file` (a content file or the mod folder) → what it printed.
 pub fn import(file: &Path, kind: &str, source: &str, model: Option<&str>, force: bool) -> Result<String, String> {
     let root = mod_root(file).ok_or("not in a mod (no yog.toml)")?;
-    if !matches!(kind, "resourcepack" | "bbmodel") {
-        return Err(format!("unknown import kind {kind}"));
-    }
+    // `bbmodel-item`: a Blockbench model as an item.
+    let (what, item) = match kind {
+        "resourcepack" => ("resourcepack", false),
+        "bbmodel" => ("bbmodel", false),
+        "bbmodel-item" => ("bbmodel", true),
+        _ => return Err(format!("unknown import kind {kind}")),
+    };
     let mut cmd = Command::new("yog");
-    cmd.current_dir(&root).args(["import", kind, source]);
+    cmd.current_dir(&root).args(["import", what, source]);
     if let Some(m) = model.filter(|m| !m.is_empty()) {
-        cmd.args([if kind == "bbmodel" { "--id" } else { "--model" }, m]);
-    } else if kind == "resourcepack" {
+        cmd.args([if what == "bbmodel" { "--id" } else { "--model" }, m]);
+    } else if what == "resourcepack" {
         cmd.arg("--all");
+    }
+    if item {
+        cmd.arg("--item");
     }
     if force {
         cmd.arg("--force");

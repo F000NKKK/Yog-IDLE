@@ -41,11 +41,6 @@ unsafe extern "C" fn text(text: YogStr, x: f32, y: f32, color: u32, shadow: bool
     let text = unsafe { string(text) };
     push(DrawOp::Text { text, font: "minecraft:default".into(), x, y, color, shadow });
 }
-#[allow(clippy::too_many_arguments)]
-unsafe extern "C" fn mc_tex(id: YogStr, x: f32, y: f32, u0: f32, v0: f32, w: f32, h: f32, tw: f32, th: f32) {
-    let id = unsafe { string(id) };
-    push(DrawOp::Texture { id, x, y, u0, v0, w, h, tw, th });
-}
 unsafe extern "C" fn text_font(text: YogStr, font: YogStr, x: f32, y: f32, color: u32, shadow: bool) {
     let (text, font) = unsafe { (string(text), string(font)) };
     let font = if font.trim().is_empty() { "minecraft:default".to_string() } else { font };
@@ -158,7 +153,6 @@ pub fn api(screen_w: i32, screen_h: i32, scale: f32) -> YogGfxApi {
         draw2d_rect: rect,
         draw2d_gradient: gradient,
         draw2d_text: text,
-        draw2d_mc_tex: mc_tex,
         draw2d_item: item,
         draw2d_text_font: text_font,
         text_width,

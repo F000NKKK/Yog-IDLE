@@ -21,7 +21,6 @@ pub enum DrawOp {
     Rect { x1: f32, y1: f32, x2: f32, y2: f32, color: u32 },
     Gradient { x1: f32, y1: f32, x2: f32, y2: f32, top: u32, bottom: u32 },
     Text { text: String, font: String, x: f32, y: f32, color: u32, shadow: bool },
-    Texture { id: String, x: f32, y: f32, u0: f32, v0: f32, w: f32, h: f32, tw: f32, th: f32 },
     Item { id: String, x: f32, y: f32, size: f32 },
     /// `draw2d_image`: a Yog image source into `x, y, w, h`; `region` `u v w h` (see [`images`](super::images)).
     Image { source: String, x: f32, y: f32, w: f32, h: f32, region: [f32; 4], tint: u32 },
@@ -179,12 +178,6 @@ impl<'r> Canvas<'r> {
             DrawOp::Rect { x1, y1, x2, y2, color } => self.fill(*x1, *y1, *x2, *y2, *color, *color),
             DrawOp::Gradient { x1, y1, x2, y2, top, bottom } => self.fill(*x1, *y1, *x2, *y2, *top, *bottom),
             DrawOp::Text { text, font, x, y, color, shadow } => self.text(text, font, *x, *y, *color, *shadow),
-            DrawOp::Texture { id, x, y, u0, v0, w, h, tw, th } => {
-                let img = self.res.texture(id).unwrap_or_else(|| Arc::new(Image::missing()));
-                let (x, y, w, h) = ((*x as i32) as f32, (*y as i32) as f32, (*w as i32) as f32, (*h as i32) as f32);
-                let (tw, th) = ((*tw as i32).max(1) as f32, (*th as i32).max(1) as f32);
-                self.blit(&img, x, y, w, h, [u0 / tw, v0 / th, (u0 + w) / tw, (v0 + h) / th], [1.0; 4]);
-            }
             DrawOp::Item { id, x, y, size } => {
                 // The 3D item renderer isn't reproduced: the item's flat texture (block items: the block's).
                 let (ns, name) = super::assets::split_id(id);

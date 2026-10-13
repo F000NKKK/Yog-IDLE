@@ -559,7 +559,6 @@ fn translate(op: DrawOp, dx: f32, dy: f32) -> DrawOp {
         DrawOp::Rect { x1, y1, x2, y2, color } => DrawOp::Rect { x1: x1 + dx, y1: y1 + dy, x2: x2 + dx, y2: y2 + dy, color },
         DrawOp::Gradient { x1, y1, x2, y2, top, bottom } => DrawOp::Gradient { x1: x1 + dx, y1: y1 + dy, x2: x2 + dx, y2: y2 + dy, top, bottom },
         DrawOp::Text { text, font, x, y, color, shadow } => DrawOp::Text { text, font, x: x + dx, y: y + dy, color, shadow },
-        DrawOp::Texture { id, x, y, u0, v0, w, h, tw, th } => DrawOp::Texture { id, x: x + dx, y: y + dy, u0, v0, w, h, tw, th },
         DrawOp::Item { id, x, y, size } => DrawOp::Item { id, x: x + dx, y: y + dy, size },
         DrawOp::Image { source, x, y, w, h, region, tint } => DrawOp::Image { source, x: x + dx, y: y + dy, w, h, region, tint },
         // yog-ui clips in software; a component's own scissor would undo the slot's.

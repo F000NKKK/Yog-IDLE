@@ -242,16 +242,25 @@ mod tests {
         assert!(host.handle(r#"{"cmd":"load","lib":"/nowhere/libnope.so"}"#)["error"].as_str().unwrap().contains("can't load"));
     }
 
-    /// `YOG_DESIGNER_LIB=…/libmod.so YOG_DESIGNER_COMPONENT=StatBar cargo test --lib designer::host -- --ignored`
+    /// `YOG_DESIGNER_LIB=…/libmod.so YOG_DESIGNER_COMPONENT=StatBar [YOG_DESIGNER_PNG=out.png]
+    /// cargo test --lib designer::host -- --ignored` (`YOG_DESIGNER_PROPS="k=v;k=v"`)
     #[test]
     #[ignore]
     fn renders_a_built_mod() {
         let (Ok(lib), Ok(name)) = (std::env::var("YOG_DESIGNER_LIB"), std::env::var("YOG_DESIGNER_COMPONENT")) else { return };
-        let l = Loaded::open(Path::new(&lib)).unwrap();
-        let components = l.describe().unwrap();
-        eprintln!("{components:#?}");
-        let (w, h, ops) = l.render(&RenderReq { name, props: vec![], w: 0.0, h: 0.0, avail_w: 400.0, avail_h: 300.0 }).unwrap();
+        let props = std::env::var("YOG_DESIGNER_PROPS").unwrap_or_default();
+        let props = props.split(';').filter_map(|kv| kv.split_once('=')).map(|(k, v)| (k.to_string(), v.to_string())).collect();
+        let mut host = Host { lib: None, mod_root: None };
+        let loaded = host.handle(&json!({"cmd": "load", "lib": lib}).to_string());
+        eprintln!("{loaded:#}");
+        let l = host.loaded().unwrap();
+        let (w, h, ops) = l.render(&RenderReq { name: name.clone(), props, w: 0.0, h: 0.0, avail_w: 400.0, avail_h: 300.0 }).unwrap();
         eprintln!("{w}x{h}: {ops:?}");
         assert!(w > 0.0 && h > 0.0 && !ops.is_empty());
+        if let Ok(out) = std::env::var("YOG_DESIGNER_PNG") {
+            let res = super::super::assets::Resources::for_mod(None);
+            let canvas = raster::rasterize(&ops, w.ceil() as u32, h.ceil() as u32, 6, &res);
+            std::fs::write(&out, canvas.png().unwrap()).unwrap();
+        }
     }
 }

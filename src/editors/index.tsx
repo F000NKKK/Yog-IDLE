@@ -1,6 +1,8 @@
 import { JsonEditor, registerEditorProvider } from "substrate-platform-ui";
+import "../content/icons";
 import { ScreenDesigner } from "../designer/ScreenDesigner";
 import { YuiSourceEditor, YuiSplitEditor } from "../designer/YuiSplitEditor";
+import { CONTENT_SOURCE_VIEW, ContentEditor } from "./ContentEditor";
 import { isLangFile, LangFileEditor } from "./LangFileEditor";
 import { YRES_SOURCE_VIEW, YresEditor } from "./YresEditor";
 
@@ -71,6 +73,29 @@ registerEditorProvider({
   label: "Code",
   name: "Resource Source Editor",
   extensions: ["yres"],
+  component: JsonEditor,
+  priority: 0,
+  kind: "text",
+});
+
+// `.yblock` / `.yitem` blocks and items: the 3D model editor by default, the
+// JSON a click (or F7) away.
+registerEditorProvider({
+  id: "yog.content",
+  label: "Model",
+  name: "Block/Item Editor",
+  icon: "yogBlock",
+  extensions: ["yblock", "yitem"],
+  component: ContentEditor,
+  priority: 20,
+  kind: "designer",
+});
+
+registerEditorProvider({
+  id: CONTENT_SOURCE_VIEW,
+  label: "Code",
+  name: "Block/Item Source Editor",
+  extensions: ["yblock", "yitem"],
   component: JsonEditor,
   priority: 0,
   kind: "text",

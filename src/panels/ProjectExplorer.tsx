@@ -140,7 +140,7 @@ function withGeneratedCode(nodes: FileTreeNode[], root: string): FileTreeNode[] 
   });
 }
 
-/** The mod's `resources/` folder and its `.yres` files get their own icons, like a C# project's Resources. */
+/** The mod's `resources/` folder and its `.yres` files get their own icons, like a C# project's Resources; `.yblock`/`.yitem` files theirs. */
 function withResourceIcons(nodes: FileTreeNode[], resourcesDir: string): FileTreeNode[] {
   return nodes.map((node) => {
     if (node.kind === "folder") {
@@ -149,7 +149,13 @@ function withResourceIcons(nodes: FileTreeNode[], resourcesDir: string): FileTre
       return children === node.children && icon === node.icon ? node : { ...node, children, icon };
     }
     const nested = node.nested && withResourceIcons(node.nested, resourcesDir);
-    const icon = /\.yres$/i.test(node.name) ? <Icon name="table" size={15} /> : node.icon;
+    const icon = /\.yres$/i.test(node.name)
+      ? <Icon name="table" size={15} />
+      : /\.yblock$/i.test(node.name)
+        ? <Icon name="yogBlock" size={15} />
+        : /\.yitem$/i.test(node.name)
+          ? <Icon name="yogItem" size={15} />
+          : node.icon;
     return nested === node.nested && icon === node.icon ? node : { ...node, nested, icon };
   });
 }
