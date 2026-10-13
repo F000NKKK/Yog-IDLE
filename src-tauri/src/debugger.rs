@@ -396,6 +396,18 @@ fn find_latest_module_base(pid: Pid, mod_id: &str) -> Option<u64> {
     best.map(|(_, base)| base)
 }
 
+/// How long a write to the control socket may block.
+const CONTROL_WRITE_TIMEOUT: Duration = Duration::from_secs(5);
+/// How long a hot reload waits for the game's answer.
+const HOT_RELOAD_TIMEOUT: Duration = Duration::from_secs(60);
+
+/// One request line to the control socket, in a single write.
+fn send_control(control: &mut UnixStream, request: &serde_json::Value) -> std::io::Result<()> {
+    let mut line = request.to_string();
+    line.push('\n');
+    control.write_all(line.as_bytes())
+}
+
 fn control_socket_path() -> PathBuf {
     std::env::temp_dir().join(format!(
         "yog-idle-{}-{}.sock",
@@ -562,6 +574,10 @@ fn connect_and_watch(
             Some(session) if session.id == session_id => {
                 session.real_pid = Some(real_pid);
                 session.control = stream.try_clone().ok();
+                // Written under `DebugState`'s lock: a game that stops reading mustn't wedge every command.
+                if let Some(control) = &session.control {
+                    let _ = control.set_write_timeout(Some(CONTROL_WRITE_TIMEOUT));
+                }
             }
             // Stopped (or restarted) before the game even reported in.
             _ => return,
@@ -832,7 +848,7 @@ fn run_hot_reload(
             "mod_id": mod_id,
             "yog_path": yog_path.to_string_lossy(),
         });
-        writeln!(control, "{request}")
+        send_control(control, &request)
             .map_err(|e| format!("writing to the control socket: {e}"))?;
         session.hot_reload_waiter = Some(tx);
     }
@@ -844,10 +860,13 @@ fn run_hot_reload(
         format!("sent {} to the game", yog_path.display()),
     );
 
-    let ok = match rx.recv_timeout(Duration::from_secs(60)) {
+    let ok = match rx.recv_timeout(HOT_RELOAD_TIMEOUT) {
         Ok(ok) => ok,
         Err(mpsc::RecvTimeoutError::Timeout) => {
-            return Err("the game didn't answer within 60s".to_string());
+            return Err(format!(
+                "the game didn't answer within {}s",
+                HOT_RELOAD_TIMEOUT.as_secs()
+            ));
         }
         Err(mpsc::RecvTimeoutError::Disconnected) => {
             return Err("the game exited before answering".to_string());
@@ -869,7 +888,7 @@ fn run_hot_reload(
         // A reload can change the mod's reported version — refresh the list
         // (the answer arrives as a `mods` event, see `handle_control_event`).
         if let Some(control) = session.control.as_mut() {
-            let _ = writeln!(control, "{}", serde_json::json!({ "cmd": "list_mods" }));
+            let _ = send_control(control, &serde_json::json!({ "cmd": "list_mods" }));
         }
     }
     Ok(())
