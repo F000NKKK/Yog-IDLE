@@ -383,12 +383,25 @@ Keys and typed characters reach the handler as `key:KEY:MODS` (GLFW key
 code and modifier bits) and `char:CODEPOINT` UI events (yog runtime 0.96+,
 ABI 0.33).
 
-Yog-Modlist's `src/mod_list.yui` + `src/mod_list.rs` is a complete example
-(a search box filtering the list, and a Done button calling `close()`).
+A screen with `x:ViewModel` doesn't need any of this: see the next section.
 
 Call `main_menu::register(registry)` from the mod's `Mod::register`, and
 `main_menu::open()` (or `registry.register_menu_entry("Main Menu", main_menu::ID)`)
 to show it.
+
+## View-model screens
+
+`<Screen ... x:ViewModel="MyVm">` switches the screen to
+[yog-kit](mvvm.md): `{x:Bind ...}` bindings, `command="{x:Bind method()}"`,
+two-way text boxes and toggles, `ListView`/`ItemsControl`/`ContentPresenter`
+with item templates, `<Screen.Resources>` styles and `hover:`/`checked:`/...
+state attributes. The code-behind is just the view-model struct; text boxes,
+scrolling, focus and keyboard navigation need no code. Instead of the
+functions above, the generated file has `register(registry)` (returning a
+`ScreenHandle`), `open()`, `close()`, `ID` and `ids`. `on_click`,
+`on_change` and `on_submit` are errors there. Full reference:
+[mvvm.md](mvvm.md); Yog-Modlist's `src/mod_list.yui` + `src/mod_list.rs`
+is a complete example.
 
 ## Designer
 

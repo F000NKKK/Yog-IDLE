@@ -1,17 +1,19 @@
-//! The mod's own `.yui` components (`yog_api::ui_component!`) in the
-//! designer, drawn for real by the mod's code: a designer host process
-//! ([`host`](super::host)) per mod loads the mod's library built for this
-//! machine (`yog designer-lib`) and draws components on request.
+//! The mod's `.yui` components in the designer. Markup-only ones are
+//! expanded in place ([`components`](super::components)); *compiled* ones —
+//! whose bindings call the code-behind — are drawn for real by the mod's
+//! code: a designer host process ([`host`](super::host)) per mod loads the
+//! mod's library built for this machine (`yog designer-lib`) and draws them
+//! on request.
 //!
 //! This side supervises it — rebuilds the library and restarts the host
 //! when the mod's sources change (debounced), restarts nothing while they
-//! don't — and fits the components into the designer's picture: each custom
-//! element is laid out by yog-ui as a spacer of the component's (measured)
-//! size, painted with a marker color; the marker's fill in the recorded
-//! display list is then replaced by the host's drawing of the component.
-//! While the library builds, or when it can't be built or loaded, the
-//! element is a labelled placeholder box instead ("designer could not
-//! load"), never an IDE crash.
+//! don't — and fits the components into the designer's picture: each
+//! compiled instance is laid out by yog-ui as a spacer of the component's
+//! (measured) size, painted with a marker color; the marker's fill in the
+//! recorded display list is then replaced by the host's drawing of the
+//! component. While the library builds, or when it can't be built or
+//! loaded, the element is a labelled placeholder box instead ("designer
+//! could not load"), never an IDE crash.
 
 use std::collections::hash_map::DefaultHasher;
 use std::collections::HashMap;
@@ -26,6 +28,7 @@ use std::time::{Duration, Instant, SystemTime};
 use serde::Serialize;
 use serde_json::{json, Value};
 
+use super::components::{self, Def};
 use super::host::{ComponentInfo, RenderReq, MARK};
 use super::markup::YuiNode;
 use super::raster::DrawOp;
@@ -57,7 +60,7 @@ pub fn is_component(kind: &str) -> bool {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum Status {
-    /// The mod declares no components (no `ui_component!` in its sources).
+    /// The mod has no compiled components (nothing to build).
     None,
     /// Building the library / starting the host.
     Building,
@@ -70,7 +73,10 @@ pub enum Status {
 pub struct Snapshot {
     pub status: Status,
     pub error: Option<String>,
+    /// Every component of the mod, from its `.yui` files.
     pub components: Vec<ComponentInfo>,
+    /// The ones that need the mod's library (the rest are drawn from markup).
+    pub compiled: Vec<String>,
     /// The mod's display name (`yog.toml` `name`, else its id) for the toolbox category.
     pub mod_name: String,
 }
@@ -176,6 +182,7 @@ type Drawn = (f32, f32, Vec<DrawOp>);
 struct ModState {
     status: Status,
     error: Option<String>,
+    /// What the loaded library registered.
     components: Vec<ComponentInfo>,
     mod_name: String,
     /// The sources the current library (or failure) came from.
@@ -204,8 +211,14 @@ impl ModState {
         }
     }
 
-    fn snapshot(&self) -> Snapshot {
-        Snapshot { status: self.status, error: self.error.clone(), components: self.components.clone(), mod_name: self.mod_name.clone() }
+    fn snapshot(&self, defs: &[Def]) -> Snapshot {
+        Snapshot {
+            status: self.status,
+            error: self.error.clone(),
+            components: defs.iter().map(|d| d.info.clone()).collect(),
+            compiled: defs.iter().filter(|d| d.compiled).map(|d| d.info.name.clone()).collect(),
+            mod_name: self.mod_name.clone(),
+        }
     }
 
     fn render(&mut self, req: &RenderReq) -> Result<Drawn, String> {
@@ -263,7 +276,7 @@ fn sources(root: &Path) -> Vec<PathBuf> {
             let p = entry.path();
             let ext = p.extension().and_then(|e| e.to_str()).unwrap_or_default();
             let name = p.file_name().and_then(|n| n.to_str()).unwrap_or_default();
-            if p.is_file() && matches!(ext, "rs" | "toml" | "yres" | "json" | "png") && !name.ends_with(".designer.rs") {
+            if p.is_file() && matches!(ext, "rs" | "yui" | "toml" | "yres" | "json" | "png") && !name.ends_with(".designer.rs") {
                 out.push(p.to_path_buf());
             }
         }
@@ -284,13 +297,6 @@ fn fingerprint(files: &[PathBuf]) -> u64 {
     h.finish()
 }
 
-fn declares_components(files: &[PathBuf]) -> bool {
-    files
-        .iter()
-        .filter(|f| f.extension().is_some_and(|e| e == "rs"))
-        .any(|f| std::fs::read_to_string(f).is_ok_and(|s| s.contains("ui_component!")))
-}
-
 fn mod_name(root: &Path) -> String {
     let toml = std::fs::read_to_string(root.join("yog.toml")).unwrap_or_default();
     let field = |key: &str| {
@@ -305,9 +311,10 @@ fn mod_name(root: &Path) -> String {
 }
 
 /// The mod's components and the library's state; starts a rebuild (and
-/// host restart) when the sources changed and have been quiet a moment.
-/// Cheap enough to poll.
+/// host restart) when the sources changed and have been quiet a moment —
+/// only if some component is compiled. Cheap enough to poll.
 pub fn status(root: &Path) -> Snapshot {
+    let defs = components::scan(root);
     let shared = state(root);
     let files = sources(root);
     let fp = fingerprint(&files);
@@ -316,34 +323,34 @@ pub fn status(root: &Path) -> Snapshot {
         s.mod_name = mod_name(root);
     }
     if s.building || s.built == Some(fp) {
-        return s.snapshot();
+        return s.snapshot(&defs);
     }
-    if !declares_components(&files) {
+    if !defs.iter().any(|d| d.compiled) {
         s.status = Status::None;
         s.error = None;
         s.components.clear();
         s.host = None;
         s.built = Some(fp);
-        return s.snapshot();
+        return s.snapshot(&defs);
     }
     let now = Instant::now();
     match s.seen {
         Some((seen, since)) if seen == fp => {
             if now.duration_since(since) < DEBOUNCE && s.built.is_some() {
-                return s.snapshot();
+                return s.snapshot(&defs);
             }
         }
         _ => {
             s.seen = Some((fp, now));
             if s.built.is_some() {
-                return s.snapshot();
+                return s.snapshot(&defs);
             }
         }
     }
     s.building = true;
     s.status = Status::Building;
     s.mod_name = mod_name(root);
-    let snapshot = s.snapshot();
+    let snapshot = s.snapshot(&defs);
     drop(s);
     let root = root.to_path_buf();
     std::thread::spawn(move || rebuild(&root, &shared, fp));
