@@ -140,7 +140,9 @@ export function Toolbox() {
                 }
               >
                 <span className="toolbox-chevron">{open ? "▾" : "▸"}</span>
-                {group.title}
+                <span className="toolbox-label" title={group.title}>
+                  {group.title}
+                </span>
               </button>
               {open && group.note && <p className="toolbox-note" title={group.note}>{group.note}</p>}
               {open && shown.length === 0 && <p className="toolbox-note">{group.empty}</p>}
@@ -161,7 +163,7 @@ export function Toolbox() {
                     }}
                   >
                     {entry.icon ? <img className="toolbox-icon" src={entry.icon} alt="" draggable={false} /> : <span className="toolbox-glyph">{entry.glyph}</span>}
-                    {entry.label}
+                    <span className="toolbox-label">{entry.label}</span>
                   </div>
                 ))}
             </div>

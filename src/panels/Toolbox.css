@@ -41,6 +41,15 @@
   cursor: pointer;
 }
 
+/* One line per row, like Visual Studio's Toolbox: long names end in an ellipsis instead of wrapping over the next row. */
+.toolbox-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .toolbox-chevron {
   flex: none;
   width: var(--sp-icon-size);
@@ -72,6 +81,7 @@
 }
 
 .toolbox-glyph {
+  flex: none;
   width: 1.2em;
   text-align: center;
   color: var(--sp-accent);
