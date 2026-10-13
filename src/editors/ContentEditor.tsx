@@ -1429,6 +1429,7 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
             onChange={(v) => setVariant(Number(v))}
           />
         )}
+        <span className="content-divider" />
         <Button variant="ghost" disabled={readOnly} onClick={() => void addSlot()}>
           {t("Add Texture Slot…")}
         </Button>
