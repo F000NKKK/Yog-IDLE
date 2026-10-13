@@ -444,8 +444,6 @@ impl Font {
     }
 
     /// Width in GUI pixels, as the game's `Font.width` measures it (`§` codes skipped, bold +offset).
-    /// Advance of `text` in GUI px (`Font.width`) — for measuring text the way the game will.
-    #[allow(dead_code)]
     pub fn width(&self, text: &str) -> f32 {
         styled(text, 0xFFFF_FFFF)
             .iter()
