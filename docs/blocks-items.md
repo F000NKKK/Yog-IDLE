@@ -190,8 +190,28 @@ button) shows the JSON, and Open With switches back.
 - **Variants** — with `states.rotations`, preview each variant.
 - **Item Model** / **Connection Arm** — switch which model is edited (the arm
   is drawn over a translucent block).
-- Undo/redo (Ctrl+Z / Ctrl+Y) step over the file's text; saving regenerates
-  the Rust code (`yog content check`).
+- **Paint** (P) — paint the textures, on the model in the 3D view or in the
+  2D texture view next to it (wheel zooms, middle/right drag pans, Home
+  fits; the selected element's faces are outlined on their texture). Tools:
+  pencil (B), eraser (E), fill (F; connected area or every pixel of that
+  color), color picker (I, or Alt+click in the 2D view), line (L), rectangle (R; outline or
+  filled); brush size 1–4 (`[` `]`), mirror X (M), a pixel grid; the color
+  with alpha (or hex `#rrggbbaa`), a palette (+ adds, right-click removes)
+  and recent colors. **New Texture…** puts a blank 16/32/64 px texture in
+  the painted slot. A texture that isn't the mod's (`minecraft:item/apple`,
+  say) is copied into the mod on the first stroke — `resources/item/<file>.png`
+  (`block/` for blocks, `_<slot>` when the model has several slots) — and
+  the slot points to the copy. Painted textures are written when the file is
+  saved (Save, Save All); they mark it unsaved meanwhile. A texture changed
+  on disk reloads when the window regains focus, unless it has unsaved paint.
+- **Sprite items** (`generated`/`handheld`) open in Paint: the left pane lists
+  the layers (add, remove, reorder; the color chip previews a tint for that
+  layer's tint index). **Convert to 3D Elements** turns the sprite into
+  elements of the model's own — one 1px-thick element per rectangle of
+  opaque pixels — keeping the display transforms, so it can be shaped with
+  Move/Resize.
+- Undo/redo (Ctrl+Z / Ctrl+Y) step over the file's text and the painted
+  pixels together; saving regenerates the Rust code (`yog content check`).
 
 New files: **Add › New Item › Block / Item / Block with Item**.
 

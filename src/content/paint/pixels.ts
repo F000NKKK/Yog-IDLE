@@ -119,17 +119,14 @@ export function fill(img: PixelImage, x: number, y: number, c: Rgba, global: boo
  */
 export class Stroke {
   readonly base: PixelImage;
+  readonly settings: PaintSettings;
   image: PixelImage;
   private last: [number, number];
   private readonly start: [number, number];
 
-  constructor(
-    base: PixelImage,
-    readonly settings: PaintSettings,
-    x: number,
-    y: number
-  ) {
+  constructor(base: PixelImage, settings: PaintSettings, x: number, y: number) {
     this.base = base;
+    this.settings = settings;
     this.image = cloneImage(base);
     this.start = [x, y];
     this.last = [x, y];

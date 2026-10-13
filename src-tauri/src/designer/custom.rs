@@ -37,13 +37,16 @@ use super::raster::DrawOp;
 /// PascalCase element is a custom component (as for `yog build`).
 const BUILT_IN: &[&str] = &[
     "Screen", "Canvas", "Column", "Row", "ScrollView", "Label", "Button", "TextBox", "ItemSlot", "InvSlot", "Image", "Spacer",
-    "ToggleButton", "ListView", "ItemsControl", "ContentPresenter", "DataTemplate", "Dialog",
+    "Grid", "RowDefinition", "ColumnDefinition", "ToggleButton", "ListView", "ItemsControl", "ContentPresenter", "DataTemplate", "Dialog",
 ];
 
 /// What every element takes that sizes/places it — kept on the stand-in
 /// spacer; the rest (the component's own properties and its style) goes
 /// to the host.
-const LAYOUT_ATTRS: &[&str] = &["x", "y", "w", "h", "min_w", "min_h", "dock", "flex", "id", "on_click", "enabled", "visible"];
+const LAYOUT_ATTRS: &[&str] = &[
+    "x", "y", "w", "h", "min_w", "min_h", "dock", "flex", "margin", "halign", "valign", "Grid.Row", "Grid.Column", "Grid.RowSpan", "Grid.ColumnSpan",
+    "id", "on_click", "enabled", "visible",
+];
 
 /// Quiet time after a source change before the library is rebuilt.
 const DEBOUNCE: Duration = Duration::from_millis(800);

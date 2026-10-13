@@ -33,6 +33,15 @@ pub struct NodeRect {
     pub uid: String,
     pub rect: [f32; 4],
     pub content: [f32; 4],
+    /// A grid's rows and columns, `[start, size]` in GUI px (for its adorners).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub grid: Option<GridRects>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct GridRects {
+    pub rows: Vec<[f32; 2]>,
+    pub cols: Vec<[f32; 2]>,
 }
 
 /// Where the game resources came from (`None`: no client jar found).
@@ -83,7 +92,7 @@ fn walk<'a>(node: &'a YuiNode, w: &'a Widget, l: &'a LayoutNode, visit: &mut imp
     if !markup::is_container(&node.kind) {
         return;
     }
-    for (i, child) in node.children.iter().enumerate() {
+    for (i, child) in markup::widget_children(node).enumerate() {
         if let (Some(cw), Some(cl)) = (w.children.get(i), l.children.get(i)) {
             walk(child, cw, cl, visit);
         }
@@ -105,6 +114,10 @@ fn rects(root: &YuiNode, laid: &Laid) -> Vec<NodeRect> {
             uid: n.uid.clone(),
             rect: [r.x, r.y, r.w, r.h],
             content: [r.x + p[3], r.y + p[0], (r.w - p[1] - p[3]).max(0.0), (r.h - p[0] - p[2]).max(0.0)],
+            grid: l.grid.as_ref().map(|g| GridRects {
+                rows: g.rows.iter().map(|&(a, b)| [a, b]).collect(),
+                cols: g.cols.iter().map(|&(a, b)| [a, b]).collect(),
+            }),
         });
     });
     out
@@ -303,6 +316,39 @@ mod tests {
         assert_eq!(r[0].rect, [50.0, 20.0, 100.0, 60.0]);
         let b = r.iter().find(|n| n.uid == "b").unwrap();
         assert_eq!(b.rect, [60.0, 30.0, 40.0, 20.0]);
+    }
+
+    #[test]
+    fn grids_place_children_in_cells() {
+        let defs = node(
+            "d",
+            "Grid.ColumnDefinitions",
+            &[],
+            vec![node("c0", "ColumnDefinition", &[("width", "30")], vec![]), node("c1", "ColumnDefinition", &[], vec![])],
+        );
+        let root = node(
+            "s",
+            "Screen",
+            &[("width", "100"), ("height", "60")],
+            vec![node(
+                "g",
+                "Grid",
+                &[("w", "100"), ("h", "60"), ("rows", "Auto,*"), ("column_spacing", "10")],
+                vec![
+                    defs,
+                    node("a", "Spacer", &[("h", "12"), ("Grid.ColumnSpan", "2")], vec![]),
+                    node("b", "Spacer", &[("Grid.Row", "1"), ("Grid.Column", "1"), ("margin", "2")], vec![]),
+                ],
+            )],
+        );
+        let laid = lay_out(&root, 100.0, 60.0, &HashMap::new());
+        let r = rects(&root, &laid);
+        let at = |uid: &str| r.iter().find(|n| n.uid == uid).unwrap();
+        let g = at("g").grid.as_ref().unwrap();
+        assert_eq!(g.rows, [[0.0, 12.0], [12.0, 48.0]]);
+        assert_eq!(g.cols, [[0.0, 30.0], [40.0, 60.0]]);
+        assert_eq!(at("a").rect, [0.0, 0.0, 100.0, 12.0]);
+        assert_eq!(at("b").rect, [42.0, 14.0, 56.0, 44.0]);
     }
 
     #[test]
