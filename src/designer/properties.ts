@@ -4,14 +4,18 @@
 import { t, type PropertyDescriptor, type PropertyValue, type XmlSchema } from "substrate-platform-ui";
 import { imagePreview, imageSources, suggestImageAlias } from "./imageSources";
 import { CONTAINER_KINDS, cssColor, KIND_INFO, KINDS, parseColor, parseNumber, type YuiNode } from "./yui";
+import { findComponent, type ComponentInfo, type ComponentsSnapshot } from "./components";
 
 type AttrKind = "text" | "number" | "units" | "color" | "bool" | "enum" | "padding" | "uv" | "image";
 
 interface AttrSpec {
   attr: string;
-  /** English; shown through `t`. */
+  /** English; shown through `t` (unless `raw`). */
   name: string;
-  category: "Design" | "Layout" | "Appearance" | "Behavior" | "Events" | "Data" | "Screen";
+  /** English (through `t` unless `raw`) — or a component's name. */
+  category: string;
+  /** Name, category and description are the mod's own (a component's properties), not translated. */
+  raw?: boolean;
   kind: AttrKind;
   options?: readonly string[];
   /** What an absent attribute means (shown greyed as the value). */
@@ -76,10 +80,64 @@ const SPECS: AttrSpec[] = [
 
 const applies = (spec: AttrSpec, kind: string) => (!spec.only || spec.only.includes(kind)) && !spec.not?.includes(kind);
 
+// ── Components (docs/yui.md, "Components") ──────────────────────────────────
+
+/** A `<Property type>`'s types — `event` is an `<Event>`. */
+const PROP_TYPES = ["text", "number", "int", "bool", "color", "choice", "image"] as const;
+
+/** The `<Component>` root of a component's own `.yui`. */
+const COMPONENT_SPECS: AttrSpec[] = [
+  { attr: "name", name: "Name", category: "Component", kind: "text", description: "The component's name (PascalCase) — its element in other .yui files (<StatBar .../>) and its Rust type." },
+  { attr: "doc", name: "Description", category: "Component", kind: "text", description: "What it is — the Toolbox's tooltip and the generated type's doc comment." },
+  { attr: "width", name: "Design Width", category: "Design", kind: "number", fallback: "120", description: "The designer's canvas width for editing it (not its size where it's used — that's its body's w, or the instance's)." },
+  { attr: "height", name: "Design Height", category: "Design", kind: "number", fallback: "40", description: "The designer's canvas height for editing it." },
+  { attr: "d:bg", name: "Design Background", category: "Design", kind: "color", description: "A background drawn only in the designer, behind the component." },
+];
+
+/** A `<Property>` declaration. */
+const PROPERTY_SPECS: AttrSpec[] = [
+  { attr: "name", name: "Name", category: "Property", kind: "text", description: "The property's name — its attribute on instances and its field in the generated type; bind to it in the body with {x:Bind name}." },
+  { attr: "type", name: "Type", category: "Property", kind: "enum", options: PROP_TYPES, fallback: "text", description: "What it holds: text, number, int, bool, color, choice (one of Options) or image (an image source)." },
+  { attr: "default", name: "Default", category: "Property", kind: "text", description: "Its value when an instance doesn't set it — also what the designer shows here." },
+  { attr: "options", name: "Options", category: "Property", kind: "text", description: "A choice property's values, comma-separated." },
+  { attr: "doc", name: "Description", category: "Property", kind: "text", description: "Shown in Properties for instances and as the field's doc comment." },
+];
+
+/** An `<Event>` declaration. */
+const EVENT_SPECS: AttrSpec[] = [
+  { attr: "name", name: "Name", category: "Event", kind: "text", description: "The event's name (on_select) — instances name the event raised; bind a button's on_click to it with {x:Bind on_select}." },
+  { attr: "doc", name: "Description", category: "Event", kind: "text", description: "Shown in Properties for instances." },
+];
+
+/** An instance's rows for the component's declared properties, in its own category. */
+function instanceSpecs(info: ComponentInfo): AttrSpec[] {
+  return info.props.map((p) => ({
+    attr: p.name,
+    name: p.name,
+    category: p.kind === "event" ? "Events" : info.name,
+    raw: p.kind !== "event",
+    kind: p.kind === "bool" ? "bool" : p.kind === "choice" ? "enum" : p.kind === "number" || p.kind === "int" ? "number" : p.kind === "color" ? "color" : p.kind === "image" ? "image" : "text",
+    options: p.kind === "choice" ? p.options : undefined,
+    fallback: p.kind === "event" || p.default === "" ? undefined : p.default,
+    description: p.doc || `${info.name}.${p.name}`,
+  }));
+}
+
+/** The rows a `kind` has: a built-in widget's, a component instance's, or a component document's own. */
+function specsFor(kind: string, components: ComponentsSnapshot | null): AttrSpec[] {
+  if (kind === "Component") return COMPONENT_SPECS;
+  if (kind === "Property") return PROPERTY_SPECS;
+  if (kind === "Event") return EVENT_SPECS;
+  const info = KIND_INFO[kind as keyof typeof KIND_INFO] ? null : findComponent(components, kind);
+  // An instance's own attributes (x, w, bg, ...) override its body's root; its events are its declared ones.
+  if (info) return [...instanceSpecs(info), ...SPECS.filter((spec) => spec.category !== "Events" && applies(spec, kind))];
+  return SPECS.filter((spec) => applies(spec, kind));
+}
+
 /** Rejects a value the generator wouldn't accept (`yog ui gen` checks the same). */
 function check(kind: AttrKind, value: string): string | null {
   const v = value.trim();
-  if (v === "") return null;
+  if (v === "" || /^\{x:Bind[\s}]/.test(v)) return null;
   switch (kind) {
     case "number":
       return parseNumber(v) === null ? t("Expected a number.") : null;
@@ -115,28 +173,35 @@ export interface EventActions {
  * all have, a value shown only where they agree). `apply` sets an attribute
  * on all of them (`undefined` removes it) and returns an error, if any.
  */
-export function widgetProperties(nodes: YuiNode[], apply: (attr: string, value: string | undefined) => string | null, events?: EventActions, yuiPath?: string): PropertyDescriptor[] {
+export function widgetProperties(
+  nodes: YuiNode[],
+  apply: (attr: string, value: string | undefined) => string | null,
+  events?: EventActions,
+  yuiPath?: string,
+  components: ComponentsSnapshot | null = null,
+): PropertyDescriptor[] {
   if (nodes.length === 0) return [];
   const rows: PropertyDescriptor[] = [];
-  for (const spec of SPECS) {
-    if (!nodes.every((n) => applies(spec, n.kind))) continue;
-    if (spec.attr === "id" && nodes.length > 1) continue;
+  const lists = nodes.map((n) => specsFor(n.kind, components));
+  const specs = lists[0].filter((spec) => lists.every((l) => l.some((o) => o.attr === spec.attr && o.kind === spec.kind)));
+  for (const spec of specs) {
+    if ((spec.attr === "id" || spec.attr === "name") && nodes.length > 1) continue;
     const values = nodes.map((n) => n.attrs[spec.attr]);
     const same = values.every((v) => v === values[0]);
     const raw = same ? values[0] : undefined;
     const shown = raw ?? (same ? (spec.fallback ?? "") : "");
     const row: PropertyDescriptor = {
       id: spec.attr,
-      name: t(spec.name),
-      category: t(spec.category),
-      description: t(spec.description),
+      name: spec.raw ? spec.name : t(spec.name),
+      category: spec.raw ? spec.category : t(spec.category),
+      description: spec.raw ? spec.description : t(spec.description),
       value: shown,
       onCommit: (value: PropertyValue) => {
         const text = String(value).trim();
         // Choosing the default removes the attribute — the file stays minimal.
         const error = apply(spec.attr, text === "" || text === spec.fallback ? undefined : text);
         // Naming an event (as in Visual Studio's Events tab) takes you to its handler.
-        if (!error && text !== "" && spec.category === "Events" && events && nodes.length === 1) events.open(nodes[0], spec.attr);
+        if (!error && text !== "" && spec.category === "Events" && !spec.raw && events && nodes.length === 1 && SPECS.includes(spec)) events.open(nodes[0], spec.attr);
         return error;
       },
     };
@@ -148,7 +213,7 @@ export function widgetProperties(nodes: YuiNode[], apply: (attr: string, value: 
       row.options = spec.options;
     } else {
       row.kind = "string";
-      row.suggestions = spec.category === "Events" && events && nodes.length === 1 && !raw ? [events.suggest(nodes[0], spec.attr)] : spec.suggestions;
+      row.suggestions = spec.category === "Events" && SPECS.includes(spec) && events && nodes.length === 1 && !raw ? [events.suggest(nodes[0], spec.attr)] : spec.suggestions;
       row.validate = (value) => check(spec.kind, String(value));
       if (spec.kind === "image") {
         if (yuiPath) {
