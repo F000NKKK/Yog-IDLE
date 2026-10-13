@@ -155,7 +155,7 @@ export interface Style {
   ellipsis: boolean;
   /** Reserves `SCROLLBAR_W` on the right for a scrollbar (ScrollView). */
   scrollbar: boolean;
-  /** Clips its children (ScrollView); a growing clip container starts from its min size. */
+  /** Clips its children (ScrollView). */
   clip: boolean;
   pos: [number, number] | null;
 }
@@ -510,7 +510,8 @@ function layoutChildren(w: LWidget, node: LNode, shrink: Shrink | null) {
     else [cmw, cmh] = [contentW, UNBOUNDED];
     layoutWidget(child, cn, 0, 0, cmw, cmh, contentW, contentH);
     const ef = effectiveFlex(child);
-    if (ef > 0 && child.style.clip && mainBounded && inFlow(child)) {
+    // A growing child starts from its min size, not its content (star sizing).
+    if (ef > 0 && mainBounded && inFlow(child)) {
       if (dir === "row" && child.style.w.t === "auto") cn.rect.w = child.style.minW;
       if (dir === "column" && child.style.h.t === "auto") cn.rect.h = child.style.minH;
     }
