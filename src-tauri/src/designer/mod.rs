@@ -11,7 +11,6 @@ pub mod gfx;
 pub mod images;
 pub mod markup;
 pub mod raster;
-pub mod yog_image;
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -65,8 +64,6 @@ type Laid = UiRoot;
 fn lay_out(root: &YuiNode, screen_w: f32, screen_h: f32, scroll: &HashMap<String, f32>) -> Laid {
     let mut ui = UiRoot::new("yog-idle:designer", markup::screen(root, screen_w, screen_h, scroll));
     ui.layout(screen_w, screen_h);
-    // `<Image>`s draw into their laid-out box (see `images`).
-    images::fit_to_layout(&mut ui.root, &ui.layout_root);
     ui
 }
 

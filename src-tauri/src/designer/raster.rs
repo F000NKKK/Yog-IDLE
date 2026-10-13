@@ -23,9 +23,8 @@ pub enum DrawOp {
     Text { text: String, font: String, x: f32, y: f32, color: u32, shadow: bool },
     Texture { id: String, x: f32, y: f32, u0: f32, v0: f32, w: f32, h: f32, tw: f32, th: f32 },
     Item { id: String, x: f32, y: f32, size: f32 },
-    /// An `<Image>` in its content box (see [`images`](super::images)); designer-internal.
-    #[serde(skip)]
-    Image { spec: super::images::Spec, x: f32, y: f32, w: f32, h: f32 },
+    /// `draw2d_image`: a Yog image source into `x, y, w, h`; `region` `u v w h` (see [`images`](super::images)).
+    Image { source: String, x: f32, y: f32, w: f32, h: f32, region: [f32; 4], tint: u32 },
     Scissor { x: i32, y: i32, w: i32, h: i32 },
     ClearScissor,
 }
@@ -198,7 +197,7 @@ impl<'r> Canvas<'r> {
                 let v1 = frame / img.h as f32;
                 self.blit(&img, *x, *y, *size, *size, [0.0, 0.0, 1.0, v1], [1.0; 4]);
             }
-            DrawOp::Image { spec, x, y, w, h } => super::images::draw(self, spec, *x, *y, *w, *h),
+            DrawOp::Image { source, x, y, w, h, region, tint } => super::images::draw(self, source, [*x, *y, *w, *h], *region, *tint),
             DrawOp::Scissor { x, y, w, h } => self.clip = Some((*x, *y, *w, *h)),
             DrawOp::ClearScissor => self.clip = None,
         }

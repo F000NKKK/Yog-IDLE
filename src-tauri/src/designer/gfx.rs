@@ -44,11 +44,36 @@ unsafe extern "C" fn text(text: YogStr, x: f32, y: f32, color: u32, shadow: bool
 #[allow(clippy::too_many_arguments)]
 unsafe extern "C" fn mc_tex(id: YogStr, x: f32, y: f32, u0: f32, v0: f32, w: f32, h: f32, tw: f32, th: f32) {
     let id = unsafe { string(id) };
-    if let Some(spec) = super::images::Spec::decode(&id) {
-        push(DrawOp::Image { spec, x, y, w, h });
-        return;
-    }
     push(DrawOp::Texture { id, x, y, u0, v0, w, h, tw, th });
+}
+unsafe extern "C" fn text_font(text: YogStr, font: YogStr, x: f32, y: f32, color: u32, shadow: bool) {
+    let (text, font) = unsafe { (string(text), string(font)) };
+    let font = if font.trim().is_empty() { "minecraft:default".to_string() } else { font };
+    push(DrawOp::Text { text, font, x, y, color, shadow });
+}
+/// Measured with the same glyphs the rasterizer draws (the document's fonts).
+unsafe extern "C" fn text_width(text: YogStr, font: YogStr) -> f32 {
+    let (text, font) = unsafe { (string(text), string(font)) };
+    super::font::Font::load(&super::images::resources(), &font).width(&text)
+}
+#[allow(clippy::too_many_arguments)]
+unsafe extern "C" fn image(source: YogStr, x: f32, y: f32, w: f32, h: f32, u: f32, v: f32, uw: f32, vh: f32, tint: u32) {
+    let source = unsafe { string(source) };
+    push(DrawOp::Image { source, x, y, w, h, region: [u, v, uw, vh], tint });
+}
+unsafe extern "C" fn image_size(source: YogStr, w: *mut f32, h: *mut f32) -> bool {
+    let source = unsafe { string(source) };
+    match super::images::source_size(&source) {
+        Some((sw, sh)) if !w.is_null() && !h.is_null() => {
+            // SAFETY: non-null out-pointers from the caller (`Draw2D::image_size`).
+            unsafe {
+                *w = sw;
+                *h = sh;
+            }
+            true
+        }
+        _ => false,
+    }
 }
 unsafe extern "C" fn item(id: YogStr, x: f32, y: f32, size: f32) {
     let id = unsafe { string(id) };
@@ -135,6 +160,10 @@ pub fn api(screen_w: i32, screen_h: i32, scale: f32) -> YogGfxApi {
         draw2d_text: text,
         draw2d_mc_tex: mc_tex,
         draw2d_item: item,
+        draw2d_text_font: text_font,
+        text_width,
+        draw2d_image: image,
+        image_size,
     }
 }
 
