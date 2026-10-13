@@ -279,6 +279,8 @@ const LEAF_OF: Record<string, Leaf> = {
   TextBox: "text_box",
   ItemSlot: "item_slot",
   InvSlot: "inv_slot",
+  Slot: "inv_slot",
+  PlayerInventory: "panel",
   Image: "image",
   Spacer: "spacer",
 };

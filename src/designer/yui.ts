@@ -4,7 +4,7 @@
 // write back.
 
 /** Every element the format knows, in Toolbox order. */
-export const KINDS = ["Screen", "Grid", "Canvas", "Column", "Row", "ScrollView", "Label", "Button", "TextBox", "Spacer", "ItemSlot", "InvSlot", "Image"] as const;
+export const KINDS = ["Screen", "Grid", "Canvas", "Column", "Row", "ScrollView", "Label", "Button", "TextBox", "Spacer", "ItemSlot", "InvSlot", "Slot", "PlayerInventory", "Image"] as const;
 export type YuiKind = (typeof KINDS)[number];
 
 export interface YuiNode {
@@ -445,6 +445,20 @@ export const KIND_INFO: Record<YuiKind, KindInfo> = {
     group: "Minecraft",
     description: "A vanilla-looking inventory slot with an item and a stack count.",
     defaults: { item: "minecraft:diamond", count: "1" },
+  },
+  Slot: {
+    kind: "Slot",
+    label: "Container Slot",
+    group: "Minecraft",
+    description: "A real slot of the block's inventory (by index): the game draws its item and handles dragging. Where it is in the layout is where the slot is.",
+    defaults: { index: "0" },
+  },
+  PlayerInventory: {
+    kind: "PlayerInventory",
+    label: "Player Inventory",
+    group: "Minecraft",
+    description: "The player's inventory on an inventory screen: 3 rows of 9 and the hotbar, real slots.",
+    defaults: {},
   },
   Image: {
     kind: "Image",

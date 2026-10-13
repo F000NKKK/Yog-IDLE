@@ -43,6 +43,8 @@ const GLYPHS: Record<string, string> = {
   Spacer: "↔",
   ItemSlot: "◆",
   InvSlot: "▦",
+  Slot: "▢",
+  PlayerInventory: "▤",
   Image: "▨",
 };
 
