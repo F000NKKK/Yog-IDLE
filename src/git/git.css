@@ -260,6 +260,12 @@
   min-width: 0;
 }
 
+/* The 10px chevron centered in a 16px expander column, so the title starts where the rows' text does. */
+.idle-git-section-header > svg:first-child {
+  flex: none;
+  margin: 0 calc((var(--sp-icon-size) - 10px) / 2);
+}
+
 .idle-git-section-header:hover {
   background: var(--sp-surface-2);
 }

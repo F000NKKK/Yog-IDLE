@@ -19,7 +19,6 @@ body,
   height: 100%;
   width: 100%;
   padding: var(--sp-space-md);
-  box-sizing: border-box;
   color: var(--sp-text-faint);
 }
 
@@ -41,8 +40,9 @@ body,
   align-items: center;
   justify-content: flex-end;
   flex: 0 0 auto;
-  gap: 2px;
-  padding: 2px 10px 2px var(--sp-space-xs);
+  gap: var(--sp-space-2xs);
+  min-height: var(--sp-toolbar-height);
+  padding: 0 var(--sp-space-sm) 0 var(--sp-toolbar-padding-x);
   border-bottom: 1px solid var(--sp-border);
 }
 
@@ -61,10 +61,11 @@ body,
   appearance: none;
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 2px var(--sp-space-sm);
+  gap: var(--sp-space-xs);
+  height: var(--sp-control-height);
+  padding: 0 var(--sp-control-padding-x);
   border: none;
-  border-radius: var(--sp-radius-sm);
+  border-radius: var(--sp-control-radius);
   background: transparent;
   color: var(--sp-text);
   font-family: var(--sp-font-ui);
