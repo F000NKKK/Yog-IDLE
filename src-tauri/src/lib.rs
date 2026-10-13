@@ -511,12 +511,36 @@ fn app_state_save(app: AppHandle, value: serde_json::Value) -> Result<(), String
 /// The external formatter for a file kind, by extension: the program and its
 /// arguments for reading the document on stdin and writing the formatted
 /// result to stdout.
-fn formatter_for(path: &Path) -> Option<(&'static str, &'static [&'static str])> {
+fn formatter_for(path: &Path) -> Option<(&'static str, Vec<String>)> {
+    let args = |a: &[&str]| a.iter().map(|s| s.to_string()).collect();
     match path.extension()?.to_str()?.to_ascii_lowercase().as_str() {
-        "rs" => Some(("rustfmt", &["--edition", "2021", "--emit", "stdout"])),
-        "toml" => Some(("taplo", &["fmt", "-"])),
+        "rs" => Some((
+            "rustfmt",
+            args(&["--edition", &rust_edition(path), "--emit", "stdout"]),
+        )),
+        "toml" => Some(("taplo", args(&["fmt", "-"]))),
         _ => None,
     }
+}
+
+/// The Rust edition `file` is written in — rustfmt can't tell from stdin:
+/// its mod's `[mod] edition` (yog-cli's default 2021), else its crate's
+/// `[package] edition`.
+fn rust_edition(file: &Path) -> String {
+    const DEFAULT: &str = "2021";
+    for dir in file.ancestors().skip(1) {
+        if manifest::path(dir).is_file() {
+            return manifest::read_mod_field(dir, "edition").unwrap_or_else(|| DEFAULT.into());
+        }
+        if let Ok(text) = std::fs::read_to_string(dir.join("Cargo.toml")) {
+            let edition = text
+                .parse::<toml::Table>()
+                .ok()
+                .and_then(|doc| Some(doc.get("package")?.get("edition")?.as_str()?.to_string()));
+            return edition.unwrap_or_else(|| DEFAULT.into());
+        }
+    }
+    DEFAULT.into()
 }
 
 /// Whether Format Document can work for `path` — a formatter exists for its
@@ -539,11 +563,6 @@ async fn format_supported(path: String) -> bool {
     .unwrap_or(false)
 }
 
-/// Format Document: pipes `contents` (the editor's text — not necessarily
-/// what's saved on disk) through the formatter for `path`'s kind and returns
-/// the result. Runs in the file's own folder so the formatter picks up a
-/// `rustfmt.toml`/`taplo.toml` there. A syntax error comes back as `Err`
-/// with the formatter's own message.
 /// Regenerates a saved `.yui` screen's generated `.g.rs` (see `yui.rs`).
 #[tauri::command]
 async fn yui_codegen(state: State<'_, AppState>, path: String) -> Result<String, String> {
@@ -705,6 +724,11 @@ async fn yui_event_handler(
         .map_err(|e| e.to_string())?
 }
 
+/// Format Document: pipes `contents` (the editor's text — not necessarily
+/// what's saved on disk) through the formatter for `path`'s kind and returns
+/// the result. Runs in the file's own folder so the formatter picks up a
+/// `rustfmt.toml`/`taplo.toml` there. A syntax error comes back as `Err`
+/// with the formatter's own message.
 #[tauri::command]
 async fn format_document(path: String, contents: String) -> Result<String, String> {
     let target = PathBuf::from(&path);
