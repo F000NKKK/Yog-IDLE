@@ -1,35 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { listen } from "@tauri-apps/api/event";
 import { t } from "substrate-platform-ui";
+import { EVENT, listenAll, listenTo, type DebugStackFrame, type DebugStoppedEvent } from "./events";
 import { openFile } from "./fileOpenBus";
 
-export interface DebugStackFrame {
-  id: number;
-  name: string;
-  file: string;
-  line: number;
-}
-
-export interface DebugThread {
-  id: number;
-  name: string;
-  /** Stopped and inspectable — the debugger is non-stop, so most threads keep running. */
-  stopped: boolean;
-}
-
 export type StepKind = "over" | "into" | "out";
-
-interface DebugStoppedEvent {
-  reason: "breakpoint" | "step" | "pause" | "signal" | "exited";
-  stackTrace: DebugStackFrame[];
-  /** Every thread of the game; all are stopped while paused. */
-  threads: DebugThread[];
-  /** The thread `stackTrace`/`registers` describe. */
-  thread: number;
-  /** General-purpose registers of `thread`: `[name, hex value]`. */
-  registers: [string, string][];
-}
 
 /**
  * Tracks the live state of whatever `RunBar`'s Start button most recently
@@ -76,12 +51,20 @@ export function useDebugSession() {
   }, []);
 
   useEffect(() => {
-    const unlistenStarting = listen<{ stage: string }>("game-status", (event) => {
-      if (event.payload.stage === "starting") {
+    const onFailed = (kind: "attach" | "session") => (message: string) => {
+      setAttaching(false);
+      setDebugging(false);
+      setStopped(null);
+      setError(message);
+      setFailure({ kind, message });
+    };
+    return listenAll([
+      listenTo(EVENT.gameStatus, (status) => {
+      if (status.stage === "starting") {
         setAttaching(true);
         setError(null);
         setFailure(null);
-      } else if (event.payload.stage === "exited") {
+      } else if (status.stage === "exited") {
         setAttaching(false);
         setDebugging(false);
         // However the session ended (crash included), drop the stop — the
@@ -90,41 +73,28 @@ export function useDebugSession() {
       } else {
         setAttaching(false);
       }
-    });
-    const unlistenAttached = listen("debug-attached", () => {
+    }),
+      listenTo(EVENT.debugAttached, () => {
       setAttaching(false);
       setDebugging(true);
       setError(null);
       setFailure(null);
-    });
-    const onFailed = (kind: "attach" | "session") => (event: { payload: string }) => {
-      setAttaching(false);
-      setDebugging(false);
-      setStopped(null);
-      setError(event.payload);
-      setFailure({ kind, message: event.payload });
-    };
-    const unlistenFailed = listen<string>("debug-attach-failed", onFailed("attach"));
-    // The debugger gave up mid-session (the attach itself had worked).
-    const unlistenSessionFailed = listen<string>("debug-failed", onFailed("session"));
-    const unlistenStopped = listen<DebugStoppedEvent>("debug-stopped", (event) => {
-      setStopped(event.payload);
+    }),
+      listenTo(EVENT.debugAttachFailed, onFailed("attach")),
+      // The debugger gave up mid-session (the attach itself had worked).
+      listenTo(EVENT.debugFailed, onFailed("session")),
+      listenTo(EVENT.debugStopped, (stop) => {
+      setStopped(stop);
       setSelectedFrame(0);
-      if (event.payload.reason === "exited") {
+      if (stop.reason === "exited") {
         setDebugging(false);
         return;
       }
       // Like any IDE: bring up where it stopped.
-      const top = event.payload.stackTrace[0];
+      const top = stop.stackTrace[0];
       if (top) openSource(top);
-    });
-    return () => {
-      unlistenStarting.then((f) => f());
-      unlistenAttached.then((f) => f());
-      unlistenFailed.then((f) => f());
-      unlistenSessionFailed.then((f) => f());
-      unlistenStopped.then((f) => f());
-    };
+    }),
+    ]);
   }, []);
 
   /**
@@ -163,7 +133,7 @@ export function useDebugSession() {
     let exit = () => {};
     const exited = new Promise<void>((resolve) => (exit = resolve));
     // Listening before cancelling, so the exit can't slip past.
-    const unlisten = await listen("workflow-exit", () => exit());
+    const unlisten = await listenTo(EVENT.workflowExit, () => exit());
     try {
       await invoke("workflow_cancel");
       await exited;

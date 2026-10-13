@@ -5,9 +5,6 @@ import { setOutputSource } from "../outputSource";
 import { reportError } from "../reportError";
 import { gitApi, type BranchInfo, type FileChange, type RemoteOp, type RepoStatus, type StashInfo, type StashMode } from "./gitApi";
 
-/** Output's Source Control source (`OUTPUT_GIT` in `git.rs`). */
-export const GIT_OUTPUT_EVENT = "git-output";
-
 /**
  * The open project's repository as Git Changes, Git Repository, the Git
  * menu and the status bar all see it — module-level, like the search
