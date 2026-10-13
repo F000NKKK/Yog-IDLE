@@ -2,9 +2,10 @@
 // designer — one row per `.yui` attribute the selection can have.
 
 import { t, type PropertyDescriptor, type PropertyValue, type XmlSchema } from "substrate-platform-ui";
+import { imagePreview, imageSources, suggestImageAlias } from "./imageSources";
 import { CONTAINER_KINDS, cssColor, KIND_INFO, KINDS, parseColor, parseNumber, type YuiNode } from "./yui";
 
-type AttrKind = "text" | "number" | "units" | "color" | "bool" | "enum" | "padding";
+type AttrKind = "text" | "number" | "units" | "color" | "bool" | "enum" | "padding" | "uv" | "image";
 
 interface AttrSpec {
   attr: string;
@@ -22,6 +23,8 @@ interface AttrSpec {
   not?: readonly string[];
   /** Values offered in an editable combo box (any other text is accepted too). */
   suggestions?: readonly string[];
+  /** Superseded: shown only on widgets that still have it. */
+  deprecated?: boolean;
 }
 
 const TEXT_KINDS = ["Label", "Button", "TextBox"];
@@ -67,9 +70,13 @@ const SPECS: AttrSpec[] = [
   { attr: "on_submit", name: "On Submit", category: "Events", kind: "text", only: ["TextBox"], description: "The event raised when Enter is pressed in the text box — a constant in the generated `events` module." },
   { attr: "item", name: "Item", category: "Data", kind: "text", only: ["ItemSlot", "InvSlot"], description: "The item shown, as `namespace:id`." },
   { attr: "count", name: "Count", category: "Data", kind: "number", fallback: "1", only: ["InvSlot"], description: "The stack size drawn in the corner (shown when over 1)." },
-  { attr: "texture", name: "Texture", category: "Data", kind: "text", only: ["Image"], description: "A texture from a resource pack, as `namespace:path/to/file.png`." },
-  { attr: "tex_w", name: "Texture Width", category: "Data", kind: "number", fallback: "16", only: ["Image"], description: "The texture's width in pixels (also the image's default width)." },
-  { attr: "tex_h", name: "Texture Height", category: "Data", kind: "number", fallback: "16", only: ["Image"], description: "The texture's height in pixels (also the image's default height)." },
+  { attr: "source", name: "Source", category: "Data", kind: "image", only: ["Image"], description: "What the image shows — a Yog image source, the same on every Minecraft version and loader: item:apple, block:stone, sprite:button (Yog's GUI sprite names), mod:gui/logo (this mod's assets/<mod id>/textures/gui/logo.png) or othermod:gui/logo." },
+  { attr: "stretch", name: "Stretch", category: "Data", kind: "enum", options: ["None", "Fill", "Uniform", "UniformToFill"], fallback: "Uniform", only: ["Image"], description: "How the image fills the widget: None = natural size, centered; Fill = the whole box; Uniform = as large as fits, aspect kept; UniformToFill = covers the box, aspect kept, the overflow cut (textures only)." },
+  { attr: "uv", name: "Region", category: "Data", kind: "uv", only: ["Image"], description: "Part of a texture to show, `u v w h` in the image's pixels (textures only). Empty = the whole image." },
+  { attr: "tint", name: "Tint", category: "Appearance", kind: "color", fallback: "#FFFFFFFF", only: ["Image"], description: "Multiplies the image's colors — `#RRGGBB` or `#AARRGGBB` (items aren't tinted)." },
+  { attr: "texture", name: "Texture (deprecated)", category: "Data", kind: "text", only: ["Image"], deprecated: true, description: "Deprecated — use Source. A raw resource path such as `minecraft:textures/item/apple.png` depends on the Minecraft version." },
+  { attr: "tex_w", name: "Texture Width (deprecated)", category: "Data", kind: "number", only: ["Image"], deprecated: true, description: "Deprecated — the image's size comes from its source; set Width instead." },
+  { attr: "tex_h", name: "Texture Height (deprecated)", category: "Data", kind: "number", only: ["Image"], deprecated: true, description: "Deprecated — the image's size comes from its source; set Height instead." },
 ];
 
 const applies = (spec: AttrSpec, kind: string) => (!spec.only || spec.only.includes(kind)) && !spec.not?.includes(kind);
@@ -85,6 +92,12 @@ function check(kind: AttrKind, value: string): string | null {
       return v === "auto" || parseNumber(v.endsWith("%") ? v.slice(0, -1) : v) !== null ? null : t("Expected pixels (80), a percentage (50%) or auto.");
     case "color":
       return parseColor(v) === null ? t("Expected a color like #RRGGBB or #AARRGGBB.") : null;
+    case "uv": {
+      const parts = v.split(/[\s,]+/);
+      return parts.length === 4 && parts.every((p) => parseNumber(p) !== null) ? null : t("Expected 4 numbers: u v w h.");
+    }
+    case "image":
+      return /^[a-z0-9_.-]+:\S+$/.test(v) ? null : t("Expected an image source such as item:apple, sprite:button or mod:gui/logo.");
     case "padding": {
       const parts = v.split(/[\s,]+/);
       return [1, 2, 4].includes(parts.length) && parts.every((p) => parseNumber(p) !== null) ? null : t("Expected 1, 2 or 4 numbers.");
@@ -107,12 +120,13 @@ export interface EventActions {
  * all have, a value shown only where they agree). `apply` sets an attribute
  * on all of them (`undefined` removes it) and returns an error, if any.
  */
-export function widgetProperties(nodes: YuiNode[], apply: (attr: string, value: string | undefined) => string | null, events?: EventActions): PropertyDescriptor[] {
+export function widgetProperties(nodes: YuiNode[], apply: (attr: string, value: string | undefined) => string | null, events?: EventActions, yuiPath?: string): PropertyDescriptor[] {
   if (nodes.length === 0) return [];
   const rows: PropertyDescriptor[] = [];
   for (const spec of SPECS) {
     if (!nodes.every((n) => applies(spec, n.kind))) continue;
     if (spec.attr === "id" && nodes.length > 1) continue;
+    if (spec.deprecated && !nodes.some((n) => n.attrs[spec.attr] !== undefined)) continue;
     const values = nodes.map((n) => n.attrs[spec.attr]);
     const same = values.every((v) => v === values[0]);
     const raw = same ? values[0] : undefined;
@@ -142,6 +156,14 @@ export function widgetProperties(nodes: YuiNode[], apply: (attr: string, value: 
       row.kind = "string";
       row.suggestions = spec.category === "Events" && events && nodes.length === 1 && !raw ? [events.suggest(nodes[0], spec.attr)] : spec.suggestions;
       row.validate = (value) => check(spec.kind, String(value));
+      if (spec.kind === "image") {
+        if (yuiPath) {
+          row.suggestions = imageSources(yuiPath).map((c) => c.source);
+          if (shown) row.image = imagePreview(yuiPath, shown) ?? undefined;
+        }
+        const alias = suggestImageAlias(shown);
+        if (alias) row.description = `${row.description}\n\n${t("This is a raw resource path; use {alias} instead.", { alias })}`;
+      }
       if (spec.kind === "color") {
         const color = parseColor(shown);
         if (color !== null) row.swatch = cssColor(color);

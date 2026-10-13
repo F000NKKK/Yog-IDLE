@@ -184,6 +184,7 @@ export function withDesignResources(root: YuiNode): YuiNode {
       attrs = { ...attrs, [name]: shown.startsWith("@") ? `@${shown}` : shown };
     }
     if (attrs.texture?.startsWith("@")) attrs = { ...attrs, texture: designImage(attrs.texture) };
+    if (attrs.source?.startsWith("@")) attrs = { ...attrs, source: designImage(attrs.source) };
     const children = node.children.map(resolve);
     const same = attrs === node.attrs && children.every((c, i) => c === node.children[i]);
     return same ? node : { ...node, attrs, children };

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { emit } from "@tauri-apps/api/event";
 import {
@@ -26,6 +26,7 @@ import { IDE_OUTPUT_EVENT } from "../outputSource";
 import { reportError } from "../reportError";
 import { clearActiveDesigner, setActiveDesigner, TOOLBOX_MIME } from "./activeDesigner";
 import { charWidth, compute, LINE_GAP, LINE_H, screenWidget, strWidth, textLines, type LNode, type LWidget } from "./layout";
+import { imageSourcesVersion, subscribeImageSources } from "./imageSources";
 import { widgetProperties } from "./properties";
 import {
   adoptUids,
@@ -726,6 +727,9 @@ export function ScreenDesigner({ path, content, onChange, readOnly, contentVersi
 
   // ── Selection → Properties ────────────────────────────────────────────────
 
+  // Image sources and previews load in the background: re-publish when they arrive.
+  useSyncExternalStore(subscribeImageSources, imageSourcesVersion);
+
   const publish = () => {
     const s = sessionRef.current;
     if (!s) return;
@@ -738,10 +742,15 @@ export function ScreenDesigner({ path, content, onChange, readOnly, contentVersi
       objectName: nodes.length > 1 ? tn(nodes.length, "{count} widget", "{count} widgets", { count: nodes.length }) : (first.attrs.id ?? ""),
       objectType: nodes.length > 1 ? "" : t(KIND_INFO[first.kind as YuiKind]?.label ?? first.kind),
       objectKey: `${path}#${uids.join(",")}`,
-      properties: widgetProperties(nodes, applyAttr, {
-        suggest: (node, attr) => newEventName(s.doc.root, node, attr),
-        open: (node, attr) => void openHandlerRef.current(node.uid, attr),
-      }),
+      properties: widgetProperties(
+        nodes,
+        applyAttr,
+        {
+          suggest: (node, attr) => newEventName(s.doc.root, node, attr),
+          open: (node, attr) => void openHandlerRef.current(node.uid, attr),
+        },
+        path,
+      ),
     };
     setSelection({ id: data.objectKey, kind: "yui.widget", data, source: "editor" });
   };

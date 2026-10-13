@@ -392,8 +392,8 @@ export const KIND_INFO: Record<YuiKind, KindInfo> = {
     kind: "Image",
     label: "Image",
     group: "Minecraft",
-    description: "A texture from a resource pack.",
-    defaults: { texture: "minecraft:textures/item/apple.png", tex_w: "16", tex_h: "16" },
+    description: "An image: an item or block icon, a GUI sprite or a mod texture (a Yog image source).",
+    defaults: { source: "item:apple", w: "16", h: "16" },
   },
 };
 

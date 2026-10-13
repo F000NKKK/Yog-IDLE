@@ -280,8 +280,9 @@ export function toWidget(node: YuiNode, inCanvas: boolean): LWidget {
     style.color = 0xffe0e0e0;
     style.pad = [0, 4, 0, 4];
   } else if (kind === "image") {
-    style.w = texW > 0 ? { t: "px", v: texW } : { t: "auto" };
-    style.h = texH > 0 ? { t: "px", v: texH } : { t: "auto" };
+    // `widget::image` sizes itself from its source; the deprecated tex_w/tex_h are a default size.
+    if (a.tex_w !== undefined && texW > 0) style.w = { t: "px", v: texW };
+    if (a.tex_h !== undefined && texH > 0) style.h = { t: "px", v: texH };
   }
   if (node.kind === "Screen") {
     const w = parseNumber(a.width);
@@ -317,7 +318,7 @@ export function toWidget(node: YuiNode, inCanvas: boolean): LWidget {
     placeholder: designText(a.placeholder ?? ""),
     item: a.item ?? "",
     count: Math.max(0, Math.floor(parseNumber(a.count) ?? 1)),
-    texture: designImage(a.texture ?? ""),
+    texture: designImage(a.source ?? a.texture ?? ""),
     texW,
     texH,
     style,

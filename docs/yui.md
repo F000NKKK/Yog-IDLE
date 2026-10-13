@@ -76,7 +76,7 @@ doesn't care.
 | `TextBox` | `text_box(text)` | One-line text input (vanilla `EditBox` look) — see [Text boxes](#text-boxes). yog-ui 0.36+. |
 | `ItemSlot` | `item_slot(item)` | An item icon in an 18×18 slot. |
 | `InvSlot` | `inv_slot(item, count)` | A vanilla-looking inventory slot. |
-| `Image` | `mc_image(texture, tex_w, tex_h)` | A resource-pack texture. |
+| `Image` | `image(source)` | An item/block icon, a GUI sprite or a texture — see [Images](#images). yog-ui 0.37+. |
 | `Spacer` | `spacer()` | Invisible; give it `flex` to push siblings apart. |
 
 Inside a `Row`/`Column`, a child with `x` or `y` is taken out of the flow and
@@ -146,7 +146,7 @@ Named after the builder methods they become.
 
 Kind-specific: `text` (Label, Button, TextBox), `placeholder`, `max_length`,
 `on_change`, `on_submit` (TextBox), `item` (ItemSlot, InvSlot), `count`
-(InvSlot), `texture`, `tex_w`, `tex_h` (Image). Unknown elements or
+(InvSlot), `source`, `stretch`, `uv`, `tint` (Image; see [Images](#images)). Unknown elements or
 attributes are errors, reported with their line by `yog ui gen`/`yog build`.
 
 **Resources and translations.** A `text` or `placeholder` starting with
@@ -161,6 +161,84 @@ The designer never rewrites the whole file: an edit there changes only the
 attributes or elements it touched (a start tag that gains or loses
 attributes is laid out again), so comments, attribute order and your own
 formatting elsewhere stay as they were.
+
+## Images
+
+`<Image source="…">` shows a picture named by a **Yog image source** — never a
+raw Minecraft resource path. The host resolves the source for the Minecraft
+version and loader it runs on (`draw2d_image`, yog-abi 0.27 / ABI minor 34),
+so the same mod binary draws the same picture on 1.20.1 and 1.21.x, Fabric,
+NeoForge and Forge.
+
+| Source | Shows |
+|---|---|
+| `item:<id>` | An item's icon through the game's item renderer (3D block items, modded items): `item:apple`, `item:mymod:wand`. |
+| `block:<id>` | A block's item form: `block:crafting_table`. |
+| `sprite:<name>` | A vanilla GUI sprite by Yog's stable name (table below): `sprite:button`, `sprite:icon/heart`. |
+| `mod:<path>` | This mod's own image, `assets/<mod id>/textures/<path>.png`: `mod:gui/logo`. `yog build` fills in the mod id. |
+| `<ns>:<path>` | `assets/<ns>/textures/<path>.png` — another mod's image (or yours, spelled out): `othermod:gui/logo`. |
+| `<ns>:textures/<path>.png` | A raw resource path — the escape hatch. Version-dependent; `yog build` warns and suggests the alias (`minecraft:textures/item/apple.png` → `item:apple`). |
+
+Ids without a namespace are `minecraft:`. Unknown sprite names are build
+errors; an image that can't be found in game is logged once and skipped.
+
+| Attribute | Value | Meaning |
+|---|---|---|
+| `source` | image source | What to show (required). |
+| `stretch` | `None` `Fill` `Uniform` `UniformToFill` | How the image fills the widget, as in WPF — `None`: natural size, centered (cut when larger); `Fill`: the whole box, aspect not kept; `Uniform` (default): as large as fits, aspect kept, centered; `UniformToFill`: covers the box, aspect kept, overflow cut (textures only — items and sprites fall back to `Uniform`). Case-insensitive. |
+| `w`, `h` | size | The widget's box. Without them the widget takes the image's natural size (16×16 for items, a sprite's size, a texture's pixel size). |
+| `uv` | `u v w h` | Part of a texture to show, in the image's pixels (sprite sheets). Textures only. |
+| `tint` | color | Multiplies the image's colors (`#AARRGGBB`; items aren't tinted). |
+
+Images are drawn nearest-neighbour (pixel-art stays crisp), clipped by
+scroll views like everything else.
+
+**Deprecated:** `texture` (a raw path — still works, with a warning; use
+`source`), `tex_w`/`tex_h` (a default `w`/`h` now; the image's size comes
+from its source). In Rust, `widget::mc_image(texture, w, h)` is kept as is;
+new code uses `widget::image(source).stretch(Stretch::Fill).region([u, v,
+w, h]).tint(c)`, or `Draw2D::image(source, x, y, w, h)` /
+`Draw2D::image_region` outside yog-ui.
+
+### Sprites
+
+GUI sprites have stable Yog names. On 1.20.2+ they map to the GUI sprite
+atlas (`assets/minecraft/textures/gui/sprites/<atlas id>.png`); on 1.20.1 to
+regions of `textures/gui/widgets.png`, `icons.png`, … (nine-sliced when
+stretched, like the atlas' own scaling). The list lives in
+`yog_gfx::image::SPRITES`; `sprite:<ns>:<atlas id>` names any atlas sprite
+directly (1.20.2+ only).
+
+| Source | What | Size | 1.20.2+ atlas id |
+|---|---|---|---|
+| `sprite:button` | Button background | 200×20 | `widget/button` |
+| `sprite:button_hover` | Button background, hovered/focused | 200×20 | `widget/button_highlighted` |
+| `sprite:button_disabled` | Button background, disabled | 200×20 | `widget/button_disabled` |
+| `sprite:scrollbar` | Scrollbar knob (creative inventory) | 12×15 | `container/creative_inventory/scroller` |
+| `sprite:scrollbar_disabled` | Scrollbar knob, disabled | 12×15 | `container/creative_inventory/scroller_disabled` |
+| `sprite:checkbox` | Checkbox, unchecked | 20×20 | `widget/checkbox` |
+| `sprite:checkbox_checked` | Checkbox, checked | 20×20 | `widget/checkbox_selected` |
+| `sprite:hotbar` | Hotbar | 182×22 | `hud/hotbar` |
+| `sprite:hotbar_selection` | Hotbar selection frame | 24×23 | `hud/hotbar_selection` |
+| `sprite:crosshair` | Crosshair | 15×15 | `hud/crosshair` |
+| `sprite:xp_bar` | Experience bar, empty | 182×5 | `hud/experience_bar_background` |
+| `sprite:xp_bar_progress` | Experience bar, full | 182×5 | `hud/experience_bar_progress` |
+| `sprite:icon/heart` | Heart | 9×9 | `hud/heart/full` |
+| `sprite:icon/heart_half` | Half heart | 9×9 | `hud/heart/half` |
+| `sprite:icon/heart_empty` | Heart container (empty) | 9×9 | `hud/heart/container` |
+| `sprite:icon/food` | Hunger shank | 9×9 | `hud/food_full` |
+| `sprite:icon/food_half` | Half hunger shank | 9×9 | `hud/food_half` |
+| `sprite:icon/food_empty` | Hunger shank, empty | 9×9 | `hud/food_empty` |
+| `sprite:icon/armor` | Armor | 9×9 | `hud/armor_full` |
+| `sprite:icon/armor_half` | Half armor | 9×9 | `hud/armor_half` |
+| `sprite:icon/armor_empty` | Armor, empty | 9×9 | `hud/armor_empty` |
+| `sprite:icon/air` | Air bubble | 9×9 | `hud/air` |
+| `sprite:icon/air_bursting` | Air bubble, bursting | 9×9 | `hud/air_bursting` |
+| `sprite:slot` | Inventory slot (18×18) | 18×18 | drawn by Yog |
+
+In the designer, the **Source** property offers this mod's textures, the
+sprite list and the game's items and blocks, with a preview; a raw path gets
+a hint with the alias to use.
 
 ## Generated code
 
