@@ -114,7 +114,7 @@ export function BuildPage({ root, props, apply }: PageProps) {
           <CommitTextField
             value={props.manifest.yogApiPath ?? ""}
             monospace
-            placeholder={t("crates.io")}
+            placeholder="crates.io"
             validate={(v) => {
               const error = checkPlain(v);
               return error ? t(error) : null;

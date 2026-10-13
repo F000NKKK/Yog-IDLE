@@ -1,7 +1,7 @@
 // What the Properties window shows for the widgets selected in the screen
 // designer — one row per `.yui` attribute the selection can have.
 
-import { t, type PropertyDescriptor, type PropertyValue, type XmlSchema } from "substrate-platform-ui";
+import { pt, t, type PropertyDescriptor, type PropertyValue, type XmlSchema } from "substrate-platform-ui";
 import { imagePreview, imageSources, suggestImageAlias } from "./imageSources";
 import { CONTAINER_KINDS, cssColor, KIND_INFO, KINDS, parseColor, parseNumber, type YuiNode } from "./yui";
 import { findComponent, type ComponentInfo, type ComponentsSnapshot } from "./components";
@@ -229,7 +229,7 @@ export function widgetProperties(
     const shown = raw ?? (same ? (spec.fallback ?? "") : "");
     const row: PropertyDescriptor = {
       id: spec.attr,
-      name: spec.raw ? spec.name : t(spec.name),
+      name: spec.raw ? spec.name : pt("property", spec.name),
       category: spec.raw ? spec.category : t(spec.category),
       description: spec.raw ? spec.description : t(spec.description),
       value: shown,
@@ -286,7 +286,7 @@ function tracksRow(spec: AttrSpec, axis: Axis, nodes: YuiNode[], grid: GridConte
   const limited = nodes.some((n) => gridDefs(n)[axis].some((d) => d.min !== null || d.max !== null));
   const row: PropertyDescriptor = {
     id: spec.attr,
-    name: t(spec.name),
+    name: pt("property", spec.name),
     category: t(spec.category),
     description: t(spec.description),
     kind: "string",

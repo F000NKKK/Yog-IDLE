@@ -160,7 +160,7 @@ export function EnvironmentWindow({ onClose, onOpenOptions }: { onClose: () => v
               <dd>{report.rustToolchain}</dd>
               <dt>{t("This platform")}</dt>
               <dd>{report.hostTag ?? t("unsupported")}</dd>
-              <dt>{t("yog")}</dt>
+              <dt>yog</dt>
               <dd>{report.yogPath ?? t("not found")}</dd>
               <dt>{t("Tools folder")}</dt>
               <dd>{report.toolsDir}</dd>

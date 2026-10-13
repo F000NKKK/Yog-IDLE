@@ -168,7 +168,7 @@ export function EnvironmentSettingsPage({ onOpenInstaller }: { onOpenInstaller: 
           <PathField value={settings.loaderRepo} placeholder={report?.loaderRepo ?? t("not found")} onCommit={(loaderRepo) => change({ loaderRepo })} />
         </FormField>
         <FormField label={t("Local yog-api crate")} hint={t("Builds every mod against this yog-api (YOG_API_PATH) instead of crates.io — needed for hot reload of a locally built loader.")}>
-          <PathField value={settings.yogApiPath} placeholder={t("crates.io")} onCommit={(yogApiPath) => change({ yogApiPath })} />
+          <PathField value={settings.yogApiPath} placeholder="crates.io" onCommit={(yogApiPath) => change({ yogApiPath })} />
         </FormField>
         <CheckField
           checked={settings.hostOnly}
