@@ -1431,11 +1431,17 @@ pub fn designer_host() {
 
 /// The mod's custom `.yui` components for the designer's toolbox, and the
 /// designer library's state; (re)builds it when the mod's sources changed
-/// (see `designer::custom`). Polled while a screen is open.
+/// (see `designer::custom`). Polled while a screen is open, and by the
+/// Toolbox for the open project. `path`: a `.yui` file or the mod's root.
 #[tauri::command]
 async fn yui_designer_components(path: String) -> Result<designer::custom::Snapshot, String> {
     tauri::async_runtime::spawn_blocking(move || {
-        let root = designer::mod_root(Path::new(&path)).ok_or("not inside a mod (no src/ folder)")?;
+        let path = Path::new(&path);
+        let root = if path.join("yog.toml").is_file() {
+            path.to_path_buf()
+        } else {
+            designer::mod_root(path).ok_or("not inside a mod (no src/ folder)")?
+        };
         Ok(designer::custom::status(&root))
     })
     .await
