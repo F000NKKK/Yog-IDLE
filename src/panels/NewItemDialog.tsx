@@ -66,7 +66,7 @@ export const ITEM_TEMPLATES: ItemTemplate[] = [
     files: (stem) => [
       [
         `${stem}.yui`,
-        `<?xml version="1.0" encoding="utf-8"?>\n<Component name="${pascalName(stem) || "Component"}" description="" icon="" design_w="80" design_h="20">\n  <Property name="text" type="text" default="${stem}" doc="The caption."/>\n  <Property name="color" type="color" default="#FF3A6EA5" doc="The background." category="Appearance"/>\n  <Row bg="{x:Bind color}" padding="4" align="center">\n    <Label text="{x:Bind text}" color="#FFFFFF" no_wrap="true"/>\n  </Row>\n</Component>\n`,
+        `<?xml version="1.0" encoding="utf-8"?>\n<Component name="${pascalName(stem) || "Component"}" description="" icon="" design_w="80" design_h="20">\n  <Property name="text" type="text" default="${stem}" doc="The caption."/>\n  <Property name="fill" type="color" default="#FF3A6EA5" doc="The background." category="Appearance"/>\n  <Row bg="{x:Bind fill}" padding="4" align="center">\n    <Label text="{x:Bind text}" color="#FFFFFF" no_wrap="true"/>\n  </Row>\n</Component>\n`,
       ],
     ],
   },
