@@ -338,8 +338,34 @@ alone. In the split:
   (descriptions as in Properties).
 
 - **GUI size / Zoom** — the screen is drawn at a chosen GUI resolution
-  (the game window divided by its GUI scale) and zoom; layout is a port of
-  `yog-ui`'s own, so positions match the game.
+  (the game window divided by its GUI scale) and zoom.
+- **Drawn as in game** — the picture comes from `yog-ui` itself (the crate
+  mods render with): the `.yui` is built into the same widget tree the
+  generated `*.designer.rs` builds, laid out and rendered by yog-ui into a
+  recording `YogGfxApi`, and rasterized with Minecraft's own font (bitmap,
+  Unifont, `font=` ids such as `minecraft:alt`, `§` codes, drop shadow) and
+  textures/items — read at run time from the local client jar
+  (`~/.minecraft/versions`, the loaders' Gradle caches) and the asset index,
+  never copied into the project. A mod's own `assets/` (textures, fonts) win
+  over vanilla's. The selection handles, snaplines and dashed outlines of
+  containers/spacers are drawn on top, at yog-ui's own rects. Without a
+  client jar a bar says so and an approximation (`layout.ts`, a port of
+  yog-ui's layout, with a CSS stand-in font) is shown.
+- **Preview** (toolbar) — the screen takes the mouse and keyboard as in game:
+  hover and press buttons, scroll ScrollViews (wheel, scrollbar) through
+  yog-ui's `ScrollState`, type into TextBoxes (`max_length` honored, Enter
+  submits). Events aren't run — they're shown in the toolbar and in Output
+  (General), e.g. `click: filter_all`, `change: search "abc"`. Leaving the
+  preview resets it; designing is the default.
+- **Event handlers** — as in Visual Studio, double-click a Button (or a
+  TextBox, or anything with `on_click`) to go to its handler: the event is
+  named first if it has none (`on_click="<id>_click"`), then the screen's
+  code-behind `<name>.rs` gets the arm `events::<NAME> => <name>(),` in its
+  `match` and an empty `fn <name>()` — or a new code-behind file with
+  `ui_include!`, `on_event` and `register` — and opens with the caret in the
+  handler. An existing handler is just opened. In Properties the **Events**
+  category (On Click / On Change / On Submit) offers a fresh name; entering
+  a name does the same.
 - **Select** — click; Ctrl/Shift+click adds; drag on empty space for a
   rubber band; Esc selects the parent; Ctrl+A selects the screen's
   children.
@@ -349,7 +375,10 @@ alone. In the split:
   the drop position picks its place in the flow.
 - **Keyboard** — arrows move 1px (Ctrl: 8px), Shift+arrows resize; in a
   Row/Column arrows move a widget earlier/later. Delete, Ctrl+X/C/V,
-  Ctrl+D (duplicate), Ctrl+Z / Ctrl+Y (undo/redo, also in the Edit menu).
+  Ctrl+D (duplicate), Ctrl+Z / Ctrl+Y / Ctrl+Shift+Z (undo/redo, also in the
+  Edit menu) — from the canvas, the Toolbox, Document Outline or Properties
+  alike; each gesture is one step, and undo brings back the selection that
+  went with it.
 - **Toolbox** — drag a widget onto the canvas, or double-click it to add it
   into the selected container.
 - **Properties** — every attribute of the selection, grouped; with several

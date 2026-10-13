@@ -136,3 +136,70 @@
   background: repeating-conic-gradient(#d040d0 0% 25%, #202020 0% 50%) 0 0 / 50% 50%;
   opacity: 0.8;
 }
+
+/* The real picture (yog-ui's render with the game's resources), pixel for pixel. */
+.yui-picture {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+  pointer-events: none;
+  user-select: none;
+}
+
+.yui-designer-notice {
+  padding: var(--sp-space-xs) var(--sp-space-md);
+  border-bottom: 1px solid var(--sp-border);
+  background: var(--sp-surface-1);
+  color: var(--sp-text-muted);
+  font: var(--sp-font-size) var(--sp-font-ui);
+}
+
+.yui-designer-toolbar button[data-active] {
+  border-color: var(--sp-accent-strong);
+  background: var(--sp-surface-3);
+}
+
+/* Preview: the screen as in game, taking the mouse and keyboard. */
+.yui-preview {
+  position: relative;
+  overflow: auto;
+  height: 100%;
+  min-height: 0;
+  outline: none;
+  user-select: none;
+  background: var(--sp-surface-0);
+}
+
+.yui-preview-canvas {
+  position: relative;
+}
+
+.yui-preview-page {
+  position: absolute;
+  left: 32px;
+  top: 32px;
+  overflow: hidden;
+  box-shadow: var(--sp-shadow-md);
+  cursor: default;
+}
+
+.yui-preview-page[data-pointer="button"] {
+  cursor: pointer;
+}
+
+.yui-preview-page[data-pointer="text"] {
+  cursor: text;
+}
+
+/* The widget under the mouse — and pressed. */
+.yui-preview-hot {
+  pointer-events: none;
+  background: rgba(255, 255, 255, 0.12);
+  outline: 1px solid rgba(255, 255, 255, 0.6);
+}
+
+.yui-preview-hot.pressed {
+  background: rgba(0, 0, 0, 0.2);
+}

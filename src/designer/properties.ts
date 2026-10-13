@@ -10,7 +10,7 @@ interface AttrSpec {
   attr: string;
   /** English; shown through `t`. */
   name: string;
-  category: "Design" | "Layout" | "Appearance" | "Behavior" | "Data" | "Screen";
+  category: "Design" | "Layout" | "Appearance" | "Behavior" | "Events" | "Data" | "Screen";
   kind: AttrKind;
   options?: readonly string[];
   /** What an absent attribute means (shown greyed as the value). */
@@ -61,10 +61,10 @@ const SPECS: AttrSpec[] = [
   { attr: "focus_style", name: "Focus Style", category: "Appearance", kind: "enum", options: ["outline", "fill", "none"], fallback: "outline", description: "How keyboard focus is shown." },
   { attr: "focus_color", name: "Focus Color", category: "Appearance", kind: "color", description: "Color of the focus indicator (default amber)." },
   { attr: "enabled", name: "Enabled", category: "Behavior", kind: "bool", fallback: "true", description: "Whether the widget takes clicks and focus." },
-  { attr: "on_click", name: "On Click", category: "Behavior", kind: "text", not: ["Screen"], description: "The event raised when it's clicked — a constant in the generated `events` module; `click()` returns it." },
+  { attr: "on_click", name: "On Click", category: "Events", kind: "text", not: ["Screen"], description: "The event raised when it's clicked — a constant in the generated `events` module; `click()` returns it." },
   { attr: "max_length", name: "Max Length", category: "Behavior", kind: "number", fallback: "0", only: ["TextBox"], description: "The most characters the text box takes (0 = no limit)." },
-  { attr: "on_change", name: "On Change", category: "Behavior", kind: "text", only: ["TextBox"], description: "The event raised when the text box's text changes — a constant in the generated `events` module; `TextBoxState::event_name` returns it." },
-  { attr: "on_submit", name: "On Submit", category: "Behavior", kind: "text", only: ["TextBox"], description: "The event raised when Enter is pressed in the text box — a constant in the generated `events` module." },
+  { attr: "on_change", name: "On Change", category: "Events", kind: "text", only: ["TextBox"], description: "The event raised when the text box's text changes — a constant in the generated `events` module; `TextBoxState::event_name` returns it." },
+  { attr: "on_submit", name: "On Submit", category: "Events", kind: "text", only: ["TextBox"], description: "The event raised when Enter is pressed in the text box — a constant in the generated `events` module." },
   { attr: "item", name: "Item", category: "Data", kind: "text", only: ["ItemSlot", "InvSlot"], description: "The item shown, as `namespace:id`." },
   { attr: "count", name: "Count", category: "Data", kind: "number", fallback: "1", only: ["InvSlot"], description: "The stack size drawn in the corner (shown when over 1)." },
   { attr: "texture", name: "Texture", category: "Data", kind: "text", only: ["Image"], description: "A texture from a resource pack, as `namespace:path/to/file.png`." },
@@ -94,12 +94,20 @@ function check(kind: AttrKind, value: string): string | null {
   }
 }
 
+/** Events in Properties, as Visual Studio's Events tab: naming one opens its handler. */
+export interface EventActions {
+  /** A fresh event name for `attr` on `node` (`<id>_click`). */
+  suggest: (node: YuiNode, attr: string) => string;
+  /** Opens the handler of `node`'s `attr` event in the code-behind (adding it if missing). */
+  open: (node: YuiNode, attr: string) => void;
+}
+
 /**
  * The rows for `nodes` (the designer's selection; several = only what they
  * all have, a value shown only where they agree). `apply` sets an attribute
  * on all of them (`undefined` removes it) and returns an error, if any.
  */
-export function widgetProperties(nodes: YuiNode[], apply: (attr: string, value: string | undefined) => string | null): PropertyDescriptor[] {
+export function widgetProperties(nodes: YuiNode[], apply: (attr: string, value: string | undefined) => string | null, events?: EventActions): PropertyDescriptor[] {
   if (nodes.length === 0) return [];
   const rows: PropertyDescriptor[] = [];
   for (const spec of SPECS) {
@@ -118,7 +126,10 @@ export function widgetProperties(nodes: YuiNode[], apply: (attr: string, value: 
       onCommit: (value: PropertyValue) => {
         const text = String(value).trim();
         // Choosing the default removes the attribute — the file stays minimal.
-        return apply(spec.attr, text === "" || text === spec.fallback ? undefined : text);
+        const error = apply(spec.attr, text === "" || text === spec.fallback ? undefined : text);
+        // Naming an event (as in Visual Studio's Events tab) takes you to its handler.
+        if (!error && text !== "" && spec.category === "Events" && events && nodes.length === 1) events.open(nodes[0], spec.attr);
+        return error;
       },
     };
     if (spec.kind === "bool") {
@@ -129,7 +140,7 @@ export function widgetProperties(nodes: YuiNode[], apply: (attr: string, value: 
       row.options = spec.options;
     } else {
       row.kind = "string";
-      row.suggestions = spec.suggestions;
+      row.suggestions = spec.category === "Events" && events && nodes.length === 1 && !raw ? [events.suggest(nodes[0], spec.attr)] : spec.suggestions;
       row.validate = (value) => check(spec.kind, String(value));
       if (spec.kind === "color") {
         const color = parseColor(shown);

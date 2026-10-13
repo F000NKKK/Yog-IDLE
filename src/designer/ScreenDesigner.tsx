@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { emit } from "@tauri-apps/api/event";
 import {
   ContextMenu,
   DesignSurface,
@@ -19,7 +20,10 @@ import {
   type EditorProps,
   type PropertyDescriptor,
 } from "substrate-platform-ui";
+import { openFile } from "../fileOpenBus";
 import { useActiveFileTab } from "../OpenFilesContext";
+import { IDE_OUTPUT_EVENT } from "../outputSource";
+import { reportError } from "../reportError";
 import { clearActiveDesigner, setActiveDesigner, TOOLBOX_MIME } from "./activeDesigner";
 import { charWidth, compute, LINE_GAP, LINE_H, screenWidget, strWidth, textLines, type LNode, type LWidget } from "./layout";
 import { widgetProperties } from "./properties";
@@ -163,13 +167,68 @@ let clipboard: string | null = null;
 interface Geo {
   rect: DesignRect;
   content: DesignRect;
-  widget: LWidget;
+}
+
+/** What `yui_designer_render` answers (`src-tauri/src/designer`). */
+interface RenderReply {
+  image: string;
+  scale: number;
+  rects: { uid: string; rect: [number, number, number, number]; content: [number, number, number, number] }[];
+  assets: { version: string; jar: string } | null;
+  realFont: boolean;
+}
+
+/** A picture drawn by yog-ui itself (the code the game runs), for `root` at `w × h`. */
+interface Rendered {
+  root: YuiNode;
+  w: number;
+  h: number;
+  image: string;
+  geo: Map<string, Geo>;
+  assets: RenderReply["assets"];
+  realFont: boolean;
+}
+
+interface EventReply {
+  scrolled: boolean;
+  hit: string | null;
+  clicked: string | null;
+}
+
+interface HandlerLocation {
+  path: string;
+  line: number;
+  column: number;
+  changed: boolean;
+}
+
+const toRect = ([x, y, w, h]: [number, number, number, number]): DesignRect => ({ x, y, w, h });
+
+/** The event a double-click on `node` opens the handler of (Visual Studio's default event), if it has one. */
+function defaultEvent(node: YuiNode): "on_click" | "on_change" | null {
+  if (node.kind === "Button") return "on_click";
+  if (node.kind === "TextBox") return "on_change";
+  return node.kind !== "Screen" && node.attrs.on_click ? "on_click" : null;
+}
+
+/** A new event name for `attr` on `node`, like Visual Studio's `button1_Click`: `<id>_click`, unique in the screen. */
+export function newEventName(root: YuiNode, node: YuiNode, attr: string): string {
+  const suffix = attr.replace(/^on_/, "");
+  const used = new Set<string>();
+  const visit = (n: YuiNode) => {
+    for (const [k, v] of Object.entries(n.attrs)) if (k.startsWith("on_")) used.add(v);
+    n.children.forEach(visit);
+  };
+  visit(root);
+  const base = (node.attrs.id ?? node.kind).replace(/[^A-Za-z0-9_]/g, "_").replace(/^(\d)/, "_$1").toLowerCase();
+  if (node.attrs.id && !used.has(`${base}_${suffix}`)) return `${base}_${suffix}`;
+  for (let i = 1; ; i++) if (!used.has(`${base}${i}_${suffix}`)) return `${base}${i}_${suffix}`;
 }
 
 function collect(widget: LWidget, node: LNode, out: Map<string, Geo>) {
   const p = widget.style.pad;
   const r = node.rect;
-  out.set(widget.uid, { rect: r, content: { x: r.x + p[3], y: r.y + p[0], w: Math.max(0, r.w - p[1] - p[3]), h: Math.max(0, r.h - p[0] - p[2]) }, widget });
+  out.set(widget.uid, { rect: r, content: { x: r.x + p[3], y: r.y + p[0], w: Math.max(0, r.w - p[1] - p[3]), h: Math.max(0, r.h - p[0] - p[2]) } });
   widget.children.forEach((c, i) => node.children[i] && collect(c, node.children[i], out));
 }
 
@@ -338,11 +397,74 @@ export function ScreenDesigner({ path, content, onChange, readOnly, contentVersi
     return { widget, tree, geo };
   }, [doc, res.w, res.h]);
 
+  // ── The real picture ──────────────────────────────────────────────────────
+  // yog-ui's own layout and render — the code the game runs — drawn with the
+  // game's font and textures, read from the local Minecraft client jar
+  // (`src-tauri/src/designer`). Without a jar, `layout.ts` stands in.
+
+  const [previewing, setPreviewing] = useState(false);
+  /** Preview: what was typed into each text box, by uid. */
+  const [previewTexts, setPreviewTexts] = useState<Record<string, string>>({});
+  const [focusedBox, setFocusedBox] = useState<string | null>(null);
+  const [hovered, setHovered] = useState<string | null>(null);
+  const [pressed, setPressed] = useState<string | null>(null);
+  const [previewTick, setPreviewTick] = useState(0);
+  const [lastEvent, setLastEvent] = useState<string | null>(null);
+  const [rendered, setRendered] = useState<Rendered | null>(null);
+  const [renderError, setRenderError] = useState<string | null>(null);
+  const renderSeq = useRef(0);
+
+  /** What's drawn: the document — in the preview with what was typed into its text boxes, and vanilla's `_` caret in the focused one. */
+  const drawnRoot = useMemo(() => {
+    if (!doc) return null;
+    if (!previewing) return doc.root;
+    let root = doc.root;
+    const boxes = new Set([...Object.keys(previewTexts), ...(focusedBox ? [focusedBox] : [])]);
+    for (const uid of boxes) {
+      root = mapNode(root, uid, (n) => {
+        const typed = previewTexts[uid] ?? (n.attrs.text?.startsWith("@") && !n.attrs.text.startsWith("@@") ? "" : (n.attrs.text ?? ""));
+        const shown = uid === focusedBox ? `${typed}_` : typed;
+        return withAttrs(n, { text: shown === "" ? undefined : shown.startsWith("@") ? `@${shown}` : shown });
+      });
+    }
+    return root;
+  }, [doc, previewing, previewTexts, focusedBox]);
+
+  useEffect(() => {
+    if (!drawnRoot) return;
+    const seq = ++renderSeq.current;
+    const scale = Math.min(8, view.zoom * Math.max(1, Math.round(window.devicePixelRatio || 1)));
+    const { w, h } = res;
+    // A short debounce: typing in the XAML re-parses on every key.
+    const timer = setTimeout(() => {
+      invoke<RenderReply>("yui_designer_render", { args: { path, root: drawnRoot, screenW: w, screenH: h, scale, preview: previewing } })
+        .then((reply) => {
+          if (seq !== renderSeq.current) return;
+          const geo = new Map<string, Geo>(reply.rects.map((r) => [r.uid, { rect: toRect(r.rect), content: toRect(r.content) }]));
+          setRendered({ root: drawnRoot, w, h, image: reply.image, geo, assets: reply.assets, realFont: reply.realFont });
+          setRenderError(null);
+        })
+        .catch((err) => {
+          if (seq !== renderSeq.current) return;
+          setRendered(null);
+          setRenderError(String(err instanceof Error ? err.message : err));
+        });
+    }, 16);
+    return () => clearTimeout(timer);
+  }, [path, drawnRoot, res, view.zoom, previewing, previewTick]);
+
+  useEffect(() => () => void invoke("yui_designer_reset", { path }).catch(() => {}), [path]);
+
+  /** The picture for this GUI size (possibly of the previous edit, until the next one arrives). */
+  const picture = rendered && rendered.w === res.w && rendered.h === res.h && rendered.assets ? rendered : null;
+  /** Where things are: yog-ui's layout when the picture is of this very document, else `layout.ts`'s (the same rules, in TypeScript). */
+  const geo = rendered && doc && rendered.root === doc.root && rendered.w === res.w && rendered.h === res.h ? rendered.geo : layout?.geo;
+
   const items = useMemo<DesignItem[]>(() => {
-    if (!doc || !layout) return [];
+    if (!doc || !geo) return [];
     const out: DesignItem[] = [];
     const visit = (n: YuiNode, parent: YuiNode | null) => {
-      const g = layout.geo.get(n.uid);
+      const g = geo.get(n.uid);
       if (!g) return;
       const free = positioned(n, parent);
       out.push({
@@ -359,7 +481,7 @@ export function ScreenDesigner({ path, content, onChange, readOnly, contentVersi
     };
     visit(doc.root, null);
     return out;
-  }, [doc, layout]);
+  }, [doc, geo]);
 
   // ── Edits ─────────────────────────────────────────────────────────────────
 
@@ -376,7 +498,7 @@ export function ScreenDesigner({ path, content, onChange, readOnly, contentVersi
     let index = 0;
     for (const c of container.children) {
       if (skip.has(c.uid)) continue;
-      const g = layout?.geo.get(c.uid);
+      const g = geo?.get(c.uid);
       if (g && c.attrs.x === undefined && c.attrs.y === undefined) {
         const mid = row ? g.rect.x + g.rect.w / 2 : g.rect.y + g.rect.h / 2;
         if ((row ? point.x : point.y) < mid) return index;
@@ -387,7 +509,7 @@ export function ScreenDesigner({ path, content, onChange, readOnly, contentVersi
   };
 
   const placeNew = (d: YuiDoc, node: YuiNode, target: YuiNode, point: DesignPoint | null): YuiDoc => {
-    const content = layout?.geo.get(target.uid)?.content;
+    const content = geo?.get(target.uid)?.content;
     if (isCanvas(target)) {
       let x = point && content ? point.x - content.x : 8;
       let y = point && content ? point.y - content.y : 8;
@@ -499,17 +621,17 @@ export function ScreenDesigner({ path, content, onChange, readOnly, contentVersi
   /** Arrow keys: free widgets move (Shift = resize), flowing ones change places with a sibling. */
   const nudge = (dx: number, dy: number, resize: boolean) => {
     const s = sessionRef.current;
-    if (!s || !layout) return;
+    if (!s || !geo) return;
     let d = s.doc;
     for (const uid of movable(d, s.selection)) {
       const parent = findParent(d.root, uid)!;
       const node = findNode(d.root, uid)!;
-      const g = layout.geo.get(uid);
+      const g = geo.get(uid);
       if (!g) continue;
       if (resize) {
         d = { ...d, root: mapNode(d.root, uid, (n) => withAttrs(n, { w: round(Math.max(1, g.rect.w + dx)), h: round(Math.max(1, g.rect.h + dy)) })) };
       } else if (positioned(node, parent)) {
-        const pc = layout.geo.get(parent.uid)!.content;
+        const pc = geo.get(parent.uid)!.content;
         d = { ...d, root: mapNode(d.root, uid, (n) => withAttrs(n, { x: round(g.rect.x - pc.x + dx), y: round(g.rect.y - pc.y + dy) })) };
       } else {
         const index = parent.children.findIndex((c) => c.uid === uid);
@@ -520,8 +642,8 @@ export function ScreenDesigner({ path, content, onChange, readOnly, contentVersi
       }
     }
     // A resized screen: its own width/height.
-    if (resize && s.selection[0] === d.root.uid && layout.geo.get(d.root.uid)) {
-      const g = layout.geo.get(d.root.uid)!;
+    if (resize && s.selection[0] === d.root.uid && geo.get(d.root.uid)) {
+      const g = geo.get(d.root.uid)!;
       d = { ...d, root: withAttrs(d.root, { width: round(Math.max(1, g.rect.w + dx)), height: round(Math.max(1, g.rect.h + dy)) }) };
     }
     commit(d);
@@ -529,7 +651,7 @@ export function ScreenDesigner({ path, content, onChange, readOnly, contentVersi
 
   const onCommit = (change: DesignChange) => {
     const s = sessionRef.current;
-    if (!s || !layout) return;
+    if (!s || !geo) return;
     let d = s.doc;
     if (change.kind === "resize") {
       const node = findNode(d.root, change.id);
@@ -542,7 +664,7 @@ export function ScreenDesigner({ path, content, onChange, readOnly, contentVersi
       const parent = findParent(d.root, node.uid)!;
       const changes: Record<string, string> = { w: round(r.w), h: round(r.h) };
       if (positioned(node, parent)) {
-        const pc = layout.geo.get(parent.uid)!.content;
+        const pc = geo.get(parent.uid)!.content;
         changes.x = round(r.x - pc.x);
         changes.y = round(r.y - pc.y);
       }
@@ -557,7 +679,7 @@ export function ScreenDesigner({ path, content, onChange, readOnly, contentVersi
     const target = findNode(d.root, targetUid)!;
     const stayFree = ids.every((uid) => findParent(d.root, uid)?.uid === targetUid && positioned(findNode(d.root, uid)!, target));
     if (isCanvas(target) || stayFree) {
-      const content = layout.geo.get(targetUid)!.content;
+      const content = geo.get(targetUid)!.content;
       for (const uid of ids) {
         const r = change.rects[uid];
         if (!r) continue;
@@ -613,7 +735,10 @@ export function ScreenDesigner({ path, content, onChange, readOnly, contentVersi
       objectName: nodes.length > 1 ? tn(nodes.length, "{count} widget", "{count} widgets", { count: nodes.length }) : (first.attrs.id ?? ""),
       objectType: nodes.length > 1 ? "" : t(KIND_INFO[first.kind as YuiKind]?.label ?? first.kind),
       objectKey: `${path}#${uids.join(",")}`,
-      properties: widgetProperties(nodes, applyAttr),
+      properties: widgetProperties(nodes, applyAttr, {
+        suggest: (node, attr) => newEventName(s.doc.root, node, attr),
+        open: (node, attr) => void openHandlerRef.current(node.uid, attr),
+      }),
     };
     setSelection({ id: data.objectKey, kind: "yui.widget", data, source: "editor" });
   };
@@ -726,6 +851,131 @@ export function ScreenDesigner({ path, content, onChange, readOnly, contentVersi
     if (!isActive) clearActiveDesigner(path);
   }, [isActive, path]);
 
+  // ── Event handlers (code-behind) ──────────────────────────────────────────
+
+  /**
+   * As in Visual Studio: the handler of `node`'s `attr` event in the
+   * screen's code-behind `.rs` — the event named first if it has none
+   * (`<id>_click`), the handler added if missing — opened at its body.
+   */
+  const openHandler = async (uid: string, attr: string, name?: string) => {
+    const s = sessionRef.current;
+    const node = s ? findNode(s.doc.root, uid) : null;
+    if (!s || !node) return;
+    let event = node.attrs[attr];
+    if (!event) {
+      if (readOnly) return;
+      event = name ?? newEventName(s.doc.root, node, attr);
+      const before = s.doc;
+      commit({ ...s.doc, root: mapNode(s.doc.root, uid, (n) => withAttrs(n, { [attr]: event })) });
+      if (s.doc === before) return; // not written (the XAML can't take it now)
+    }
+    try {
+      const at = await invoke<HandlerLocation>("yui_event_handler", { path, event });
+      openFile({ path: at.path, line: at.line, column: at.column });
+      if (at.changed) emit(IDE_OUTPUT_EVENT, `[designer] ${t("Added handler for {event} to {file}", { event, file: at.path })}`).catch(() => {});
+    } catch (err) {
+      reportError(t("Couldn't open the handler for {event}: {error}", { event, error: String(err instanceof Error ? err.message : err) }));
+    }
+  };
+  const openHandlerRef = useRef(openHandler);
+  openHandlerRef.current = openHandler;
+
+  // ── Preview ───────────────────────────────────────────────────────────────
+
+  const pageRef = useRef<HTMLDivElement>(null);
+  const drawnRef = useRef(drawnRoot);
+  drawnRef.current = drawnRoot;
+  const eventBusy = useRef(false);
+  const queuedMove = useRef<[string, number, number] | null>(null);
+
+  /** An event the screen would get: the status bar and Output show it, as the game's code-behind would receive it. */
+  const fired = (what: string) => {
+    setLastEvent(what);
+    emit(IDE_OUTPUT_EVENT, `[designer] ${what}`).catch(() => {});
+  };
+
+  const sendEvent = (event: string, x: number, y: number) => {
+    const root = drawnRef.current;
+    if (!root) return;
+    const motion = event.startsWith("move:") || event.startsWith("drag:");
+    if (motion && eventBusy.current) {
+      queuedMove.current = [event, x, y];
+      return;
+    }
+    eventBusy.current = true;
+    invoke<EventReply>("yui_designer_event", { args: { path, root, screenW: res.w, screenH: res.h, event, x, y } })
+      .then((r) => {
+        setHovered(r.hit);
+        if (event.startsWith("click:")) setPressed(r.hit);
+        if (r.scrolled) setPreviewTick((n) => n + 1);
+        if (r.clicked) fired(`click: ${r.clicked}`);
+      })
+      .catch(() => {})
+      .finally(() => {
+        eventBusy.current = false;
+        const next = queuedMove.current;
+        queuedMove.current = null;
+        if (next) sendEventRef.current(...next);
+      });
+  };
+  const sendEventRef = useRef(sendEvent);
+  sendEventRef.current = sendEvent;
+
+  const togglePreview = () => {
+    if (previewing) void invoke("yui_designer_reset", { path }).catch(() => {});
+    setPreviewTexts({});
+    setFocusedBox(null);
+    setHovered(null);
+    setPressed(null);
+    setLastEvent(null);
+    setPreviewing(!previewing);
+  };
+
+  const guiPoint = (e: { clientX: number; clientY: number }) => {
+    const r = pageRef.current?.getBoundingClientRect();
+    return r ? { x: (e.clientX - r.left) / view.zoom, y: (e.clientY - r.top) / view.zoom } : { x: -1, y: -1 };
+  };
+  const fmt = (v: number) => v.toFixed(2);
+
+  /** The enabled text box under a point (the last drawn wins). */
+  const textBoxAt = (x: number, y: number): YuiNode | null => {
+    const g = rendered?.geo ?? geo;
+    let found: YuiNode | null = null;
+    const visit = (n: YuiNode) => {
+      const r = g?.get(n.uid)?.rect;
+      if (n.kind === "TextBox" && n.attrs.enabled !== "false" && r && x >= r.x && y >= r.y && x < r.x + r.w && y < r.y + r.h) found = n;
+      n.children.forEach(visit);
+    };
+    if (doc) visit(doc.root);
+    return found;
+  };
+
+  const typeInto = (box: YuiNode, update: (text: string) => string) => {
+    const before = previewTexts[box.uid] ?? (box.attrs.text?.startsWith("@") && !box.attrs.text.startsWith("@@") ? "" : (box.attrs.text ?? ""));
+    let after = update(before);
+    const max = Number(box.attrs.max_length ?? 0);
+    if (max > 0) after = [...after].slice(0, max).join("");
+    if (after === before) return;
+    setPreviewTexts({ ...previewTexts, [box.uid]: after });
+    if (box.attrs.on_change) fired(`change: ${box.attrs.on_change} ${JSON.stringify(after)}`);
+  };
+
+  const onPreviewKey = (e: ReactKeyboardEvent) => {
+    const box = focusedBox && doc ? findNode(doc.root, focusedBox) : null;
+    if (!box) return;
+    if (e.key === "Escape") setFocusedBox(null);
+    else if (e.key === "Enter") {
+      if (box.attrs.on_submit) fired(`submit: ${box.attrs.on_submit}`);
+    } else if (e.key === "Backspace") typeInto(box, (text) => [...text].slice(0, -1).join(""));
+    else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "v") {
+      void navigator.clipboard?.readText().then((clip) => typeInto(box, (text) => text + clip.replace(/[\r\n]/g, "")));
+    } else if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) typeInto(box, (text) => text + e.key);
+    else return;
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
   const focused = () => {
     const el = document.activeElement;
     return !!el && el.classList.contains("sp-design-surface") && !!canvasRef.current?.contains(el);
@@ -813,7 +1063,12 @@ export function ScreenDesigner({ path, content, onChange, readOnly, contentVersi
   ];
 
   const primary = selection[0] ? findNode(doc.root, selection[0]) : null;
-  const primaryGeo = primary ? layout.geo.get(primary.uid) : undefined;
+  const notice = renderError
+    ? t("The real renderer failed ({error}) — showing an approximation.", { error: renderError })
+    : rendered && !rendered.assets
+      ? t("Minecraft's client jar wasn't found (in ~/.minecraft/versions or a loader's Gradle caches) — showing an approximation instead of the game's font and textures. Once the game has been installed or a loader built, the designer uses them.")
+      : null;
+  const primaryGeo = primary ? geo?.get(primary.uid) : undefined;
 
   return (
     <div
@@ -860,13 +1115,82 @@ export function ScreenDesigner({ path, content, onChange, readOnly, contentVersi
         <button type="button" disabled={!canEdit || !hasMovable} onClick={() => reorder(false)} title={t("Send to Back")}>
           {t("Send to Back")}
         </button>
-        <span className="yui-designer-status">
-          {primary && primaryGeo
+        <span className="yui-designer-sep" />
+        <button
+          type="button"
+          aria-pressed={previewing}
+          data-active={previewing || undefined}
+          onClick={togglePreview}
+          title={previewing ? t("Back to designing: select, move and resize widgets.") : t("Try the screen as in game: hover and press buttons, type into text boxes, scroll lists. Events are shown, not run.")}
+        >
+          {t("Preview")}
+        </button>
+        <span className="yui-designer-status" title={picture?.assets ? t("Drawn by yog-ui with Minecraft {version}'s font and textures ({jar})", { version: picture.assets.version, jar: picture.assets.jar }) : undefined}>
+          {previewing
+            ? (lastEvent ?? t("Preview — events appear here and in Output (General)."))
+            : primary && primaryGeo
             ? `${nodeLabel(primary)} · ${Math.round(primaryGeo.rect.x)}, ${Math.round(primaryGeo.rect.y)} · ${Math.round(primaryGeo.rect.w)} × ${Math.round(primaryGeo.rect.h)}`
             : doc.root.attrs.id}
         </span>
       </div>
-      <div className="yui-designer-canvas" ref={canvasRef}>
+      {notice && <div className="yui-designer-notice">{notice}</div>}
+      <div
+        className="yui-designer-canvas"
+        ref={canvasRef}
+        onDoubleClick={(e) => {
+          // Double-clicking a button opens its click handler, as in Visual Studio.
+          if (previewing || !(e.target instanceof Element) || !e.target.closest(".sp-design-surface-page")) return;
+          const node = selection[0] ? findNode(doc.root, selection[0]) : null;
+          const attr = node && defaultEvent(node);
+          if (node && attr) void openHandlerRef.current(node.uid, attr);
+        }}
+      >
+        {previewing ? (
+          <div className="yui-preview" tabIndex={0} onKeyDown={onPreviewKey}>
+            <div className="yui-preview-canvas" style={{ width: res.w * view.zoom + 64, height: res.h * view.zoom + 64 }}>
+              <div
+                ref={pageRef}
+                className="yui-preview-page"
+                data-pointer={hovered ? "button" : focusedBox ? "text" : undefined}
+                style={{ width: res.w * view.zoom, height: res.h * view.zoom }}
+                onPointerDown={(e) => {
+                  if (e.button !== 0) return;
+                  e.currentTarget.setPointerCapture(e.pointerId);
+                  (e.currentTarget.closest(".yui-preview") as HTMLElement | null)?.focus();
+                  const p = guiPoint(e);
+                  setFocusedBox(textBoxAt(p.x, p.y)?.uid ?? null);
+                  sendEvent(`click:${fmt(p.x)}:${fmt(p.y)}`, p.x, p.y);
+                }}
+                onPointerMove={(e) => {
+                  const p = guiPoint(e);
+                  sendEvent(`${e.buttons & 1 ? "drag" : "move"}:${fmt(p.x)}:${fmt(p.y)}`, p.x, p.y);
+                }}
+                onPointerUp={(e) => {
+                  if (e.button !== 0) return;
+                  const p = guiPoint(e);
+                  setPressed(null);
+                  sendEvent(`release:${fmt(p.x)}:${fmt(p.y)}`, p.x, p.y);
+                }}
+                onPointerLeave={() => setHovered(null)}
+                onWheel={(e) => {
+                  if (e.deltaY === 0) return;
+                  const p = guiPoint(e);
+                  sendEvent(`scroll:${e.deltaY < 0 ? 1 : -1}`, p.x, p.y);
+                }}
+              >
+                <div className="yui-world" />
+                {rendered && rendered.w === res.w && rendered.h === res.h && rendered.assets ? (
+                  <img className="yui-picture" src={rendered.image} alt="" draggable={false} />
+                ) : (
+                  <McWidget widget={layout.widget} node={layout.tree} zoom={view.zoom} />
+                )}
+                {hovered && rendered?.geo.get(hovered) && (
+                  <div className={`yui-box yui-preview-hot${pressed === hovered ? " pressed" : ""}`} style={box(rendered.geo.get(hovered)!.rect, view.zoom)} />
+                )}
+              </div>
+            </div>
+          </div>
+        ) : (
         <DesignSurface
           width={res.w}
           height={res.h}
@@ -898,15 +1222,35 @@ export function ScreenDesigner({ path, content, onChange, readOnly, contentVersi
           onContextMenu={(e) => menu.openAtPoint(undefined, e)}
         >
           <div className="yui-world" />
-          <McWidget widget={layout.widget} node={layout.tree} zoom={view.zoom} />
+          {picture ? (
+            <>
+              <img className="yui-picture" src={picture.image} alt="" draggable={false} />
+              <DesignOutlines root={doc.root} geo={geo ?? layout.geo} zoom={view.zoom} />
+            </>
+          ) : (
+            <McWidget widget={layout.widget} node={layout.tree} zoom={view.zoom} />
+          )}
         </DesignSurface>
+        )}
       </div>
       <ContextMenu target={menu.target ? { mode: "viewport", x: menu.target.mode === "viewport" ? menu.target.x : 0, y: menu.target.mode === "viewport" ? menu.target.y : 0 } : null} items={contextItems} onClose={menu.close} />
     </div>
   );
 }
 
-// ── Minecraft-like rendering (mirrors `render.rs`) ────────────────────────────
+/** Designer-only dashed outlines of containers and spacers — invisible in game, so drawn over the real picture. */
+function DesignOutlines({ root, geo, zoom }: { root: YuiNode; geo: Map<string, Geo>; zoom: number }) {
+  const out: ReactNode[] = [];
+  const visit = (n: YuiNode) => {
+    const g = geo.get(n.uid);
+    if (g && (isContainer(n) || n.kind === "Spacer")) out.push(<div key={n.uid} className="yui-box yui-outline" style={box(g.rect, zoom)} />);
+    if (isContainer(n)) n.children.forEach(visit);
+  };
+  visit(root);
+  return <>{out}</>;
+}
+
+// ── Fallback: Minecraft-like rendering in TypeScript (mirrors `render.rs`) ────
 
 const box = (r: DesignRect, zoom: number): CSSProperties => ({ left: r.x * zoom, top: r.y * zoom, width: r.w * zoom, height: r.h * zoom });
 
