@@ -4,7 +4,7 @@
 // write back.
 
 /** Every element the format knows, in Toolbox order. */
-export const KINDS = ["Screen", "Canvas", "Column", "Row", "ScrollView", "Label", "Button", "TextBox", "Spacer", "ItemSlot", "InvSlot", "Image"] as const;
+export const KINDS = ["Screen", "Grid", "Canvas", "Column", "Row", "ScrollView", "Label", "Button", "TextBox", "Spacer", "ItemSlot", "InvSlot", "Image"] as const;
 export type YuiKind = (typeof KINDS)[number];
 
 export interface YuiNode {
@@ -23,12 +23,17 @@ export interface YuiDoc {
   root: YuiNode;
 }
 
-export const CONTAINER_KINDS: ReadonlySet<string> = new Set(["Screen", "Canvas", "Column", "Row", "ScrollView"]);
+export const CONTAINER_KINDS: ReadonlySet<string> = new Set(["Screen", "Grid", "Canvas", "Column", "Row", "ScrollView"]);
 /** Containers that position every child absolutely (a missing x/y is 0). */
 export const CANVAS_KINDS: ReadonlySet<string> = new Set(["Screen", "Canvas"]);
 
 export const isContainer = (n: YuiNode) => CONTAINER_KINDS.has(n.kind);
 export const isCanvas = (n: YuiNode) => CANVAS_KINDS.has(n.kind);
+export const isGrid = (n: YuiNode) => n.kind === "Grid";
+/** A property element (`<Grid.RowDefinitions>`): part of its parent, not a widget. */
+export const isPropertyElement = (n: YuiNode) => n.kind.includes(".");
+/** The children that are widgets (property elements skipped). */
+export const widgetChildren = (n: YuiNode) => n.children.filter((c) => !isPropertyElement(c));
 
 let nextUid = 0;
 export const newUid = () => `n${++nextUid}`;
@@ -55,6 +60,18 @@ export const ATTR_ORDER = [
   "width",
   "height",
   "anchor",
+  "rows",
+  "columns",
+  "row_spacing",
+  "column_spacing",
+  "Grid.Row",
+  "Grid.Column",
+  "Grid.RowSpan",
+  "Grid.ColumnSpan",
+  "min_height",
+  "max_height",
+  "min_width",
+  "max_width",
   "modal",
   "pause",
   "text",
@@ -66,6 +83,9 @@ export const ATTR_ORDER = [
   "min_h",
   "flex",
   "dock",
+  "halign",
+  "valign",
+  "margin",
   "gap",
   "padding",
   "align",
@@ -365,6 +385,13 @@ export interface KindInfo {
 
 export const KIND_INFO: Record<YuiKind, KindInfo> = {
   Screen: { kind: "Screen", label: "Screen", group: "Containers", description: "The screen itself — the root of a .yui file.", defaults: {} },
+  Grid: {
+    kind: "Grid",
+    label: "Grid",
+    group: "Containers",
+    description: "Rows and columns like WPF's Grid: children sit in cells (Grid.Row / Grid.Column); rows and columns are Auto, * or pixels.",
+    defaults: { w: "120", h: "80", rows: "Auto,*", columns: "*,*" },
+  },
   Canvas: {
     kind: "Canvas",
     label: "Canvas",

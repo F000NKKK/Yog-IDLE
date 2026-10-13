@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { Tree, useT, type TreeNode } from "substrate-platform-ui";
 import { useActiveDesigner } from "../designer/activeDesigner";
 import { isComponentDoc } from "../designer/components";
-import { isContainer, type YuiNode } from "../designer/yui";
+import { isContainer, isPropertyElement, type YuiNode } from "../designer/yui";
 
 /** Has children in the outline: containers, and a component document's root (declarations + body). */
 const branches = (n: YuiNode) => isContainer(n) || isComponentDoc(n);
@@ -12,7 +12,7 @@ function toTree(node: YuiNode): TreeNode<YuiNode> {
   return {
     id: node.uid,
     label: named ? `${named} (${node.kind})` : node.kind,
-    children: branches(node) ? node.children.map(toTree) : undefined,
+    children: branches(node) ? node.children.filter((c) => !isPropertyElement(c)).map(toTree) : undefined,
     data: node,
   };
 }
