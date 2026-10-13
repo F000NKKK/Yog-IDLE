@@ -7,6 +7,7 @@ import {
   ContextMenu,
   FileTree,
   Icon,
+  Toolbar,
   confirmDialog,
   matchesShortcut,
   nestFiles,
@@ -385,6 +386,11 @@ function ProjectExplorerTree({ project }: { project: ProjectInfo }) {
     tree.onExpandedChange(new Set([...tree.expandedIds].filter((id) => id === node.id || !isWithin(id, node.id))));
   }
 
+  /** Solution Explorer's "Collapse All": every folder closes, the project node stays open. */
+  function collapseAll() {
+    tree.onExpandedChange(new Set([project.root]));
+  }
+
   function openInTerminal(folder: string) {
     shell.showToolWindow("terminal");
     openTerminalIn(folder);
@@ -462,6 +468,7 @@ function ProjectExplorerTree({ project }: { project: ProjectInfo }) {
     items.push({ label: t("Copy Full Path"), separatorBefore: true, onSelect: (n) => void copyText(n.id) });
     if (!isRoot) items.push({ label: t("Copy Relative Path"), onSelect: (n) => void copyText(relativePath(n.id)) });
     if (node.kind === "folder") items.push({ label: t("Collapse All Descendants"), separatorBefore: true, onSelect: collapseDescendants });
+    items.push({ label: t("Collapse All"), separatorBefore: node.kind !== "folder", onSelect: collapseAll });
     items.push({ label: t("Properties"), shortcut: "Alt+Enter", separatorBefore: true, onSelect: showProperties });
     return items;
   }
@@ -506,41 +513,44 @@ function ProjectExplorerTree({ project }: { project: ProjectInfo }) {
     }));
 
   return (
-    <div
-      className="project-explorer"
-      style={{ height: "100%", overflow: "auto", padding: "var(--sp-space-xs)", boxSizing: "border-box" }}
-      onFocus={handleFocus}
-      onKeyDown={handleKeyDown}
-      onContextMenu={handleBackgroundContextMenu}
-    >
-      <FileTree
-        nodes={shownNodes}
-        expandedIds={tree.expandedIds}
-        onExpandedChange={tree.onExpandedChange}
-        selectedIds={selectedIds}
-        onSelectionChange={(ids) => {
-          setSelectedIds(ids);
-          publishSelection(ids);
-        }}
-        onActivate={(node) => openFile({ path: node.id, name: node.name })}
-        getMenuItems={getMenuItems}
-        canDrag={(node) => node.id !== project.root && !node.generated}
-        onDropNodes={(ids, folder, copyDrop) => void transfer(ids, folder.id, copyDrop)}
-      />
-      <ContextMenu
-        target={backgroundMenu.target?.mode === "viewport" ? backgroundMenu.target : null}
-        items={backgroundMenu.target ? backgroundItems(getMenuItems(backgroundMenu.target.node), backgroundMenu.target.node) : []}
-        onClose={backgroundMenu.close}
-      />
-      {newItem && (
-        <NewItemDialog
-          folder={newItem.folder}
-          full={newItem.full}
-          onAdd={(template, name) => addFromTemplate(newItem.folder, template, name)}
-          onAddPlain={(name, isFolder) => addPlain(newItem.folder, name, isFolder)}
-          onClose={() => setNewItem(null)}
+    <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
+      <Toolbar sections={[[{ icon: "collapse", label: t("Collapse All"), onClick: collapseAll }]]} />
+      <div
+        className="project-explorer"
+        style={{ flex: "1 1 0", minHeight: 0, overflow: "auto", padding: "var(--sp-space-xs)", boxSizing: "border-box" }}
+        onFocus={handleFocus}
+        onKeyDown={handleKeyDown}
+        onContextMenu={handleBackgroundContextMenu}
+      >
+        <FileTree
+          nodes={shownNodes}
+          expandedIds={tree.expandedIds}
+          onExpandedChange={tree.onExpandedChange}
+          selectedIds={selectedIds}
+          onSelectionChange={(ids) => {
+            setSelectedIds(ids);
+            publishSelection(ids);
+          }}
+          onActivate={(node) => openFile({ path: node.id, name: node.name })}
+          getMenuItems={getMenuItems}
+          canDrag={(node) => node.id !== project.root && !node.generated}
+          onDropNodes={(ids, folder, copyDrop) => void transfer(ids, folder.id, copyDrop)}
         />
-      )}
+        <ContextMenu
+          target={backgroundMenu.target?.mode === "viewport" ? backgroundMenu.target : null}
+          items={backgroundMenu.target ? backgroundItems(getMenuItems(backgroundMenu.target.node), backgroundMenu.target.node) : []}
+          onClose={backgroundMenu.close}
+        />
+        {newItem && (
+          <NewItemDialog
+            folder={newItem.folder}
+            full={newItem.full}
+            onAdd={(template, name) => addFromTemplate(newItem.folder, template, name)}
+            onAddPlain={(name, isFolder) => addPlain(newItem.folder, name, isFolder)}
+            onClose={() => setNewItem(null)}
+          />
+        )}
+      </div>
     </div>
   );
 }

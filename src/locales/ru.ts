@@ -776,6 +776,7 @@ registerTranslations("ru", {
   "Open Containing Folder": "Открыть содержащую папку",
   "Open Folder in File Explorer": "Открыть папку в проводнике",
   "Collapse All Descendants": "Свернуть все вложенные",
+  "Collapse All": "Свернуть все",
   "Delete {count} items?": "Удалить элементы ({count})?",
   "Failed to add files": "Не удалось добавить файлы",
   "Failed to copy": "Не удалось скопировать",
