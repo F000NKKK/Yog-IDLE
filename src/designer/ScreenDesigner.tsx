@@ -222,7 +222,7 @@ function defaultEvent(node: YuiNode): "on_click" | "on_change" | null {
 }
 
 /** A new event name for `attr` on `node`, like Visual Studio's `button1_Click`: `<id>_click`, unique in the screen. */
-export function newEventName(root: YuiNode, node: YuiNode, attr: string): string {
+function newEventName(root: YuiNode, node: YuiNode, attr: string): string {
   const suffix = attr.replace(/^on_/, "");
   const used = new Set<string>();
   const visit = (n: YuiNode) => {

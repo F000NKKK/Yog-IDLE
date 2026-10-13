@@ -10,7 +10,7 @@ import type { Element, Uv } from "./model";
 const ALPHA = 25;
 
 /** Opaque pixels of the image (its first frame) as rectangles `[x, y, w, h]`. */
-export function opaqueRects(img: PixelImage, frameHeight = img.h): [number, number, number, number][] {
+function opaqueRects(img: PixelImage, frameHeight = img.h): [number, number, number, number][] {
   const { w } = img;
   const h = Math.min(frameHeight, img.h);
   const opaque = (x: number, y: number) => img.data[(y * w + x) * 4 + 3] > ALPHA;

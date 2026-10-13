@@ -49,7 +49,7 @@ export function cellAt(geo: GridGeo, x: number, y: number): [number, number] {
 }
 
 /** Splits track `i` at `at` (GUI px) into two, keeping the total — a click on the rail. */
-export function splitTrack(grid: YuiNode, axis: Axis, lines: [number, number][], at: number): YuiNode {
+function splitTrack(grid: YuiNode, axis: Axis, lines: [number, number][], at: number): YuiNode {
   const defs = shownDefs(grid, axis);
   const i = trackAt(lines, at);
   const [start, size] = lines[i];
@@ -67,7 +67,7 @@ export function splitTrack(grid: YuiNode, axis: Axis, lines: [number, number][],
 }
 
 /** Moves the line between tracks `i - 1` and `i` by `delta` GUI px — the two keep their total; `*` stays `*` (reweighted), the others become pixels. */
-export function resizeTracks(grid: YuiNode, axis: Axis, lines: [number, number][], i: number, delta: number): YuiNode {
+function resizeTracks(grid: YuiNode, axis: Axis, lines: [number, number][], i: number, delta: number): YuiNode {
   const defs = shownDefs(grid, axis);
   const a = lines[i - 1][1];
   const b = lines[i][1];

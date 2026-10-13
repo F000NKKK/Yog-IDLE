@@ -41,7 +41,7 @@ export function SearchHost() {
   ) : null;
 }
 
-export { openCodeSearch, openFindInFiles, FIND_IN_FILES_PANEL, CODE_SEARCH_PANEL } from "./searchUi";
+export { FIND_IN_FILES_PANEL, CODE_SEARCH_PANEL } from "./searchUi";
 export { FindResultsPanel } from "./FindResultsPanel";
 export { FindInFilesWindow } from "./FindInFilesWindow";
 export { CodeSearchPanel } from "./CodeSearch";

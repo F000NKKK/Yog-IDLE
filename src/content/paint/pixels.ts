@@ -67,7 +67,7 @@ function stamp(img: PixelImage, x: number, y: number, c: Rgba, s: PaintSettings)
 }
 
 /** The pixels of a line (Bresenham). */
-export function linePoints(x0: number, y0: number, x1: number, y1: number): [number, number][] {
+function linePoints(x0: number, y0: number, x1: number, y1: number): [number, number][] {
   const out: [number, number][] = [];
   const dx = Math.abs(x1 - x0);
   const dy = -Math.abs(y1 - y0);

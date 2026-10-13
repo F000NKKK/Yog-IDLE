@@ -22,7 +22,7 @@ export interface DiffRequest {
   rightLabel: string;
 }
 
-export const GIT_REPOSITORY_PANEL = "git-repository";
+const GIT_REPOSITORY_PANEL = "git-repository";
 const DIFF_PREFIX = "git-diff:";
 
 interface GitDocument {

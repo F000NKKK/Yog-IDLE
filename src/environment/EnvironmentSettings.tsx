@@ -30,7 +30,7 @@ import {
 import { componentText } from "./EnvironmentWindow";
 
 /** The Options' Environment page — read and written through the app-wide `state.json`, and handed to the backend on every change. */
-export function useEnvironmentSettings(): [Settings, (patch: Partial<Settings>) => void] {
+function useEnvironmentSettings(): [Settings, (patch: Partial<Settings>) => void] {
   const [stored, setStored] = useGlobalState<unknown>(ENVIRONMENT_SETTINGS_KEY, {}, isEnvironmentSettings);
   const settings = normalizeSettings(stored);
   const latest = useRef(settings);

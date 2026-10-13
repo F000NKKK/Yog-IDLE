@@ -26,7 +26,7 @@ export interface EnvironmentSettings {
   skipStartupCheck: boolean;
 }
 
-export const DEFAULT_ENVIRONMENT_SETTINGS: EnvironmentSettings = {
+const DEFAULT_ENVIRONMENT_SETTINGS: EnvironmentSettings = {
   yogPath: "",
   cargoHome: "",
   toolsDir: "",

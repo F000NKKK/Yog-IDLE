@@ -60,7 +60,7 @@ export function usePaintState(storageKey: string) {
   return { state, set, used };
 }
 
-export const PAINT_TOOLS: { tool: PaintTool; icon: string; label: string; key: string }[] = [
+const PAINT_TOOLS: { tool: PaintTool; icon: string; label: string; key: string }[] = [
   { tool: "pencil", icon: "paintPencil", label: "Pencil", key: "B" },
   { tool: "eraser", icon: "paintEraser", label: "Eraser", key: "E" },
   { tool: "fill", icon: "paintFill", label: "Fill", key: "F" },

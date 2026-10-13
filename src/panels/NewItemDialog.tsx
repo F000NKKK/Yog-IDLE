@@ -36,7 +36,7 @@ const CATEGORIES: ItemTemplate["category"][] = ["Yog", "Rust", "Data", "General"
 
 const uiId = (stem: string) => stem.toLowerCase().replace(/[^a-z0-9_]+/g, "_");
 
-export const ITEM_TEMPLATES: ItemTemplate[] = [
+const ITEM_TEMPLATES: ItemTemplate[] = [
   {
     id: "yui",
     category: "Yog",

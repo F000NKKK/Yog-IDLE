@@ -39,7 +39,7 @@ let nextUid = 0;
 export const newUid = () => `n${++nextUid}`;
 
 /** Where attributes go when written — anything else follows in its own order. */
-export const ATTR_ORDER = [
+const ATTR_ORDER = [
   "name",
   "display_name",
   "description",
@@ -335,12 +335,6 @@ export function withAttrs(node: YuiNode, changes: Record<string, string | undefi
     else attrs[k] = v;
   }
   return { ...node, attrs };
-}
-
-/** Every node in paint order (parents first). */
-export function walk(root: YuiNode, visit: (node: YuiNode, parent: YuiNode | null, depth: number) => void, parent: YuiNode | null = null, depth = 0) {
-  visit(root, parent, depth);
-  for (const c of root.children) walk(c, visit, root, depth + 1);
 }
 
 // ── Values ────────────────────────────────────────────────────────────────────

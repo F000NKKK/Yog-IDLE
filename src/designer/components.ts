@@ -117,7 +117,7 @@ export function findComponent(snapshot: ComponentsSnapshot | null, kind: string)
 // ── Component documents ────────────────────────────────────────────────────
 
 /** Children of a `<Component>` that declare rather than draw. */
-export const DECLARATION_KINDS: ReadonlySet<string> = new Set(["Property", "Event"]);
+const DECLARATION_KINDS: ReadonlySet<string> = new Set(["Property", "Event"]);
 
 export const isComponentDoc = (root: YuiNode) => root.kind === "Component";
 
@@ -127,7 +127,7 @@ export function componentBody(root: YuiNode): YuiNode | null {
 }
 
 /** The expression of a `{x:Bind expr[, options]}` value. */
-export function bindingExpr(value: string): string | null {
+function bindingExpr(value: string): string | null {
   const m = /^\s*\{x:Bind\s*(.*)\}\s*$/s.exec(value);
   if (!m) return null;
   let depth = 0;

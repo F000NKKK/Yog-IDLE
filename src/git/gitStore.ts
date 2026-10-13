@@ -105,7 +105,7 @@ interface RunOptions {
  * runs, its failure reported, the status refreshed after. Resolves whether
  * it succeeded; refused (with a message) while another one is running.
  */
-export async function runGit<T>(label: string, action: (root: string) => Promise<T>, options: RunOptions = {}): Promise<T | undefined> {
+async function runGit<T>(label: string, action: (root: string) => Promise<T>, options: RunOptions = {}): Promise<T | undefined> {
   const root = state.status ? state.root : null;
   if (!root) return undefined;
   if (state.busy) {
@@ -198,11 +198,11 @@ export async function commit(then: CommitThen = "nothing"): Promise<void> {
 export const switchBranch = (name: string, isRemote: boolean) =>
   runGit(t("Checking out {branch}…", { branch: name }), (root) => gitApi.switchTo(root, name, isRemote));
 
-export const createBranch = (name: string, start: string, checkout: boolean) =>
+const createBranch = (name: string, start: string, checkout: boolean) =>
   runGit(t("Creating branch {branch}…", { branch: name }), (root) => gitApi.createBranch(root, name, start, checkout));
 
 /** Why `name` can't be a branch name (`git check-ref-format`'s rules, roughly), or `null`. */
-export function branchNameError(name: string): string | null {
+function branchNameError(name: string): string | null {
   const n = name.trim();
   if (!n) return "";
   if (/[\s~^:?*[\\]|\.\.|@\{|\/\/|^[-/.]|[/.]$|\.lock$|^@$/.test(n)) return t("That isn't a valid branch name.");

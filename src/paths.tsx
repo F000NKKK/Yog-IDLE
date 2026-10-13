@@ -42,7 +42,7 @@ export function renamedPath(path: string, name: string): string {
 }
 
 /** Where `yog` generates screen code, under a mod project's root. */
-export const GENERATED_DIR = ".yog-build/generated";
+const GENERATED_DIR = ".yog-build/generated";
 
 /**
  * The generated code of `path` in the project at `root`, or `null`:

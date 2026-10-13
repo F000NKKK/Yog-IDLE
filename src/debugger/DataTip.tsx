@@ -4,7 +4,7 @@ import { evaluate, expressionAt } from "./variables";
 import { VariablesTree } from "./VariablesTree";
 
 /** The expression at an editor point: the selection when the point is in it, else the variable path under it. */
-export function expressionAtPoint(request: EditorPointRequest): { expr: string; from: number; to: number } | null {
+function expressionAtPoint(request: EditorPointRequest): { expr: string; from: number; to: number } | null {
   if (request.selection) {
     const expr = request.selection.text.trim();
     return expr && !expr.includes("\n") ? { expr, from: request.selection.from, to: request.selection.to } : null;

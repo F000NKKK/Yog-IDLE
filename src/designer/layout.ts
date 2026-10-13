@@ -56,7 +56,7 @@ export function strWidth(s: string, scale: number): number {
   return w * scale;
 }
 
-export function wrapText(text: string, maxW: number, scale: number): string[] {
+function wrapText(text: string, maxW: number, scale: number): string[] {
   if (scale <= 0 || maxW <= 0) return [text];
   const spaceW = charWidth(" ") * scale;
   const lines: string[] = [];
@@ -123,7 +123,7 @@ export function textLines(text: string, s: Style, availW: number): string[] {
 }
 
 /** Width of the strip a ScrollView reserves for its scrollbar (`layout::SCROLLBAR_W`). */
-export const SCROLLBAR_W = 6;
+const SCROLLBAR_W = 6;
 
 function textHeight(text: string, maxW: number, scale: number): number {
   const n = Math.max(1, wrapText(text, maxW, scale).length);
@@ -256,7 +256,7 @@ function units(value: string | undefined): Units {
   return n === null ? { t: "auto" } : { t: "px", v: n };
 }
 
-export function parsePadding(value: string | undefined): [number, number, number, number] {
+function parsePadding(value: string | undefined): [number, number, number, number] {
   const parts = (value ?? "")
     .split(/[\s,]+/)
     .filter(Boolean)
@@ -289,7 +289,7 @@ function designFlag(value: string | undefined): boolean {
 }
 
 /** The widget a `.yui` node becomes — what its generated builder code would build. Lenient: a bad value falls back to the default. */
-export function toWidget(node: YuiNode, inCanvas: boolean): LWidget {
+function toWidget(node: YuiNode, inCanvas: boolean): LWidget {
   const a = node.attrs;
   const kind = LEAF_OF[node.kind] ?? "spacer";
   const style = defaultStyle();
@@ -360,7 +360,7 @@ export function toWidget(node: YuiNode, inCanvas: boolean): LWidget {
 }
 
 /** Where the generated `root_with` puts the screen inside a `screenW` × `screenH` GUI. */
-export function anchorOffset(anchor: string | undefined, screenW: number, screenH: number, w: number, h: number): [number, number] {
+function anchorOffset(anchor: string | undefined, screenW: number, screenH: number, w: number, h: number): [number, number] {
   const cx = Math.max(0, Math.floor((screenW - w) / 2));
   const cy = Math.max(0, Math.floor((screenH - h) / 2));
   const r = Math.max(0, screenW - w);
