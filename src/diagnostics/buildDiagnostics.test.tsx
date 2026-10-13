@@ -43,6 +43,12 @@ describe("BuildDiagnosticsSync", () => {
     expect(shown()).toEqual(["E0432 /p/vlsi/src/alu_ui.rs:22", "E0432 /p/vlsi/src/chip.rs:7"]);
   });
 
+  it("drops rustc's notes about the cross-compiling host", () => {
+    output('==> building yog-vlsi 0.2.0\nwarning: invoking `"xcrun" "--sdk" "macosx" "--show-sdk-path"` to find MacOSX.sdk failed: No such file or directory (os error 2)\n');
+    fire("workflow-exit", { success: true, cancelled: false });
+    expect(shown()).toEqual([]);
+  });
+
   it("reads a run's build, which fires no workflow-start", () => {
     fire("workflow-exit", { success: true, cancelled: false });
     output(`==> building yog-vlsi 0.2.0 with \`cargo zigbuild\`\n${PLATFORM}`);

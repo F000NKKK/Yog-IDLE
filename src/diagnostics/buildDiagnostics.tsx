@@ -16,6 +16,14 @@ const BUILDING = "==> building ";
 /** `yog run`'s line between its build and the game's own output. */
 const LAUNCHED = "==> launched pid ";
 
+/**
+ * rustc's notes about the cross-compiling host, not the mod: macOS targets
+ * look for a MacOSX.sdk through `xcrun`, which only a Mac has — zig links
+ * without it.
+ */
+const HOST_NOISE = [/^invoking `"xcrun"/];
+const isNoise = (d: Diagnostic) => d.severity === "warning" && HOST_NOISE.some((re) => re.test(d.message));
+
 /** What a terminal would show of a line cargo redraws with `\r` (its progress bar, then the diagnostic). */
 const lastSegment = (line: string) => line.slice(line.lastIndexOf("\r") + 1);
 
@@ -58,6 +66,7 @@ export function BuildDiagnosticsSync({ root, project }: { root: string | null; p
     };
     const queue = (items: Diagnostic[]) => {
       for (const d of items) {
+        if (isNoise(d)) continue;
         const key = keyOf(d);
         if (seen.has(key)) continue;
         seen.add(key);
