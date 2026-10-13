@@ -451,7 +451,7 @@ impl Prepared {
 
 fn marker(i: usize) -> u32 {
     // Alpha 1: never a real color in a .yui, invisible if left behind.
-    0x01_D0_0000 | (i as u32 & 0xFFFF)
+    0x01D0_0000 | (i as u32 & 0xFFFF)
 }
 
 fn px(v: Option<&str>) -> Option<f32> {
