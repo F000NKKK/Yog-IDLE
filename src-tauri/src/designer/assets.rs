@@ -94,6 +94,7 @@ impl Vanilla {
         let (mut items, mut blocks) = (Vec::new(), Vec::new());
         if let Ok(zip) = self.zip.lock() {
             for name in zip.file_names() {
+                let Ok(name) = name else { continue };
                 let Some(stem) = name.strip_prefix("assets/minecraft/textures/").and_then(|n| n.strip_suffix(".png")) else {
                     continue;
                 };

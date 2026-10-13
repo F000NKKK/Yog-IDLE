@@ -23,7 +23,6 @@ use yog_ui::{ScrollState, UiRoot, Widget};
 
 use self::assets::Resources;
 use self::markup::YuiNode;
-use self::raster::DrawOp;
 
 /// A laid-out widget: its border box and its content box (inside padding), GUI px.
 #[derive(Debug, Clone, Serialize)]

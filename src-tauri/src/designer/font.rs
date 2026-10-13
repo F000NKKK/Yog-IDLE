@@ -128,7 +128,7 @@ fn unihex(res: &Resources, file: &str, overrides: &[Value]) -> Option<Arc<Unihex
         let mut glyphs = HashMap::new();
         for i in 0..zip.len() {
             let Ok(mut entry) = zip.by_index(i) else { continue };
-            if !entry.name().ends_with(".hex") {
+            if !entry.name().is_ok_and(|n| n.ends_with(".hex")) {
                 continue;
             }
             let mut text = String::new();
