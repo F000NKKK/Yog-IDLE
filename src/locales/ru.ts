@@ -498,6 +498,7 @@ registerTranslations(
     "Static text.": "Статический текст.",
     "Text Box": "Текстовое поле",
     "Include generated files (.yog-build/generated)": "Включая созданные файлы (.yog-build/generated)",
+    "This file is generated from its .yres resource file and can't be edited here — changes would be lost on the next build. Edit the .yres file instead.": "Этот файл создан из файла ресурсов .yres и не редактируется здесь — изменения пропали бы при следующей сборке. Редактируйте файл .yres.",
     "This file is generated from its .yui screen and can't be edited here — changes would be lost on the next build. Edit the .yui file instead.": "Этот файл создан из экрана .yui и не редактируется здесь — изменения пропали бы при следующей сборке. Редактируйте файл .yui.",
     "A one-line text input: click to focus, type, Enter raises on_submit; each edit raises on_change (TextBoxState in code).": "Однострочное поле ввода: щелчок дает фокус, ввод текста, Enter вызывает on_submit; каждое изменение вызывает on_change (TextBoxState в коде).",
     "The text shown (a text box's initial text).": "Отображаемый текст (для текстового поля — начальный текст).",

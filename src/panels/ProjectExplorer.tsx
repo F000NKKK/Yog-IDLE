@@ -125,8 +125,10 @@ function nestParent(name: string, siblings: Set<string>): string | null {
 
 /**
  * Adds each screen's generated code (`.yog-build/generated/<path>.g.rs`, not
- * in the tree's folders) under its `.yui`, greyed — like Visual Studio showing
- * `MainWindow.g.cs` for a XAML window. Opens read-only.
+ * in the tree's folders) under its `.yui`, and each resource set's
+ * (`.yog-build/generated/resources/<Set>.g.rs`) under its neutral `.yres`,
+ * greyed — like Visual Studio showing `MainWindow.g.cs` under a XAML window
+ * and `Resources.Designer.cs` under a `.resx`. Opens read-only.
  */
 function withGeneratedCode(nodes: FileTreeNode[], root: string): FileTreeNode[] {
   return nodes.map((node) => {

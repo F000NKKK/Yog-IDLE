@@ -45,17 +45,33 @@ export function renamedPath(path: string, name: string): string {
 export const GENERATED_DIR = ".yog-build/generated";
 
 /**
- * The generated code of screen `yuiPath` in the project at `root`:
- * `src/foo/bar.yui` → `<root>/.yog-build/generated/foo/bar.g.rs` (what
- * `yog ui gen` writes and `yog_api::ui_include!("foo/bar")` pulls in).
- * `null` for a `.yui` outside `src/`.
+ * The generated code of `path` in the project at `root`, or `null`:
+ * - screen `src/foo/bar.yui` → `<root>/.yog-build/generated/foo/bar.g.rs`
+ *   (what `yog ui gen` writes and `yog_api::ui_include!("foo/bar")` pulls in);
+ * - resource set `resources/[…/]Strings.yres` (the neutral file, not a
+ *   culture variant like `Strings.ru_ru.yres`) →
+ *   `<root>/.yog-build/generated/resources/Strings.g.rs` (included by
+ *   `yog_api::resources!()`).
  */
-export function generatedCodePath(root: string, yuiPath: string): string | null {
+export function generatedCodePath(root: string, path: string): string | null {
   const sep = root.includes("\\") && !root.includes("/") ? "\\" : "/";
-  const src = `${root.replace(/[/\\]+$/, "")}${sep}src`;
-  if (!isWithin(yuiPath, src) || extensionOf(yuiPath) !== "yui") return null;
-  const rel = yuiPath.slice(src.length + 1).replace(/\.yui$/i, "");
-  return [root.replace(/[/\\]+$/, ""), ...GENERATED_DIR.split("/"), `${rel}.g.rs`].join(sep).replace(/[/\\]/g, sep);
+  const base = root.replace(/[/\\]+$/, "");
+  const join = (...parts: string[]) => [base, ...GENERATED_DIR.split("/"), ...parts].join(sep).replace(/[/\\]/g, sep);
+  const ext = extensionOf(path);
+  if (ext === "yres") {
+    if (!isWithin(path, `${base}${sep}resources`)) return null;
+    const set = /([^/\\]+)\.yres$/i.exec(path)?.[1];
+    return set && !set.includes(".") ? join("resources", `${set}.g.rs`) : null;
+  }
+  const src = `${base}${sep}src`;
+  if (!isWithin(path, src) || ext !== "yui") return null;
+  const rel = path.slice(src.length + 1).replace(/\.yui$/i, "");
+  return join(`${rel}.g.rs`);
+}
+
+/** Whether `path` is the generated code of a `.yres` resource set (`.yog-build/generated/resources/<Set>.g.rs`). */
+export function isGeneratedResources(path: string): boolean {
+  return /[/\\]\.yog-build[/\\]generated[/\\]resources[/\\][^/\\]+\.g\.rs$/i.test(path);
 }
 
 /** Whether `path` is generated code (`.yog-build/generated/**`), opened read-only with a notice. */

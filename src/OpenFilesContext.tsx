@@ -32,7 +32,7 @@ import { addWatchItem, dataTipProvider } from "./debugger/DataTip";
 import { useWatches } from "./debugger/WatchesContext";
 import { samePath } from "./paths";
 import { onOpenFileRequest, type FileOpenRequest } from "./fileOpenBus";
-import { baseName, isGeneratedCode, isWithin } from "./paths";
+import { baseName, isGeneratedCode, isGeneratedResources, isWithin } from "./paths";
 import { reportError } from "./reportError";
 import { selectPath } from "./ideSelection";
 import { addCloseGuard } from "./windowClose";
@@ -590,7 +590,9 @@ export function OpenFilesProvider({ children }: { children: ReactNode }) {
             {generated ? (
               <div className="generated-file">
                 <div className="generated-file-notice" role="note">
-                  {t("This file is generated from its .yui screen and can't be edited here — changes would be lost on the next build. Edit the .yui file instead.")}
+                  {isGeneratedResources(tab.path)
+                    ? t("This file is generated from its .yres resource file and can't be edited here — changes would be lost on the next build. Edit the .yres file instead.")
+                    : t("This file is generated from its .yui screen and can't be edited here — changes would be lost on the next build. Edit the .yui file instead.")}
                 </div>
                 <div className="generated-file-editor">{editor}</div>
               </div>
