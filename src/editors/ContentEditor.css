@@ -24,6 +24,12 @@
   border-bottom: 1px solid var(--sp-border);
 }
 
+/* Selects default to the top of their row (for forms); in these rows they sit on the centre line like the buttons. */
+.content-toolbar .sp-form-select,
+.content-pane-header .sp-form-select {
+  align-self: center;
+}
+
 /* = `.sp-toolbar-separator` */
 .content-divider {
   flex: none;
