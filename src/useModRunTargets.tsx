@@ -41,7 +41,7 @@ export function useModRunTargets(projectRoot: string) {
         throw err;
       });
     },
-    [projectRoot]
+    [projectRoot],
   );
 
   return { targets, running, run };

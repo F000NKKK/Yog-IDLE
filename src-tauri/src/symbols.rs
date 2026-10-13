@@ -43,6 +43,26 @@ pub enum SymbolKind {
 }
 
 impl SymbolKind {
+    /// As serialized (`camelCase`) — Code Search's `kind`.
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::Struct => "struct",
+            Self::Enum => "enum",
+            Self::Trait => "trait",
+            Self::TypeAlias => "typeAlias",
+            Self::Union => "union",
+            Self::Function => "function",
+            Self::Method => "method",
+            Self::Field => "field",
+            Self::Variant => "variant",
+            Self::Const => "const",
+            Self::Static => "static",
+            Self::Macro => "macro",
+            Self::Module => "module",
+            Self::AssociatedType => "associatedType",
+        }
+    }
+
     /// Types (`t:`) — everything else is a member (`m:`).
     pub fn is_type(self) -> bool {
         matches!(
@@ -609,7 +629,7 @@ pub struct CodeSearchRequest {
 #[serde(rename_all = "camelCase")]
 pub struct CodeSearchItem {
     /// `"file"`, `"text"`, or a `SymbolKind`.
-    pub kind: String,
+    pub kind: &'static str,
     /// What the row shows: a symbol's or file's name, a text hit's line.
     pub name: String,
     /// Dimmed after the name: a symbol's container, a file's folder.
@@ -622,13 +642,6 @@ pub struct CodeSearchItem {
     pub highlights: Vec<u32>,
     #[serde(skip)]
     score: i32,
-}
-
-fn kind_name(kind: SymbolKind) -> String {
-    serde_json::to_value(kind)
-        .ok()
-        .and_then(|v| v.as_str().map(str::to_string))
-        .unwrap_or_default()
 }
 
 fn file_item(path: &Path, rel: &str, query: &str) -> Option<CodeSearchItem> {
@@ -651,7 +664,7 @@ fn file_item(path: &Path, rel: &str, query: &str) -> Option<CodeSearchItem> {
         }
     };
     Some(CodeSearchItem {
-        kind: "file".to_string(),
+        kind: "file",
         name: name.to_string(),
         container: folder.map(str::to_string),
         path: path.to_string_lossy().into_owned(),
@@ -666,7 +679,7 @@ fn file_item(path: &Path, rel: &str, query: &str) -> Option<CodeSearchItem> {
 fn symbol_item(path: &Path, rel: &str, symbol: &Symbol, query: &str) -> Option<CodeSearchItem> {
     let (score, positions) = fuzzy_match(query, &symbol.name)?;
     Some(CodeSearchItem {
-        kind: kind_name(symbol.kind),
+        kind: symbol.kind.name(),
         name: symbol.name.clone(),
         container: symbol.container.clone(),
         path: path.to_string_lossy().into_owned(),
@@ -754,7 +767,7 @@ fn text_items(
         &mut |file| {
             for hit in file.hits {
                 items.push(CodeSearchItem {
-                    kind: "text".to_string(),
+                    kind: "text",
                     highlights: hit.ranges.iter().flat_map(|&(s, e)| s..e).collect(),
                     name: hit.text,
                     container: None,
@@ -808,6 +821,29 @@ pub async fn code_search(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn kind_names_match_serde() {
+        use SymbolKind::*;
+        for kind in [
+            Struct,
+            Enum,
+            Trait,
+            TypeAlias,
+            Union,
+            Function,
+            Method,
+            Field,
+            Variant,
+            Const,
+            Static,
+            Macro,
+            Module,
+            AssociatedType,
+        ] {
+            assert_eq!(serde_json::to_value(kind).unwrap(), kind.name());
+        }
+    }
 
     const SAMPLE: &str = r#"
 pub mod net {

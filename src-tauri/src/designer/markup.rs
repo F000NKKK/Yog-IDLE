@@ -253,8 +253,14 @@ pub fn widget(node: &YuiNode, in_canvas: bool, scroll: &HashMap<String, f32>) ->
                 "none" => FocusStyle::None,
                 _ => FocusStyle::Outline,
             }),
-            "padding" => padding(v).map_or(w.clone(), |[t, r, b, l]| w.clone().padding(t, r, b, l)),
-            "margin" => padding(v).map_or(w.clone(), |[t, r, b, l]| w.clone().margin(t, r, b, l)),
+            "padding" => match padding(v) {
+                Some([t, r, b, l]) => w.padding(t, r, b, l),
+                None => w,
+            },
+            "margin" => match padding(v) {
+                Some([t, r, b, l]) => w.margin(t, r, b, l),
+                None => w,
+            },
             "halign" => match v.trim() {
                 "left" => w.halign(HAlign::Left),
                 "center" => w.halign(HAlign::Center),
@@ -269,17 +275,26 @@ pub fn widget(node: &YuiNode, in_canvas: bool, scroll: &HashMap<String, f32>) ->
                 "stretch" => w.valign(VAlign::Stretch),
                 _ => w,
             },
-            "bg" => color(v).map_or(w.clone(), |c| w.clone().bg(c)),
-            "color" => color(v).map_or(w.clone(), |c| w.clone().color(c)),
-            "focus_color" => color(v).map_or(w.clone(), |c| w.clone().focus_color(c)),
+            "bg" => match color(v) {
+                Some(c) => w.bg(c),
+                None => w,
+            },
+            "color" => match color(v) {
+                Some(c) => w.color(c),
+                None => w,
+            },
+            "focus_color" => match color(v) {
+                Some(c) => w.focus_color(c),
+                None => w,
+            },
             "shadow" => w.shadow(v.trim() == "true"),
             "enabled" => w.enabled(v.trim() != "false"),
             "font" if !v.trim().is_empty() => w.font(v.trim()),
             "placeholder" => w.placeholder(text(Some(v))),
-            "max_length" => v
-                .trim()
-                .parse()
-                .map_or(w.clone(), |n| w.clone().max_length(n)),
+            "max_length" => match v.trim().parse() {
+                Ok(n) => w.max_length(n),
+                Err(_) => w,
+            },
             "on_change" => w.on_change(v),
             "on_submit" => w.on_submit(v),
             "no_wrap" if v.trim() == "true" => w.no_wrap(),
