@@ -92,7 +92,7 @@ pub fn widget(node: &YuiNode, in_canvas: bool, scroll: &HashMap<String, f32>) ->
         "ItemSlot" => widget::item_slot(a("item").unwrap_or_default()),
         "InvSlot" => widget::inv_slot(a("item").unwrap_or_default(), a("count").and_then(|c| c.trim().parse().ok()).unwrap_or(1)),
         "Image" => super::images::widget(node),
-        "TextBox" => text_box(node),
+        "TextBox" => widget::text_box(text(a("text"))),
         _ => widget::spacer(),
     };
     if node.kind == "Screen" {
@@ -141,11 +141,16 @@ pub fn widget(node: &YuiNode, in_canvas: bool, scroll: &HashMap<String, f32>) ->
                 _ => FocusStyle::Outline,
             }),
             "padding" => padding(v).map_or(w.clone(), |[t, r, b, l]| w.clone().padding(t, r, b, l)),
-            "bg" if node.kind != "TextBox" => color(v).map_or(w.clone(), |c| w.clone().bg(c)),
-            "color" if node.kind != "TextBox" => color(v).map_or(w.clone(), |c| w.clone().color(c)),
+            "bg" => color(v).map_or(w.clone(), |c| w.clone().bg(c)),
+            "color" => color(v).map_or(w.clone(), |c| w.clone().color(c)),
             "focus_color" => color(v).map_or(w.clone(), |c| w.clone().focus_color(c)),
-            "shadow" if node.kind != "TextBox" => w.shadow(v.trim() == "true"),
+            "shadow" => w.shadow(v.trim() == "true"),
             "enabled" => w.enabled(v.trim() != "false"),
+            "font" if !v.trim().is_empty() => w.font(v.trim()),
+            "placeholder" => w.placeholder(text(Some(v))),
+            "max_length" => v.trim().parse().map_or(w.clone(), |n| w.clone().max_length(n)),
+            "on_change" => w.on_change(v),
+            "on_submit" => w.on_submit(v),
             "no_wrap" if v.trim() == "true" => w.no_wrap(),
             "ellipsis" if v.trim() == "true" => w.ellipsis(),
             _ => w,
@@ -162,28 +167,6 @@ pub fn widget(node: &YuiNode, in_canvas: bool, scroll: &HashMap<String, f32>) ->
         }
     }
     w
-}
-
-/// `TextBox` isn't in the published yog-ui yet: drawn like Minecraft's edit
-/// box (grey frame, black field, the text or a grey placeholder) out of
-/// stock widgets until it is.
-fn text_box(node: &YuiNode) -> Widget {
-    let value = text(node.attr("text"));
-    let (shown, fg) = if value.is_empty() {
-        (text(node.attr("placeholder")), 0xFF_707070)
-    } else {
-        (value, node.attr("color").and_then(color).unwrap_or(0xFF_E0E0E0))
-    };
-    let field = widget::label(shown)
-        .w(Units::Percent(100.0))
-        .h(Units::Percent(100.0))
-        .bg(node.attr("bg").and_then(color).unwrap_or(0xFF_000000))
-        .color(fg)
-        .shadow(node.attr("shadow").is_none_or(|s| s.trim() != "false"))
-        .no_wrap()
-        .ellipsis()
-        .padding(0.0, 3.0, 0.0, 4.0);
-    widget::panel(FlexDir::Column).bg(0xFF_A0A0A0).padding(1.0, 1.0, 1.0, 1.0).gap(0.0).child(field)
 }
 
 /// The anchored screen (`root_with`): a `screen_w × screen_h` panel with the
