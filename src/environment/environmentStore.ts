@@ -1,7 +1,7 @@
 import { useSyncExternalStore } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { listen } from "@tauri-apps/api/event";
 import { notify, showDialog, t } from "substrate-platform-ui";
+import { EVENT, listenAll, listenTo } from "../events";
 import { setOutputSource } from "../outputSource";
 import { reportError } from "../reportError";
 
@@ -229,13 +229,6 @@ export function cancelInstall(): void {
   void invoke("environment_cancel");
 }
 
-interface DonePayload {
-  component: string;
-  success: boolean;
-  cancelled: boolean;
-  error: string | null;
-}
-
 let projectRootForRecheck: () => string | null = () => null;
 
 /**
@@ -245,12 +238,11 @@ let projectRootForRecheck: () => string | null = () => null;
  */
 export function listenToInstallEvents(currentRoot: () => string | null): () => void {
   projectRootForRecheck = currentRoot;
-  const unlistens = [
-    listen<{ component: string; fraction: number | null; message: string }>("environment-progress", (e) => {
-      update({ progress: { ...state.progress, [e.payload.component]: { fraction: e.payload.fraction, message: e.payload.message } } });
+  return listenAll([
+    listenTo(EVENT.environmentProgress, ({ component, fraction, message }) => {
+      update({ progress: { ...state.progress, [component]: { fraction, message } } });
     }),
-    listen<DonePayload>("environment-install-done", (e) => {
-      const { component, success, cancelled, error } = e.payload;
+    listenTo(EVENT.environmentInstallDone, ({ component, success, cancelled, error }) => {
       const progress = { ...state.progress };
       delete progress[component];
       const failed = { ...state.failed };
@@ -261,13 +253,10 @@ export function listenToInstallEvents(currentRoot: () => string | null): () => v
       else if (cancelled) notify({ level: "warn", message: t("Installing {name} was cancelled.", { name }) });
       else notify({ level: "error", message: t("Installing {name} failed: {error}", { name, error: error ?? "" }) });
     }),
-    listen("environment-install-finished", () => {
+    listenTo(EVENT.environmentInstallFinished, () => {
       // Whatever was queued after a failure never ran.
       update({ queue: [], progress: {} });
       void detectEnvironment(projectRootForRecheck(), false);
     }),
-  ];
-  return () => {
-    unlistens.forEach((p) => p.then((f) => f()));
-  };
+  ]);
 }
