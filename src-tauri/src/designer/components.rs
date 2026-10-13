@@ -350,7 +350,7 @@ mod tests {
 
     #[test]
     fn code_bindings_make_a_component_compiled() {
-        let tree = parse_tree(r#"<Component><Property name="v" type="number"/><Label text="{x:Bind caption(), Mode=OneTime}" d:color="#FF0000"/></Component>"#).unwrap();
+        let tree = parse_tree(r##"<Component><Property name="v" type="number"/><Label text="{x:Bind caption(), Mode=OneTime}" d:color="#FF0000"/></Component>"##).unwrap();
         let def = definition(&tree, Path::new("src/stat_bar.yui")).unwrap();
         assert_eq!(def.info.name, "StatBar");
         assert!(def.compiled);

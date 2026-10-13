@@ -466,34 +466,84 @@ fn px(v: Option<&str>) -> Option<f32> {
     if v.ends_with('%') { None } else { v.parse().ok() }
 }
 
-/// Measures each custom element through the host (its natural size, when
-/// the element doesn't size it in px) and swaps it for a marked spacer.
+/// The document as yog-ui should draw it: a `<Component>` document as a
+/// screen of its design size; markup-only component instances expanded;
+/// each compiled one (or unknown) measured through the host (its natural
+/// size, when the element doesn't size it in px) and swapped for a marked
+/// spacer.
 pub fn prepare(root: &YuiNode, mod_root: Option<&Path>, screen_w: f32, screen_h: f32) -> Prepared {
-    let mut prepared = Prepared { root: root.clone(), slots: Vec::new(), mod_root: mod_root.map(Path::to_path_buf) };
-    if !has_custom(root) {
+    let root = if root.kind == "Component" { components::design_root(root) } else { root.clone() };
+    let mut prepared = Prepared { root, slots: Vec::new(), mod_root: mod_root.map(Path::to_path_buf) };
+    if !has_custom(&prepared.root) {
         return prepared;
     }
-    let snapshot = mod_root.map(status);
-    let shared = mod_root.map(state);
-    let mut slots = Vec::new();
-    replace(&mut prepared.root, &mut |node| {
+    let mut cx = Cx { mod_root, defs: mod_root.map(components::scan).unwrap_or_default(), snapshot: None, slots: Vec::new(), screen: (screen_w, screen_h) };
+    cx.process(&mut prepared.root, 0);
+    prepared.slots = cx.slots;
+    prepared
+}
+
+/// How deep components may nest (a component using itself stops here).
+const MAX_NESTING: usize = 16;
+
+struct Cx<'a> {
+    mod_root: Option<&'a Path>,
+    defs: Arc<Vec<Def>>,
+    snapshot: Option<Snapshot>,
+    slots: Vec<Slot>,
+    screen: (f32, f32),
+}
+
+impl Cx<'_> {
+    fn process(&mut self, node: &mut YuiNode, depth: usize) {
+        if !is_component(&node.kind) {
+            for child in &mut node.children {
+                self.process(child, depth);
+            }
+            return;
+        }
+        let defs = self.defs.clone();
+        match Def::find(&defs, &node.kind) {
+            Some(def) if !def.compiled && depth < MAX_NESTING => {
+                *node = components::expand(def, node);
+                // The body's root may itself be a component.
+                self.process(node, depth + 1);
+            }
+            def => {
+                let problem = match def {
+                    None => Some(format!("no component <{}> in this mod — add one: New Item → Component (.yui)", node.kind)),
+                    Some(d) if !d.compiled => Some("this component contains itself".to_string()),
+                    Some(_) => self.library_problem(&node.kind),
+                };
+                self.slot(node, problem);
+            }
+        }
+    }
+
+    /// Why a compiled component can't be drawn right now, if it can't.
+    fn library_problem(&mut self, name: &str) -> Option<String> {
+        let Some(mod_root) = self.mod_root else {
+            return Some("not inside a mod (no src/ folder)".into());
+        };
+        let s = self.snapshot.get_or_insert_with(|| status(mod_root));
+        match s.status {
+            Status::Building | Status::None => Some("Building designer library…".to_string()),
+            Status::Failed => Some(format!("The designer could not load the mod's library:\n{}", s.error.clone().unwrap_or_default())),
+            Status::Ready => {
+                let registered = lock(&state(mod_root)).components.iter().any(|c| c.name == name);
+                (!registered).then(|| format!("the mod's library doesn't register <{name}> — does its code-behind call yog_api::ui_include!?"))
+            }
+        }
+    }
+
+    fn slot(&mut self, node: &mut YuiNode, problem: Option<String>) {
         let name = node.kind.clone();
         let props: Vec<(String, String)> = node.attrs.iter().filter(|(k, _)| !LAYOUT_ATTRS.contains(&k.as_str())).map(|(k, v)| (k.clone(), v.clone())).collect();
         let (w, h) = (px(node.attr("w")), px(node.attr("h")));
-        let req = RenderReq { name: name.clone(), props, w: w.unwrap_or(0.0), h: h.unwrap_or(0.0), avail_w: screen_w, avail_h: screen_h };
-        let problem = match &snapshot {
-            None => Some("not inside a mod (no src/ folder)".to_string()),
-            Some(s) => match s.status {
-                Status::Building => Some("Building designer library…".to_string()),
-                Status::Failed => Some(format!("The designer could not load the mod's library:\n{}", s.error.clone().unwrap_or_default())),
-                Status::None => Some(format!("no component <{name}> — declare it with yog_api::ui_component!")),
-                Status::Ready if !s.components.iter().any(|c| c.name == name) => Some(format!("no component <{name}> in this mod")),
-                Status::Ready => None,
-            },
-        };
+        let req = RenderReq { name, props, w: w.unwrap_or(0.0), h: h.unwrap_or(0.0), avail_w: self.screen.0, avail_h: self.screen.1 };
         let (mut nw, mut nh) = (w.unwrap_or(80.0), h.unwrap_or(if problem.is_some() { 24.0 } else { 20.0 }));
-        let problem = match (problem, &shared) {
-            (None, Some(sh)) if w.is_none() || h.is_none() => match lock(sh).render(&req) {
+        let problem = match (problem, self.mod_root) {
+            (None, Some(root)) if w.is_none() || h.is_none() => match lock(&state(root)).render(&req) {
                 Ok((mw, mh, _)) => {
                     nw = w.unwrap_or(mw);
                     nh = h.unwrap_or(mh);
@@ -503,30 +553,18 @@ pub fn prepare(root: &YuiNode, mod_root: Option<&Path>, screen_w: f32, screen_h:
             },
             (p, _) => p,
         };
-        let i = slots.len();
+        let i = self.slots.len();
         let mut attrs: HashMap<String, String> = node.attrs.iter().filter(|(k, _)| LAYOUT_ATTRS.contains(&k.as_str())).map(|(k, v)| (k.clone(), v.clone())).collect();
         attrs.entry("w".into()).or_insert_with(|| nw.to_string());
         attrs.entry("h".into()).or_insert_with(|| nh.to_string());
         attrs.insert("bg".into(), format!("#{:08X}", marker(i)));
-        slots.push(Slot { uid: node.uid.clone(), marker: marker(i), req, problem });
+        self.slots.push(Slot { uid: node.uid.clone(), marker: marker(i), req, problem });
         *node = YuiNode { uid: node.uid.clone(), kind: "Spacer".into(), attrs, children: Vec::new() };
-    });
-    prepared.slots = slots;
-    prepared
+    }
 }
 
 fn has_custom(node: &YuiNode) -> bool {
     is_component(&node.kind) || node.children.iter().any(has_custom)
-}
-
-fn replace(node: &mut YuiNode, f: &mut impl FnMut(&mut YuiNode)) {
-    if is_component(&node.kind) {
-        f(node);
-        return;
-    }
-    for child in &mut node.children {
-        replace(child, f);
-    }
 }
 
 /// Replaces each marker fill in `ops` with the component drawn at its

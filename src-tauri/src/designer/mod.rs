@@ -6,6 +6,7 @@
 
 pub mod assets;
 pub mod codebehind;
+pub mod components;
 pub mod custom;
 pub mod font;
 pub mod gfx;
