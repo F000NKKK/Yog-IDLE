@@ -1,6 +1,6 @@
 import { useEffect, useSyncExternalStore } from "react";
-import { listen } from "@tauri-apps/api/event";
 import { startOutputBuffer } from "substrate-platform-ui";
+import { EVENT, listenAll, listenTo, type OutputEvent } from "./events";
 import { useWorkspaceState } from "./WorkspaceContext";
 
 /**
@@ -9,18 +9,15 @@ import { useWorkspaceState } from "./WorkspaceContext";
  * from startup so switching to one shows everything it has said so far.
  */
 export const OUTPUT_SOURCES = [
-  { id: "build", label: "Build", event: "workflow-output" },
-  { id: "game", label: "Game", event: "game-output" },
-  { id: "debug", label: "Debug", event: "debug-output" },
-  { id: "ide", label: "General", event: "ide-output" },
-  { id: "environment", label: "Environment", event: "environment-output" },
-  { id: "git", label: "Source Control - Git", event: "git-output" },
-] as const;
+  { id: "build", label: "Build", event: EVENT.buildOutput },
+  { id: "game", label: "Game", event: EVENT.gameOutput },
+  { id: "debug", label: "Debug", event: EVENT.debugOutput },
+  { id: "ide", label: "General", event: EVENT.ideOutput },
+  { id: "environment", label: "Environment", event: EVENT.environmentOutput },
+  { id: "git", label: "Source Control - Git", event: EVENT.gitOutput },
+] as const satisfies readonly { id: string; label: string; event: OutputEvent }[];
 
 export type OutputSource = (typeof OUTPUT_SOURCES)[number]["id"];
-
-/** Event for an IDE-side message (`reportError`, the Project Explorer) — the "General" source. */
-export const IDE_OUTPUT_EVENT = "ide-output";
 
 function isOutputSource(value: unknown): value is OutputSource {
   return OUTPUT_SOURCES.some((s) => s.id === value);
@@ -69,25 +66,22 @@ export function OutputSourceSync() {
     // Only the first game line of a run switches over — after that the
     // user's own pick sticks.
     let awaitingGame = false;
-    const unlistens = [
-      listen("workflow-start", () => setOutputSource("build")),
-      listen<{ stage: string }>("game-status", (e) => {
-        if (e.payload.stage === "starting") {
+    return listenAll([
+      listenTo(EVENT.workflowStart, () => setOutputSource("build")),
+      listenTo(EVENT.gameStatus, (status) => {
+        if (status.stage === "starting") {
           setOutputSource("build");
           awaitingGame = true;
         }
       }),
-      listen("game-output", () => {
+      listenTo(EVENT.gameOutput, () => {
         if (!awaitingGame) return;
         awaitingGame = false;
         setOutputSource("game");
       }),
-      listen("debug-attach-failed", () => setOutputSource("debug")),
-      listen("debug-failed", () => setOutputSource("debug")),
-    ];
-    return () => {
-      unlistens.forEach((p) => p.then((f) => f()));
-    };
+      listenTo(EVENT.debugAttachFailed, () => setOutputSource("debug")),
+      listenTo(EVENT.debugFailed, () => setOutputSource("debug")),
+    ]);
   }, []);
 
   return null;

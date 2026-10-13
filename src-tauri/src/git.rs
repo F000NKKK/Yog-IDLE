@@ -233,7 +233,7 @@ fn require_repo(root: &Path) -> Result<PathBuf, String> {
 }
 
 /// `path` (repo-relative, `/`-separated as git prints it) as a file path under `top`.
-fn absolute(top: &Path, path: &str) -> String {
+pub(crate) fn absolute(top: &Path, path: &str) -> String {
     let mut full = top.to_path_buf();
     full.extend(path.split('/').filter(|s| !s.is_empty()));
     full.to_string_lossy().into_owned()
@@ -310,7 +310,7 @@ fn change(path: &str, orig_path: Option<&str>, kind: ChangeKind) -> FileChange {
 }
 
 /// Parses `git status --porcelain=v2 --branch --show-stash -z`.
-fn parse_status(raw: &str) -> RepoStatus {
+pub(crate) fn parse_status(raw: &str) -> RepoStatus {
     let mut status = RepoStatus::default();
     let mut records = raw.split('\0');
     while let Some(record) = records.next() {

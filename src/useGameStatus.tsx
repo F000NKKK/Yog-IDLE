@@ -1,34 +1,31 @@
-import { useEffect, useRef, useState } from "react";
-import { listen } from "@tauri-apps/api/event";
-import { t, tn, useLocale } from "substrate-platform-ui";
+import { useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
+import { StatusBar, t, tn, useLocale } from "substrate-platform-ui";
+import { EVENT, listenAll, listenTo } from "./events";
 
 const MAX_LINES = 500;
-
-interface GameStatusEvent {
-  stage: "starting" | "ready" | "exited";
-  pid: number | null;
-  mods: { id: string; name: string; version: string }[];
-}
-
-export interface HotReloadEvent {
-  stage: "building" | "reloading" | "done";
-  modId: string;
-  ok: boolean | null;
-  message: string;
-}
-
-/** `workflow-exit`'s payload when a Build/Publish run (not a game) ended. */
-export interface WorkflowExitEvent {
-  success: boolean;
-  cancelled: boolean;
-}
 
 /** Where the launched game is in its lifecycle — `"idle"` when nothing is running. */
 export type GameStage = "idle" | "starting" | "ready";
 
-interface DebugStoppedEvent {
-  reason: "breakpoint" | "signal" | "exited";
-  stackTrace: unknown[];
+// The status bar's detail lines live outside React: they arrive with every
+// Output line, and only the status bar itself needs to re-render for them.
+let lines: string[] = [];
+const lineListeners = new Set<() => void>();
+
+function pushLine(line: string) {
+  lines = [...lines, line].slice(-MAX_LINES);
+  lineListeners.forEach((notify) => notify());
+}
+
+function subscribeLines(notify: () => void): () => void {
+  lineListeners.add(notify);
+  return () => lineListeners.delete(notify);
+}
+
+/** The platform status bar showing `useGameStatus`'s text, with its recent lines as the detail. */
+export function GameStatusBar({ text, busy, trailing }: { text: string; busy: boolean; trailing?: ReactNode }) {
+  const detail = useSyncExternalStore(subscribeLines, () => lines);
+  return <StatusBar text={text} busy={busy} detail={detail} trailing={trailing} />;
 }
 
 /**
@@ -47,30 +44,22 @@ export function useGameStatus() {
   const setText = (status: () => string) => setTextThunk(() => status);
   const [busy, setBusy] = useState(false);
   const [stage, setStage] = useState<GameStage>("idle");
-  const [lines, setLines] = useState<string[]>([]);
-  const linesRef = useRef<string[]>([]);
-
-  function pushLine(line: string) {
-    linesRef.current = [...linesRef.current, line].slice(-MAX_LINES);
-    setLines(linesRef.current);
-  }
 
   useEffect(() => {
-    const unlistens = [
-      ...["workflow-output", "game-output", "debug-output", "ide-output"].map((source) =>
-        listen<string>(source, (e) => pushLine(e.payload)),
-      ),
-      listen("workflow-start", () => {
+    const sources = [EVENT.buildOutput, EVENT.gameOutput, EVENT.debugOutput, EVENT.ideOutput] as const;
+    return listenAll([
+      ...sources.map((source) => listenTo(source, pushLine)),
+      listenTo(EVENT.workflowStart, () => {
         setText(() => t("Building…"));
         setBusy(true);
       }),
       // A Build/Publish run carries a `WorkflowExit`; a game exiting fires
       // this too, with no payload.
-      listen<WorkflowExitEvent | null>("workflow-exit", (e) => {
-        if (e.payload?.cancelled) {
+      listenTo(EVENT.workflowExit, (exit) => {
+        if (exit?.cancelled) {
           setText(() => t("Build cancelled"));
           pushLine("build cancelled");
-        } else if (e.payload && !e.payload.success) {
+        } else if (exit && !exit.success) {
           setText(() => t("Build failed"));
           pushLine("[error] build failed");
         } else {
@@ -78,67 +67,64 @@ export function useGameStatus() {
         }
         setBusy(false);
       }),
-      listen<GameStatusEvent>("game-status", (e) => {
-        if (e.payload.stage === "starting") {
+      listenTo(EVENT.gameStatus, (status) => {
+        if (status.stage === "starting") {
           setStage("starting");
           setText(() => t("Starting…"));
           setBusy(true);
-        } else if (e.payload.stage === "exited") {
+        } else if (status.stage === "exited") {
           setStage("idle");
           setText(() => t("Idle"));
           setBusy(false);
           pushLine("game process exited");
         } else {
           setStage("ready");
-          const modCount = e.payload.mods.length;
-          const pid = e.payload.pid;
+          const modCount = status.mods.length;
+          const pid = status.pid;
           setText(() => tn(modCount, "Running — pid {pid} ({count} mod)", "Running — pid {pid} ({count} mods)", { pid: String(pid), count: String(modCount) }));
           setBusy(false);
-          pushLine(`ready: pid ${e.payload.pid}, mods: ${e.payload.mods.map((m) => `${m.id}@${m.version}`).join(", ")}`);
+          pushLine(`ready: pid ${status.pid}, mods: ${status.mods.map((m) => `${m.id}@${m.version}`).join(", ")}`);
         }
       }),
-      listen<HotReloadEvent>("hot-reload", (e) => {
+      listenTo(EVENT.hotReload, (reload) => {
         // The Output lines themselves arrive via `workflow-output` already.
-        if (e.payload.stage === "done") {
-          const { ok, modId } = e.payload;
+        if (reload.stage === "done") {
+          const { ok, modId } = reload;
           setText(() => (ok ? t("Hot reloaded {mod}", { mod: modId }) : t("Hot reload failed")));
           setBusy(false);
         } else {
-          const building = e.payload.stage === "building";
+          const building = reload.stage === "building";
           setText(() => (building ? t("Hot reload — building…") : t("Hot reload — reloading…")));
           setBusy(true);
         }
       }),
-      listen("debug-attached", (e) => {
-        const pid = String(e.payload);
+      listenTo(EVENT.debugAttached, (attached) => {
+        const pid = String(attached);
         setText(() => t("Debugging — pid {pid}", { pid }));
         setBusy(false);
       }),
-      listen<string>("debug-attach-failed", (e) => {
+      listenTo(EVENT.debugAttachFailed, (error) => {
         setText(() => t("Attach failed"));
         setBusy(false);
-        pushLine(`[error] ${e.payload}`);
+        pushLine(`[error] ${error}`);
       }),
-      listen<string>("debug-failed", (e) => {
+      listenTo(EVENT.debugFailed, (error) => {
         setText(() => t("Debugger failed"));
         setBusy(false);
-        pushLine(`[error] ${e.payload}`);
+        pushLine(`[error] ${error}`);
       }),
-      listen<DebugStoppedEvent>("debug-stopped", (e) => {
-        if (e.payload.reason === "exited") {
+      listenTo(EVENT.debugStopped, (stop) => {
+        if (stop.reason === "exited") {
           setText(() => t("Idle"));
-        } else if (e.payload.reason === "breakpoint") {
+        } else if (stop.reason === "breakpoint") {
           setText(() => t("Debugging — stopped at breakpoint"));
         } else {
           setText(() => t("Debugging — stopped"));
         }
         setBusy(false);
       }),
-    ];
-    return () => {
-      unlistens.forEach((p) => p.then((f) => f()));
-    };
+    ]);
   }, []);
 
-  return { text: text(), busy, lines, stage };
+  return { text: text(), busy, stage };
 }

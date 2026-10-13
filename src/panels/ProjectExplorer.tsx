@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type FocusEvent, type KeyboardEvent, type MouseEvent } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { emit } from "@tauri-apps/api/event";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import { openPath, revealItemInDir } from "@tauri-apps/plugin-opener";
 import {
@@ -27,7 +26,7 @@ import { useProject, type ProjectInfo } from "../ProjectContext";
 import { openWithItems, useOpenFiles } from "../OpenFilesContext";
 import { openFile } from "../fileOpenBus";
 import { reportError } from "../reportError";
-import { IDE_OUTPUT_EVENT } from "../outputSource";
+import { EVENT, emitTo } from "../events";
 import { baseName, generatedCodePath, isWithin, renamedPath, validateEntryName as validateName } from "../paths";
 import { openProjectProperties } from "../projectProperties/bus";
 import { registerExplorerRename, renamePath, selectionPathRemoved, selectionPathRenamed, selectMultiple, selectPath } from "../ideSelection";
@@ -43,7 +42,7 @@ const dirCommands = {
 
 /** A folder that failed to list stays unloaded in the tree (expanding it again retries) — say why in Output rather than only the devtools console. */
 function reportListError(error: unknown, path: string) {
-  emit(IDE_OUTPUT_EVENT, `[error] failed to list ${path}: ${error}`);
+  emitTo(EVENT.ideOutput, `[error] failed to list ${path}: ${error}`);
 }
 
 export function ProjectExplorer() {

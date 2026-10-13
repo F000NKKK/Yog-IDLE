@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { listen } from "@tauri-apps/api/event";
 import { getVersion } from "@tauri-apps/api/app";
 import { message, open, save as saveDialog } from "@tauri-apps/plugin-dialog";
 import { getCurrentWindow } from "@tauri-apps/api/window";
@@ -25,7 +24,6 @@ import {
   internationalSettingsKeywords,
   WindowControls,
   Toolbar,
-  StatusBar,
   useWorkflowRunner,
   pt,
   t,
@@ -50,7 +48,8 @@ import { ProjectProvider, useProject, type RecentEntry } from "./ProjectContext"
 import { OpenFilesProvider, useOpenFiles } from "./OpenFilesContext";
 import { BreakpointsProvider } from "./BreakpointsContext";
 import { DebugSessionProvider, useDebugSessionContext } from "./DebugSessionContext";
-import { useGameStatus, type GameStage, type WorkflowExitEvent } from "./useGameStatus";
+import { GameStatusBar, useGameStatus, type GameStage } from "./useGameStatus";
+import { EVENT, listenAll, listenTo } from "./events";
 import { useHotReload } from "./useHotReload";
 import { EditMenu, EditorKeybindings, editorToolbarSections, useEditorActions, type EditorActions } from "./EditorActions";
 import { OpenFilesPersistence } from "./OpenFilesPersistence";
@@ -218,15 +217,12 @@ function BuildMenu({ onOpenPublish }: { onOpenPublish: () => void }) {
 function useWorkflowActive(): boolean {
   const [active, setActive] = useState(0);
   useEffect(() => {
-    const unlistens = [
-      listen("workflow-start", () => setActive((n) => n + 1)),
-      listen<WorkflowExitEvent | null>("workflow-exit", (e) => {
-        if (e.payload) setActive((n) => Math.max(0, n - 1));
+    return listenAll([
+      listenTo(EVENT.workflowStart, () => setActive((n) => n + 1)),
+      listenTo(EVENT.workflowExit, (exit) => {
+        if (exit) setActive((n) => Math.max(0, n - 1));
       }),
-    ];
-    return () => {
-      unlistens.forEach((p) => p.then((unlisten) => unlisten()));
-    };
+    ]);
   }, []);
   return active > 0;
 }
@@ -569,7 +565,7 @@ function Shell({ onOpenSettings, onOpenInstaller, onOpenPublish }: { onOpenSetti
       extraCenterPanels={centerPanels}
       onCloseDynamicPanel={(id) => (isGitDocument(id) ? closeGitDocument(id) : void closeTab(id))}
       menu={<ShellChrome onOpenSettings={onOpenSettings} onOpenInstaller={onOpenInstaller} onOpenPublish={onOpenPublish} run={runActions} onRunningChange={setRunning} />}
-      statusBar={<StatusBar text={gameStatus.text} busy={gameStatus.busy} detail={gameStatus.lines} trailing={<GitStatusBar />} />}
+      statusBar={<GameStatusBar text={gameStatus.text} busy={gameStatus.busy} trailing={<GitStatusBar />} />}
     />
   );
 }

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { listen } from "@tauri-apps/api/event";
 import type { RunTarget } from "substrate-platform-ui";
+import { EVENT, listenAll, listenTo } from "./events";
 
 /**
  * A mod project's `yog.toml` `[run.<name>]` sections — plain named
@@ -25,15 +25,12 @@ export function useModRunTargets(projectRoot: string) {
   // stale: `game-status` "starting" always follows the previous session's
   // `workflow-exit` on the same event stream.
   useEffect(() => {
-    const unlistens = [
-      listen("workflow-exit", () => setRunning(false)),
-      listen<{ stage: string }>("game-status", (e) => {
-        if (e.payload.stage === "starting") setRunning(true);
+    return listenAll([
+      listenTo(EVENT.workflowExit, () => setRunning(false)),
+      listenTo(EVENT.gameStatus, (status) => {
+        if (status.stage === "starting") setRunning(true);
       }),
-    ];
-    return () => {
-      unlistens.forEach((p) => p.then((unlisten) => unlisten()));
-    };
+    ]);
   }, []);
 
   const run = useCallback(

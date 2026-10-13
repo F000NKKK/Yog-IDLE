@@ -497,7 +497,7 @@ struct IndexedFile {
 }
 
 #[derive(Default)]
-struct RootIndex {
+pub(crate) struct RootIndex {
     /// Every searchable file, as `(absolute, relative)` paths.
     files: Vec<(PathBuf, String)>,
     symbols: HashMap<PathBuf, IndexedFile>,
@@ -538,6 +538,39 @@ impl RootIndex {
             fresh.insert(path.clone(), entry);
         }
         self.symbols = fresh;
+    }
+}
+
+impl RootIndex {
+    /// An index over in-memory files (`(absolute, relative, source)`), for `crate::bench`.
+    pub(crate) fn from_sources(files: &[(PathBuf, String, String)]) -> Self {
+        RootIndex {
+            files: files
+                .iter()
+                .map(|(p, r, _)| (p.clone(), r.clone()))
+                .collect(),
+            symbols: files
+                .iter()
+                .filter(|(p, _, _)| p.extension().is_some_and(|e| e == "rs"))
+                .map(|(p, _, text)| {
+                    let symbols = Arc::new(extract_symbols(text));
+                    let file = IndexedFile {
+                        modified: None,
+                        symbols,
+                    };
+                    (p.clone(), file)
+                })
+                .collect(),
+        }
+    }
+
+    pub(crate) fn search(
+        &self,
+        query: &str,
+        mode: CodeSearchMode,
+        limit: usize,
+    ) -> Vec<CodeSearchItem> {
+        search_index(self, query, mode, limit)
     }
 }
 

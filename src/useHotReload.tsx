@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { emit, listen } from "@tauri-apps/api/event";
-import type { HotReloadEvent } from "./useGameStatus";
+import { EVENT, emitTo, listenTo } from "./events";
 
 /**
  * The toolbar's Hot Reload action — `mod_hot_reload` rebuilds the project
@@ -14,7 +13,7 @@ export function useHotReload() {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    const unlisten = listen<HotReloadEvent>("hot-reload", (e) => setBusy(e.payload.stage !== "done"));
+    const unlisten = listenTo(EVENT.hotReload, (reload) => setBusy(reload.stage !== "done"));
     return () => {
       unlisten.then((f) => f());
     };
@@ -26,7 +25,7 @@ export function useHotReload() {
       setBusy(false);
       // Refused before anything started (not running, already busy, ...) —
       // no `hot-reload` event will follow, so report it here.
-      emit("workflow-output", `[error] hot reload: ${err}`);
+      emitTo(EVENT.buildOutput, `[error] hot reload: ${err}`);
     });
   }, []);
 

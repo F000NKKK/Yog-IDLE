@@ -1,7 +1,8 @@
 import { useSyncExternalStore } from "react";
-import { emit } from "@tauri-apps/api/event";
 import { confirmDialog, notify, promptDialog, t } from "substrate-platform-ui";
+import { EVENT } from "../events";
 import { setOutputSource } from "../outputSource";
+import { reportError } from "../reportError";
 import { gitApi, type BranchInfo, type FileChange, type RemoteOp, type RepoStatus, type StashInfo, type StashMode } from "./gitApi";
 
 /** Output's Source Control source (`OUTPUT_GIT` in `git.rs`). */
@@ -89,12 +90,6 @@ export async function refreshGit(): Promise<void> {
   }
 }
 
-/** A failed operation: an error notification, and a line in Output (Source Control) to come back to. */
-export function reportGitError(message: string): void {
-  emit(GIT_OUTPUT_EVENT, `[error] ${message}`).catch(() => {});
-  notify({ level: "error", message });
-}
-
 interface RunOptions {
   /** Streams output — switch Output to Source Control. */
   output?: boolean;
@@ -117,7 +112,7 @@ async function runGit<T>(label: string, action: (root: string) => Promise<T>, op
   try {
     return await action(root);
   } catch (err) {
-    reportGitError(t(String(err)));
+    reportError(t(String(err)), EVENT.gitOutput);
     return undefined;
   } finally {
     set({ busy: null });
@@ -312,7 +307,7 @@ export async function initRepository(): Promise<void> {
     await gitApi.init(root, "");
     notify({ level: "info", message: t("Created a Git repository in {folder}.", { folder: root }) });
   } catch (err) {
-    reportGitError(t(String(err)));
+    reportError(t(String(err)), EVENT.gitOutput);
   } finally {
     set({ busy: null });
     await refreshGit();
@@ -330,7 +325,7 @@ export async function cloneRepository(url: string, parent: string): Promise<stri
   try {
     return await gitApi.clone(url, parent, "");
   } catch (err) {
-    reportGitError(t(String(err)));
+    reportError(t(String(err)), EVENT.gitOutput);
     return null;
   } finally {
     set({ busy: null });

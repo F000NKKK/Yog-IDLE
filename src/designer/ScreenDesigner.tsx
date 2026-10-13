@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { emit } from "@tauri-apps/api/event";
 import {
   ContextMenu,
   DesignSurface,
@@ -22,7 +21,7 @@ import {
 } from "substrate-platform-ui";
 import { openFile } from "../fileOpenBus";
 import { useActiveFileTab } from "../OpenFilesContext";
-import { IDE_OUTPUT_EVENT } from "../outputSource";
+import { EVENT, emitTo } from "../events";
 import { reportError } from "../reportError";
 import { clearActiveDesigner, setActiveDesigner, TOOLBOX_MIME } from "./activeDesigner";
 import { charWidth, compute, LINE_GAP, LINE_H, screenWidget, strWidth, textLines, type LNode, type LWidget } from "./layout";
@@ -1021,7 +1020,7 @@ export function ScreenDesigner({ path, content, onChange, readOnly, contentVersi
     try {
       const at = await invoke<HandlerLocation>("yui_event_handler", { path, event });
       openFile({ path: at.path, line: at.line, column: at.column });
-      if (at.changed) emit(IDE_OUTPUT_EVENT, `[designer] ${t("Added handler for {event} to {file}", { event, file: at.path })}`).catch(() => {});
+      if (at.changed) emitTo(EVENT.ideOutput, `[designer] ${t("Added handler for {event} to {file}", { event, file: at.path })}`);
     } catch (err) {
       reportError(t("Couldn't open the handler for {event}: {error}", { event, error: String(err instanceof Error ? err.message : err) }));
     }
@@ -1040,7 +1039,7 @@ export function ScreenDesigner({ path, content, onChange, readOnly, contentVersi
   /** An event the screen would get: the status bar and Output show it, as the game's code-behind would receive it. */
   const fired = (what: string) => {
     setLastEvent(what);
-    emit(IDE_OUTPUT_EVENT, `[designer] ${what}`).catch(() => {});
+    emitTo(EVENT.ideOutput, `[designer] ${what}`);
   };
 
   const sendEvent = (event: string, x: number, y: number) => {
