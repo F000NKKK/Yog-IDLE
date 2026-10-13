@@ -114,9 +114,10 @@ export function cellAttrs(row: number, col: number): Record<string, string | und
  * The children's `Grid.Row`/`Grid.RowSpan` (or column) after track `index` is
  * inserted (`delta` 1) or removed (`delta` -1) — like Visual Studio, children
  * keep their place and spans across it grow or shrink. `count`: the tracks
- * there are after the change (nothing is left past the last one).
+ * there are after the change (nothing is left past the last one; `delta` 0
+ * only does that).
  */
-export function shiftCells(grid: YuiNode, axis: Axis, index: number, delta: 1 | -1, count: number): YuiNode {
+export function shiftCells(grid: YuiNode, axis: Axis, index: number, delta: 1 | 0 | -1, count: number): YuiNode {
   const a = AXES[axis];
   const children = grid.children.map((c) => {
     if (c.kind.includes(".")) return c;
@@ -127,6 +128,8 @@ export function shiftCells(grid: YuiNode, axis: Axis, index: number, delta: 1 | 
     if (delta === 1) {
       if (start >= index) start += 1;
       else if (end > index) span += 1;
+    } else if (delta === 0) {
+      // Only clamped.
     } else if (start > index) start -= 1;
     else if (end > index && span > 1) span -= 1;
     const last = Math.max(1, count) - 1;
