@@ -5228,6 +5228,7 @@ dependencies = [
  "dirs 7.0.0",
  "globset",
  "ignore",
+ "libloading 0.9.0",
  "nix 0.31.3",
  "png 0.18.1",
  "proc-macro2",
