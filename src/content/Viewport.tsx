@@ -267,6 +267,9 @@ function boxEdges(from: Vec3, to: Vec3, color: number): THREE.LineSegments {
   return lines;
 }
 
+/** On-screen diameter of the viewport's "N" compass label, in CSS px (the axes gizmo's labels are ~12px). */
+const NORTH_MARKER_PX = 20;
+
 /** A text label sprite (axes gizmo). */
 function label(text: string, color: string): THREE.Sprite {
   const c = document.createElement("canvas");
@@ -376,11 +379,12 @@ export function Viewport({
     const g2 = new THREE.GridHelper(48, 3, 0x4a4a4a, 0x4a4a4a);
     g2.position.set(8, 0, 8);
     grid.add(g1, g2, boxEdges([0, 0, 0], [16, 16, 16], 0x505050));
-    // North marker under the grid's north edge.
-    const n = label("N", "#555");
-    n.position.set(8, 0, -2);
-    n.scale.set(2.5, 2.5, 2.5);
-    grid.add(n);
+    // North marker under the grid's north edge — a compass label, kept at a
+    // fixed on-screen size each frame (see NORTH_MARKER_PX) rather than
+    // scaling with the model.
+    const north = label("N", "#555");
+    north.position.set(8, 0, -1.5);
+    grid.add(north);
     const axesScene = new THREE.Scene();
     const axesCam = new THREE.OrthographicCamera(-1.6, 1.6, 1.6, -1.6, -10, 10);
     for (const [i, name] of (["x", "y", "z"] as const).entries()) {
@@ -401,6 +405,7 @@ export function Viewport({
       grid,
       axesScene,
       axesCam,
+      north,
       checker: checkerTexture(),
       cam: { theta: Math.PI * 0.75, phi: Math.PI / 3, dist: 40, target: CENTER.clone() },
       handles: [] as THREE.Object3D[],
@@ -444,6 +449,10 @@ export function Viewport({
       camera.up.set(0, 1, 0);
       camera.lookAt(target);
       camera.updateProjectionMatrix();
+      const unitsPerPx = ortho
+        ? (three.orth.top - three.orth.bottom) / h
+        : (2 * camera.position.distanceTo(three.north.getWorldPosition(new THREE.Vector3())) * Math.tan(THREE.MathUtils.degToRad(three.persp.fov / 2))) / h;
+      three.north.scale.setScalar(NORTH_MARKER_PX * unitsPerPx);
       renderer.setViewport(0, 0, w, h);
       renderer.setScissorTest(false);
       renderer.clear();

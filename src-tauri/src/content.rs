@@ -121,6 +121,9 @@ pub struct Texture {
     pub url: String,
     /// `.mcmeta` animation: frames are stacked, each `width` tall.
     pub animated: bool,
+    /// The texture is the mod's own file — the editor can paint it in place
+    /// (otherwise painting copies it into the mod first).
+    pub writable: bool,
 }
 
 pub fn texture(file: &Path, texture: &str) -> Result<Texture, String> {
@@ -129,7 +132,52 @@ pub fn texture(file: &Path, texture: &str) -> Result<Texture, String> {
     Ok(Texture {
         url: format!("data:image/png;base64,{}", base64::engine::general_purpose::STANDARD.encode(&bytes)),
         animated,
+        writable: texture_target(file, texture).is_some(),
     })
+}
+
+/// A relative path with no `..`, root or drive parts.
+fn plain_relative(rel: &str) -> bool {
+    !rel.is_empty() && Path::new(rel).components().all(|c| matches!(c, std::path::Component::Normal(_)))
+}
+
+/// Where a texture of the mod is written: a `.yres` image's png, a png
+/// under `resources/` (created if missing), or the mod's own `ns:path`
+/// (`resources/<path>.png`, or `assets/<ns>/textures/<path>.png` when only
+/// that exists). `None`: not the mod's (vanilla, another mod's, `#slot`).
+pub fn texture_target(file: &Path, texture: &str) -> Option<PathBuf> {
+    let root = mod_root(file)?;
+    if let Some(r) = texture.strip_prefix('@') {
+        let png = yres_image(&root, r)?;
+        let rel = png.strip_prefix(&root).ok()?.to_string_lossy().into_owned();
+        return plain_relative(&rel).then_some(png);
+    }
+    if texture.ends_with(".png") {
+        let rel = texture.trim_start_matches("./").trim_start_matches("resources/");
+        return plain_relative(rel).then(|| root.join("resources").join(rel));
+    }
+    if texture.starts_with('#') {
+        return None;
+    }
+    let (ns, path) = split_id(texture);
+    if mod_id(&root).as_deref() != Some(ns) || !plain_relative(path) {
+        return None;
+    }
+    let resources = root.join("resources").join(format!("{path}.png"));
+    let assets = root.join("assets").join(ns).join("textures").join(format!("{path}.png"));
+    Some(if !resources.is_file() && assets.is_file() { assets } else { resources })
+}
+
+/// Writes `png` (PNG bytes) to `target` (from `texture_target`), creating
+/// its folder.
+pub fn write_png(target: &Path, png: &[u8]) -> Result<(), String> {
+    if image_size(png).is_none() {
+        return Err("not a PNG image".into());
+    }
+    if let Some(dir) = target.parent() {
+        std::fs::create_dir_all(dir).map_err(|e| format!("{}: {e}", dir.display()))?;
+    }
+    std::fs::write(target, png).map_err(|e| format!("{}: {e}", target.display()))
 }
 
 /// Width and height from a PNG header.
@@ -340,6 +388,13 @@ mod tests {
         assert!(choices.iter().any(|c| c.value == "@Textures.ruby"));
         assert!(choices.iter().any(|c| c.value == "block/ruby.png"));
         assert_eq!(info(&file).namespace.as_deref(), Some("mymod"));
+        assert_eq!(texture_target(&file, "@Textures.ruby"), Some(dir.join("resources/block/ruby.png")));
+        assert_eq!(texture_target(&file, "item/new.png"), Some(dir.join("resources/item/new.png")));
+        assert_eq!(texture_target(&file, "mymod:item/new"), Some(dir.join("resources/item/new.png")));
+        assert_eq!(texture_target(&file, "../escape.png"), None);
+        assert_eq!(texture_target(&file, "/etc/x.png"), None);
+        assert_eq!(texture_target(&file, "minecraft:item/apple"), None);
+        assert_eq!(texture_target(&file, "#layer0"), None);
         let _ = std::fs::remove_dir_all(dir);
     }
 }

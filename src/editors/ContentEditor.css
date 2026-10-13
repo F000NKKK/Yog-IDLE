@@ -12,20 +12,26 @@
   gap: var(--sp-space-sm);
 }
 
+/* Same metrics as Substrate's `.sp-toolbar`: 24px controls, one gap, wraps instead of clipping. */
 .content-toolbar {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: var(--sp-space-xs);
-  padding: var(--sp-space-xs) var(--sp-space-sm);
+  flex: none;
+  gap: var(--sp-space-2xs) var(--sp-toolbar-gap);
+  min-height: var(--sp-toolbar-height);
+  padding: 1px var(--sp-toolbar-padding-x);
   border-bottom: 1px solid var(--sp-border);
 }
 
+/* = `.sp-toolbar-separator` */
 .content-divider {
+  flex: none;
+  align-self: center;
   width: 1px;
-  align-self: stretch;
-  margin: 2px var(--sp-space-xs);
-  background: var(--sp-border);
+  height: var(--sp-icon-size);
+  margin: 0 var(--sp-toolbar-separator-margin);
+  background: var(--sp-border-strong);
 }
 
 .content-spacer {
@@ -48,44 +54,46 @@
   overflow: auto;
 }
 
+/* One header height for every pane of the editor (outliner, viewport label, Properties' object line). */
 .content-pane-header {
   display: flex;
   align-items: center;
-  gap: 2px;
-  padding: 2px var(--sp-space-sm);
-  min-height: 28px;
+  flex: none;
+  gap: var(--sp-space-2xs);
+  height: var(--sp-panel-header-height);
+  padding: 0 var(--sp-space-2xs) 0 var(--sp-space-sm);
   border-bottom: 1px solid var(--sp-border);
   font-weight: 600;
-  font-size: var(--sp-font-size-sm, 12px);
+  white-space: nowrap;
 }
 
 .content-note {
   margin: var(--sp-space-sm);
   color: var(--sp-text-muted);
-  font-size: var(--sp-font-size-sm, 12px);
+  font-size: var(--sp-font-size-sm);
 }
 
 .content-elements {
   list-style: none;
   margin: 0;
-  padding: 2px 0;
+  padding: var(--sp-space-2xs) 0;
 }
 
 .content-elements li {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 2px var(--sp-space-sm);
+  gap: var(--sp-space-xs);
+  height: var(--sp-row-height);
+  padding: 0 var(--sp-space-sm);
   cursor: default;
-  font-size: var(--sp-font-size-sm, 12px);
 }
 
 .content-elements li:hover {
-  background: var(--sp-hover, rgba(255, 255, 255, 0.05));
+  background: var(--sp-hover);
 }
 
 .content-elements li.selected {
-  background: var(--sp-selection, rgba(59, 142, 234, 0.3));
+  background: var(--sp-selection);
 }
 
 .content-element-name {
@@ -103,19 +111,25 @@
 .content-faces {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 2px;
+  gap: var(--sp-space-2xs);
   padding: var(--sp-space-sm);
   border-top: 1px solid var(--sp-border);
 }
 
 .content-face {
-  font: inherit;
-  font-size: var(--sp-font-size-sm, 12px);
-  padding: 2px 4px;
+  height: var(--sp-control-height-sm);
+  padding: 0 var(--sp-space-xs);
   border: 1px solid var(--sp-border);
-  border-radius: 3px;
+  border-radius: var(--sp-control-radius);
   background: transparent;
   color: inherit;
+  font: inherit;
+  font-size: var(--sp-font-size-sm);
+  cursor: pointer;
+}
+
+.content-face:hover {
+  background: var(--sp-hover);
 }
 
 .content-face.off {
@@ -124,8 +138,8 @@
 }
 
 .content-face.selected {
-  border-color: var(--sp-accent, #3b8eea);
-  background: var(--sp-selection, rgba(59, 142, 234, 0.3));
+  border-color: var(--sp-accent);
+  background: var(--sp-selection);
 }
 
 .content-viewport {
@@ -137,12 +151,17 @@
   display: block;
 }
 
+/* Sits on the same line as the side panes' headers. */
 .content-viewport-hud {
   position: absolute;
-  top: 6px;
-  left: 8px;
-  color: rgba(255, 255, 255, 0.55);
-  font-size: 11px;
+  top: 0;
+  left: 0;
+  display: flex;
+  align-items: center;
+  height: var(--sp-panel-header-height);
+  padding: 0 var(--sp-space-sm);
+  color: var(--sp-text-muted);
+  font-size: var(--sp-font-size-sm);
   pointer-events: none;
 }
 
@@ -169,7 +188,8 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: var(--sp-space-xs);
+  gap: var(--sp-space-xs);
+  padding: var(--sp-space-sm);
 }
 
 .content-uv canvas {
@@ -179,6 +199,6 @@
 
 .content-uv-readout {
   color: var(--sp-text-muted);
-  font-size: 11px;
+  font-size: var(--sp-font-size-xs);
   font-variant-numeric: tabular-nums;
 }

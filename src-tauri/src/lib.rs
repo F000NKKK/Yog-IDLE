@@ -567,6 +567,21 @@ async fn content_texture(state: State<'_, AppState>, path: String, texture: Stri
         .map_err(|e| e.to_string())?
 }
 
+/// Writes a painted texture of a content file's mod (`png`: base64 PNG
+/// bytes) to where the file names it (see `content::texture_target`) —
+/// never outside the mod or the open project. Returns the written path.
+#[tauri::command]
+async fn content_save_texture(state: State<'_, AppState>, path: String, texture: String, png: String) -> Result<String, String> {
+    validate_within_roots(&state, Path::new(&path))?;
+    let target = content::texture_target(Path::new(&path), &texture).ok_or_else(|| format!("{texture} isn't a texture of this mod"))?;
+    validate_within_roots(&state, &target)?;
+    use base64::Engine as _;
+    let bytes = base64::engine::general_purpose::STANDARD.decode(png.as_bytes()).map_err(|e| e.to_string())?;
+    tauri::async_runtime::spawn_blocking(move || content::write_png(&target, &bytes).map(|()| target.to_string_lossy().into_owned()))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
 /// The texture picker's choices for a content file.
 #[tauri::command]
 async fn content_textures(state: State<'_, AppState>, path: String) -> Result<Vec<content::TextureChoice>, String> {
@@ -1486,6 +1501,7 @@ pub fn run() {
         content_info,
         content_texture,
         content_textures,
+        content_save_texture,
         content_strings,
         content_parent_model,
         content_import,
