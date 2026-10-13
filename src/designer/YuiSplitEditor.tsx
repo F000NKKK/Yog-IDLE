@@ -102,6 +102,8 @@ export function YuiSplitEditor(props: EditorProps) {
   const t = useT();
   const language = useYuiLanguage();
   const [layout, setLayout] = useStoredState<SplitLayout>("yui.splitLayout", DEFAULT_LAYOUT, isLayout);
+  const layoutRef = useRef(layout);
+  layoutRef.current = layout;
   const [error, setError] = useState<string | null>(() => {
     if (content.trim() === "") return null; // a new file: the designer fills it in
     try {
@@ -196,7 +198,8 @@ export function YuiSplitEditor(props: EditorProps) {
         selectedPath.current = paths[0] ?? null;
         mark(reveal);
       },
-      preferred: () => lastPane.current === "design",
+      // The Edit menu acts on the designer when it was focused last — or is all that's shown.
+      preferred: () => layoutRef.current.only === "design" || (layoutRef.current.only !== "xaml" && lastPane.current === "design"),
       attach: (designer) => {
         designerRef.current = designer;
         return () => {
@@ -295,7 +298,11 @@ export function YuiSplitEditor(props: EditorProps) {
       </IconButton>
       <IconButton
         title={layout.only ? t("Expand Pane") : t("Collapse Pane")}
-        onClick={() => setLayout({ ...layout, only: layout.only ? null : focusedPane })}
+        onClick={() => {
+          setLayout({ ...layout, only: layout.only ? null : focusedPane });
+          // Undo/redo and the clipboard now go to whatever stays visible.
+          notifyDocumentCommands();
+        }}
       >
         <Icon name={layout.only ? "expand" : "collapse"} size={14} />
       </IconButton>
