@@ -18,7 +18,6 @@ import {
   t,
   useT,
   type ContextMenuItem,
-  type DirEntry,
   type FileTreeMenuItem,
   type FileTreeNode,
 } from "substrate-platform-ui";
@@ -232,9 +231,9 @@ function ProjectExplorerTree({ project }: { project: ProjectInfo }) {
     }
     const src = joinPath(project.root, "src");
     const srcDir = isWithin(folder, src) ? folder.slice(src.length + 1).replace(/\\/g, "/") : "";
-    const files = templateFiles(template, name, { modId, srcDir });
+    const created = templateFiles(template, name, { modId, srcDir });
     await attempt(t("Failed to create {name}", { name }), async () => {
-      for (const [file, contents] of files) {
+      for (const [file, contents] of created) {
         const path = joinPath(folder, file);
         await files.createFile(path);
         if (contents) await files.write(path, contents);
@@ -242,7 +241,7 @@ function ProjectExplorerTree({ project }: { project: ProjectInfo }) {
       await tree.reload(folder);
       expand(folder);
       // The first file is the one to work on (the screen, not its code-behind).
-      openFile({ path: joinPath(folder, files[0][0]), name: files[0][0] });
+      openFile({ path: joinPath(folder, created[0][0]), name: created[0][0] });
     });
   }
 

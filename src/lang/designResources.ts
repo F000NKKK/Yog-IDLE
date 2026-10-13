@@ -6,11 +6,10 @@
  * resolve them (see docs/yres.md).
  */
 import { useEffect, useSyncExternalStore } from "react";
-import { invoke } from "@tauri-apps/api/core";
 import { resolvedLocale, type DirEntry } from "substrate-platform-ui";
 import type { YuiNode } from "../designer/yui";
 import { parseYres, splitYresPath, translationKey, type YresEntry } from "./yres";
-import { readModId } from "../files";
+import { files, readModId } from "../files";
 
 interface ResourceSet {
   /** The set's folder relative to `resources/`, `/`-separated (`""` = `resources/` itself). */
@@ -53,10 +52,10 @@ async function load(root: string) {
   loading = root;
   // Without a mod id keys can't be resolved; set references still can.
   const modId = (await readModId(root)) ?? "";
-  const files: { path: string; rel: string }[] = [];
-  await listYres(`${root}/resources`, "", files);
+  const found: { path: string; rel: string }[] = [];
+  await listYres(`${root}/resources`, "", found);
   const sets = new Map<string, ResourceSet>();
-  for (const file of files) {
+  for (const file of found) {
     let text: string;
     try {
       text = await files.read(file.path);

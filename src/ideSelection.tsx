@@ -3,7 +3,6 @@
 // right when a selected file is renamed or deleted, whichever panel did it.
 // The Properties window reads it back through `useSelection`.
 
-import { invoke } from "@tauri-apps/api/core";
 import { getCurrentSelection, setSelection, t } from "substrate-platform-ui";
 import { isWithin, renamedPath } from "./paths";
 import { files } from "./files";

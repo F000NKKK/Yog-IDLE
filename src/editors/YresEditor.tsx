@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
-import { convertFileSrc, invoke } from "@tauri-apps/api/core";
+import { convertFileSrc } from "@tauri-apps/api/core";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import {
   Button,
@@ -179,12 +179,12 @@ export function YresEditor({ path, content, onChange, readOnly, contentVersion }
     } catch {
       return;
     }
-    const files = list.filter((e) => {
+    const setFiles = list.filter((e) => {
       if (e.kind !== "file" || !/\.yres$/i.test(e.name) || e.path === path) return false;
       return splitYresPath(e.path).set === set;
     });
     const loaded = await Promise.all(
-      files.map(async (file): Promise<Sibling | null> => {
+      setFiles.map(async (file): Promise<Sibling | null> => {
         const open = tabsRef.current.find((tab) => tab.path === file.path && tab.textLoaded);
         let text: string;
         try {

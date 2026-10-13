@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
-import { invoke } from "@tauri-apps/api/core";
-import { Button, FloatingWindow, Icon, SearchField, TextField, useT, type DirEntry } from "substrate-platform-ui";
+import { Button, FloatingWindow, Icon, SearchField, TextField, useT } from "substrate-platform-ui";
 import { newBlockFile, newBlockWithItemFile, newItemFile, titleOf } from "../content/model";
 import { validateEntryName } from "../paths";
 import { pascalName } from "../designer/components";

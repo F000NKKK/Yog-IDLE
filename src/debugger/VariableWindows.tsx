@@ -1,4 +1,3 @@
-import { invoke } from "@tauri-apps/api/core";
 import { useEffect, useState, type Dispatch, type SetStateAction } from "react";
 import { useT } from "substrate-platform-ui";
 import { useOpenFiles } from "../OpenFilesContext";
