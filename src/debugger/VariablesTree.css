@@ -46,7 +46,8 @@
 
 .yi-vt-twisty {
   display: inline-block;
-  width: 12px;
+  width: var(--sp-icon-size);
+  text-align: center;
   color: var(--sp-text-muted);
   cursor: pointer;
 }

@@ -130,7 +130,8 @@
 
 .yres-browse {
   flex: none;
-  height: 20px;
+  min-width: var(--sp-icon-btn-size-sm);
+  height: var(--sp-icon-btn-size-sm);
   padding: 0 6px;
   border: 1px solid var(--sp-border-strong);
   border-radius: var(--sp-radius-xs);

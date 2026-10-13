@@ -11,7 +11,9 @@
   display: flex;
   align-items: center;
   gap: var(--sp-space-md);
-  padding: var(--sp-space-xs) var(--sp-space-md);
+  box-sizing: border-box;
+  min-height: var(--sp-toolbar-height);
+  padding: 2px var(--sp-space-md);
   border-bottom: 1px solid var(--sp-border);
   background: var(--sp-surface-1);
   color: var(--sp-text-muted);
@@ -33,6 +35,7 @@
   background: var(--sp-surface-2);
   border: 1px solid var(--sp-border);
   border-radius: var(--sp-radius-sm);
+  min-height: var(--sp-icon-btn-size);
   padding: 1px var(--sp-space-sm);
 }
 

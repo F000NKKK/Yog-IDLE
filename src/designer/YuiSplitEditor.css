@@ -28,7 +28,7 @@
   box-sizing: border-box;
   flex-shrink: 0;
   width: 100%;
-  min-height: 24px;
+  min-height: var(--sp-toolbar-height);
   padding: 0 var(--sp-space-sm);
   background: var(--sp-surface-1);
   border-top: 1px solid var(--sp-border);

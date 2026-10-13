@@ -42,7 +42,7 @@ body,
   justify-content: flex-end;
   flex: 0 0 auto;
   gap: 2px;
-  padding: var(--sp-space-xs) 10px var(--sp-space-xs) var(--sp-space-xs);
+  padding: 2px 10px 2px var(--sp-space-xs);
   border-bottom: 1px solid var(--sp-border);
 }
 
