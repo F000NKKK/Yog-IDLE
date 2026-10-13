@@ -170,9 +170,8 @@ export interface LWidget {
   placeholder: string;
   item: string;
   count: number;
-  texture: string;
-  texW: number;
-  texH: number;
+  /** An image's source. */
+  source: string;
   style: Style;
   /** `false` = collapsed (`visible="false"`, or `d:visible` at design time): no space, not drawn — `Widget::visible`. */
   visible: boolean;
@@ -312,9 +311,7 @@ export function toWidget(node: YuiNode, inCanvas: boolean): LWidget {
     placeholder: designText(a.placeholder ?? ""),
     item: a.item ?? "",
     count: Math.max(0, Math.floor(parseNumber(a.count) ?? 1)),
-    texture: designImage(a.source ?? a.texture ?? ""),
-    texW,
-    texH,
+    source: designImage(a.source ?? ""),
     style,
     visible: designFlag(a["d:visible"] ?? a.visible),
     children: LEAF_OF[node.kind] === "panel" ? node.children.map((c) => toWidget(c, canvas)) : [],
@@ -443,8 +440,9 @@ function layoutWidget(w: LWidget, node: LNode, x: number, y: number, maxW: numbe
         if (!bounded(hh)) hh = s.minH;
         break;
       case "image":
-        ww = Math.min(Math.max(w.texW + s.pad[1] + s.pad[3], s.minW), maxW);
-        hh = Math.min(Math.max(w.texH + s.pad[0] + s.pad[2], s.minH), maxH);
+        // The designer's natural size of an image: an item icon's.
+        ww = Math.min(Math.max(16 + s.pad[1] + s.pad[3], s.minW), maxW);
+        hh = Math.min(Math.max(16 + s.pad[0] + s.pad[2], s.minH), maxH);
         break;
     }
     if (explicitW !== null) ww = explicitW;

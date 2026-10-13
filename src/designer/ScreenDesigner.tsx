@@ -1353,8 +1353,8 @@ function McWidget({ widget, node, zoom }: { widget: LWidget; node: LNode; zoom: 
       parts.push(<McText key="count" text={String(widget.count)} x={slot.x + 17 - strWidth(String(widget.count), 1)} y={slot.y + 9} scale={1} color={0xffffffff} shadow zoom={zoom} />);
   } else if (widget.kind === "image") {
     parts.push(
-      <div key="img" className="yui-box yui-image" style={box({ x: r.x + s.pad[3], y: r.y + s.pad[0], w: Math.max(0, r.w - s.pad[1] - s.pad[3]), h: Math.max(0, r.h - s.pad[0] - s.pad[2]) }, zoom)} title={widget.texture}>
-        <span style={{ fontSize: 6 * zoom }}>{widget.texture.split("/").pop()}</span>
+      <div key="img" className="yui-box yui-image" style={box({ x: r.x + s.pad[3], y: r.y + s.pad[0], w: Math.max(0, r.w - s.pad[1] - s.pad[3]), h: Math.max(0, r.h - s.pad[0] - s.pad[2]) }, zoom)} title={widget.source}>
+        <span style={{ fontSize: 6 * zoom }}>{widget.source.split("/").pop()}</span>
       </div>
     );
   }
