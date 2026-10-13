@@ -41,6 +41,7 @@ import { EmptyEditorState } from "./panels/EmptyEditorState";
 import { Toolbox } from "./panels/Toolbox";
 import { DocumentOutline } from "./panels/DocumentOutline";
 import { ProjectExplorer } from "./panels/ProjectExplorer";
+import { importContent } from "./content/importContent";
 import { ActiveDocumentSelection, Properties } from "./panels/Properties";
 import { RunToolbar } from "./panels/RunToolbar";
 import { PublishWindow } from "./panels/PublishWindow";
@@ -373,6 +374,7 @@ function ProjectMenu() {
         },
         { label: t("Dependencies..."), disabled: !mod, onClick: () => openProjectProperties("dependencies") },
         { label: t("Run Targets..."), disabled: !mod, onClick: () => openProjectProperties("debug") },
+        { label: t("Import..."), disabled: !mod, separatorBefore: true, onClick: () => mod && void importContent(mod.root) },
         {
           label: t("Edit Project File"),
           disabled: !mod,
