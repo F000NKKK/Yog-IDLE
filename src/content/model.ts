@@ -272,23 +272,29 @@ export function parseContent(text: string): Parsed {
 }
 
 function stripJsonComments(text: string): string {
-  let out = "";
-  let inString = false;
+  const parts: string[] = [];
+  let from = 0; // start of the text not yet copied into `parts`
+  let comma = -1; // index in `parts` of a comma that only whitespace and comments follow so far
   for (let i = 0; i < text.length; i++) {
     const c = text[i];
-    if (inString) {
-      out += c;
-      if (c === "\\") out += text[++i] ?? "";
-      else if (c === '"') inString = false;
-    } else if (c === '"') {
-      inString = true;
-      out += c;
+    if (c === '"') {
+      for (i++; i < text.length && text[i] !== '"'; i++) if (text[i] === "\\") i++;
+      comma = -1;
     } else if (c === "/" && text[i + 1] === "/") {
+      parts.push(text.slice(from, i), "\n");
       while (i < text.length && text[i] !== "\n") i++;
-      out += "\n";
-    } else out += c;
+      from = i + 1;
+    } else if (c === ",") {
+      parts.push(text.slice(from, i));
+      comma = parts.push(",") - 1;
+      from = i + 1;
+    } else if (c === "}" || c === "]") {
+      if (comma >= 0) parts[comma] = "";
+      comma = -1;
+    } else if (c !== " " && c !== "\n" && c !== "\r" && c !== "\t") comma = -1;
   }
-  return out.replace(/,(\s*[}\]])/g, "$1");
+  parts.push(text.slice(from));
+  return parts.join("");
 }
 
 const round = (n: number) => Math.round(n * 10000) / 10000;
