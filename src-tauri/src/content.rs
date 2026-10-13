@@ -104,12 +104,11 @@ fn texture_bytes(file: &Path, texture: &str) -> Result<Vec<u8>, String> {
     }
     let (ns, path) = split_id(texture);
     // A texture `yog build` bundles from `resources/` (`mymod:block/x` = `resources/block/x.png`).
-    if let Some(root) = &root {
-        if mod_id(root).as_deref() == Some(ns) {
-            if let Ok(b) = std::fs::read(root.join("resources").join(format!("{path}.png"))) {
-                return Ok(b);
-            }
-        }
+    if let Some(root) = &root
+        && mod_id(root).as_deref() == Some(ns)
+        && let Ok(b) = std::fs::read(root.join("resources").join(format!("{path}.png")))
+    {
+        return Ok(b);
     }
     Resources::for_mod(root.as_deref())
         .read(ns, &format!("textures/{path}.png"))
@@ -179,13 +178,13 @@ pub fn textures(file: &Path) -> Vec<TextureChoice> {
         for p in find(&assets, "png") {
             let Ok(rel) = p.strip_prefix(&assets) else { continue };
             let rel = rel.to_string_lossy().replace('\\', "/");
-            if let Some((ns, rest)) = rel.split_once("/textures/") {
-                if !ns.contains('/') {
-                    out.push(TextureChoice {
-                        value: format!("{ns}:{}", rest.trim_end_matches(".png")),
-                        group: "Mod assets",
-                    });
-                }
+            if let Some((ns, rest)) = rel.split_once("/textures/")
+                && !ns.contains('/')
+            {
+                out.push(TextureChoice {
+                    value: format!("{ns}:{}", rest.trim_end_matches(".png")),
+                    group: "Mod assets",
+                });
             }
         }
     }
