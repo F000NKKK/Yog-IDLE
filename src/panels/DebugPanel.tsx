@@ -5,8 +5,8 @@ import { useDebugSessionContext } from "../DebugSessionContext";
 import { AutosView, LocalsView, useLocals, WatchView } from "../debugger/VariableWindows";
 
 const muted: CSSProperties = { padding: "var(--sp-space-sm)", color: "var(--sp-text-muted)" };
-const mono: CSSProperties = { fontFamily: "var(--sp-font-mono)", fontSize: "12px" };
-const row: CSSProperties = { ...mono, padding: "2px var(--sp-space-sm)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" };
+const mono: CSSProperties = { fontFamily: "var(--sp-font-mono)", fontSize: "var(--sp-font-size-sm)" };
+const row: CSSProperties = { ...mono, height: "var(--sp-row-height)", lineHeight: "var(--sp-row-height)", padding: "0 var(--sp-space-sm)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" };
 
 /** A collapsible block of the Debug panel (Watch / Autos / Locals / Call Stack / Threads / Registers). */
 function Section({ title, children }: { title: string; children: ReactNode }) {
@@ -15,7 +15,7 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
     <div style={{ borderBottom: "1px solid var(--sp-border)" }}>
       <div
         onClick={() => setOpen((o) => !o)}
-        style={{ padding: "var(--sp-space-xs) var(--sp-space-sm)", cursor: "pointer", fontWeight: 600, userSelect: "none" }}
+        style={{ display: "flex", alignItems: "center", gap: "var(--sp-space-xs)", height: "var(--sp-control-height)", padding: "0 var(--sp-space-sm)", cursor: "pointer", fontWeight: 600, userSelect: "none" }}
       >
         {open ? "▾" : "▸"} {title}
       </div>
@@ -61,7 +61,7 @@ export function DebugPanel() {
     const message = error?.replace(/^\[[a-z-]+\] /, "");
     return (
       <div style={{ ...muted, display: "flex", flexDirection: "column", gap: "var(--sp-space-sm)" }}>
-        <div style={error ? { color: "var(--sp-danger, var(--sp-text))", whiteSpace: "pre-wrap" } : undefined}>
+        <div style={error ? { color: "var(--sp-danger)", whiteSpace: "pre-wrap" } : undefined}>
           {error ? `${errorPrefix(errorKind)}${message}` : t("Pick Debug mode next to the run target, then press Start.")}
         </div>
         {needsCapability && !granted && (
@@ -88,14 +88,14 @@ export function DebugPanel() {
             </Button>
           </>
         )}
-        {notice && <div style={{ color: notice.isError ? "var(--sp-danger, var(--sp-text))" : "var(--sp-text)" }}>{notice.text}</div>}
+        {notice && <div style={{ color: notice.isError ? "var(--sp-danger)" : "var(--sp-text)" }}>{notice.text}</div>}
       </div>
     );
   }
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
-      <div style={{ display: "flex", gap: "var(--sp-space-xs)", padding: "var(--sp-space-xs)", borderBottom: "1px solid var(--sp-border)", flexWrap: "wrap" }}>
+      <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: "var(--sp-space-2xs) var(--sp-toolbar-gap)", minHeight: "var(--sp-toolbar-height)", padding: "1px var(--sp-toolbar-padding-x)", borderBottom: "1px solid var(--sp-border)" }}>
         <Button variant="ghost" onClick={continue_} disabled={!paused} title={withShortcut("Continue", "F5")}>
           {t("Continue")}
         </Button>
@@ -115,7 +115,7 @@ export function DebugPanel() {
           {t("Stop")}
         </Button>
       </div>
-      {error && <div style={{ ...muted, color: "var(--sp-danger, var(--sp-text))", whiteSpace: "pre-wrap" }}>{error}</div>}
+      {error && <div style={{ ...muted, color: "var(--sp-danger)", whiteSpace: "pre-wrap" }}>{error}</div>}
       <div style={{ flex: 1, overflow: "auto" }}>
         {!stopped && <div style={muted}>{t("Running…")}</div>}
         {stopped?.reason === "exited" && <div style={muted}>{t("Process exited.")}</div>}
