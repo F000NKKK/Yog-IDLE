@@ -145,14 +145,16 @@ pub fn render(args: &RenderArgs) -> Result<Rendered, String> {
     let (sw, sh) = (args.screen_w.clamp(1, 4096), args.screen_h.clamp(1, 4096));
     let scroll = offsets(&args.path, args.preview);
     images::set_document(mod_root(Path::new(&args.path)).as_deref());
-    // The mod's own components: marked spacers here, drawn by the designer host below.
+    // The mod's own components: expanded from markup, or marked spacers here drawn by the designer host below.
     let prepared = custom::prepare(&args.root, mod_root(Path::new(&args.path)).as_deref(), sw as f32, sh as f32);
     let laid = lay_out(&prepared.root, sw as f32, sh as f32, &scroll);
     let mut ops = gfx::record(sw as i32, sh as i32, |ctx| laid.render(ctx));
-    let node_rects = rects(&prepared.root, &laid);
+    let mut node_rects = rects(&prepared.root, &laid);
     if !prepared.is_empty() {
         custom::splice(&mut ops, &prepared, &node_rects.iter().map(|r| (r.uid.clone(), r.rect)).collect());
     }
+    // The inside of an expanded component instance isn't the document's.
+    node_rects.retain(|r| !r.uid.contains(components::INNER));
     let res = Resources::for_mod(mod_root(Path::new(&args.path)).as_deref());
     let scale = args.scale.clamp(1, 8);
     let canvas = raster::rasterize(&ops, sw, sh, scale, &res);
@@ -252,7 +254,8 @@ pub fn event(args: &EventArgs) -> EventResult {
     }
     if let Some(l) = laid.layout_root.children.first() {
         let found = hit(root, l, pos.0, pos.1);
-        out.hit = found.map(|n| n.uid.clone());
+        // Inside a component instance: the instance.
+        out.hit = found.map(|n| n.uid.split(components::INNER).next().unwrap_or_default().to_string());
         if args.event.starts_with("click:") && !out.scrolled {
             out.clicked = found.and_then(|n| n.attr("on_click")).map(str::to_string);
         }
