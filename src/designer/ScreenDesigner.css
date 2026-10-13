@@ -216,3 +216,167 @@
 .yui-preview-hot.pressed {
   background: rgba(0, 0, 0, 0.2);
 }
+
+/* ── Grid adorners (GridAdorner.tsx) ──────────────────────────────────────── */
+
+.yui-grid-line {
+  position: absolute;
+  pointer-events: none;
+}
+
+.yui-grid-line-v {
+  width: 0;
+  border-left: 1px dashed rgba(120, 190, 255, 0.55);
+}
+
+.yui-grid-line-h {
+  height: 0;
+  border-top: 1px dashed rgba(120, 190, 255, 0.55);
+}
+
+.yui-grid-rail {
+  position: absolute;
+  box-sizing: border-box;
+  pointer-events: auto;
+  background: var(--sp-surface-2);
+  border: 1px solid var(--sp-border);
+  font-size: 9px;
+  line-height: 1;
+  color: var(--sp-text-muted);
+  user-select: none;
+}
+
+.yui-grid-rail[data-editable] {
+  cursor: copy;
+}
+
+.yui-grid-rail-segment {
+  position: absolute;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.yui-grid-rail-top .yui-grid-rail-segment {
+  top: 0;
+  bottom: 0;
+}
+
+.yui-grid-rail-left .yui-grid-rail-segment {
+  left: 0;
+  right: 0;
+}
+
+.yui-grid-rail-left .yui-grid-rail-segment span {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+}
+
+.yui-grid-rail-segment:hover {
+  background: var(--sp-accent-soft);
+  color: var(--sp-text);
+}
+
+.yui-grid-rail-segment[data-kind="auto"] span {
+  font-style: italic;
+}
+
+.yui-grid-rail-grip {
+  position: absolute;
+  z-index: 1;
+  background: rgba(120, 190, 255, 0.9);
+}
+
+.yui-grid-rail-top .yui-grid-rail-grip {
+  top: 1px;
+  bottom: 1px;
+  width: 5px;
+  margin-left: -2px;
+  cursor: col-resize;
+}
+
+.yui-grid-rail-left .yui-grid-rail-grip {
+  left: 1px;
+  right: 1px;
+  height: 5px;
+  margin-top: -2px;
+  cursor: row-resize;
+}
+
+.yui-grid-guide {
+  position: absolute;
+  pointer-events: none;
+}
+
+.yui-grid-guide-v {
+  width: 0;
+  border-left: 1px solid;
+}
+
+.yui-grid-guide-h {
+  height: 0;
+  border-top: 1px solid;
+}
+
+.yui-grid-guide.adding {
+  border-color: rgba(255, 170, 60, 0.9);
+  border-style: dashed;
+}
+
+.yui-grid-guide.moving {
+  border-color: rgba(120, 190, 255, 1);
+}
+
+.yui-defs-editor table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.yui-defs-editor th {
+  text-align: left;
+  font-weight: normal;
+  color: var(--sp-text-muted);
+  padding: 2px 4px;
+}
+
+.yui-defs-editor td {
+  padding: 2px 4px;
+}
+
+.yui-defs-editor input {
+  width: 72px;
+  box-sizing: border-box;
+  font: inherit;
+  color: var(--sp-text);
+  background: var(--sp-surface-1);
+  border: 1px solid var(--sp-border);
+  padding: 2px 4px;
+}
+
+.yui-defs-editor input[data-invalid] {
+  border-color: var(--sp-danger, #e05252);
+}
+
+.yui-defs-actions button,
+.yui-defs-add {
+  font: inherit;
+  color: var(--sp-text);
+  background: var(--sp-surface-2);
+  border: 1px solid var(--sp-border);
+  padding: 1px 6px;
+  margin-right: 2px;
+  cursor: pointer;
+}
+
+.yui-defs-add {
+  margin-top: 6px;
+}
+
+.yui-defs-hint {
+  margin: 8px 0 0;
+  color: var(--sp-text-muted);
+  font-size: 0.9em;
+}

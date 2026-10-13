@@ -5,9 +5,11 @@ import { t, type PropertyDescriptor, type PropertyValue, type XmlSchema } from "
 import { imagePreview, imageSources, suggestImageAlias } from "./imageSources";
 import { CONTAINER_KINDS, cssColor, KIND_INFO, KINDS, parseColor, parseNumber, type YuiNode } from "./yui";
 import { findComponent, type ComponentInfo, type ComponentsSnapshot } from "./components";
+import { ATTACHED, formatLength, gridDefs, parseLength, shiftCells, withGridDefs, type Axis } from "./grid";
+import { editDefinitions } from "./GridAdorner";
 import { designText } from "../lang/designResources";
 
-type AttrKind = "text" | "number" | "units" | "color" | "bool" | "enum" | "padding" | "uv" | "image";
+type AttrKind = "text" | "number" | "units" | "color" | "bool" | "enum" | "padding" | "uv" | "image" | "tracks" | "index" | "span";
 
 interface AttrSpec {
   attr: string;
@@ -28,6 +30,10 @@ interface AttrSpec {
   not?: readonly string[];
   /** Values offered in an editable combo box (any other text is accepted too). */
   suggestions?: readonly string[];
+  /** A Grid's rows or columns — read and written in either form (`rows="..."` or `<Grid.RowDefinitions>`). */
+  axis?: Axis;
+  /** An attached property of a Grid's children (`Grid.Row`, ...): shown only for them. */
+  attached?: boolean;
 }
 
 const TEXT_KINDS = ["Label", "Button", "TextBox"];
@@ -52,7 +58,18 @@ const SPECS: AttrSpec[] = [
   { attr: "min_h", name: "Minimum Height", category: "Layout", kind: "number", fallback: "4", description: "The smallest height the widget is laid out at." },
   { attr: "flex", name: "Flex", category: "Layout", kind: "number", fallback: "0", not: ["Screen"], description: "Share of the free space along a Row's or Column's direction (0 = none)." },
   { attr: "dock", name: "Dock", category: "Layout", kind: "enum", options: ["none", "fill", "left", "right", "top", "bottom"], fallback: "none", not: ["Screen"], description: "Docks the widget to an edge of its Row/Column, or makes it fill the space left." },
-  { attr: "gap", name: "Gap", category: "Layout", kind: "number", fallback: "2", only: [...CONTAINER_KINDS], description: "Space between flowing children." },
+  { attr: "gap", name: "Gap", category: "Layout", kind: "number", fallback: "2", only: [...CONTAINER_KINDS].filter((k) => k !== "Grid"), description: "Space between flowing children." },
+  { attr: "margin", name: "Margin", category: "Layout", kind: "padding", fallback: "0", not: ["Screen"], description: "Space outside the widget: one value for all sides, `vertical horizontal`, or `top right bottom left` (WPF's Margin)." },
+  { attr: "halign", name: "Horizontal Alignment", category: "Layout", kind: "enum", options: ["left", "center", "right", "stretch"], not: ["Screen"], description: "Where the widget sits across the width it's given (WPF's HorizontalAlignment). In a Grid cell the default is stretch (an explicit w is centred); in a Column it overrides the Column's align for this child." },
+  { attr: "valign", name: "Vertical Alignment", category: "Layout", kind: "enum", options: ["top", "center", "bottom", "stretch"], not: ["Screen"], description: "Where the widget sits across the height it's given (WPF's VerticalAlignment). In a Grid cell the default is stretch (an explicit h is centred); in a Row it overrides the Row's align for this child." },
+  { attr: "rows", name: "Rows", category: "Grid", kind: "tracks", axis: "rows", fallback: "*", only: ["Grid"], description: "The grid's row heights, comma-separated: Auto fits the content, * shares the height left (2* gets twice as much), a number is pixels — `Auto,*,26`. … edits them with minimum and maximum heights (written as <Grid.RowDefinitions>)." },
+  { attr: "columns", name: "Columns", category: "Grid", kind: "tracks", axis: "cols", fallback: "*", only: ["Grid"], description: "The grid's column widths, comma-separated: Auto, * / 2* or pixels — `160,*`. … edits them with minimum and maximum widths (written as <Grid.ColumnDefinitions>)." },
+  { attr: "row_spacing", name: "Row Spacing", category: "Grid", kind: "number", fallback: "0", only: ["Grid"], description: "Space between rows, in GUI pixels (WinUI's RowSpacing)." },
+  { attr: "column_spacing", name: "Column Spacing", category: "Grid", kind: "number", fallback: "0", only: ["Grid"], description: "Space between columns, in GUI pixels (WinUI's ColumnSpacing)." },
+  { attr: "Grid.Row", name: "Row", category: "Grid", kind: "index", fallback: "0", attached: true, description: "The grid row the widget is in, from 0 (Grid.Row)." },
+  { attr: "Grid.Column", name: "Column", category: "Grid", kind: "index", fallback: "0", attached: true, description: "The grid column the widget is in, from 0 (Grid.Column)." },
+  { attr: "Grid.RowSpan", name: "Row Span", category: "Grid", kind: "span", fallback: "1", attached: true, description: "How many rows the widget spans (Grid.RowSpan)." },
+  { attr: "Grid.ColumnSpan", name: "Column Span", category: "Grid", kind: "span", fallback: "1", attached: true, description: "How many columns the widget spans (Grid.ColumnSpan)." },
   { attr: "padding", name: "Padding", category: "Layout", kind: "padding", fallback: "0", description: "Inner spacing: one value for all sides, `vertical horizontal`, or `top right bottom left`." },
   { attr: "align", name: "Alignment", category: "Layout", kind: "enum", options: ["start", "center", "end"], fallback: "start", description: "Cross-axis alignment of a container's children; horizontal alignment of a Label's text." },
   { attr: "text", name: "Text", category: "Appearance", kind: "text", only: TEXT_KINDS, description: "The text shown (a text box's initial text)." },
@@ -148,6 +165,14 @@ function check(kind: AttrKind, value: string): string | null {
   switch (kind) {
     case "number":
       return parseNumber(v) === null ? t("Expected a number.") : null;
+    case "tracks": {
+      const bad = v.split(",").find((p) => !parseLength(p));
+      return bad === undefined ? null : t("`{value}` isn't a size — expected Auto, *, 2* or pixels (26).", { value: bad.trim() });
+    }
+    case "index":
+      return /^\d+$/.test(v) ? null : t("Expected a whole number (0 = the first).");
+    case "span":
+      return /^\d+$/.test(v) && Number(v) >= 1 ? null : t("Expected a whole number, at least 1.");
     case "units":
       return v === "auto" || parseNumber(v.endsWith("%") ? v.slice(0, -1) : v) !== null ? null : t("Expected pixels (80), a percentage (50%) or auto.");
     case "color":
@@ -186,13 +211,18 @@ export function widgetProperties(
   events?: EventActions,
   yuiPath?: string,
   components: ComponentsSnapshot | null = null,
+  grid?: GridContext,
 ): PropertyDescriptor[] {
   if (nodes.length === 0) return [];
   const rows: PropertyDescriptor[] = [];
-  const lists = nodes.map((n) => specsFor(n.kind, components));
+  const lists = nodes.map((n) => specsFor(n.kind, components).filter((spec) => !spec.attached || grid?.inGrid));
   const specs = lists[0].filter((spec) => lists.every((l) => l.some((o) => o.attr === spec.attr && o.kind === spec.kind)));
   for (const spec of specs) {
     if ((spec.attr === "id" || spec.attr === "name") && nodes.length > 1) continue;
+    if (spec.axis) {
+      if (grid) rows.push(tracksRow(spec, spec.axis, nodes, grid));
+      continue;
+    }
     const values = nodes.map((n) => n.attrs[spec.attr]);
     const same = values.every((v) => v === values[0]);
     const raw = same ? values[0] : undefined;
@@ -239,6 +269,50 @@ export function widgetProperties(
     rows.push(row);
   }
   return rows;
+}
+
+/** What Properties needs to edit grids: whether the selection is in one, and a way to rewrite the selected nodes. */
+export interface GridContext {
+  /** Every selected widget is a Grid's child (its Row / Column rows show). */
+  inGrid: boolean;
+  /** Replaces each selected node with `fn(node)` (one undo step). */
+  update: (fn: (node: YuiNode) => YuiNode) => string | null;
+}
+
+/** A grid's Rows / Columns row: shown and edited compactly, kept in whichever form the file uses; "…" opens the collection editor. */
+function tracksRow(spec: AttrSpec, axis: Axis, nodes: YuiNode[], grid: GridContext): PropertyDescriptor {
+  const shown = nodes.map((n) => gridDefs(n)[axis].map((d) => formatLength(d.size)).join(","));
+  const same = shown.every((v) => v === shown[0]);
+  const limited = nodes.some((n) => gridDefs(n)[axis].some((d) => d.min !== null || d.max !== null));
+  const row: PropertyDescriptor = {
+    id: spec.attr,
+    name: t(spec.name),
+    category: t(spec.category),
+    description: t(spec.description),
+    kind: "string",
+    value: same ? shown[0] : "",
+    suggestions: ["Auto,*", "*,*", "Auto,*,Auto", "*,2*"],
+    validate: (value) => check("tracks", String(value)),
+    onCommit: (value) => {
+      const text = String(value).trim();
+      return grid.update((n) => {
+        const old = gridDefs(n)[axis];
+        // Sizes from the text, each row's limits kept.
+        const defs = text === "" ? [] : text.split(",").map((p, i) => ({ size: parseLength(p) ?? { t: "star" as const, v: 1 }, min: old[i]?.min ?? null, max: old[i]?.max ?? null }));
+        return shiftCells(withGridDefs(n, axis, defs), axis, 0, 0, Math.max(1, defs.length));
+      });
+    },
+    edit:
+      nodes.length === 1
+        ? () =>
+            void editDefinitions(nodes[0], axis).then((next) => {
+              if (next) grid.update(() => next);
+            })
+        : undefined,
+  };
+  if (same && shown[0] === "") row.displayValue = `* ${t("(default)")}`;
+  else if (limited) row.displayValue = `${same ? shown[0] : ""} ${t("(with limits)")}`;
+  return row;
 }
 
 /**

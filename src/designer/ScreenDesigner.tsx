@@ -40,6 +40,7 @@ import {
   isCanvas,
   isContainer,
   isDescendant,
+  isGrid,
   KIND_INFO,
   KINDS,
   mapNode,
@@ -58,6 +59,8 @@ import {
   type YuiNode,
 } from "./yui";
 import { patchYui } from "./yuiText";
+import { cellAt, GridLines, GridRails, type GridGeo } from "./GridAdorner";
+import { cellAttrs, cellOf, gridDefs } from "./grid";
 import { designText, useDesignResources, withDesignResources } from "../lang/designResources";
 import "./ScreenDesigner.css";
 
@@ -172,13 +175,15 @@ let clipboard: string | null = null;
 interface Geo {
   rect: DesignRect;
   content: DesignRect;
+  /** A grid's rows and columns: `[start, size]`. */
+  grid?: { rows: [number, number][]; cols: [number, number][] };
 }
 
 /** What `yui_designer_render` answers (`src-tauri/src/designer`). */
 interface RenderReply {
   image: string;
   scale: number;
-  rects: { uid: string; rect: [number, number, number, number]; content: [number, number, number, number] }[];
+  rects: { uid: string; rect: [number, number, number, number]; content: [number, number, number, number]; grid?: { rows: [number, number][]; cols: [number, number][] } }[];
   assets: { version: string; jar: string } | null;
   realFont: boolean;
 }
@@ -233,8 +238,34 @@ export function newEventName(root: YuiNode, node: YuiNode, attr: string): string
 function collect(widget: LWidget, node: LNode, out: Map<string, Geo>) {
   const p = widget.style.pad;
   const r = node.rect;
-  out.set(widget.uid, { rect: r, content: { x: r.x + p[3], y: r.y + p[0], w: Math.max(0, r.w - p[1] - p[3]), h: Math.max(0, r.h - p[0] - p[2]) } });
+  out.set(widget.uid, {
+    rect: r,
+    content: { x: r.x + p[3], y: r.y + p[0], w: Math.max(0, r.w - p[1] - p[3]), h: Math.max(0, r.h - p[0] - p[2]) },
+    grid: node.grid && { rows: node.grid.rows, cols: node.grid.cols },
+  });
   widget.children.forEach((c, i) => node.children[i] && collect(c, node.children[i], out));
+}
+
+/** `n` without the `Grid.*` attached properties when `parent` isn't a Grid (they'd be an error there). */
+const fitParent = (n: YuiNode, parent: YuiNode) =>
+  isGrid(parent) || !Object.keys(n.attrs).some((k) => k.startsWith("Grid.")) ? n : withAttrs(n, { "Grid.Row": undefined, "Grid.Column": undefined, "Grid.RowSpan": undefined, "Grid.ColumnSpan": undefined });
+
+/** Spans that would run past a grid's last row/column shortened (after a move into it). */
+function clampCells(grid: YuiNode): YuiNode {
+  const defs = gridDefs(grid);
+  const fit = (n: YuiNode) => {
+    const c = cellOf(n);
+    const rows = Math.max(1, defs.rows.length);
+    const cols = Math.max(1, defs.cols.length);
+    const row = Math.min(c.row, rows - 1);
+    const col = Math.min(c.col, cols - 1);
+    const rs = Math.min(c.rowSpan, rows - row);
+    const cs = Math.min(c.colSpan, cols - col);
+    if (row === c.row && col === c.col && rs === c.rowSpan && cs === c.colSpan) return n;
+    return withAttrs(n, { ...cellAttrs(row, col), "Grid.RowSpan": rs > 1 ? String(rs) : undefined, "Grid.ColumnSpan": cs > 1 ? String(cs) : undefined });
+  };
+  const children = grid.children.map((c) => (c.kind.includes(".") ? c : fit(c)));
+  return children.every((c, i) => c === grid.children[i]) ? grid : { ...grid, children };
 }
 
 const positioned = (n: YuiNode, parent: YuiNode | null) => !!parent && (isCanvas(parent) || n.attrs.x !== undefined || n.attrs.y !== undefined);
@@ -269,6 +300,8 @@ export function ScreenDesigner({ path, content, onChange, readOnly, contentVersi
   /** The next selection change came from the XAML cursor — don't send the cursor back there. */
   const fromTextRef = useRef(false);
   const menu = useContextMenu();
+  /** The menu of a grid rail (Auto / * / pixels, insert, delete). */
+  const [railMenu, setRailMenu] = useState<{ x: number; y: number; items: ContextMenuItem[] } | null>(null);
 
   // ── Document & history ────────────────────────────────────────────────────
 
@@ -450,7 +483,7 @@ export function ScreenDesigner({ path, content, onChange, readOnly, contentVersi
       invoke<RenderReply>("yui_designer_render", { args: { path, root: withDesignResources(drawnRoot), screenW: w, screenH: h, scale, preview: previewing } })
         .then((reply) => {
           if (seq !== renderSeq.current) return;
-          const geo = new Map<string, Geo>(reply.rects.map((r) => [r.uid, { rect: toRect(r.rect), content: toRect(r.content) }]));
+          const geo = new Map<string, Geo>(reply.rects.map((r) => [r.uid, { rect: toRect(r.rect), content: toRect(r.content), grid: r.grid }]));
           setRendered({ root: drawnRoot, w, h, image: reply.image, geo, assets: reply.assets, realFont: reply.realFont });
           setRenderError(null);
         })
@@ -536,8 +569,22 @@ export function ScreenDesigner({ path, content, onChange, readOnly, contentVersi
     return index;
   };
 
+  /** A laid-out grid's geometry (`null` while it isn't laid out). */
+  const gridGeo = (uid: string): GridGeo | null => {
+    const g = geo?.get(uid);
+    return g?.grid ? { rect: g.rect, content: g.content, rows: g.grid.rows, cols: g.grid.cols } : null;
+  };
+
   const placeNew = (d: YuiDoc, node: YuiNode, target: YuiNode, point: DesignPoint | null): YuiDoc => {
     const content = geo?.get(target.uid)?.content;
+    node = fitParent(node, target);
+    if (isGrid(target)) {
+      // Dropped into a cell: that's its Grid.Row / Grid.Column.
+      const gg = gridGeo(target.uid);
+      const [row, col] = point && gg ? cellAt(gg, point.x, point.y) : [0, 0];
+      node = withAttrs(node, { x: undefined, y: undefined, ...cellAttrs(row, col) });
+      return { ...d, root: mapNode(insertNodes(d.root, target.uid, target.children.length, [node]), target.uid, clampCells) };
+    }
     if (isCanvas(target)) {
       let x = point && content ? point.x - content.x : 8;
       let y = point && content ? point.y - content.y : 8;
@@ -601,10 +648,11 @@ export function ScreenDesigner({ path, content, onChange, readOnly, contentVersi
     const added: string[] = [];
     for (const n of nodes) {
       if (!addable(n.kind)) continue;
-      const copy = cloneFresh(n);
+      let copy = cloneFresh(n);
       const x = Number(copy.attrs.x ?? 0);
       const y = Number(copy.attrs.y ?? 0);
       const into = findNode(d.root, target.uid)!;
+      copy = fitParent(copy, into);
       // A component has one body.
       if (into.uid === d.root.uid && componentBody(d.root)) break;
       if (isCanvas(into)) {
@@ -671,6 +719,13 @@ export function ScreenDesigner({ path, content, onChange, readOnly, contentVersi
       } else if (positioned(node, parent)) {
         const pc = geo.get(parent.uid)!.content;
         d = { ...d, root: mapNode(d.root, uid, (n) => withAttrs(n, { x: round(g.rect.x - pc.x + dx), y: round(g.rect.y - pc.y + dy) })) };
+      } else if (isGrid(parent)) {
+        // In a grid: to the next cell.
+        const defs = gridDefs(parent);
+        const c = cellOf(node);
+        const row = Math.max(0, Math.min(Math.max(1, defs.rows.length) - c.rowSpan, c.row + Math.sign(dy)));
+        const col = Math.max(0, Math.min(Math.max(1, defs.cols.length) - c.colSpan, c.col + Math.sign(dx)));
+        d = { ...d, root: mapNode(d.root, uid, (n) => withAttrs(n, cellAttrs(row, col))) };
       } else {
         const index = parent.children.findIndex((c) => c.uid === uid);
         const to = index + Math.sign(dx + dy);
@@ -723,12 +778,28 @@ export function ScreenDesigner({ path, content, onChange, readOnly, contentVersi
     }
     const target = findNode(d.root, targetUid)!;
     const stayFree = ids.every((uid) => findParent(d.root, uid)?.uid === targetUid && positioned(findNode(d.root, uid)!, target));
-    if (isCanvas(target) || stayFree) {
+    if (isGrid(target) && !stayFree) {
+      // Into the cell under the pointer (each widget of a group at its own offset from the lead's).
+      const gg = gridGeo(targetUid);
+      const lead0 = change.rects[ids[0]];
+      for (const uid of ids) {
+        const r = change.rects[uid];
+        const [row, col] = gg && r && lead0 ? cellAt(gg, change.point.x + r.x - lead0.x, change.point.y + r.y - lead0.y) : [0, 0];
+        const moved = withAttrs(findNode(d.root, uid)!, { x: undefined, y: undefined, ...cellAttrs(row, col) });
+        if (findParent(d.root, uid)?.uid === targetUid) d = { ...d, root: mapNode(d.root, uid, () => moved) };
+        else {
+          d = { ...d, root: removeNodes(d.root, new Set([uid])) };
+          const into = findNode(d.root, targetUid)!;
+          d = { ...d, root: insertNodes(d.root, targetUid, into.children.length, [moved]) };
+        }
+      }
+      d = { ...d, root: mapNode(d.root, targetUid, clampCells) };
+    } else if (isCanvas(target) || stayFree) {
       const content = geo.get(targetUid)!.content;
       for (const uid of ids) {
         const r = change.rects[uid];
         if (!r) continue;
-        const moved = withAttrs(findNode(d.root, uid)!, { x: round(r.x - content.x), y: round(r.y - content.y) });
+        const moved = fitParent(withAttrs(findNode(d.root, uid)!, { x: round(r.x - content.x), y: round(r.y - content.y) }), target);
         if (findParent(d.root, uid)?.uid === targetUid) d = { ...d, root: mapNode(d.root, uid, () => moved) };
         else {
           d = { ...d, root: removeNodes(d.root, new Set([uid])) };
@@ -737,7 +808,7 @@ export function ScreenDesigner({ path, content, onChange, readOnly, contentVersi
         }
       }
     } else {
-      const nodes = ids.map((uid) => withAttrs(findNode(d.root, uid)!, { x: undefined, y: undefined }));
+      const nodes = ids.map((uid) => fitParent(withAttrs(findNode(d.root, uid)!, { x: undefined, y: undefined }), target));
       const index = flowIndex(target, change.point, new Set(ids));
       d = { ...d, root: removeNodes(d.root, new Set(ids)) };
       d = { ...d, root: insertNodes(d.root, targetUid, index, nodes) };
@@ -1132,6 +1203,12 @@ export function ScreenDesigner({ path, content, onChange, readOnly, contentVersi
       ? t("Minecraft's client jar wasn't found (in ~/.minecraft/versions or a loader's Gradle caches) — showing an approximation instead of the game's font and textures. Once the game has been installed or a loader built, the designer uses them.")
       : null;
   const primaryGeo = primary ? geo?.get(primary.uid) : undefined;
+  // Visual Studio's grid rails: on the selected grid, or the grid the selected widget is in.
+  const primaryParent = primary ? findParent(doc.root, primary.uid) : null;
+  const railGrid = primary && isGrid(primary) ? primary : primaryParent && isGrid(primaryParent) ? primaryParent : null;
+  const railGeo = railGrid ? gridGeo(railGrid.uid) : null;
+  const allGrids: GridGeo[] = [];
+  if (geo) for (const [uid, g] of geo) if (g.grid) allGrids.push(gridGeo(uid)!);
 
   return (
     <div
@@ -1283,6 +1360,21 @@ export function ScreenDesigner({ path, content, onChange, readOnly, contentVersi
                 }
           }
           onContextMenu={(e) => menu.openAtPoint(undefined, e)}
+          adorners={
+            railGrid && railGeo ? (
+              <GridRails
+                grid={railGrid}
+                geo={railGeo}
+                zoom={view.zoom}
+                editable={canEdit}
+                onChange={(next) => {
+                  const s = sessionRef.current;
+                  if (s) commit({ ...s.doc, root: mapNode(s.doc.root, railGrid.uid, () => next) });
+                }}
+                onMenu={(e, items) => setRailMenu({ x: e.clientX, y: e.clientY, items })}
+              />
+            ) : undefined
+          }
         >
           <div className="yui-world" />
           {picture ? (
@@ -1293,10 +1385,12 @@ export function ScreenDesigner({ path, content, onChange, readOnly, contentVersi
           ) : (
             <McWidget widget={layout.widget} node={layout.tree} zoom={view.zoom} />
           )}
+          <GridLines grids={allGrids} zoom={view.zoom} />
         </DesignSurface>
         )}
       </div>
       <ContextMenu target={menu.target ? { mode: "viewport", x: menu.target.mode === "viewport" ? menu.target.x : 0, y: menu.target.mode === "viewport" ? menu.target.y : 0 } : null} items={contextItems} onClose={menu.close} />
+      <ContextMenu target={railMenu ? { mode: "viewport", x: railMenu.x, y: railMenu.y } : null} items={railMenu?.items ?? []} onClose={() => setRailMenu(null)} />
     </div>
   );
 }
