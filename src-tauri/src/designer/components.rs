@@ -276,6 +276,11 @@ type Scanned = (u64, Arc<Vec<Def>>);
 
 /// The mod's components, re-read when its `.yui` files change.
 pub fn scan(mod_root: &Path) -> Arc<Vec<Def>> {
+    scan_with_revision(mod_root).1
+}
+
+/// [`scan`] and a fingerprint of the `.yui` files it read.
+pub fn scan_with_revision(mod_root: &Path) -> (u64, Arc<Vec<Def>>) {
     static CACHE: OnceLock<Mutex<HashMap<PathBuf, Scanned>>> = OnceLock::new();
     let files = yui_files(mod_root);
     let fp = fingerprint(&files);
@@ -283,7 +288,7 @@ pub fn scan(mod_root: &Path) -> Arc<Vec<Def>> {
     if let Some((seen, defs)) = cache.lock().unwrap_or_else(PoisonError::into_inner).get(mod_root)
         && *seen == fp
     {
-        return defs.clone();
+        return (fp, defs.clone());
     }
     let defs: Vec<Def> = files
         .iter()
@@ -298,7 +303,7 @@ pub fn scan(mod_root: &Path) -> Arc<Vec<Def>> {
         .collect();
     let defs = Arc::new(defs);
     cache.lock().unwrap_or_else(PoisonError::into_inner).insert(mod_root.to_path_buf(), (fp, defs.clone()));
-    defs
+    (fp, defs)
 }
 
 #[cfg(test)]

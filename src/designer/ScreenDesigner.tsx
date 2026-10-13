@@ -28,6 +28,7 @@ import { clearActiveDesigner, setActiveDesigner, TOOLBOX_MIME } from "./activeDe
 import { charWidth, compute, LINE_GAP, LINE_H, screenWidget, strWidth, textLines, type LNode, type LWidget } from "./layout";
 import { imageSourcesVersion, subscribeImageSources } from "./imageSources";
 import { widgetProperties } from "./properties";
+import { componentBody, designRoot, findComponent, isComponentDoc, useComponents } from "./components";
 import {
   adoptUids,
   cloneFresh,
@@ -392,9 +393,12 @@ export function ScreenDesigner({ path, content, onChange, readOnly, contentVersi
   const res = RESOLUTIONS[view.res] ?? RESOLUTIONS[0];
   // `@Strings.title` texts shown from the mod's .yres files (docs/yres.md).
   const resourcesVersion = useDesignResources(modRootOf(path));
+  // The mod's components (docs/yui.md, "Components"): what instances draw as, re-drawn when one changes.
+  const components = useComponents(path);
+  const componentsRevision = components ? `${components.revision}:${components.status}` : "";
   const layout = useMemo(() => {
     if (!doc) return null;
-    const widget = screenWidget(doc.root, res.w, res.h);
+    const widget = screenWidget(designRoot(doc.root), res.w, res.h);
     const tree = compute(widget, res.w, res.h);
     const geo = new Map<string, Geo>();
     collect(widget, tree, geo);
@@ -455,7 +459,7 @@ export function ScreenDesigner({ path, content, onChange, readOnly, contentVersi
         });
     }, 16);
     return () => clearTimeout(timer);
-  }, [path, drawnRoot, res, view.zoom, previewing, previewTick, resourcesVersion]);
+  }, [path, drawnRoot, res, view.zoom, previewing, previewTick, resourcesVersion, componentsRevision]);
 
   useEffect(() => () => void invoke("yui_designer_reset", { path }).catch(() => {}), [path]);
 
@@ -481,7 +485,7 @@ export function ScreenDesigner({ path, content, onChange, readOnly, contentVersi
         handles: parent ? undefined : n.attrs.anchor === "fill" ? [] : ["e", "s", "se"],
         label: nodeLabel(n),
       });
-      if (isContainer(n)) n.children.forEach((c) => visit(c, n));
+      if (isContainer(n) || isComponentDoc(n)) n.children.forEach((c) => visit(c, n));
     };
     visit(doc.root, null);
     return out;
@@ -489,12 +493,27 @@ export function ScreenDesigner({ path, content, onChange, readOnly, contentVersi
 
   // ── Edits ─────────────────────────────────────────────────────────────────
 
-  /** The container a new/pasted widget goes into: the selected container, else the selection's container, else the screen. */
-  const insertionTarget = (d: YuiDoc, sel: string[]): YuiNode => {
-    const primary = sel[0] ? findNode(d.root, sel[0]) : null;
-    if (primary && isContainer(primary)) return primary;
-    return (primary && findParent(d.root, primary.uid)) || d.root;
+  /**
+   * Where something added into `target` really goes: a component document's
+   * root holds one body — new widgets go into it (a container), or become it
+   * (none yet); null when the body can't hold any.
+   */
+  const intoTarget = (d: YuiDoc, target: YuiNode): YuiNode | null => {
+    if (target.uid !== d.root.uid || !isComponentDoc(d.root)) return target;
+    const body = componentBody(d.root);
+    return !body ? d.root : isContainer(body) ? body : null;
   };
+
+  /** The container a new/pasted widget goes into: the selected container, else the selection's container, else the screen. */
+  const insertionTarget = (d: YuiDoc, sel: string[]): YuiNode | null => {
+    const primary = sel[0] ? findNode(d.root, sel[0]) : null;
+    if (primary && isContainer(primary)) return intoTarget(d, primary);
+    return intoTarget(d, (primary && findParent(d.root, primary.uid)) || d.root);
+  };
+
+  /** A built-in kind or one of the mod's components — what may be added (never a root). */
+  const addable = (kind: string) =>
+    kind !== "Screen" && ((KINDS as readonly string[]).includes(kind) || !!findComponent(components, kind));
 
   /** Index among `container`'s children where something dropped at `point` goes (flow containers). */
   const flowIndex = (container: YuiNode, point: DesignPoint, skip: ReadonlySet<string>): number => {
@@ -529,10 +548,12 @@ export function ScreenDesigner({ path, content, onChange, readOnly, contentVersi
     return { ...d, root: insertNodes(d.root, target.uid, index, [withAttrs(node, { x: undefined, y: undefined })]) };
   };
 
-  const addWidget = (kind: YuiKind, point: DesignPoint | null = null, targetUid: string | null = null) => {
+  const addWidget = (kind: string, point: DesignPoint | null = null, targetUid: string | null = null) => {
     const s = sessionRef.current;
-    if (!s || kind === "Screen") return;
-    const target = (targetUid && findNode(s.doc.root, targetUid)) || (point ? s.doc.root : insertionTarget(s.doc, s.selection));
+    if (!s || !addable(kind)) return;
+    const picked = (targetUid && findNode(s.doc.root, targetUid)) || (point ? s.doc.root : null);
+    const target = picked ? intoTarget(s.doc, picked) : insertionTarget(s.doc, s.selection);
+    if (!target) return;
     const node = newNode(kind);
     commit(placeNew(s.doc, node, target, point), [node.uid]);
   };
@@ -566,14 +587,17 @@ export function ScreenDesigner({ path, content, onChange, readOnly, contentVersi
     const nodes = text ? parseNodes(text) : null;
     if (!s || !nodes) return;
     const target = insertionTarget(s.doc, s.selection);
+    if (!target) return;
     let d = s.doc;
     const added: string[] = [];
     for (const n of nodes) {
-      if (!(KINDS as readonly string[]).includes(n.kind) || n.kind === "Screen") continue;
+      if (!addable(n.kind)) continue;
       const copy = cloneFresh(n);
       const x = Number(copy.attrs.x ?? 0);
       const y = Number(copy.attrs.y ?? 0);
       const into = findNode(d.root, target.uid)!;
+      // A component has one body.
+      if (into.uid === d.root.uid && componentBody(d.root)) break;
       if (isCanvas(into)) {
         let px = x;
         let py = y;
@@ -598,6 +622,7 @@ export function ScreenDesigner({ path, content, onChange, readOnly, contentVersi
     const added: string[] = [];
     for (const uid of uids) {
       const parent = findParent(d.root, uid)!;
+      if (parent.uid === d.root.uid && isComponentDoc(d.root)) continue; // a component has one body
       const node = findNode(d.root, uid)!;
       let copy = cloneFresh(node);
       if (positioned(node, parent)) copy = withAttrs(copy, { x: round(Number(node.attrs.x ?? 0) + 8), y: round(Number(node.attrs.y ?? 0) + 8) });
@@ -680,6 +705,11 @@ export function ScreenDesigner({ path, content, onChange, readOnly, contentVersi
     const lead = findParent(d.root, ids[0])!;
     let targetUid = change.target ?? lead.uid;
     if (ids.some((uid) => uid === targetUid || isDescendant(d.root, uid, targetUid)) || !findNode(d.root, targetUid)) targetUid = lead.uid;
+    // A component has one body: what's dropped onto its root goes into the body.
+    if (targetUid === d.root.uid && isComponentDoc(d.root) && !ids.every((uid) => findParent(d.root, uid)?.uid === d.root.uid)) {
+      const into = intoTarget(d, d.root);
+      targetUid = into && into.uid !== d.root.uid ? into.uid : lead.uid;
+    }
     const target = findNode(d.root, targetUid)!;
     const stayFree = ids.every((uid) => findParent(d.root, uid)?.uid === targetUid && positioned(findNode(d.root, uid)!, target));
     if (isCanvas(target) || stayFree) {
@@ -1226,7 +1256,7 @@ export function ScreenDesigner({ path, content, onChange, readOnly, contentVersi
               : {
                   mime: TOOLBOX_MIME,
                   onDrop: (kind, point, target) => {
-                    if ((KINDS as readonly string[]).includes(kind)) addWidget(kind as YuiKind, point, target ?? doc.root.uid);
+                    addWidget(kind, point, target ?? doc.root.uid);
                     setTimeout(() => publishRef.current());
                   },
                 }

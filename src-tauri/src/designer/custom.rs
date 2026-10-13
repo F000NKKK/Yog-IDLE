@@ -77,6 +77,9 @@ pub struct Snapshot {
     pub components: Vec<ComponentInfo>,
     /// The ones that need the mod's library (the rest are drawn from markup).
     pub compiled: Vec<String>,
+    /// Changes whenever the drawing of an instance may: a component `.yui`
+    /// edited, the library rebuilt.
+    pub revision: String,
     /// The mod's display name (`yog.toml` `name`, else its id) for the toolbox category.
     pub mod_name: String,
 }
@@ -211,8 +214,9 @@ impl ModState {
         }
     }
 
-    fn snapshot(&self, defs: &[Def]) -> Snapshot {
+    fn snapshot(&self, (rev, defs): &(u64, Arc<Vec<Def>>)) -> Snapshot {
         Snapshot {
+            revision: format!("{rev:x}.{}", self.generation),
             status: self.status,
             error: self.error.clone(),
             components: defs.iter().map(|d| d.info.clone()).collect(),
@@ -314,7 +318,7 @@ fn mod_name(root: &Path) -> String {
 /// host restart) when the sources changed and have been quiet a moment —
 /// only if some component is compiled. Cheap enough to poll.
 pub fn status(root: &Path) -> Snapshot {
-    let defs = components::scan(root);
+    let defs = components::scan_with_revision(root);
     let shared = state(root);
     let files = sources(root);
     let fp = fingerprint(&files);
@@ -325,7 +329,7 @@ pub fn status(root: &Path) -> Snapshot {
     if s.building || s.built == Some(fp) {
         return s.snapshot(&defs);
     }
-    if !defs.iter().any(|d| d.compiled) {
+    if !defs.1.iter().any(|d| d.compiled) {
         s.status = Status::None;
         s.error = None;
         s.components.clear();

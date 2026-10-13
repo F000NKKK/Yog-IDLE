@@ -3,6 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { Button, FloatingWindow, Icon, SearchField, TextField, useT, type DirEntry } from "substrate-platform-ui";
 import { newBlockFile, newBlockWithItemFile, newItemFile, titleOf } from "../content/model";
 import { validateEntryName } from "../paths";
+import { pascalName } from "../designer/components";
 import "./NewItemDialog.css";
 
 /** One entry of Add > New Item — what file(s) it makes and what goes in them. */
@@ -51,6 +52,21 @@ export const ITEM_TEMPLATES: ItemTemplate[] = [
       [
         `${stem}.rs`,
         `// Code-behind of ${stem}.yui; its generated half (ID, ids, events, build, render, click, open, close, ...)\n// is pulled in from .yog-build/generated/ by ui_include!.\nyog_api::ui_include!("${srcDir ? `${srcDir}/` : ""}${stem}");\n\npub fn register(registry: &mut yog_api::Registry) {\n    registry.on_ui_render(ID, |gfx| render(gfx));\n    registry.register_ui(ID, |_ui_id, event| {\n        let _ = click(event);\n    });\n}\n`,
+      ],
+    ],
+  },
+  {
+    id: "yui-component",
+    category: "Yog",
+    name: "Component (.yui)",
+    description:
+      "A reusable UI component: a .yui with a <Component> root declaring its properties and events, its body bound to them with {x:Bind name}. It appears in the designer's toolbox; yog build generates its Rust type. Add a code-behind <name>.rs (ui_include!) only if its bindings call code.",
+    extension: ".yui",
+    baseName: "component",
+    files: (stem) => [
+      [
+        `${stem}.yui`,
+        `<?xml version="1.0" encoding="utf-8"?>\n<Component name="${pascalName(stem) || "Component"}" doc="" width="80" height="20">\n  <Property name="text" type="text" default="${stem}" doc="The caption."/>\n  <Property name="color" type="color" default="#FF3A6EA5" doc="The background."/>\n  <Panel bg="{x:Bind color}" padding="4">\n    <Label text="{x:Bind text}" color="#FFFFFF" no_wrap="true"/>\n  </Panel>\n</Component>\n`,
       ],
     ],
   },

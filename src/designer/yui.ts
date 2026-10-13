@@ -35,6 +35,11 @@ export const newUid = () => `n${++nextUid}`;
 
 /** Where attributes go when written — anything else follows in its own order. */
 export const ATTR_ORDER = [
+  "name",
+  "type",
+  "default",
+  "options",
+  "doc",
   "id",
   "x",
   "y",
@@ -420,8 +425,9 @@ export const KIND_INFO: Record<YuiKind, KindInfo> = {
   },
 };
 
-export function newNode(kind: YuiKind): YuiNode {
-  return { uid: newUid(), kind, attrs: { ...KIND_INFO[kind].defaults }, children: [] };
+/** A new widget — a built-in kind or one of the mod's components (no defaults: its properties have their own). */
+export function newNode(kind: string): YuiNode {
+  return { uid: newUid(), kind, attrs: { ...(KIND_INFO[kind as YuiKind]?.defaults ?? {}) }, children: [] };
 }
 
 /** What an empty `.yui` file starts as. */

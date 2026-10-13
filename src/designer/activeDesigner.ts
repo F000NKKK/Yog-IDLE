@@ -3,7 +3,7 @@
 // shell, so the designer publishes itself here.
 
 import { useSyncExternalStore } from "react";
-import type { YuiDoc, YuiKind } from "./yui";
+import type { YuiDoc } from "./yui";
 
 export interface ActiveDesigner {
   path: string;
@@ -11,8 +11,8 @@ export interface ActiveDesigner {
   /** Selected node uids, the primary first. */
   selection: string[];
   select: (uids: string[]) => void;
-  /** Adds a new widget where the selection is (Toolbox double-click). */
-  addWidget: (kind: YuiKind) => void;
+  /** Adds a new widget — a built-in kind or a component name — where the selection is (Toolbox double-click). */
+  addWidget: (kind: string) => void;
   /** Gives the design surface keyboard focus. */
   focus: () => void;
 }
@@ -41,5 +41,5 @@ export function useActiveDesigner(): ActiveDesigner | null {
   return useSyncExternalStore(subscribe, () => current);
 }
 
-/** The Toolbox's drag-and-drop payload type (the widget kind). */
+/** The Toolbox's drag-and-drop payload type (the widget kind or component name). */
 export const TOOLBOX_MIME = "application/x-yog-ui-widget";
