@@ -33,8 +33,10 @@ export interface Part {
   /** Blockstate rotation (degrees, multiples of 90). */
   x?: number;
   y?: number;
-  /** An item sprite: these textures (layer0, layer1, ...) extruded 1px thick. */
-  sprite?: string[];
+  /** An item sprite: these layers' textures (layer0, layer1, ...) extruded 1px thick. */
+  sprite?: { slot: string; texture: string }[];
+  /** Tint preview: tint index → CSS color multiplied into faces with that `tint` (a sprite's layer N has tint index N). */
+  tints?: Record<number, string>;
   /** Selectable and editable (the model being edited). */
   editable?: boolean;
   /** Drawn translucent (the arms of a connecting block, say). */
@@ -42,6 +44,17 @@ export interface Part {
 }
 
 export type GizmoMode = "move" | "resize";
+
+/** A pixel of a texture under the pointer in paint mode. */
+export interface PaintHit {
+  /** The texture slot of the face (or sprite layer) hit. */
+  slot: string;
+  x: number;
+  y: number;
+  /** The element and face hit (`null` for a sprite). */
+  element: number | null;
+  face: Dir | null;
+}
 export type ViewName = "front" | "back" | "right" | "left" | "top" | "bottom";
 
 export interface ViewportProps {
@@ -60,6 +73,8 @@ export interface ViewportProps {
   renderLayer?: string;
   /** Preview a display transform (with a reference object for its slot). */
   display?: { slot: string; transform: DisplayTransform } | null;
+  /** Paint mode: left press/drag/release on the editable part paints its textures (no selection, no handles). */
+  onPaint?: ((hit: PaintHit | null, phase: "down" | "move" | "up", alt: boolean) => void) | null;
   /** Bumped to jump to a view. */
   viewRequest?: { view: ViewName; key: number } | null;
   style?: CSSProperties;
@@ -116,7 +131,11 @@ function loadTexture(src: TextureSource, onLoad: () => void): { texture: THREE.T
   });
   const entry = { texture, image };
   textureCache.set(src.url, entry);
-  if (textureCache.size > 400) textureCache.delete(textureCache.keys().next().value!);
+  if (textureCache.size > 400) {
+    const oldest = textureCache.keys().next().value!;
+    textureCache.get(oldest)?.texture.dispose();
+    textureCache.delete(oldest);
+  }
   return entry;
 }
 
@@ -354,6 +373,7 @@ export function Viewport({
   showGrid,
   renderLayer,
   display,
+  onPaint,
   viewRequest,
   style,
   className,
@@ -523,7 +543,7 @@ export function Viewport({
         return src ? loadTexture(src, () => setLoaded((n) => n + 1)).texture : three.checker;
       };
       if (part.sprite) {
-        for (const [layer, value] of part.sprite.entries()) {
+        for (const [layer, { slot, texture: value }] of part.sprite.entries()) {
           const src = images[value];
           if (!src) continue;
           const entry = loadTexture(src, () => setLoaded((n) => n + 1));
@@ -533,7 +553,9 @@ export function Viewport({
           const mat = material(entry.texture, "cutout", !!part.ghost);
           mat.vertexColors = true;
           if (!shading) geo.setAttribute("color", new THREE.Float32BufferAttribute(new Array(geo.getAttribute("position").count * 3).fill(1), 3));
+          if (part.tints?.[layer]) mat.color.set(part.tints[layer]);
           const mesh = new THREE.Mesh(geo, mat);
+          mesh.userData = { part: part.editable ? "edit" : "other", paint: { slot, space: "image" } };
           mesh.position.z = layer * 0.01;
           group.add(mesh);
           disposables.push(geo, mat);
@@ -552,10 +574,11 @@ export function Viewport({
           const slot = face.texture.replace(/^#/, "");
           const map = textureOf(part.textures[slot]);
           const mat = material(map, renderLayer, !!part.ghost);
+          if (face.tint !== undefined && part.tints?.[face.tint]) mat.color.set(part.tints[face.tint]);
           const shade = shading && el.shade !== false ? FACE_SHADE[dir] : 1;
           const uv = face.uv ?? autoUv(dir, el.from, el.to);
           const mesh = faceMesh(faceCorners(dir, el.from, el.to), faceUvs(uv, face.rotation ?? 0), shade, mat);
-          mesh.userData = { part: part.editable ? "edit" : "other", element: index, face: dir };
+          mesh.userData = { part: part.editable ? "edit" : "other", element: index, face: dir, paint: { slot, space: "frame" } };
           eg.add(mesh);
           disposables.push(mesh.geometry, mat);
           if (part.editable && index === selected && dir === selectedFace) {
@@ -629,8 +652,8 @@ export function Viewport({
 
   // ── Mouse: orbit/pan/zoom, pick, drag handles ─────────────────────────────
 
-  const propsRef = useRef({ parts, onSelect, onTransform, selected });
-  propsRef.current = { parts, onSelect, onTransform, selected };
+  const propsRef = useRef({ parts, onSelect, onTransform, selected, onPaint });
+  propsRef.current = { parts, onSelect, onTransform, selected, onPaint };
 
   useEffect(() => {
     const host = hostRef.current!;
@@ -640,7 +663,28 @@ export function Viewport({
       return new THREE.Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
     };
     const camera = () => (ortho ? three.orth : three.persp);
-    let mode: "orbit" | "pan" | "handle" | null = null;
+    let mode: "orbit" | "pan" | "handle" | "paint" | null = null;
+    /** The texture pixel under the pointer on the editable part, in paint mode. */
+    const paintHit = (e: PointerEvent): PaintHit | null => {
+      raycaster.setFromCamera(ndc(e), camera());
+      for (const hit of raycaster.intersectObjects(three.model.children, true)) {
+        const data = hit.object.userData as { part?: string; element?: number; face?: Dir; paint?: { slot: string; space: "frame" | "image" } };
+        if (data.part !== "edit" || !data.paint || !hit.uv) continue;
+        const map = ((hit.object as THREE.Mesh).material as THREE.MeshBasicMaterial).map;
+        const img = map?.image as { width?: number; height?: number } | undefined;
+        if (!map || map === three.checker || !img?.width || !img.height) return null;
+        const h = data.paint.space === "frame" ? img.height * map.repeat.y : img.height;
+        const clamp = (n: number, max: number) => Math.min(max - 1, Math.max(0, Math.floor(n)));
+        return {
+          slot: data.paint.slot,
+          x: clamp(hit.uv.x * img.width, img.width),
+          y: clamp((1 - hit.uv.y) * h, h),
+          element: data.element ?? null,
+          face: data.face ?? null,
+        };
+      }
+      return null;
+    };
     let last = { x: 0, y: 0 };
     let down = { x: 0, y: 0 };
     let handleDrag: { handle: Handle; el: Element; start: { x: number; y: number }; screenAxis: THREE.Vector2; pxPerUnit: number } | null = null;
@@ -656,6 +700,13 @@ export function Viewport({
         return;
       }
       if (e.button !== 0) return;
+      if (propsRef.current.onPaint) {
+        mode = "paint";
+        host.setPointerCapture(e.pointerId);
+        e.preventDefault();
+        propsRef.current.onPaint(paintHit(e), "down", e.altKey);
+        return;
+      }
       raycaster.setFromCamera(ndc(e), camera());
       const hit = raycaster.intersectObjects(three.handles, false)[0];
       const { parts: ps, selected: sel } = propsRef.current;
@@ -691,7 +742,10 @@ export function Viewport({
       const dx = e.clientX - last.x;
       const dy = e.clientY - last.y;
       last = { x: e.clientX, y: e.clientY };
-      if (mode === "orbit") {
+      if (mode === "paint") {
+        const hit = paintHit(e);
+        if (hit) propsRef.current.onPaint?.(hit, "move", e.altKey);
+      } else if (mode === "orbit") {
         three.cam.theta -= dx * 0.01;
         three.cam.phi = Math.min(Math.PI - 0.01, Math.max(0.01, three.cam.phi - dy * 0.01));
         invalidate.current();
@@ -730,6 +784,7 @@ export function Viewport({
       if (mode === "handle" && live && propsRef.current.selected !== null) {
         propsRef.current.onTransform?.(propsRef.current.selected, live.from, live.to);
       }
+      if (mode === "paint") propsRef.current.onPaint?.(paintHit(e), "up", e.altKey);
       if (mode) {
         mode = null;
         handleDrag = null;
@@ -797,7 +852,7 @@ export function Viewport({
       ref={hostRef}
       className={className}
       tabIndex={0}
-      style={{ position: "relative", overflow: "hidden", outline: "none", ...style }}
+      style={{ position: "relative", overflow: "hidden", outline: "none", cursor: onPaint ? "crosshair" : undefined, ...style }}
       data-ortho={ortho || undefined}
     >
       <div className="content-viewport-hud">{ortho ? "Ortho" : "Persp"}</div>
