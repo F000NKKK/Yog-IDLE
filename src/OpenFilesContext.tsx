@@ -48,6 +48,8 @@ interface FileTab {
   /** What's on disk, as last read or written — `content` differing from it is what `dirty` means. */
   diskContent: string;
   dirty: boolean;
+  /** The editor has unsaved state besides the text (painted textures, say) — see `setSideState`. */
+  sideDirty: boolean;
   /** Bumped when `content` was replaced from outside the editor (reloaded from disk) — see `EditorProps.contentVersion`. */
   contentVersion: number;
   /** The file was deleted (or renamed away) on disk while this tab had unsaved edits — kept open so they aren't lost; saving recreates it. */
@@ -74,6 +76,12 @@ interface OpenFilesContextValue {
   /** Opens (or re-reveals) a file — resolves with its tab id, or `null` if it couldn't be read. `openFile` from `fileOpenBus` is the same thing for callers outside this context. */
   open: (request: FileOpenRequest, options?: OpenOptions) => Promise<string | null>;
   updateContent: (id: string, content: string) => void;
+  /**
+   * An editor's unsaved state besides its file's text (the textures a model
+   * editor paints, say): `dirty` marks the tab dirty like unsaved text does,
+   * and Save runs `save` before writing the text. `null` when the editor goes.
+   */
+  setSideState: (path: string, state: SideState | null) => void;
   /** Closes a tab, first asking Save / Don't Save / Cancel if it has unsaved edits — resolves `false` if it stayed open. */
   closeTab: (id: string) => Promise<boolean>;
   /** Closes these tabs, asking once about all unsaved ones among them — resolves `false` if cancelled (nothing closed). */
@@ -101,6 +109,12 @@ interface OpenFilesContextValue {
   recheckDisk: () => Promise<void>;
   /** One `PanelDef` per open tab, fed straight into `PlatformShell`'s `extraCenterPanels` — no wrapper "Editor" panel around them. Each panel's `component` keeps a stable identity across renders (cached per tab id) so CodeMirror's internal state (undo history, cursor) survives every keystroke instead of remounting. */
   panels: PanelDef[];
+}
+
+export interface SideState {
+  dirty: boolean;
+  /** Writes the side state — throws (keeping the tab dirty, error reported) if that failed. */
+  save: () => Promise<void>;
 }
 
 const OpenFilesContext = createContext<OpenFilesContextValue | null>(null);
@@ -252,7 +266,7 @@ export function OpenFilesProvider({ children }: { children: ReactNode }) {
         return null;
       }
       const id = `file-${++nextTabId}`;
-      const tab: FileTab = { id, path, name, content, diskContent: content, dirty: false, contentVersion: 0, missing: false, textLoaded, pinned: false, view, reveal };
+      const tab: FileTab = { id, path, name, content, diskContent: content, dirty: false, sideDirty: false, contentVersion: 0, missing: false, textLoaded, pinned: false, view, reveal };
       // Into the ref right away, not on the next render: once this promise
       // settles `pendingOpens` forgets the path, and an `open` of the same
       // path before React re-renders (restoring the active tab does exactly
@@ -272,7 +286,17 @@ export function OpenFilesProvider({ children }: { children: ReactNode }) {
   useEffect(() => onOpenFileRequest((request) => void open(request)), [open]);
 
   const updateContent = useCallback((id: string, content: string) => {
-    setTabs((prev) => prev.map((t) => (t.id === id ? { ...t, content, dirty: content !== t.diskContent || t.missing } : t)));
+    setTabs((prev) => prev.map((t) => (t.id === id ? { ...t, content, dirty: content !== t.diskContent || t.missing || t.sideDirty } : t)));
+  }, []);
+
+  const sideSaves = useRef(new Map<string, () => Promise<void>>());
+  const setSideState = useCallback((path: string, state: SideState | null) => {
+    if (state) sideSaves.current.set(path, state.save);
+    else sideSaves.current.delete(path);
+    const sideDirty = !!state?.dirty;
+    setTabs((prev) =>
+      prev.map((t) => (t.path === path && t.sideDirty !== sideDirty ? { ...t, sideDirty, dirty: t.content !== t.diskContent || t.missing || sideDirty } : t))
+    );
   }, []);
 
   const save = useCallback(async (id: string): Promise<boolean> => {
@@ -281,6 +305,16 @@ export function OpenFilesProvider({ children }: { children: ReactNode }) {
     // Its `content` is a placeholder "" (see `open`) — writing it would
     // wipe the file.
     if (!tab.textLoaded) return true;
+    const side = sideSaves.current.get(tab.path);
+    if (side && tab.sideDirty) {
+      try {
+        await side();
+      } catch (err) {
+        reportError(t("Failed to save {path}: {error}", { path: tab.path, error: String(err) }));
+        return false;
+      }
+      if (tab.content === tab.diskContent && !tab.missing) return true;
+    }
     const written = tab.content;
     try {
       await invoke("file_write", { path: tab.path, contents: written });
@@ -290,7 +324,7 @@ export function OpenFilesProvider({ children }: { children: ReactNode }) {
     }
     // Still dirty if the user kept typing while the write was in flight.
     setTabs((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, diskContent: written, missing: false, dirty: t.content !== written } : t))
+      prev.map((t) => (t.id === id ? { ...t, diskContent: written, missing: false, dirty: t.content !== written || t.sideDirty } : t))
     );
     if (/\.(yui|yres|yblock|yitem)$/i.test(tab.path)) regenerateScreen(tab.path);
     if (/\.yres$/i.test(tab.path)) invalidateDesignResources();
@@ -309,7 +343,7 @@ export function OpenFilesProvider({ children }: { children: ReactNode }) {
     }
     setTabs((prev) =>
       prev.map((t) =>
-        t.id === id ? { ...t, path, name: baseName(path), diskContent: written, missing: false, dirty: t.content !== written } : t
+        t.id === id ? { ...t, path, name: baseName(path), diskContent: written, missing: false, dirty: t.content !== written || t.sideDirty } : t
       )
     );
     return true;
@@ -389,7 +423,7 @@ export function OpenFilesProvider({ children }: { children: ReactNode }) {
       }
       setTabs((prev) =>
         prev.map((t) =>
-          t.id === id ? { ...t, view, content, diskContent: content, textLoaded: true, dirty: false, contentVersion: t.contentVersion + 1 } : t
+          t.id === id ? { ...t, view, content, diskContent: content, textLoaded: true, dirty: t.sideDirty, contentVersion: t.contentVersion + 1 } : t
         )
       );
       return;
@@ -681,6 +715,7 @@ export function OpenFilesProvider({ children }: { children: ReactNode }) {
         tabs,
         open,
         updateContent,
+        setSideState,
         closeTab,
         closeTabs,
         closeAll,
