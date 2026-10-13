@@ -32,6 +32,7 @@ interface Group {
 
 /** A small glyph per widget kind, drawn in the item's text color. */
 const GLYPHS: Record<string, string> = {
+  Grid: "⊞",
   Canvas: "▣",
   Column: "☰",
   Row: "⫴",

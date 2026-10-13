@@ -95,7 +95,7 @@ export function DebugPanel() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
-      <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: "var(--sp-space-2xs) var(--sp-toolbar-gap)", minHeight: "var(--sp-toolbar-height)", padding: "1px var(--sp-toolbar-padding-x)", borderBottom: "1px solid var(--sp-border)" }}>
+      <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: "var(--sp-space-2xs) var(--sp-toolbar-gap)", minHeight: "var(--sp-toolbar-height)", padding: "var(--sp-toolbar-padding-y) var(--sp-toolbar-padding-x)", borderBottom: "1px solid var(--sp-border)" }}>
         <Button variant="ghost" onClick={continue_} disabled={!paused} title={withShortcut("Continue", "F5")}>
           {t("Continue")}
         </Button>

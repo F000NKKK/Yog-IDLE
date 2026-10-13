@@ -78,7 +78,7 @@
 
 .idle-git-pane-header {
   height: var(--sp-panel-header-height);
-  padding: 0 var(--sp-space-2xs) 0 var(--sp-space-sm);
+  padding: 0 var(--sp-space-xs) 0 var(--sp-space-sm);
   gap: var(--sp-space-xs);
   color: var(--sp-text-muted);
 }

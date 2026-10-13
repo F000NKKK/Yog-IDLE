@@ -872,6 +872,20 @@ export function ScreenDesigner({ path, content, onChange, readOnly, contentVersi
         },
         path,
         components,
+        {
+          inGrid: nodes.every((n) => {
+            const parent = findParent(s.doc.root, n.uid);
+            return !!parent && isGrid(parent);
+          }),
+          update: (fn) => {
+            const cur = sessionRef.current;
+            if (!cur) return null;
+            let root = cur.doc.root;
+            for (const uid of uids) root = mapNode(root, uid, fn);
+            commit({ ...cur.doc, root });
+            return null;
+          },
+        },
       ),
     };
     setSelection({ id: data.objectKey, kind: "yui.widget", data, source: "editor" });

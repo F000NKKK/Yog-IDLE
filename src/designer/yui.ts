@@ -387,7 +387,7 @@ export const KIND_INFO: Record<YuiKind, KindInfo> = {
   Screen: { kind: "Screen", label: "Screen", group: "Containers", description: "The screen itself — the root of a .yui file.", defaults: {} },
   Grid: {
     kind: "Grid",
-    label: "Grid",
+    label: "Grid Panel",
     group: "Containers",
     description: "Rows and columns like WPF's Grid: children sit in cells (Grid.Row / Grid.Column); rows and columns are Auto, * or pixels.",
     defaults: { w: "120", h: "80", rows: "Auto,*", columns: "*,*" },

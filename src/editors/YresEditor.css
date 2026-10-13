@@ -14,7 +14,7 @@
   flex: none;
   gap: var(--sp-space-2xs) var(--sp-toolbar-gap);
   min-height: var(--sp-toolbar-height);
-  padding: 1px var(--sp-toolbar-padding-x);
+  padding: var(--sp-toolbar-padding-y) var(--sp-toolbar-padding-x);
   border-bottom: 1px solid var(--sp-border);
 }
 

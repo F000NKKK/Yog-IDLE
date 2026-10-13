@@ -5,7 +5,7 @@ import { t, type PropertyDescriptor, type PropertyValue, type XmlSchema } from "
 import { imagePreview, imageSources, suggestImageAlias } from "./imageSources";
 import { CONTAINER_KINDS, cssColor, KIND_INFO, KINDS, parseColor, parseNumber, type YuiNode } from "./yui";
 import { findComponent, type ComponentInfo, type ComponentsSnapshot } from "./components";
-import { ATTACHED, formatLength, gridDefs, parseLength, shiftCells, withGridDefs, type Axis } from "./grid";
+import { AXES, formatLength, gridDefs, parseLength, shiftCells, withGridDefs, type Axis } from "./grid";
 import { editDefinitions } from "./GridAdorner";
 import { designText } from "../lang/designResources";
 
@@ -66,10 +66,10 @@ const SPECS: AttrSpec[] = [
   { attr: "columns", name: "Columns", category: "Grid", kind: "tracks", axis: "cols", fallback: "*", only: ["Grid"], description: "The grid's column widths, comma-separated: Auto, * / 2* or pixels — `160,*`. … edits them with minimum and maximum widths (written as <Grid.ColumnDefinitions>)." },
   { attr: "row_spacing", name: "Row Spacing", category: "Grid", kind: "number", fallback: "0", only: ["Grid"], description: "Space between rows, in GUI pixels (WinUI's RowSpacing)." },
   { attr: "column_spacing", name: "Column Spacing", category: "Grid", kind: "number", fallback: "0", only: ["Grid"], description: "Space between columns, in GUI pixels (WinUI's ColumnSpacing)." },
-  { attr: "Grid.Row", name: "Row", category: "Grid", kind: "index", fallback: "0", attached: true, description: "The grid row the widget is in, from 0 (Grid.Row)." },
-  { attr: "Grid.Column", name: "Column", category: "Grid", kind: "index", fallback: "0", attached: true, description: "The grid column the widget is in, from 0 (Grid.Column)." },
-  { attr: "Grid.RowSpan", name: "Row Span", category: "Grid", kind: "span", fallback: "1", attached: true, description: "How many rows the widget spans (Grid.RowSpan)." },
-  { attr: "Grid.ColumnSpan", name: "Column Span", category: "Grid", kind: "span", fallback: "1", attached: true, description: "How many columns the widget spans (Grid.ColumnSpan)." },
+  { attr: "Grid.Row", name: "Row", category: "Grid", kind: "index", fallback: "0", attached: true, not: ["Screen"], description: "The grid row the widget is in, from 0 (Grid.Row)." },
+  { attr: "Grid.Column", name: "Column", category: "Grid", kind: "index", fallback: "0", attached: true, not: ["Screen"], description: "The grid column the widget is in, from 0 (Grid.Column)." },
+  { attr: "Grid.RowSpan", name: "Row Span", category: "Grid", kind: "span", fallback: "1", attached: true, not: ["Screen"], description: "How many rows the widget spans (Grid.RowSpan)." },
+  { attr: "Grid.ColumnSpan", name: "Column Span", category: "Grid", kind: "span", fallback: "1", attached: true, not: ["Screen"], description: "How many columns the widget spans (Grid.ColumnSpan)." },
   { attr: "padding", name: "Padding", category: "Layout", kind: "padding", fallback: "0", description: "Inner spacing: one value for all sides, `vertical horizontal`, or `top right bottom left`." },
   { attr: "align", name: "Alignment", category: "Layout", kind: "enum", options: ["start", "center", "end"], fallback: "start", description: "Cross-axis alignment of a container's children; horizontal alignment of a Label's text." },
   { attr: "text", name: "Text", category: "Appearance", kind: "text", only: TEXT_KINDS, description: "The text shown (a text box's initial text)." },
@@ -340,15 +340,40 @@ export function yuiSchema(): XmlSchema {
     { name: "Property", top: false, children: [], completion: { info: t("A property of the component — an attribute of its instances.") }, attributes: attributes(PROPERTY_SPECS) },
     { name: "Event", top: false, children: [], completion: { info: t("An event the component raises — instances name it.") }, attributes: attributes(EVENT_SPECS) },
   ];
+  // A Grid's definitions, in WPF's property-element form (docs/yui.md, "Grid").
+  const definitions = (["rows", "cols"] as const).flatMap((axis) => {
+    const a = AXES[axis];
+    const row = axis === "rows";
+    return [
+      {
+        name: a.prop,
+        top: false,
+        children: [a.def],
+        completion: { info: row ? t("The grid's rows, one <RowDefinition> each (instead of rows=\"...\").") : t("The grid's columns, one <ColumnDefinition> each (instead of columns=\"...\").") },
+        attributes: [],
+      },
+      {
+        name: a.def,
+        top: false,
+        children: [],
+        completion: { info: row ? t("One grid row: its height and limits.") : t("One grid column: its width and limits.") },
+        attributes: [
+          { name: a.size, values: ["Auto", "*", "2*"], completion: { info: t("Auto fits the content, * shares what's left (2* gets twice as much), a number is pixels."), detail: "= *" } },
+          { name: a.min, values: undefined, completion: { info: row ? t("The smallest height the row gets, in pixels.") : t("The smallest width the column gets, in pixels.") } },
+          { name: a.max, values: undefined, completion: { info: row ? t("The largest height the row gets, in pixels.") : t("The largest width the column gets, in pixels.") } },
+        ],
+      },
+    ];
+  });
   return {
-    elements: [...component, ...KINDS.map((kind) => ({
+    elements: [...component, ...definitions, ...KINDS.map((kind) => ({
       name: kind,
       top: kind === "Screen",
-      children: CONTAINER_KINDS.has(kind) ? children : [],
+      children: kind === "Grid" ? [AXES.rows.prop, AXES.cols.prop, ...children] : CONTAINER_KINDS.has(kind) ? children : [],
       completion: { info: t(KIND_INFO[kind].description) },
       attributes: SPECS.filter((spec) => applies(spec, kind)).map((spec) => ({
         name: spec.attr,
-        values: spec.kind === "bool" ? ["true", "false"] : spec.kind === "enum" ? spec.options : spec.kind === "units" ? ["auto"] : spec.suggestions,
+        values: spec.kind === "bool" ? ["true", "false"] : spec.kind === "enum" ? spec.options : spec.kind === "units" ? ["auto"] : spec.kind === "tracks" ? ["Auto,*", "*,*", "Auto,*,Auto"] : spec.suggestions,
         completion: { info: t(spec.description), detail: spec.fallback !== undefined ? `= ${spec.fallback}` : undefined },
       })),
     }))],

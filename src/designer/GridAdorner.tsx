@@ -155,7 +155,6 @@ export function GridRails({ grid, geo, zoom, editable, onChange, onMenu }: GridR
       const r = el.getBoundingClientRect();
       return origin + (horizontal ? e.clientX - r.left : e.clientY - r.top) / zoom;
     };
-    const what = horizontal ? t("column") : t("row");
 
     const onPointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
       if (e.button !== 0 || !editable) return;
@@ -187,9 +186,9 @@ export function GridRails({ grid, geo, zoom, editable, onChange, onMenu }: GridR
         { label: t("Auto"), checked: def.size.t === "auto", disabled, onSelect: () => onChange(retype(grid, axis, i, { t: "auto" })) },
         { label: t("Star (*)"), checked: def.size.t === "star", disabled, onSelect: () => onChange(retype(grid, axis, i, { t: "star", v: 1 })) },
         { label: t("Pixel ({px})", { px }), checked: def.size.t === "px", disabled, onSelect: () => onChange(retype(grid, axis, i, { t: "px", v: px })) },
-        { label: t("Insert {what} Before", { what }), disabled, separatorBefore: true, onSelect: () => onChange(insertTrack(grid, axis, i)) },
-        { label: t("Insert {what} After", { what }), disabled, onSelect: () => onChange(insertTrack(grid, axis, i + 1)) },
-        { label: t("Delete {what}", { what }), disabled: disabled || defs.length < 2, destructive: true, onSelect: () => onChange(deleteTrack(grid, axis, i)) },
+        { label: horizontal ? t("Insert Column Before") : t("Insert Row Before"), disabled, separatorBefore: true, onSelect: () => onChange(insertTrack(grid, axis, i)) },
+        { label: horizontal ? t("Insert Column After") : t("Insert Row After"), disabled, onSelect: () => onChange(insertTrack(grid, axis, i + 1)) },
+        { label: horizontal ? t("Delete Column") : t("Delete Row"), disabled: disabled || defs.length < 2, destructive: true, onSelect: () => onChange(deleteTrack(grid, axis, i)) },
         { label: horizontal ? t("Edit Columns…") : t("Edit Rows…"), disabled, separatorBefore: true, onSelect: () => void editDefinitions(grid, axis).then((next) => next && onChange(next)) },
       ]);
     };
@@ -224,7 +223,7 @@ export function GridRails({ grid, geo, zoom, editable, onChange, onMenu }: GridR
         className={`yui-grid-rail yui-grid-rail-${horizontal ? "top" : "left"}`}
         data-editable={editable || undefined}
         style={style}
-        title={editable ? t("Click to add a {what}", { what }) : undefined}
+        title={editable ? (horizontal ? t("Click to add a column, drag a line to resize, right-click for its size") : t("Click to add a row, drag a line to resize, right-click for its size")) : undefined}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
