@@ -257,6 +257,7 @@ pub fn reset(path: &str) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::designer::raster::DrawOp;
 
     fn node(uid: &str, kind: &str, attrs: &[(&str, &str)], children: Vec<YuiNode>) -> YuiNode {
         YuiNode { uid: uid.into(), kind: kind.into(), attrs: attrs.iter().map(|(k, v)| (k.to_string(), v.to_string())).collect(), children }
