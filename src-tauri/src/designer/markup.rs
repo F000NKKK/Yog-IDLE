@@ -179,6 +179,8 @@ pub fn widget(node: &YuiNode, in_canvas: bool, scroll: &HashMap<String, f32>) ->
             a("item").unwrap_or_default(),
             a("count").and_then(|c| c.trim().parse().ok()).unwrap_or(1),
         ),
+        "Slot" => widget::slot(a("index").and_then(|i| i.trim().parse().ok()).unwrap_or(0)),
+        "PlayerInventory" => widget::player_inventory(),
         "Image" => super::images::widget(node),
         "TextBox" => widget::text_box(text(a("text"))),
         _ => widget::spacer(),
@@ -277,6 +279,8 @@ pub fn widget(node: &YuiNode, in_canvas: bool, scroll: &HashMap<String, f32>) ->
             },
             "bg" => match color(v) {
                 Some(c) => w.bg(c),
+                // `sprite:panel`, `mymod:gui/frame`: an image background.
+                None if v.contains(':') => w.bg_image(v.trim()),
                 None => w,
             },
             "color" => match color(v) {

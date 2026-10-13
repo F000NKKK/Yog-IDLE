@@ -47,6 +47,8 @@ const BUILT_IN: &[&str] = &[
     "TextBox",
     "ItemSlot",
     "InvSlot",
+    "Slot",
+    "PlayerInventory",
     "Image",
     "Spacer",
     "Grid",
