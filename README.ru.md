@@ -38,7 +38,7 @@
 React), построенное на [Substrate Platform](https://github.com/F000NKKK/Substrate-Platform) —
 универсальном ядре IDE с док-оболочкой, редакторами и виджетами.
 
-<!-- screenshot: docs/images/overview.png — вся IDE с открытым Yog-Modlist: обозреватель проекта, mod_list.yui в дизайнере, свойства, вывод -->
+<p align="center"><img src="docs/images/overview.png" alt="Yog-IDLE с открытым Yog-Modlist: mod_list.yui в дизайнере экранов, обозреватель проекта, свойства и вывод" width="900"></p>
 
 ### 🎯 Почему Yog-IDLE?
 
@@ -73,7 +73,7 @@ React), построенное на [Substrate Platform](https://github.com/F000
   печатать, как в игре. События не выполняются, а записываются в лог
 - Двойной щелчок по контролу открывает его обработчик в коде экрана
 
-<!-- screenshot: docs/images/screen-designer.png — mod_list.yui из Yog-Modlist, режим «Дизайн + XAML», выделен внешний Grid, видны линейки строк и столбцов -->
+<p align="center"><img src="docs/images/screen-designer.png" alt="Дизайнер экранов: mod_list.yui в режиме «Дизайн + XAML», выделен внешний Grid, слева панель элементов, справа свойства" width="900"></p>
 
 ### 🧊 Редактор блоков и предметов (`.yblock` / `.yitem`)
 - 3D-вид с вращением, сдвигом, масштабом, видами с цифровой клавиатуры и
@@ -90,8 +90,9 @@ React), построенное на [Substrate Platform](https://github.com/F000
   3D Elements** превращает спрайт в объёмную модель
 - **Project › Import...** импортирует модели из ресурспаков и Blockbench
 
-<!-- screenshot: docs/images/content-editor.png — .yblock (например, slate из HexMod-Yog) в 3D-виде, выделен элемент, видны маркеры Move -->
-<!-- screenshot: docs/images/paint-mode.png — режим рисования на блоке: 3D-вид и 2D-вид текстуры рядом, видны панель инструментов и палитра -->
+<p align="center"><img src="docs/images/content-editor.png" alt="Редактор контента: akashic_bookshelf.yblock из HexMod-Yog в 3D-виде, выделен элемент, видны маркеры Move" width="900"></p>
+
+<p align="center"><img src="docs/images/paint-mode.png" alt="Режим рисования на spellbook.yitem из HexMod-Yog: 2D-холст текстуры и 3D-предмет рядом, инструменты, палитра и слои" width="900"></p>
 
 ### 🌍 Редактор ресурсов (`.yres`)
 - Таблица в стиле ResX (Name | Value | Type | Comment) с редактором под каждый
@@ -102,7 +103,7 @@ React), построенное на [Substrate Platform](https://github.com/F000
   копирование и вставка из таблиц
 - При сохранении перегенерируется `<Set>.g.rs`; он виден вложенным под `.yres`
 
-<!-- screenshot: docs/images/yres-editor.png — Strings.yres из Yog-Modlist с включённым All Languages (английский и русский столбцы) -->
+<p align="center"><img src="docs/images/yres-editor.png" alt="Редактор .yres: Items.yres из HexMod-Yog с включённым All Languages (английский и русский столбцы)" width="900"></p>
 
 ### ▶️ Сборка, запуск и отладка
 - **Сборка** запускает `yog build`. Сохранённые **профили публикации**
@@ -117,7 +118,7 @@ React), построенное на [Substrate Platform](https://github.com/F000
   Code**, Locals, выражения **Watch** и значения во всплывающих подсказках
 - **Вывод** разделён по источникам (Build, Run, Debug, Game, Source Control...)
 
-<!-- screenshot: docs/images/debugger.png — остановка на точке останова в Rust-коде мода: видны стек вызовов, Locals и Watch -->
+<p align="center"><img src="docs/images/debugger.png" alt="Отладчик остановлен на точке останова в VM заклинаний HexMod-Yog: Watch, Autos, Locals, стек вызовов, потоки и регистры" width="900"></p>
 
 ### 🧰 Всё остальное, что нужно IDE
 - Редакторы на CodeMirror с закреплением вкладок и предпросмотром Markdown (GFM, KaTeX, Mermaid)

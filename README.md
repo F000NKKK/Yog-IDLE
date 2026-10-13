@@ -38,7 +38,7 @@ It is a [Tauri](https://tauri.app/) app (Rust backend, React frontend) built
 on [Substrate Platform](https://github.com/F000NKKK/Substrate-Platform), a
 generic IDE core with a docking shell, editors and widgets.
 
-<!-- screenshot: docs/images/overview.png — the whole IDE with Yog-Modlist open: Project Explorer, mod_list.yui in the designer, Properties, Output -->
+<p align="center"><img src="docs/images/overview.png" alt="Yog-IDLE with Yog-Modlist open: mod_list.yui in the screen designer, Project Explorer, Properties and Output" width="900"></p>
 
 ### 🎯 Why Yog-IDLE?
 
@@ -70,7 +70,7 @@ generic IDE core with a docking shell, editors and widgets.
   boxes as in game. Events are logged instead of run
 - Double-click a control to jump to its handler in the code-behind
 
-<!-- screenshot: docs/images/screen-designer.png — Yog-Modlist's mod_list.yui, Design + XAML split, the outer Grid selected so the row/column rails show -->
+<p align="center"><img src="docs/images/screen-designer.png" alt="Screen designer: mod_list.yui in Design + XAML split with the outer Grid selected, Toolbox and Properties docked" width="900"></p>
 
 ### 🧊 Block and item editor (`.yblock` / `.yitem`)
 - 3D viewport with orbit, pan, zoom, numpad views and Minecraft face shading
@@ -85,8 +85,9 @@ generic IDE core with a docking shell, editors and widgets.
 - Sprite items open in Paint with layers; **Convert to 3D Elements** extrudes a sprite into a model
 - **Project › Import...** imports resource-pack and Blockbench models
 
-<!-- screenshot: docs/images/content-editor.png — a .yblock (e.g. HexMod-Yog's slate) in the 3D view with an element selected and the Move handles visible -->
-<!-- screenshot: docs/images/paint-mode.png — Paint mode on a block: 3D view and 2D texture view side by side, the paint tool strip and palette visible -->
+<p align="center"><img src="docs/images/content-editor.png" alt="Content editor: HexMod-Yog's akashic_bookshelf.yblock in the 3D view with an element selected and the Move handles" width="900"></p>
+
+<p align="center"><img src="docs/images/paint-mode.png" alt="Paint mode on HexMod-Yog's spellbook.yitem: 2D texture canvas and the 3D item side by side, tool strip, palette and layers" width="900"></p>
 
 ### 🌍 Resource editor (`.yres`)
 - A ResX-style grid (Name | Value | Type | Comment) with type-aware editors:
@@ -96,7 +97,7 @@ generic IDE core with a docking shell, editors and widgets.
 - Validation (bad names, duplicate keys, wrong types), search, spreadsheet copy/paste
 - Saving regenerates `<Set>.g.rs`, which is shown nested under the `.yres`
 
-<!-- screenshot: docs/images/yres-editor.png — Yog-Modlist's Strings.yres with All Languages on (English + Russian columns) -->
+<p align="center"><img src="docs/images/yres-editor.png" alt="The .yres editor: HexMod-Yog's Items.yres with All Languages on (English and Russian columns)" width="900"></p>
 
 ### ▶️ Build, run and debug
 - **Build** runs `yog build`. Saved **publish profiles** package a `.yog` or run `yog publish exports`
@@ -109,7 +110,7 @@ generic IDE core with a docking shell, editors and widgets.
   tooltips on hover
 - **Output** keeps a separate source per producer (Build, Run, Debug, Game, Source Control...)
 
-<!-- screenshot: docs/images/debugger.png — stopped at a breakpoint in a mod's Rust code: call stack, Locals and Watch panels visible -->
+<p align="center"><img src="docs/images/debugger.png" alt="Debugger stopped at a breakpoint in HexMod-Yog's casting VM: Watch, Autos, Locals, Call Stack, Threads and Registers" width="900"></p>
 
 ### 🧰 Everything else an IDE needs
 - CodeMirror editors with tab pinning and Markdown preview (GFM, KaTeX, Mermaid)
