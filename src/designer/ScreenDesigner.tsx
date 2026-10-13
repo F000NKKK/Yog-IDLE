@@ -970,6 +970,18 @@ function McWidget({ widget, node, zoom }: { widget: LWidget; node: LNode; zoom: 
       else if (s.align === "end") tx += Math.max(0, availW - lineW);
       parts.push(<McText key={`t${i}`} text={line} x={tx} y={startY + i * lineH} scale={s.fontScale} color={s.color} shadow={s.shadow} zoom={zoom} />);
     });
+  } else if (widget.kind === "text_box") {
+    // Vanilla EditBox: 1 px grey border, the text (or the greyed placeholder) on one clipped line.
+    parts.push(<div key="border" className="yui-box" style={{ ...box(r, zoom), boxShadow: `inset 0 0 0 ${zoom}px #A0A0A0`, overflow: "hidden" }} />);
+    const shown = widget.text || widget.placeholder;
+    const color = widget.text ? s.color : 0xff707070;
+    const ty = r.y + s.pad[0] + Math.max(0, (r.h - s.pad[0] - s.pad[2] - LINE_H * s.fontScale) / 2);
+    const inner = { x: r.x + s.pad[3], y: r.y, w: Math.max(0, r.w - s.pad[1] - s.pad[3]), h: r.h };
+    parts.push(
+      <div key="text" className="yui-box" style={{ ...box(inner, zoom), overflow: "hidden" }}>
+        <McText text={shown} x={0} y={ty - r.y} scale={s.fontScale} color={color} shadow={s.shadow} zoom={zoom} />
+      </div>
+    );
   } else if (widget.kind === "item_slot" || widget.kind === "inv_slot") {
     const slot = { x: r.x + s.pad[3], y: r.y + s.pad[0], w: 18, h: 18 };
     const name = widget.item.split(":").pop() ?? "";

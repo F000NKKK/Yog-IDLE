@@ -31,7 +31,7 @@ import { addWatchItem, dataTipProvider } from "./debugger/DataTip";
 import { useWatches } from "./debugger/WatchesContext";
 import { samePath } from "./paths";
 import { onOpenFileRequest, type FileOpenRequest } from "./fileOpenBus";
-import { baseName, isWithin } from "./paths";
+import { baseName, isGeneratedCode, isWithin } from "./paths";
 import { reportError } from "./reportError";
 import { selectPath } from "./ideSelection";
 import { addCloseGuard } from "./windowClose";
@@ -187,7 +187,7 @@ async function askToSave(names: string[]): Promise<string> {
   return result.button;
 }
 
-/** A saved `.yui` screen: regenerate its `*.designer.rs` (`yog ui gen`), so the code-behind sees it without a build. */
+/** A saved `.yui` screen: regenerate its `.yog-build/generated/**` code (`yog ui gen`), so the code-behind sees it without a build. */
 function regenerateScreen(path: string) {
   invoke<string>("yui_codegen", { path }).catch((err) =>
     notify({ level: "warn", message: t("Couldn't generate the code for {name}: {error}", { name: baseName(path), error: String(err) }) })
@@ -558,23 +558,39 @@ export function OpenFilesProvider({ children }: { children: ReactNode }) {
           }
           return <provider.component {...props} />;
         };
+        // Generated code (a screen's `.g.rs`) is shown read-only under a
+        // notice, like Visual Studio's auto-generated files.
+        const generated = isGeneratedCode(tab.path);
+        const editor = (
+          <MultiViewEditor
+            providers={providers}
+            view={active.id}
+            onViewChange={(id) => chooseView(tab.id, id)}
+            // The views are buttons in the tab strip (`viewActions`), as in VS Code.
+            showSwitcher={false}
+            renderView={renderView}
+            path={tab.path}
+            content={tab.content}
+            contentVersion={tab.contentVersion}
+            onChange={onChange}
+            readOnly={generated || undefined}
+          />
+        );
         return (
           // Focus anywhere in the editor makes its file the global selection
           // (what Properties shows); `display: contents` keeps the wrapper
           // out of the layout.
           <div style={{ display: "contents" }} onFocus={() => selectPath(tab.path, "file", "editor")}>
-            <MultiViewEditor
-              providers={providers}
-              view={active.id}
-              onViewChange={(id) => chooseView(tab.id, id)}
-              // The views are buttons in the tab strip (`viewActions`), as in VS Code.
-              showSwitcher={false}
-              renderView={renderView}
-              path={tab.path}
-              content={tab.content}
-              contentVersion={tab.contentVersion}
-              onChange={onChange}
-            />
+            {generated ? (
+              <div className="generated-file">
+                <div className="generated-file-notice" role="note">
+                  {t("This file is generated from its .yui screen and can't be edited here — changes would be lost on the next build. Edit the .yui file instead.")}
+                </div>
+                <div className="generated-file-editor">{editor}</div>
+              </div>
+            ) : (
+              editor
+            )}
           </div>
         );
       };

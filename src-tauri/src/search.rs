@@ -55,6 +55,10 @@ pub struct SearchQuery {
     /// File types mask, VS-style: `*.rs;*.toml`, `!*.lock` excludes; empty means all files.
     #[serde(default)]
     pub file_mask: String,
+    /// Also search generated code (`.yog-build/generated/**`, a screen's
+    /// `.g.rs`) — skipped with the rest of `.yog-build` otherwise.
+    #[serde(default)]
+    pub include_generated: bool,
 }
 
 /// The compiled pattern, with VS's "Match whole word" applied as a check on
@@ -236,6 +240,31 @@ pub fn project_files(root: &Path, mask: &FileMask) -> Vec<PathBuf> {
         .collect()
 }
 
+/// Where `yog` generates screen code (`.yui` → `.g.rs`), under a project root.
+pub const GENERATED_DIR: &str = ".yog-build/generated";
+
+/// The generated code files under `root` (`.yog-build/generated/**/*.rs`)
+/// that pass `mask`, in path order — not project files (all of `.yog-build`
+/// is skipped and git-ignored), but worth searching like VS's `*.g.cs`.
+pub fn generated_files(root: &Path, mask: &FileMask) -> Vec<PathBuf> {
+    let dir = root.join(GENERATED_DIR);
+    if !dir.is_dir() {
+        return Vec::new();
+    }
+    let mut builder = ignore::WalkBuilder::new(&dir);
+    builder
+        .standard_filters(false)
+        .sort_by_file_name(|a, b| a.cmp(b));
+    builder
+        .build()
+        .filter_map(Result::ok)
+        .filter(|entry| entry.file_type().is_some_and(|t| t.is_file()))
+        .map(ignore::DirEntry::into_path)
+        .filter(|path| path.extension().is_some_and(|e| e == "rs"))
+        .filter(|path| mask.matches(&relative(root, path)))
+        .collect()
+}
+
 /// `path` relative to `root`, with `/` separators — or the whole path when it isn't under it.
 pub fn relative(root: &Path, path: &Path) -> String {
     path.strip_prefix(root)
@@ -404,6 +433,7 @@ fn plan<'a>(
     scope: Scope,
     documents: &'a [OpenDocument],
     mask: &FileMask,
+    include_generated: bool,
 ) -> Plan<'a> {
     let root = root.map(PathBuf::from);
     match scope {
@@ -436,7 +466,11 @@ fn plan<'a>(
                         .chain(canonical.map(|c| (c, doc.text.as_str())))
                 })
                 .collect();
-            let items = project_files(&dir, mask)
+            let mut files = project_files(&dir, mask);
+            if include_generated {
+                files.extend(generated_files(&dir, mask));
+            }
+            let items = files
                 .into_iter()
                 .map(|path| {
                     let source = buffers
@@ -474,7 +508,7 @@ pub fn run_search(
 ) -> Result<FindSummary, String> {
     let matcher = Matcher::new(query)?;
     let mask = FileMask::parse(&query.file_mask)?;
-    let plan = plan(root, scope, documents, &mask);
+    let plan = plan(root, scope, documents, &mask, query.include_generated);
     let mut summary = FindSummary::default();
     for (path, source) in &plan.items {
         if !keep_going() {
@@ -654,6 +688,8 @@ pub fn run_replace(
         request.scope,
         &request.documents,
         &mask,
+        // Generated code is rewritten by the next build — never replaced in.
+        false,
     );
     let literal = !request.query.regex;
     let mut summary = ReplaceSummary::default();
@@ -729,6 +765,7 @@ mod tests {
             whole_word: false,
             regex: false,
             file_mask: String::new(),
+            include_generated: false,
         }
     }
 
@@ -879,6 +916,34 @@ mod tests {
         }
         std::fs::write(dir.join("blob.bin"), b"needle\0\0\0").unwrap();
         dir
+    }
+
+    #[test]
+    fn generated_code_is_searched_only_when_asked() {
+        let dir = temp_project("generated");
+        let generated = dir.join(".yog-build/generated/screens/menu.g.rs");
+        std::fs::create_dir_all(generated.parent().unwrap()).unwrap();
+        std::fs::write(&generated, "pub const NEEDLE: &str = \"needle\";\n").unwrap();
+        std::fs::write(dir.join(".yog-build/Cargo.toml"), "needle\n").unwrap();
+        let root = dir.to_string_lossy().into_owned();
+        let search = |include_generated: bool| {
+            let mut files = Vec::new();
+            let q = SearchQuery {
+                include_generated,
+                ..query("needle")
+            };
+            run_search(Some(&root), Scope::Project, &q, &[], 100, &|| true, &mut |f| {
+                files.push(f.rel_path)
+            })
+            .unwrap();
+            files
+        };
+        assert_eq!(search(false), ["notes.md", "src/lib.rs"]);
+        assert_eq!(
+            search(true),
+            ["notes.md", "src/lib.rs", ".yog-build/generated/screens/menu.g.rs"]
+        );
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]

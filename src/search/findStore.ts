@@ -14,6 +14,8 @@ export interface FindQuery {
   wholeWord: boolean;
   regex: boolean;
   fileMask: string;
+  /** Also search generated code (`.yog-build/generated/`, screens' `.g.rs`). */
+  includeGenerated?: boolean;
 }
 
 /** An open editor's buffer, searched instead of its file on disk. */

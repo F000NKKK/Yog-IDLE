@@ -133,7 +133,7 @@ function textHeight(text: string, maxW: number, scale: number): number {
 export type Units = { t: "auto" } | { t: "px"; v: number } | { t: "pct"; v: number };
 export type Dock = "none" | "fill" | "left" | "right" | "top" | "bottom";
 export type Align = "start" | "center" | "end";
-export type Leaf = "panel" | "label" | "button" | "item_slot" | "inv_slot" | "image" | "spacer";
+export type Leaf = "panel" | "label" | "button" | "text_box" | "item_slot" | "inv_slot" | "image" | "spacer";
 
 export interface Style {
   w: Units;
@@ -165,6 +165,8 @@ export interface LWidget {
   kind: Leaf;
   dir: "row" | "column";
   text: string;
+  /** A text box's greyed hint. */
+  placeholder: string;
   item: string;
   count: number;
   texture: string;
@@ -246,6 +248,7 @@ const LEAF_OF: Record<string, Leaf> = {
   ScrollView: "panel",
   Label: "label",
   Button: "button",
+  TextBox: "text_box",
   ItemSlot: "item_slot",
   InvSlot: "inv_slot",
   Image: "image",
@@ -263,6 +266,11 @@ export function toWidget(node: YuiNode, inCanvas: boolean): LWidget {
   if (kind === "inv_slot") {
     style.w = { t: "px", v: 18 };
     style.h = { t: "px", v: 18 };
+  } else if (kind === "text_box") {
+    // `widget::text_box`: black box, light text, 4 px side padding.
+    style.bg = 0xff000000;
+    style.color = 0xffe0e0e0;
+    style.pad = [0, 4, 0, 4];
   } else if (kind === "image") {
     style.w = texW > 0 ? { t: "px", v: texW } : { t: "auto" };
     style.h = texH > 0 ? { t: "px", v: texH } : { t: "auto" };
@@ -298,6 +306,7 @@ export function toWidget(node: YuiNode, inCanvas: boolean): LWidget {
     kind,
     dir: node.kind === "Row" ? "row" : "column",
     text: a.text ?? "",
+    placeholder: a.placeholder ?? "",
     item: a.item ?? "",
     count: Math.max(0, Math.floor(parseNumber(a.count) ?? 1)),
     texture: a.texture ?? "",
@@ -410,6 +419,12 @@ function layoutWidget(w: LWidget, node: LNode, x: number, y: number, maxW: numbe
         }
         break;
       }
+      case "text_box":
+        // The available width (100 when unbounded), one line plus border and padding.
+        if (!bounded(ww)) ww = 100;
+        ww = Math.min(Math.max(ww, s.minW), maxW);
+        hh = Math.min(Math.max(LINE_H * s.fontScale + 7 + s.pad[0] + s.pad[2], s.minH), maxH);
+        break;
       case "item_slot":
       case "inv_slot":
         ww = Math.min(Math.max(18 + s.pad[1] + s.pad[3], s.minW), maxW);

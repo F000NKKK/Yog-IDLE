@@ -26,7 +26,7 @@ import { openWithItems, useOpenFiles } from "../OpenFilesContext";
 import { openFile } from "../fileOpenBus";
 import { reportError } from "../reportError";
 import { IDE_OUTPUT_EVENT } from "../outputSource";
-import { baseName, isWithin, renamedPath, validateEntryName as validateName } from "../paths";
+import { baseName, generatedCodePath, isWithin, renamedPath, validateEntryName as validateName } from "../paths";
 import { openProjectProperties } from "../projectProperties/bus";
 import { registerExplorerRename, renamePath, selectionPathRemoved, selectionPathRenamed, selectMultiple, selectPath } from "../ideSelection";
 import { NewItemDialog, templateFiles, type ItemTemplate } from "./NewItemDialog";
@@ -104,8 +104,9 @@ async function readModId(project: ProjectInfo): Promise<string> {
 
 /**
  * Visual Studio's file nesting (`Form1.cs` ▸ `Form1.Designer.cs`, `Form1.resx`):
- * a screen's code-behind `foo.rs` and generated `foo.designer.rs` go under
- * `foo.yui`, a lock file under its manifest.
+ * a screen's code-behind `foo.rs` goes under `foo.yui`, a lock file under its
+ * manifest. (`foo.designer.rs` is what older `yog` generated next to the
+ * screen — still nested, should one be left over.)
  */
 function nestParent(name: string, siblings: Set<string>): string | null {
   const lower = name.toLowerCase();
@@ -116,6 +117,21 @@ function nestParent(name: string, siblings: Set<string>): string | null {
   if (lower === "yog.lock") return "yog.toml";
   if (lower === "cargo.lock") return "cargo.toml";
   return null;
+}
+
+/**
+ * Adds each screen's generated code (`.yog-build/generated/<path>.g.rs`, not
+ * in the tree's folders) under its `.yui`, greyed — like Visual Studio showing
+ * `MainWindow.g.cs` for a XAML window. Opens read-only.
+ */
+function withGeneratedCode(nodes: FileTreeNode[], root: string): FileTreeNode[] {
+  return nodes.map((node) => {
+    if (node.kind === "folder") return node.children ? { ...node, children: withGeneratedCode(node.children, root) } : node;
+    const generated = generatedCodePath(root, node.id);
+    if (!generated) return node;
+    const child: FileTreeNode = { id: generated, name: baseName(generated), kind: "file", generated: true };
+    return { ...node, nested: [...(node.nested ?? []), child] };
+  });
 }
 
 /** For `foo.yui` its code-behind `foo.rs`, and the other way round — F7 / Shift+F7 in Visual Studio. */
@@ -141,7 +157,10 @@ function ProjectExplorerTree({ project }: { project: ProjectInfo }) {
   const backgroundMenu = useContextMenu<FileTreeNode>();
   const treeRef = useRef(tree);
   treeRef.current = tree;
-  const shownNodes = useMemo(() => nestFiles(tree.nodes, nestParent), [tree.nodes]);
+  const shownNodes = useMemo(() => {
+    const nested = nestFiles(tree.nodes, nestParent);
+    return project.kind === "yog-mod" ? withGeneratedCode(nested, project.root) : nested;
+  }, [tree.nodes, project.kind, project.root]);
 
   // Properties' "File Name" renames through here while the path is in the
   // tree, so the tree re-lists its folder.
@@ -190,7 +209,9 @@ function ProjectExplorerTree({ project }: { project: ProjectInfo }) {
 
   async function addFromTemplate(folder: string, template: ItemTemplate, name: string) {
     const modId = await readModId(project);
-    const files = templateFiles(template, name, { modId });
+    const src = joinPath(project.root, "src");
+    const srcDir = isWithin(folder, src) ? folder.slice(src.length + 1).replace(/\\/g, "/") : "";
+    const files = templateFiles(template, name, { modId, srcDir });
     await attempt(t("Failed to create {name}", { name }), async () => {
       for (const [file, contents] of files) {
         const path = joinPath(folder, file);
@@ -342,6 +363,13 @@ function ProjectExplorerTree({ project }: { project: ProjectInfo }) {
     const isRoot = node.id === project.root;
     const folder = folderOf(node);
     const items: FileTreeMenuItem[] = [];
+    // Generated code isn't a project file: it can only be looked at.
+    if (node.generated) {
+      return [
+        { label: t("Open"), onSelect: (n) => openFile({ path: n.id, name: n.name }) },
+        { label: t("Copy Full Path"), separatorBefore: true, onSelect: () => void copyText(node.id) },
+      ];
+    }
     if (node.kind === "file") {
       items.push({ label: t("Open"), onSelect: (n) => openFile({ path: n.id, name: n.name }) });
       const current = tabs.find((tab) => tab.path === node.id)?.view;
@@ -463,7 +491,7 @@ function ProjectExplorerTree({ project }: { project: ProjectInfo }) {
         }}
         onActivate={(node) => openFile({ path: node.id, name: node.name })}
         getMenuItems={getMenuItems}
-        canDrag={(node) => node.id !== project.root}
+        canDrag={(node) => node.id !== project.root && !node.generated}
         onDropNodes={(ids, folder, copyDrop) => void transfer(ids, folder.id, copyDrop)}
       />
       <ContextMenu

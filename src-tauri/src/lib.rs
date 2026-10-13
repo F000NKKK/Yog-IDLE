@@ -16,6 +16,7 @@ mod project_properties;
 mod properties;
 mod search;
 mod symbols;
+mod designer;
 mod yui;
 
 #[cfg(target_os = "linux")]
@@ -545,6 +546,45 @@ async fn format_supported(path: String) -> bool {
 async fn yui_codegen(state: State<'_, AppState>, path: String) -> Result<String, String> {
     validate_within_roots(&state, Path::new(&path))?;
     tauri::async_runtime::spawn_blocking(move || yui::codegen(&path))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+/// Draws a `.yui` screen the way the game does (see `designer/`): yog-ui's
+/// layout and render with Minecraft's font and textures; plus every
+/// element's rect for the designer's overlay.
+#[tauri::command]
+async fn yui_designer_render(args: designer::RenderArgs) -> Result<designer::Rendered, String> {
+    tauri::async_runtime::spawn_blocking(move || designer::render(&args))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+/// One UI event in the designer's preview (see `designer::event`).
+#[tauri::command]
+async fn yui_designer_event(args: designer::EventArgs) -> Result<designer::EventResult, String> {
+    tauri::async_runtime::spawn_blocking(move || designer::event(&args))
+        .await
+        .map_err(|e| e.to_string())
+}
+
+/// Leaves the preview: scroll positions back to the top.
+#[tauri::command]
+fn yui_designer_reset(path: String) {
+    designer::reset(&path);
+}
+
+/// Double-click on a button: its `on_click` handler in the screen's
+/// code-behind `.rs`, added if missing; where to put the caret.
+#[tauri::command]
+async fn yui_event_handler(
+    state: State<'_, AppState>,
+    path: String,
+    event: String,
+) -> Result<designer::codebehind::HandlerLocation, String> {
+    let yui = PathBuf::from(&path);
+    validate_within_roots(&state, &designer::codebehind::code_behind_path(&yui))?;
+    tauri::async_runtime::spawn_blocking(move || designer::codebehind::ensure_handler(&yui, &event))
         .await
         .map_err(|e| e.to_string())?
 }
@@ -1341,6 +1381,10 @@ pub fn run() {
 
     let builder = builder.invoke_handler(tauri::generate_handler![
         yui_codegen,
+        yui_designer_render,
+        yui_designer_event,
+        yui_designer_reset,
+        yui_event_handler,
         pty_spawn,
         pty_write,
         pty_resize,

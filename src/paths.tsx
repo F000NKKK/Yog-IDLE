@@ -40,3 +40,25 @@ export function validateEntryName(value: string): string | null {
 export function renamedPath(path: string, name: string): string {
   return path.replace(/[^/\\]+$/, name);
 }
+
+/** Where `yog` generates screen code, under a mod project's root. */
+export const GENERATED_DIR = ".yog-build/generated";
+
+/**
+ * The generated code of screen `yuiPath` in the project at `root`:
+ * `src/foo/bar.yui` → `<root>/.yog-build/generated/foo/bar.g.rs` (what
+ * `yog ui gen` writes and `yog_api::ui_include!("foo/bar")` pulls in).
+ * `null` for a `.yui` outside `src/`.
+ */
+export function generatedCodePath(root: string, yuiPath: string): string | null {
+  const sep = root.includes("\\") && !root.includes("/") ? "\\" : "/";
+  const src = `${root.replace(/[/\\]+$/, "")}${sep}src`;
+  if (!isWithin(yuiPath, src) || extensionOf(yuiPath) !== "yui") return null;
+  const rel = yuiPath.slice(src.length + 1).replace(/\.yui$/i, "");
+  return [root.replace(/[/\\]+$/, ""), ...GENERATED_DIR.split("/"), `${rel}.g.rs`].join(sep).replace(/[/\\]/g, sep);
+}
+
+/** Whether `path` is generated code (`.yog-build/generated/**`), opened read-only with a notice. */
+export function isGeneratedCode(path: string): boolean {
+  return /[/\\]\.yog-build[/\\]generated[/\\].+\.g\.rs$/i.test(path);
+}

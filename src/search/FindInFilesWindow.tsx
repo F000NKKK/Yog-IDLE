@@ -29,6 +29,8 @@ export const FIND_RESULTS_PANEL = "findResults";
 interface Remembered extends SearchOptions {
   lookIn: LookIn;
   fileMask: string;
+  /** Entire project also searches generated code (screens' `.g.rs` under `.yog-build/generated/`). */
+  includeGenerated?: boolean;
 }
 
 const DEFAULTS: Remembered = { matchCase: false, wholeWord: false, regex: false, lookIn: "project", fileMask: "" };
@@ -117,7 +119,7 @@ export function FindInFilesWindow() {
   const canRun = pattern !== "" && available[lookIn] && !busy;
 
   function query(): FindQuery {
-    return { pattern, ...options, fileMask: remembered.fileMask };
+    return { pattern, ...options, fileMask: remembered.fileMask, includeGenerated: mode === "find" && !!remembered.includeGenerated };
   }
 
   function documents(): OpenDocument[] {
@@ -285,6 +287,16 @@ export function FindInFilesWindow() {
         </div>
       </div>
       {lookIn === "project" && <div className="idle-fif-hint">{t("Includes subfolders; skips .gitignore'd files, target/, node_modules/ and binaries.")}</div>}
+      {lookIn === "project" && mode === "find" && (
+        <label className="idle-fif-hint">
+          <input
+            type="checkbox"
+            checked={!!remembered.includeGenerated}
+            onChange={(e) => setRemembered((r) => ({ ...r, includeGenerated: e.target.checked }))}
+          />{" "}
+          {t("Include generated files (.yog-build/generated)")}
+        </label>
+      )}
 
       <div className="idle-fif-buttons">
         {mode === "find" ? (

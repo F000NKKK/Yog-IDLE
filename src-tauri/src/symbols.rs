@@ -506,7 +506,11 @@ struct RootIndex {
 impl RootIndex {
     fn refresh(&mut self, root: &Path) {
         let all = FileMask::parse("").expect("empty mask");
-        self.files = search::project_files(root, &all)
+        // Generated screen code (`.g.rs`) too, so its `ids`/`events`/`render`
+        // show up in Code Search as in VS (`MainWindow.g.cs`).
+        let mut files = search::project_files(root, &all);
+        files.extend(search::generated_files(root, &all));
+        self.files = files
             .into_iter()
             .map(|path| {
                 let rel = search::relative(root, &path);
@@ -704,6 +708,7 @@ fn text_items(
         whole_word: false,
         regex: false,
         file_mask: String::new(),
+        include_generated: false,
     };
     let mut items = Vec::new();
     search::run_search(

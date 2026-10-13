@@ -20,9 +20,15 @@ interface AttrSpec {
   only?: readonly string[];
   /** Kinds that don't have it. */
   not?: readonly string[];
+  /** Values offered in an editable combo box (any other text is accepted too). */
+  suggestions?: readonly string[];
 }
 
-const TEXT_KINDS = ["Label", "Button"];
+const TEXT_KINDS = ["Label", "Button", "TextBox"];
+/** Text that wraps (a text box scrolls its one line instead). */
+const WRAP_KINDS = ["Label", "Button"];
+/** Vanilla's fonts; a resource pack can add more (`namespace:name`). */
+const FONTS = ["minecraft:default", "minecraft:uniform", "minecraft:alt", "minecraft:illageralt"] as const;
 const ANCHORS = ["center", "top_left", "top", "top_right", "left", "right", "bottom_left", "bottom", "bottom_right", "fill"] as const;
 
 const SPECS: AttrSpec[] = [
@@ -43,17 +49,22 @@ const SPECS: AttrSpec[] = [
   { attr: "gap", name: "Gap", category: "Layout", kind: "number", fallback: "2", only: [...CONTAINER_KINDS], description: "Space between flowing children." },
   { attr: "padding", name: "Padding", category: "Layout", kind: "padding", fallback: "0", description: "Inner spacing: one value for all sides, `vertical horizontal`, or `top right bottom left`." },
   { attr: "align", name: "Alignment", category: "Layout", kind: "enum", options: ["start", "center", "end"], fallback: "start", description: "Cross-axis alignment of a container's children; horizontal alignment of a Label's text." },
-  { attr: "text", name: "Text", category: "Appearance", kind: "text", only: TEXT_KINDS, description: "The text shown." },
+  { attr: "text", name: "Text", category: "Appearance", kind: "text", only: TEXT_KINDS, description: "The text shown (a text box's initial text)." },
+  { attr: "placeholder", name: "Placeholder", category: "Appearance", kind: "text", only: ["TextBox"], description: "Greyed hint shown while the text box is empty." },
   { attr: "bg", name: "Background", category: "Appearance", kind: "color", description: "Background color — `#RRGGBB` or `#AARRGGBB`. Empty draws none." },
   { attr: "color", name: "Text Color", category: "Appearance", kind: "color", fallback: "#FFCCCCAA", only: TEXT_KINDS, description: "Text color — `#RRGGBB` or `#AARRGGBB`." },
+  { attr: "font", name: "Font", category: "Appearance", kind: "text", fallback: "minecraft:default", only: TEXT_KINDS, suggestions: FONTS, description: "The font, as a font id: minecraft:default, minecraft:uniform (Unifont), minecraft:alt (enchanting table), minecraft:illageralt, or one from a resource pack." },
   { attr: "font_scale", name: "Font Scale", category: "Appearance", kind: "number", fallback: "1", only: TEXT_KINDS, description: "Text size multiplier." },
   { attr: "shadow", name: "Text Shadow", category: "Appearance", kind: "bool", fallback: "true", only: TEXT_KINDS, description: "Draws the text with Minecraft's drop shadow." },
-  { attr: "no_wrap", name: "No Wrap", category: "Appearance", kind: "bool", fallback: "false", only: TEXT_KINDS, description: "Keeps the text on one line instead of wrapping it to the width." },
-  { attr: "ellipsis", name: "Ellipsis", category: "Appearance", kind: "bool", fallback: "false", only: TEXT_KINDS, description: "One line, cut with `...` when it's wider than the widget." },
+  { attr: "no_wrap", name: "No Wrap", category: "Appearance", kind: "bool", fallback: "false", only: WRAP_KINDS, description: "Keeps the text on one line instead of wrapping it to the width." },
+  { attr: "ellipsis", name: "Ellipsis", category: "Appearance", kind: "bool", fallback: "false", only: WRAP_KINDS, description: "One line, cut with `...` when it's wider than the widget." },
   { attr: "focus_style", name: "Focus Style", category: "Appearance", kind: "enum", options: ["outline", "fill", "none"], fallback: "outline", description: "How keyboard focus is shown." },
   { attr: "focus_color", name: "Focus Color", category: "Appearance", kind: "color", description: "Color of the focus indicator (default amber)." },
   { attr: "enabled", name: "Enabled", category: "Behavior", kind: "bool", fallback: "true", description: "Whether the widget takes clicks and focus." },
   { attr: "on_click", name: "On Click", category: "Behavior", kind: "text", not: ["Screen"], description: "The event raised when it's clicked — a constant in the generated `events` module; `click()` returns it." },
+  { attr: "max_length", name: "Max Length", category: "Behavior", kind: "number", fallback: "0", only: ["TextBox"], description: "The most characters the text box takes (0 = no limit)." },
+  { attr: "on_change", name: "On Change", category: "Behavior", kind: "text", only: ["TextBox"], description: "The event raised when the text box's text changes — a constant in the generated `events` module; `TextBoxState::event_name` returns it." },
+  { attr: "on_submit", name: "On Submit", category: "Behavior", kind: "text", only: ["TextBox"], description: "The event raised when Enter is pressed in the text box — a constant in the generated `events` module." },
   { attr: "item", name: "Item", category: "Data", kind: "text", only: ["ItemSlot", "InvSlot"], description: "The item shown, as `namespace:id`." },
   { attr: "count", name: "Count", category: "Data", kind: "number", fallback: "1", only: ["InvSlot"], description: "The stack size drawn in the corner (shown when over 1)." },
   { attr: "texture", name: "Texture", category: "Data", kind: "text", only: ["Image"], description: "A texture from a resource pack, as `namespace:path/to/file.png`." },
@@ -118,6 +129,7 @@ export function widgetProperties(nodes: YuiNode[], apply: (attr: string, value: 
       row.options = spec.options;
     } else {
       row.kind = "string";
+      row.suggestions = spec.suggestions;
       row.validate = (value) => check(spec.kind, String(value));
       if (spec.kind === "color") {
         const color = parseColor(shown);
@@ -145,7 +157,7 @@ export function yuiSchema(): XmlSchema {
       completion: { info: t(KIND_INFO[kind].description) },
       attributes: SPECS.filter((spec) => applies(spec, kind)).map((spec) => ({
         name: spec.attr,
-        values: spec.kind === "bool" ? ["true", "false"] : spec.kind === "enum" ? spec.options : spec.kind === "units" ? ["auto"] : undefined,
+        values: spec.kind === "bool" ? ["true", "false"] : spec.kind === "enum" ? spec.options : spec.kind === "units" ? ["auto"] : spec.suggestions,
         completion: { info: t(spec.description), detail: spec.fallback !== undefined ? `= ${spec.fallback}` : undefined },
       })),
     })),

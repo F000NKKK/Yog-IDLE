@@ -14,6 +14,7 @@ const GLYPHS: Record<string, string> = {
   ScrollView: "⇕",
   Label: "A",
   Button: "▭",
+  TextBox: "⌶",
   Spacer: "↔",
   ItemSlot: "◆",
   InvSlot: "▦",

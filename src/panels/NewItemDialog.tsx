@@ -22,6 +22,8 @@ export interface ItemTemplate {
 export interface TemplateContext {
   /** The mod's id from `yog.toml` (`[mod] id`), or a stand-in. */
   modId: string;
+  /** The target folder relative to the project's `src/` (`""` = `src/` itself, `/`-separated). */
+  srcDir?: string;
 }
 
 const CATEGORIES: ItemTemplate["category"][] = ["Yog", "Rust", "Data", "General"];
@@ -33,17 +35,17 @@ export const ITEM_TEMPLATES: ItemTemplate[] = [
     id: "yui",
     category: "Yog",
     name: "Yog UI Screen",
-    description: "A screen for the designer (.yui) and its code-behind module (.rs); the .designer.rs between them is generated on save.",
+    description: "A screen for the designer (.yui) and its code-behind module (.rs); the code between them is generated into .yog-build on save.",
     extension: ".yui",
     baseName: "screen",
-    files: (stem, { modId }) => [
+    files: (stem, { modId, srcDir }) => [
       [
         `${stem}.yui`,
         `<?xml version="1.0" encoding="utf-8"?>\n<Screen id="${modId}:${uiId(stem)}" width="176" height="166" anchor="center" bg="#C0101010" padding="8">\n  <Label id="title" x="8" y="6" text="${stem}" color="#FFFFFF" no_wrap="true"/>\n</Screen>\n`,
       ],
       [
         `${stem}.rs`,
-        `include!("${stem}.designer.rs");\n\npub fn register(registry: &mut yog_api::Registry) {\n    registry.on_ui_render(ID, |gfx| render(gfx));\n    registry.register_ui(ID, |_ui_id, event| {\n        let _ = click(event);\n    });\n}\n`,
+        `// Code-behind of ${stem}.yui; its generated half (ID, ids, events, build, render, click, open, close, ...)\n// is pulled in from .yog-build/generated/ by ui_include!.\nyog_api::ui_include!("${srcDir ? `${srcDir}/` : ""}${stem}");\n\npub fn register(registry: &mut yog_api::Registry) {\n    registry.on_ui_render(ID, |gfx| render(gfx));\n    registry.register_ui(ID, |_ui_id, event| {\n        let _ = click(event);\n    });\n}\n`,
       ],
     ],
   },
