@@ -1363,6 +1363,25 @@ fn pty_kill(state: State<PtyState>, id: String) -> Result<(), String> {
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
+/// `yog-idle --designer-host`: the screen designer's host process for a
+/// mod's custom components (see `designer::host`) instead of the IDE.
+pub fn designer_host() {
+    designer::host::serve();
+}
+
+/// The mod's custom `.yui` components for the designer's toolbox, and the
+/// designer library's state; (re)builds it when the mod's sources changed
+/// (see `designer::custom`). Polled while a screen is open.
+#[tauri::command]
+async fn yui_designer_components(path: String) -> Result<designer::custom::Snapshot, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let root = designer::mod_root(Path::new(&path)).ok_or("not inside a mod (no src/ folder)")?;
+        Ok(designer::custom::status(&root))
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
 pub fn run() {
     let context = tauri::generate_context!();
     // Before any thread exists: the Environment options go into this
@@ -1399,6 +1418,7 @@ pub fn run() {
     let builder = builder.invoke_handler(tauri::generate_handler![
         yui_codegen,
         yui_designer_render,
+        yui_designer_components,
         yui_designer_event,
         yui_image_sources,
         yui_image_preview,
