@@ -15,7 +15,7 @@ Ground rules this design follows:
   state", rejected values staying in the field with their message, VS-style labels: all
   of it is kept. Only how it is spelled changes.
 
-Line numbers are as of commit `b03f8b0` (Yog-IDLE). Line counts are from `wc -l`;
+Line numbers are as of Yog-IDLE commit `afed408`. Line counts are from `wc -l`;
 "saved" estimates are net (new shared code subtracted) and deliberately rounded down.
 
 ---
@@ -838,7 +838,7 @@ setting of `OutputPanel`'s "ide" source). The locale entries collapse too: today
 
 - **D9** — Backend errors are English strings that the UI translates by exact match
   (`t(String(err))`). Keep that, or have Rust return `{ code, params }` and translate
-  from codes? Recommendation: keep exact-match for now (it works, 723 keys already), but
+  from codes? Recommendation: keep exact-match for now (it works, ~1,385 keys in `ru.ts` already), but
   route it through `errorMessage` only.
 
 ---
