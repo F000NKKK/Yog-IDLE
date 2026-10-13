@@ -63,6 +63,13 @@ type Laid = UiRoot;
 
 fn lay_out(root: &YuiNode, screen_w: f32, screen_h: f32, scroll: &HashMap<String, f32>) -> Laid {
     let mut ui = UiRoot::new("yog-idle:designer", markup::screen(root, screen_w, screen_h, scroll));
+    // Text widths and image sizes come from the "host" — the designer's own
+    // font and image resolution — as they do from the game in `UiRoot::render`.
+    let table = gfx::api(screen_w as i32, screen_h as i32, 1.0);
+    // SAFETY: every function in `table` is sound to call; only fn pointers are kept.
+    let ctx = unsafe { yog_gfx::GfxContext::from_raw(&table) };
+    yog_ui::text::use_host_metrics(&ctx);
+    yog_ui::image::use_host_images(&ctx);
     ui.layout(screen_w, screen_h);
     ui
 }
@@ -101,29 +108,6 @@ fn rects(root: &YuiNode, laid: &Laid) -> Vec<NodeRect> {
     out
 }
 
-/// yog-ui draws all text with the default font; elements with a `font`
-/// get it for the text drawn inside them.
-fn apply_fonts(root: &YuiNode, laid: &Laid, ops: &mut [DrawOp]) {
-    let mut fonts: Vec<(yog_ui::Rect, String)> = Vec::new();
-    with_content(root, laid, |n, _, l| {
-        if let Some(f) = n.attr("font").map(str::trim).filter(|f| !f.is_empty()) {
-            fonts.push((l.rect, f.to_string()));
-        }
-    });
-    if fonts.is_empty() {
-        return;
-    }
-    for op in ops {
-        if let DrawOp::Text { font, x, y, .. } = op {
-            // The innermost (last in document order) element holding the text's top-left.
-            // (A centered no_wrap line may start left of its box.)
-            if let Some((_, f)) = fonts.iter().rev().find(|(r, _)| r.contains(x.max(r.x) + 0.5, *y + 0.5)) {
-                *font = f.clone();
-            }
-        }
-    }
-}
-
 /// Per-file preview state: the scroll views' offsets/drags.
 #[derive(Default)]
 struct Preview {
@@ -160,8 +144,7 @@ pub fn render(args: &RenderArgs) -> Result<Rendered, String> {
     let scroll = offsets(&args.path, args.preview);
     images::set_document(mod_root(Path::new(&args.path)).as_deref());
     let laid = lay_out(&args.root, sw as f32, sh as f32, &scroll);
-    let mut ops = gfx::record(sw as i32, sh as i32, |ctx| laid.render(ctx));
-    apply_fonts(&args.root, &laid, &mut ops);
+    let ops = gfx::record(sw as i32, sh as i32, |ctx| laid.render(ctx));
     let res = Resources::for_mod(mod_root(Path::new(&args.path)).as_deref());
     let scale = args.scale.clamp(1, 8);
     let canvas = raster::rasterize(&ops, sw, sh, scale, &res);
