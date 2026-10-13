@@ -60,13 +60,13 @@ export const ITEM_TEMPLATES: ItemTemplate[] = [
     category: "Yog",
     name: "Component (.yui)",
     description:
-      "A reusable UI component: a .yui with a <Component> root declaring its properties and events, its body bound to them with {x:Bind name}. It appears in the designer's toolbox; yog build generates its Rust type. Add a code-behind <name>.rs (ui_include!) only if its bindings call code.",
+      "A reusable UI component: a .yui with a <Component> root declaring its properties and events, its body bound to them with {x:Bind name}. It appears in the designer's Toolbox (its name, description, icon and category set on the root); yog build generates its Rust type. Add a code-behind <name>.rs (ui_include!) only if its bindings call code.",
     extension: ".yui",
     baseName: "component",
     files: (stem) => [
       [
         `${stem}.yui`,
-        `<?xml version="1.0" encoding="utf-8"?>\n<Component name="${pascalName(stem) || "Component"}" doc="" width="80" height="20">\n  <Property name="text" type="text" default="${stem}" doc="The caption."/>\n  <Property name="color" type="color" default="#FF3A6EA5" doc="The background."/>\n  <Panel bg="{x:Bind color}" padding="4">\n    <Label text="{x:Bind text}" color="#FFFFFF" no_wrap="true"/>\n  </Panel>\n</Component>\n`,
+        `<?xml version="1.0" encoding="utf-8"?>\n<Component name="${pascalName(stem) || "Component"}" description="" icon="" design_w="80" design_h="20">\n  <Property name="text" type="text" default="${stem}" doc="The caption."/>\n  <Property name="color" type="color" default="#FF3A6EA5" doc="The background." category="Appearance"/>\n  <Row bg="{x:Bind color}" padding="4" align="center">\n    <Label text="{x:Bind text}" color="#FFFFFF" no_wrap="true"/>\n  </Row>\n</Component>\n`,
       ],
     ],
   },

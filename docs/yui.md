@@ -403,6 +403,126 @@ functions above, the generated file has `register(registry)` (returning a
 [mvvm.md](mvvm.md); Yog-Modlist's `src/mod_list.yui` + `src/mod_list.rs`
 is a complete example.
 
+## Components
+
+A mod's own reusable widgets — WPF's user controls — are `.yui` files too,
+with a `<Component>` root instead of `<Screen>`: their properties and events
+declared in markup, then **one** body element bound to them with
+`{x:Bind ...}` (the [view-model](mvvm.md) binding syntax). Add one with
+**Add > New Item > Component (.yui)**. Yog-Modlist's `src/pill.yui` and
+`src/stat_bar.yui` (+ `stat_bar.rs`) are complete examples.
+
+```xml
+<Component name="StatBar" description="@Strings.component.stat_bar" icon="item:experience_bottle"
+           design_w="120" design_h="16">
+    <Property name="label" type="text" default="Progress" doc="Caption above the bar"/>
+    <Property name="value" type="number" default="0.5" doc="Filled fraction, 0..1"/>
+    <Property name="fill" type="color" default="#FF55C055" category="Appearance"/>
+    <Event name="on_select" doc="Raised when the bar is clicked"/>
+    <Column min_w="60" gap="2" on_click="{x:Bind on_select}">
+        <Label text="{x:Bind caption()}" d:text="Loaded 50%" no_wrap="true"/>
+        <Row w="100%" h="5" bg="#FF303030">
+            <Spacer w="{x:Bind filled()}" h="100%" bg="{x:Bind fill}"/>
+        </Row>
+    </Column>
+</Component>
+```
+
+Used from any screen (or another component) like a built-in element:
+`<StatBar x="8" y="30" w="120" label="Loaded" value="0.75"/>`. Attributes
+every element has (`x`, `y`, `w`, `h`, `bg`, `padding`, `on_click`, ...)
+set on an instance apply to the body's root; the declared ones are the
+component's properties.
+
+**`<Component>`** — the type and its designer metadata (the WPF
+`[ToolboxItem]`, `[Description]`, `[Category]` attributes). Texts may be
+`@Set.key` resource references (translated, see [yres.md](yres.md)).
+
+| Attribute | |
+|---|---|
+| `name` | The element / Rust type name, PascalCase (default: the file's stem, `stat_bar` → `StatBar`). |
+| `display_name` | The Toolbox's label (default: `name`). |
+| `description` | The Toolbox tooltip and the Properties description of instances. |
+| `icon` | The Toolbox icon: a Yog image source (`item:…`, `block:…`, `sprite:…`, `mod:…`) or `@Icons.x`. Default: a generic glyph. |
+| `category` | The Toolbox category (default: *&lt;mod&gt; Components*). |
+| `toolbox` | `false` hides it from the Toolbox (parts used only inside other components). |
+| `design_w`, `design_h` | The designer canvas size for editing it (default 120×40), and an instance's `w`/`h` when dropped from the Toolbox (none when unset). |
+| `d:bg` | A background drawn only in the designer. |
+
+**`<Property name type default doc category options>`** — `name` is
+snake_case and can't be an attribute every element has. `type`: `text`
+(default), `number` (f32), `int` (i64), `bool`, `color` (`#RRGGBB` /
+`#AARRGGBB`, u32), `choice` (one of `options="a, b, c"`, String), `image`
+(an image source). `default` is used when an instance doesn't set it (and
+in the designer); `doc` and `category` (default: the component's name) are
+what Properties shows for instances. **`<Event name doc category>`** — an
+event the component raises: instances name it (`on_select="pick_mod"`), the
+body passes it on (`on_click="{x:Bind on_select}"`).
+
+**Bindings** — `{x:Bind prop}` reads a property; anything else
+(`{x:Bind caption()}`, `{x:Bind value * 100.0}`) is Rust evaluated on the
+generated struct, `self` being the component — methods go in the optional
+code-behind. Bindings are evaluated once per instance, when the screen's
+tree is built (`Mode=OneTime`). Bindable: `text`, `placeholder`, `source`,
+`item`, `count`, `bg`, `color`, `focus_color`, `tint`, `enabled`,
+`visible`, `shadow`, `w`, `h` (a number = px, `Units`, `"50%"`, `"auto"`),
+`gap`, `flex`, `min_w`, `min_h`, `font_scale`, `on_click`/`on_change`/
+`on_submit`, and a nested component's properties. `d:<attr>` values are
+design-time only: the designer shows them instead (sample text for a
+binding it can't evaluate); the generated code ignores them.
+
+**Generated code** — `yog build` / `yog check` / `yog ui gen` (yog-cli
+0.28.2+, yog-ui 0.38.2+, yog-api 0.90.2+) generate
+`.yog-build/generated/<path>.g.rs`: `pub struct StatBar` with one typed
+`pub` field per property, `from_props`, `view()`, the
+`yog_api::ui::component::Component` implementation (its `NAME`, `DOC`,
+`DISPLAY_NAME`, `ICON`, `CATEGORY`, `DESIGN_SIZE`, `TOOLBOX` constants and
+`PROPS` carry the metadata above, for the designer host) and its
+registration. A component with a code-behind `<name>.rs` pulls it in there:
+
+```rust
+yog_api::ui_include!("stat_bar");
+
+impl StatBar {
+    fn caption(&self) -> String { format!("{} {}%", self.label, (self.value * 100.0).round()) }
+    fn filled(&self) -> yog_api::Units { yog_api::Units::Percent(self.value.clamp(0.0, 1.0) * 100.0) }
+}
+```
+
+(`mod stat_bar;` in `lib.rs`). Components without one are compiled in by a
+single `yog_api::ui_components!();` in `src/lib.rs` (from
+`.yog-build/generated/components.g.rs`; `yog build` warns when it's
+missing).
+
+**In the designer**
+
+- The **Toolbox** always lists the open mod's components — under
+  *&lt;mod&gt; Components* or their own `category` — with their icon,
+  display name and description as the tooltip, even before a `.yui` is open
+  (greyed then); it follows component files being added, renamed and
+  removed. A component isn't offered inside its own `.yui`.
+- **Instances are drawn for real.** A component whose bindings only read
+  its properties is drawn by expanding its markup, no build needed — edit
+  its `.yui` and every instance follows. One whose bindings call code is
+  drawn by the mod itself: the IDE builds it for the host machine (`yog
+  designer-lib`, debounced after edits; *Building designer library…* in the
+  Toolbox meanwhile) and loads it into a separate host process, so a panic
+  or crash in mod code never takes the IDE down. That needs the IDE's
+  yog-ui ABI to match the mod's. Unknown components, a failed build or a
+  component that panics show a red placeholder box with the reason.
+- **Properties** of an instance: the component's properties in their
+  categories (colors with swatches, `choice` as a list, `bool` as a
+  checkbox), its events under Events, then the common layout/appearance
+  attributes; the component's description is the header's tooltip and the
+  description pane's text.
+- **Editing a component's own `.yui`** works like a screen: the canvas is
+  `design_w`×`design_h`, the body is drawn with the properties' defaults
+  (`d:` values win; code bindings show as `{expr}` in texts), new widgets
+  go into the body, and selecting the root, a `<Property>` or an `<Event>`
+  (Document Outline / XAML) edits the metadata and declarations in
+  Properties. Project Explorer nests `stat_bar.rs` and the generated
+  `stat_bar.g.rs` under `stat_bar.yui`, as for screens.
+
 ## Designer
 
 The tab shows **Design and XAML** split, Visual Studio's XAML designer
@@ -468,7 +588,8 @@ alone. In the split:
   alike; each gesture is one step, and undo brings back the selection that
   went with it.
 - **Toolbox** — drag a widget onto the canvas, or double-click it to add it
-  into the selected container.
+  into the selected container. The mod's own components are listed too
+  (see [Components](#components)).
 - **Properties** — every attribute of the selection, grouped; with several
   widgets selected, only what they share.
 

@@ -36,6 +36,13 @@ export const newUid = () => `n${++nextUid}`;
 /** Where attributes go when written — anything else follows in its own order. */
 export const ATTR_ORDER = [
   "name",
+  "display_name",
+  "description",
+  "icon",
+  "category",
+  "toolbox",
+  "design_w",
+  "design_h",
   "type",
   "default",
   "options",

@@ -1,13 +1,18 @@
 import { useMemo } from "react";
 import { Tree, useT, type TreeNode } from "substrate-platform-ui";
 import { useActiveDesigner } from "../designer/activeDesigner";
+import { isComponentDoc } from "../designer/components";
 import { isContainer, type YuiNode } from "../designer/yui";
 
+/** Has children in the outline: containers, and a component document's root (declarations + body). */
+const branches = (n: YuiNode) => isContainer(n) || isComponentDoc(n);
+
 function toTree(node: YuiNode): TreeNode<YuiNode> {
+  const named = node.attrs.id ?? (node.kind === "Component" || node.kind === "Property" || node.kind === "Event" ? node.attrs.name : undefined);
   return {
     id: node.uid,
-    label: node.attrs.id ? `${node.attrs.id} (${node.kind})` : node.kind,
-    children: isContainer(node) ? node.children.map(toTree) : undefined,
+    label: named ? `${named} (${node.kind})` : node.kind,
+    children: branches(node) ? node.children.map(toTree) : undefined,
     data: node,
   };
 }
@@ -20,7 +25,7 @@ export function DocumentOutline() {
   const expanded = useMemo(() => {
     const ids = new Set<string>();
     const visit = (n: YuiNode) => {
-      if (isContainer(n)) ids.add(n.uid);
+      if (branches(n)) ids.add(n.uid);
       n.children.forEach(visit);
     };
     if (designer) visit(designer.doc.root);
