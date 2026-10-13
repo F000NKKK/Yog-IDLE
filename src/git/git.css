@@ -19,17 +19,14 @@
   --idle-git-modified: #3f8fd2;
   --idle-git-added: #4fa64a;
   --idle-git-renamed: #a874d4;
+  /* rows start under the section title, past the expander column */
+  --idle-git-indent: calc(var(--sp-space-xs) * 2 + var(--sp-icon-size));
 }
 
 .idle-git-changes,
 .idle-git-diff {
   display: flex;
   flex-direction: column;
-}
-
-.idle-git-changes *,
-.idle-git-repo * {
-  box-sizing: border-box;
 }
 
 .idle-git-empty {
@@ -50,7 +47,7 @@
 }
 
 .idle-git-note {
-  padding: var(--sp-space-xs) var(--sp-space-sm) var(--sp-space-xs) 24px;
+  padding: var(--sp-space-xs) var(--sp-space-sm) var(--sp-space-xs) var(--idle-git-indent);
   color: var(--sp-text-faint);
   overflow-wrap: anywhere;
 }
@@ -71,15 +68,17 @@
 .idle-git-diff-header {
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: var(--sp-space-2xs);
   flex: 0 0 auto;
-  height: 30px;
+  height: var(--sp-toolbar-height);
   min-width: 0;
-  padding: 0 var(--sp-space-xs) 0 var(--sp-space-sm);
+  padding: 0 var(--sp-toolbar-padding-x);
   border-bottom: 1px solid var(--sp-border);
 }
 
 .idle-git-pane-header {
+  height: var(--sp-panel-header-height);
+  padding: 0 var(--sp-space-2xs) 0 var(--sp-space-sm);
   gap: var(--sp-space-xs);
   color: var(--sp-text-muted);
 }
@@ -89,11 +88,11 @@
   appearance: none;
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  height: 24px;
-  padding: 0 6px;
+  gap: var(--sp-space-xs);
+  height: var(--sp-control-height);
+  padding: 0 var(--sp-space-xs);
   border: none;
-  border-radius: var(--sp-radius-sm);
+  border-radius: var(--sp-control-radius);
   background: transparent;
   color: var(--sp-text-muted);
   font: inherit;
@@ -110,7 +109,7 @@
 }
 
 .idle-git-tool {
-  min-width: 26px;
+  min-width: var(--sp-control-height);
   justify-content: center;
 }
 
@@ -123,7 +122,7 @@
 .idle-git-branch:focus-visible,
 .idle-git-tool:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 2px var(--sp-accent-soft);
+  box-shadow: var(--sp-focus-ring);
 }
 
 .idle-git-tool:disabled {
@@ -147,8 +146,8 @@
 
 .idle-git-busy {
   flex: 0 0 auto;
-  padding: 2px var(--sp-space-sm);
-  font-size: 0.92em;
+  padding: var(--sp-space-2xs) var(--sp-space-sm);
+  font-size: var(--sp-font-size-sm);
   color: var(--sp-accent);
   border-bottom: 1px solid var(--sp-border);
   overflow: hidden;
@@ -229,7 +228,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 0 6px;
+  padding: 0 var(--sp-space-xs);
   border-top-left-radius: 0;
   border-bottom-left-radius: 0;
   border-left: 1px solid color-mix(in srgb, var(--sp-accent-contrast) 30%, transparent);
@@ -252,9 +251,9 @@
 .idle-git-section-header {
   display: flex;
   align-items: center;
-  gap: 4px;
-  height: 26px;
-  padding: 0 var(--sp-space-xs) 0 var(--sp-space-sm);
+  gap: var(--sp-space-xs);
+  height: var(--sp-control-height);
+  padding: 0 var(--sp-space-2xs) 0 var(--sp-space-xs);
   cursor: pointer;
   user-select: none;
   font-weight: 600;
@@ -274,7 +273,7 @@
 
 .idle-git-section-actions {
   display: inline-flex;
-  gap: 2px;
+  gap: var(--sp-space-2xs);
   font-weight: normal;
   flex: 0 0 auto;
 }
@@ -293,10 +292,10 @@
 .idle-git-row {
   display: flex;
   align-items: center;
-  gap: 6px;
-  height: 22px;
+  gap: var(--sp-space-xs);
+  height: var(--sp-row-height);
   min-width: 0;
-  padding: 0 var(--sp-space-xs) 0 24px;
+  padding: 0 var(--sp-space-2xs) 0 var(--idle-git-indent);
   white-space: nowrap;
   overflow: hidden;
   cursor: default;
@@ -320,7 +319,7 @@
   display: none;
   flex: 0 0 auto;
   margin-left: auto;
-  gap: 2px;
+  gap: var(--sp-space-2xs);
 }
 
 .idle-git-row:hover .idle-git-row-actions,
@@ -421,11 +420,11 @@
 .idle-git-group {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--sp-space-xs);
   min-width: 0;
-  padding: var(--sp-space-sm) var(--sp-space-sm) 2px;
+  padding: var(--sp-space-sm) var(--sp-space-sm) var(--sp-space-2xs);
   color: var(--sp-text-muted);
-  font-size: 0.85em;
+  font-size: var(--sp-font-size-xs);
   font-weight: 600;
   text-transform: uppercase;
   white-space: nowrap;
@@ -434,7 +433,7 @@
 }
 
 .idle-git-group-remote {
-  padding: 2px var(--sp-space-sm) 2px 14px;
+  padding: var(--sp-space-2xs) var(--sp-space-sm) var(--sp-space-2xs) var(--sp-space-md);
   text-transform: none;
   font-size: 1em;
   font-weight: normal;
@@ -442,11 +441,11 @@
 }
 
 .idle-git-branches .idle-git-row {
-  padding-left: 14px;
+  padding-left: var(--sp-space-md);
 }
 
 .idle-git-branches .idle-git-nested {
-  padding-left: 30px;
+  padding-left: calc(var(--sp-space-md) + var(--sp-icon-size));
 }
 
 .idle-git-commit-list .idle-git-commit-row {
@@ -454,7 +453,7 @@
   grid-template-columns: 64px minmax(0, 1fr) minmax(60px, 18%) minmax(90px, 20%);
   align-items: center;
   gap: var(--sp-space-sm);
-  height: 22px;
+  height: var(--sp-row-height);
   padding: 0 var(--sp-space-sm);
   white-space: nowrap;
   cursor: default;
@@ -501,8 +500,8 @@
 
 .idle-git-ref {
   display: inline-block;
-  margin-right: 4px;
-  padding: 0 5px;
+  margin-right: var(--sp-space-xs);
+  padding: 0 var(--sp-space-xs);
   border: 1px solid var(--sp-accent);
   border-radius: var(--sp-radius-xs);
   color: var(--sp-accent);
@@ -519,7 +518,7 @@
 .idle-git-details-meta {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--sp-space-2xs);
   flex: 0 0 auto;
   padding: var(--sp-space-sm);
   border-bottom: 1px solid var(--sp-border);
@@ -544,7 +543,7 @@
   flex: 0 1 auto;
   min-width: 0;
   max-width: 25%;
-  padding: 1px 6px;
+  padding: 1px var(--sp-space-xs);
   border-radius: var(--sp-radius-xs);
   background: var(--sp-surface-2);
   font-family: var(--sp-font-mono);
