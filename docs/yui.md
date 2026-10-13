@@ -67,6 +67,7 @@ doesn't care.
 | Element | `yog-ui` widget | Notes |
 |---|---|---|
 | `Screen` | column panel | The root — exactly one. Its children are placed at `x`/`y`. |
+| `Grid` | `grid()` | Rows and columns, children in cells — WPF's `Grid`; see [Grid](#grid). yog-ui 0.39+, yog-cli 0.29+. |
 | `Canvas` | column panel | Children placed freely at `x`/`y` (missing = 0). |
 | `Column` | `panel(FlexDir::Column)` | Children flow top to bottom. |
 | `Row` | `panel(FlexDir::Row)` | Children flow left to right. |
@@ -107,6 +108,123 @@ the same rules):
   takes the remaining height.
 - `auto` containers fit their content plus padding; `min_w`/`min_h` are a
   floor for content-sized widgets.
+- `margin` is space outside a child (yog-ui 0.39+): it's kept clear in the
+  flow, around docked and positioned children and inside grid cells.
+- `halign` in a Column / `valign` in a Row places that one child across the
+  container, overriding the container's `align`: `left`/`top`,
+  `center`, `right`/`bottom`, or `stretch` (fill the width/height when the
+  size is `auto`). An aligned child is measured at its content width — a
+  Label takes the width its text needs instead of wrapping at the
+  Column's. `halign` in a Row and `valign` in a Column do nothing (that's
+  the flow direction; use `flex`/`dock`).
+
+### Grid
+
+`<Grid>` is WPF's/WinUI's `Grid`: rows and columns, each child in a cell —
+the way to build a screen with a header, a list and a details pane without
+nesting stack panels and `flex` spacers.
+
+```xml
+<Screen id="mymod:browser" width="320" height="200" padding="6">
+    <Grid w="100%" h="100%" rows="Auto,*,22" columns="140,*" row_spacing="4" column_spacing="6">
+        <Label Grid.ColumnSpan="2" text="@Strings.title" color="#FFFFFF" />
+        <ScrollView Grid.Row="1" bg="#40000000" />
+        <Column Grid.Row="1" Grid.Column="1" padding="4">
+            <Label id="name" text="Name" />
+        </Column>
+        <Row Grid.Row="2" Grid.ColumnSpan="2" gap="4">
+            <Spacer flex="1" />
+            <Button text="Done" w="60" h="20" on_click="done" />
+        </Row>
+    </Grid>
+</Screen>
+```
+
+**Rows and columns.** `rows` and `columns` list the sizes, comma-separated:
+
+| Size | Meaning |
+|---|---|
+| `Auto` | Fits its content: the largest child in it. |
+| `*`, `2*`, `0.5*` | A share of what the other rows/columns leave: `2*` gets twice what `*` gets. |
+| `26` | A fixed size in GUI pixels. |
+
+No `rows` = one `*` row, no `columns` = one `*` column (so a bare `<Grid>`
+stacks its children on top of each other, filling it). With limits, use
+WPF's property-element form instead — same sizes, `*` when `height`/`width`
+is left out:
+
+```xml
+<Grid>
+    <Grid.RowDefinitions>
+        <RowDefinition height="Auto" />
+        <RowDefinition min_height="40" />
+    </Grid.RowDefinitions>
+    <Grid.ColumnDefinitions>
+        <ColumnDefinition width="2*" min_width="80" />
+        <ColumnDefinition max_width="200" />
+    </Grid.ColumnDefinitions>
+    ...
+</Grid>
+```
+
+An axis is defined one way or the other: `rows="..."` together with
+`<Grid.RowDefinitions>` is an error. `row_spacing` and `column_spacing`
+(WinUI's `RowSpacing`/`ColumnSpacing`, default 0) put space between rows and
+between columns.
+
+**Cells.** A child says where it goes with the attached properties
+`Grid.Row`, `Grid.Column` (from 0, default 0), `Grid.RowSpan` and
+`Grid.ColumnSpan` (default 1). Several children may share a cell (they're
+drawn in order). `yog build` rejects a cell or span past the grid's last
+row/column, a span of 0, `Grid.*` on a child of anything but a Grid, and
+bound (`{x:Bind ...}`) definitions or cells — a grid's shape is fixed when
+it's built. (The `Cell` of a widget built in code is clamped to the grid
+instead, like WPF.)
+
+**In its cell** a child gets the cell's rect less its `margin`, then:
+
+- `halign`/`valign` `stretch` — the default in a cell — fill it; a child
+  with an explicit `w`/`h` keeps it and is centred (WPF does the same).
+- `left`/`center`/`right`, `top`/`center`/`bottom` — its own size (measured
+  at its content width, capped to the cell), placed there.
+- `x`/`y` take a child out of the cells: it's placed in the grid's content
+  box, as in a Canvas.
+
+**How the sizes are worked out** (WPF's algorithm; the designer previews
+the same rules): columns first, then rows, each axis on its own —
+
+1. pixel rows/columns take their size (within `min`/`max`; min wins);
+2. `Auto` ones grow to the largest child that sits only in them —
+   children spanning several grow the `Auto` ones among them only by what's
+   still missing, shared equally; a child spanning a `*` row/column
+   doesn't size `Auto` ones;
+3. `*` ones share what's left in proportion to their weights; one whose
+   share breaks its `min`/`max` takes that limit and the rest share again.
+
+Rows are measured at their final column widths, so wrapped text gets its
+real height. A grid with `auto` width/height (no `w`/`h`, or inside a
+ScrollView) has no space to share along that axis: its `*` rows/columns
+act as `Auto` and the grid is the sum of its rows/columns plus spacing and
+padding — a `Grid` in a ScrollView is as tall as its content and scrolls.
+A `*` row never grows from its content when the grid has a height: a long
+list in a `*` row scrolls (as a ScrollView there) instead of pushing the
+rows after it off the screen.
+
+**Why some names are lowercase.** Plain attributes in `.yui` are snake_case
+and lowercase everywhere (`min_w`, `font_scale`, `on_click`), and Grid
+follows suit: `rows`, `columns`, `row_spacing`, `height`, `min_width`,
+`halign`, `margin`. What is XAML *structure* rather than a property keeps
+XAML's spelling, so markup copied from WPF reads the same: property
+elements (`<Grid.RowDefinitions>`), the definition elements
+(`<RowDefinition>`) and the attached properties (`Grid.Row`,
+`Grid.ColumnSpan`), which name another element's property. WPF spellings of
+plain attributes are errors with a hint — `Height` → `height`,
+`HorizontalAlignment` → `halign`.
+
+From code, the same grid is `widget::grid().rows([Track::auto(),
+Track::star(1.0), Track::px(22.0)]).cols(...).row_spacing(4.0)` with
+children `.cell(row, col)` / `.span(rows, cols)`, `.halign(HAlign::Left)`,
+`.margin(t, r, b, l)` (`yog_api::ui`).
 
 ## Attributes
 
@@ -134,6 +252,10 @@ Named after the builder methods they become.
 | `dock` | `none` `fill` `left` `right` `top` `bottom` | Docking in a Row/Column. |
 | `gap` | number | Space between flowing children (default 2). |
 | `padding` | `4`, `4 8`, `1 2 3 4` | Inner spacing, CSS order (top right bottom left). |
+| `margin` | `4`, `4 8`, `1 2 3 4` | Outer spacing, the same order — in a Row/Column and a grid cell (yog-ui 0.39+). |
+| `halign` | `left` `center` `right` `stretch` | Horizontal placement in a grid cell (default `stretch`), or in a Column (overrides its `align`). |
+| `valign` | `top` `center` `bottom` `stretch` | Vertical placement in a grid cell (default `stretch`), or in a Row. |
+| `Grid.Row`, `Grid.Column`, `Grid.RowSpan`, `Grid.ColumnSpan` | number | A Grid child's cell — see [Grid](#grid). |
 | `align` | `start` `center` `end` | Children's cross-axis alignment; a Label's text alignment. |
 | `bg`, `color`, `focus_color` | `#RRGGBB`, `#AARRGGBB`, `0xAARRGGBB` | Background, text and focus colors. |
 | `font` | font id | The text's font: `minecraft:default` (the default), `minecraft:uniform` (Unifont), `minecraft:alt` (enchanting table), `minecraft:illageralt`, or a resource pack's `namespace:name`. Drawn and measured by the game (yog-ui 0.36+). |
@@ -145,7 +267,8 @@ Named after the builder methods they become.
 | `on_click` | string | Event returned by `click()`; a constant in `events`. |
 
 Kind-specific: `text` (Label, Button, TextBox), `placeholder`, `max_length`,
-`on_change`, `on_submit` (TextBox), `item` (ItemSlot, InvSlot), `count`
+`on_change`, `on_submit` (TextBox), `rows`, `columns`, `row_spacing`,
+`column_spacing` (Grid), `item` (ItemSlot, InvSlot), `count`
 (InvSlot), `source`, `stretch`, `uv`, `tint` (Image; see [Images](#images)). Unknown elements or
 attributes are errors, reported with their line by `yog ui gen`/`yog build`.
 
@@ -580,9 +703,27 @@ alone. In the split:
 - **Move / resize** — drag; handles on the primary selection; snaplines to
   siblings and the container, 2px grid (Snap toggle; hold Alt to suspend).
   Dropping onto another container moves the widget into it; in a Row/Column
-  the drop position picks its place in the flow.
+  the drop position picks its place in the flow, in a Grid its cell
+  (`Grid.Row`/`Grid.Column` are set; `Grid.*` attributes are dropped when a
+  widget leaves a grid).
+- **Grid** — as in Visual Studio: dashed lines between every grid's rows
+  and columns, and on the selected grid (or the grid of the selected
+  widget) rails above and left of it with each column's/row's size (`Auto`,
+  `2*`, `26`; the tooltip has the pixels). Click a rail to add a line
+  there (the row/column under the pointer is split; children after it keep
+  their cells); drag a line's grip on the rail to resize the two rows/columns
+  beside it (`*` ones stay `*`, reweighted; others become pixels);
+  right-click a size for Auto / * / pixels, inserting or deleting a
+  row/column, or the collection editor. In Properties, a grid's **Rows** /
+  **Columns** take the compact list (`Auto,*,26`) and their **…** opens the
+  RowDefinition/ColumnDefinition editor (sizes, minimum and maximum, order);
+  a grid child shows **Row**, **Column**, **Row Span** and **Column Span**.
+  The designer keeps whichever form the file uses (`rows="..."` or
+  `<Grid.RowDefinitions>`), switching to the element form when a limit
+  needs it.
 - **Keyboard** — arrows move 1px (Ctrl: 8px), Shift+arrows resize; in a
-  Row/Column arrows move a widget earlier/later. Delete, Ctrl+X/C/V,
+  Row/Column arrows move a widget earlier/later, in a Grid to the next
+  cell. Delete, Ctrl+X/C/V,
   Ctrl+D (duplicate), Ctrl+Z / Ctrl+Y / Ctrl+Shift+Z (undo/redo, also in the
   Edit menu) — from the canvas, the Toolbox, Document Outline or Properties
   alike; each gesture is one step, and undo brings back the selection that
