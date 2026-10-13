@@ -12,11 +12,16 @@ The mod needs the dependency in `yog.toml`:
 
 ```toml
 [dependencies]
-yog-kit = "0.1"
+yog-kit = "0.2"
 ```
 
 `yog build --local-api` (or `YOG_API_PATH`) also points yog-kit at the
 local checkout.
+
+Any layout element works in a view-model screen, including
+[`<Grid>`](yui.md#grid): a header/content/footer split or a list next to a
+details pane is one `Grid` with `rows`/`columns` instead of nested
+`Row`/`Column` stacks (see `Yog-Modlist/src/mod_list.yui`).
 
 ## Example
 
