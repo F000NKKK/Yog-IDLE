@@ -790,7 +790,7 @@ registerTranslations("ru", {
   "\"{name}\" already exists here.": "\"{name}\" уже существует здесь.",
   "Yog": "Yog",
   "Yog UI Screen": "Экран Yog UI",
-  "A screen for the designer (.yui) and its code-behind module (.rs); the .designer.rs between them is generated on save.": "Экран для конструктора (.yui) и модуль кода программной части (.rs); .designer.rs между ними создается при сохранении.",
+  "A screen for the designer (.yui) and its code-behind module (.rs); the code between them is generated into .yog-build on save.": "Экран для конструктора (.yui) и модуль кода программной части (.rs); код между ними создается в .yog-build при сохранении.",
   "Yog Module": "Модуль Yog",
   "A Rust module with a register function to call from the mod's Mod::register.": "Модуль Rust с функцией register для вызова из Mod::register мода.",
   "Language File": "Файл локализации",

@@ -8,7 +8,6 @@
 use std::path::{Path, PathBuf};
 
 use serde::Serialize;
-use syn::spanned::Spanned;
 use syn::visit::Visit;
 
 /// Where the editor should go.
@@ -126,7 +125,7 @@ struct MatchInfo {
 impl<'ast> Visit<'ast> for FindMatch {
     fn visit_item_fn(&mut self, f: &'ast syn::ItemFn) {
         let saved = self.fn_end;
-        self.fn_end = f.span().end().line;
+        self.fn_end = f.block.brace_token.span.close().end().line;
         syn::visit::visit_item_fn(self, f);
         self.fn_end = saved;
     }
@@ -146,8 +145,8 @@ impl<'ast> Visit<'ast> for FindMatch {
                 .arms
                 .iter()
                 .find(|a| matches!(&a.pat, syn::Pat::Wild(_) | syn::Pat::Ident(_)))
-                .map(|a| (a.pat.span().start().line, a.pat.span().start().column));
-            let arm_col = m.arms.first().map(|a| a.pat.span().start().column).unwrap_or(m.span().start().column + 4);
+                .and_then(|a| pat_start(&a.pat));
+            let arm_col = m.arms.first().and_then(|a| pat_start(&a.pat)).map_or(m.match_token.span.start().column + 4, |(_, c)| c);
             let close = m.brace_token.span.close();
             self.best = Some((
                 score,
@@ -156,6 +155,21 @@ impl<'ast> Visit<'ast> for FindMatch {
         }
         syn::visit::visit_expr_match(self, m);
     }
+}
+
+/// Line (1-based) and column (0-based) where an arm's pattern starts.
+fn pat_start(p: &syn::Pat) -> Option<(usize, usize)> {
+    let span = match p {
+        syn::Pat::Path(p) => p.path.segments.first()?.ident.span(),
+        syn::Pat::Ident(i) => i.ident.span(),
+        syn::Pat::Wild(w) => w.underscore_token.span,
+        syn::Pat::Lit(l) => match &l.lit {
+            syn::Lit::Str(s) => s.span(),
+            _ => return None,
+        },
+        _ => return None,
+    };
+    Some((span.start().line, span.start().column))
 }
 
 fn pat_path(p: &syn::Pat) -> Option<String> {

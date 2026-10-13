@@ -214,7 +214,7 @@ impl<'r> Canvas<'r> {
 }
 
 /// Rasterizes a display list.
-pub fn rasterize(ops: &[DrawOp], gui_w: u32, gui_h: u32, scale: u32, res: &Resources) -> Canvas<'_> {
+pub fn rasterize<'r>(ops: &[DrawOp], gui_w: u32, gui_h: u32, scale: u32, res: &'r Resources) -> Canvas<'r> {
     let mut canvas = Canvas::new(gui_w, gui_h, scale.clamp(1, 8), res);
     for op in ops {
         canvas.draw(op);

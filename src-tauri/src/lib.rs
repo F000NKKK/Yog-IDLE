@@ -541,7 +541,7 @@ async fn format_supported(path: String) -> bool {
 /// the result. Runs in the file's own folder so the formatter picks up a
 /// `rustfmt.toml`/`taplo.toml` there. A syntax error comes back as `Err`
 /// with the formatter's own message.
-/// Regenerates a saved `.yui` screen's `*.designer.rs` (see `yui.rs`).
+/// Regenerates a saved `.yui` screen's generated `.g.rs` (see `yui.rs`).
 #[tauri::command]
 async fn yui_codegen(state: State<'_, AppState>, path: String) -> Result<String, String> {
     validate_within_roots(&state, Path::new(&path))?;

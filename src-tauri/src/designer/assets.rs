@@ -69,6 +69,27 @@ pub struct Vanilla {
 }
 
 impl Vanilla {
+    /// `key` from the jar and from the asset objects — both, for files the
+    /// download overrides (the jar's `font/include/unifont.json` is an
+    /// empty stub; the real one is an asset object).
+    pub fn read_all(&self, key: &str) -> Vec<Vec<u8>> {
+        let mut out = Vec::new();
+        if let Ok(mut zip) = self.zip.lock() {
+            if let Ok(mut entry) = zip.by_name(&format!("assets/{key}")) {
+                let mut bytes = Vec::new();
+                if entry.read_to_end(&mut bytes).is_ok() {
+                    out.push(bytes);
+                }
+            }
+        }
+        if let Some((dir, index)) = &self.objects {
+            if let Some(bytes) = index.get(key).and_then(|hash| std::fs::read(dir.join(&hash[..2]).join(hash)).ok()) {
+                out.push(bytes);
+            }
+        }
+        out
+    }
+
     fn read(&self, key: &str) -> Option<Vec<u8>> {
         // `key` is `namespace/path` — `assets/<key>` in the jar.
         if let Ok(mut zip) = self.zip.lock() {

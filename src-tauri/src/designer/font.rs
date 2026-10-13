@@ -68,13 +68,8 @@ fn json(res: &Resources, ns: &str, path: &str) -> Vec<Value> {
             }
         }
     }
-    if let Some(v) = res
-        .vanilla
-        .as_ref()
-        .and_then(|v| Resources { mod_root: None, vanilla: Some(v.clone()) }.read(ns, path))
-        .and_then(|b| serde_json::from_slice(&b).ok())
-    {
-        out.push(v);
+    if let Some(v) = &res.vanilla {
+        out.extend(v.read_all(&format!("{ns}/{path}")).iter().filter_map(|b| serde_json::from_slice(b).ok()));
     }
     out
 }

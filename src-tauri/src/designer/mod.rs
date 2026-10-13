@@ -321,7 +321,7 @@ mod tests {
     #[test]
     fn preview_clicks_and_scrolls() {
         let path = "/nowhere/src/preview_test.yui";
-        let ev = |event: &str, x: f32, y: f32| event(&EventArgs { path: path.into(), root: screen(), screen_w: 200, screen_h: 100, event: event.into(), x, y });
+        let ev = |e: &str, x: f32, y: f32| event(&EventArgs { path: path.into(), root: screen(), screen_w: 200, screen_h: 100, event: e.into(), x, y });
         let r = ev("click:70:40", 0.0, 0.0);
         assert_eq!(r.clicked.as_deref(), Some("play"));
         assert_eq!(r.hit.as_deref(), Some("b"));
@@ -331,5 +331,38 @@ mod tests {
         assert!(offsets(path, true)["sv"] > 0.0);
         reset(path);
         assert!(offsets(path, true).is_empty());
+    }
+}
+
+#[cfg(test)]
+mod visual {
+    use super::*;
+
+    /// `YOG_DESIGNER_PNG=out.png cargo test --lib designer::visual -- --ignored`:
+    /// a sample screen drawn with the local game files, for eyeballing.
+    #[test]
+    #[ignore]
+    fn sample_png() {
+        let Ok(out) = std::env::var("YOG_DESIGNER_PNG") else { return };
+        let n = |uid: &str, kind: &str, attrs: &[(&str, &str)]| YuiNode {
+            uid: uid.into(),
+            kind: kind.into(),
+            attrs: attrs.iter().map(|(k, v)| (k.to_string(), v.to_string())).collect(),
+            children: vec![],
+        };
+        let mut root = n("s", "Screen", &[("width", "200"), ("height", "120"), ("bg", "#C0101010")]);
+        root.children = vec![
+            n("l", "Label", &[("x", "6"), ("y", "6"), ("text", "Привет, Minecraft! §cRed §lBold"), ("color", "#FFFFFF"), ("no_wrap", "true")]),
+            n("b", "Button", &[("x", "6"), ("y", "24"), ("w", "80"), ("h", "20"), ("text", "Play"), ("bg", "#FF555555"), ("color", "#FFFFFF")]),
+            n("t", "TextBox", &[("x", "96"), ("y", "26"), ("w", "90"), ("h", "16"), ("placeholder", "Search…")]),
+            n("i", "InvSlot", &[("x", "6"), ("y", "50"), ("item", "minecraft:diamond"), ("count", "64")]),
+            n("g", "Label", &[("x", "6"), ("y", "76"), ("text", "Galactic"), ("font", "minecraft:alt"), ("no_wrap", "true")]),
+            n("u", "Label", &[("x", "6"), ("y", "90"), ("text", "日本語 ✓ ♥"), ("no_wrap", "true")]),
+        ];
+        let args = RenderArgs { path: "/nowhere/src/x.yui".into(), root, screen_w: 220, screen_h: 130, scale: 4, preview: false };
+        let r = render(&args).unwrap();
+        let b64 = r.image.trim_start_matches("data:image/png;base64,");
+        std::fs::write(out, base64::engine::general_purpose::STANDARD.decode(b64).unwrap()).unwrap();
+        eprintln!("assets: {:?}, real font: {}", r.assets, r.real_font);
     }
 }

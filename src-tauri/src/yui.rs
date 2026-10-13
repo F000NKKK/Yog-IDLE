@@ -1,11 +1,13 @@
 //! `.yui` screen files (the screen designer's format) — regenerating their
-//! `*.designer.rs` code-behind when one is saved, through `yog ui gen`.
+//! code (`.yog-build/generated/**/*.g.rs`, what the code-behind pulls in
+//! with `yog_api::ui_include!`) when one is saved, through `yog ui gen`.
 
 use std::path::PathBuf;
 use std::process::Command;
 
 /// Runs `yog ui gen <path>` in the file's folder, so a saved screen's
-/// `foo.designer.rs` is current without a full build. `Ok` carries the
+/// generated `foo.g.rs` is current without a full build (`yog` finds the
+/// project from the `yog.toml` above the file). `Ok` carries the
 /// generated file's path; `Err` the generator's message (an invalid
 /// attribute, say) or why `yog` couldn't run.
 pub fn codegen(path: &str) -> Result<String, String> {
@@ -34,7 +36,7 @@ pub fn codegen(path: &str) -> Result<String, String> {
             message.trim().to_string()
         });
     }
-    // "==> foo.yui -> foo.designer.rs"
+    // "==> src/foo.yui -> /project/.yog-build/generated/foo.g.rs"
     Ok(stderr
         .lines()
         .find_map(|l| l.rsplit_once(" -> ").map(|(_, out)| out.trim().to_string()))
