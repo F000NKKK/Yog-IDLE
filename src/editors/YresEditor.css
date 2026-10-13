@@ -3,22 +3,29 @@
   flex-direction: column;
   height: 100%;
   min-height: 0;
-  background: var(--sp-surface-0, transparent);
+  background: var(--sp-surface-0);
 }
 
+/* Same metrics as Substrate's `.sp-toolbar`. */
 .yres-toolbar {
   display: flex;
   align-items: center;
-  gap: var(--sp-space-xs);
-  padding: var(--sp-space-xs) var(--sp-space-sm);
+  flex-wrap: wrap;
+  flex: none;
+  gap: var(--sp-space-2xs) var(--sp-toolbar-gap);
+  min-height: var(--sp-toolbar-height);
+  padding: 1px var(--sp-toolbar-padding-x);
   border-bottom: 1px solid var(--sp-border);
 }
 
+/* = `.sp-toolbar-separator` */
 .yres-divider {
+  flex: none;
+  align-self: center;
   width: 1px;
-  align-self: stretch;
-  margin: 2px var(--sp-space-xs);
-  background: var(--sp-border);
+  height: var(--sp-icon-size);
+  margin: 0 var(--sp-toolbar-separator-margin);
+  background: var(--sp-border-strong);
 }
 
 .yres-spacer {
@@ -43,11 +50,13 @@
 
 .yres-status {
   display: flex;
+  align-items: center;
   gap: var(--sp-space-md);
-  padding: 2px var(--sp-space-sm);
+  height: var(--sp-statusbar-height);
+  padding: 0 var(--sp-space-sm);
   border-top: 1px solid var(--sp-border);
   color: var(--sp-text-muted);
-  font-size: var(--sp-font-size-sm, 12px);
+  font-size: var(--sp-font-size-sm);
 }
 
 .yres-status-error {
@@ -80,7 +89,7 @@
 .yres-value {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--sp-space-xs);
   min-width: 0;
   overflow: hidden;
   white-space: nowrap;
@@ -88,7 +97,7 @@
 }
 
 .yres-mono {
-  font-family: var(--sp-font-mono, monospace);
+  font-family: var(--sp-font-mono);
 }
 
 .yres-swatch {
@@ -118,7 +127,7 @@
 .yres-cell-edit {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--sp-space-2xs);
   width: 100%;
   height: 100%;
 }
@@ -130,20 +139,20 @@
 
 .yres-browse {
   flex: none;
-  min-width: var(--sp-icon-btn-size-sm);
-  height: var(--sp-icon-btn-size-sm);
-  padding: 0 6px;
-  border: 1px solid var(--sp-border-strong);
-  border-radius: var(--sp-radius-xs);
-  background: var(--sp-surface-2, transparent);
+  min-width: var(--sp-control-height-sm);
+  height: var(--sp-control-height-sm);
+  padding: 0 var(--sp-space-xs);
+  border: var(--sp-control-border);
+  border-radius: var(--sp-control-radius);
+  background: var(--sp-surface-2);
   color: var(--sp-text);
   cursor: pointer;
 }
 
 .yres-color-input {
   flex: none;
-  width: 24px;
-  height: 20px;
+  width: var(--sp-control-height);
+  height: var(--sp-control-height-sm);
   padding: 0;
   border: none;
   background: none;

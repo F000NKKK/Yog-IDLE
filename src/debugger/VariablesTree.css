@@ -2,23 +2,26 @@
   display: grid;
   grid-template-columns: minmax(80px, 1fr) minmax(80px, 2fr) minmax(60px, 1fr);
   font-family: var(--sp-font-mono);
-  font-size: 12px;
+  font-size: var(--sp-font-size-sm);
   outline: none;
 }
 
 .yi-vt--compact {
   grid-template-columns: max-content minmax(80px, max-content);
   column-gap: var(--sp-space-sm);
-  padding: 2px 0;
+  padding: var(--sp-space-2xs) 0;
 }
 
 .yi-vt-row {
   display: contents;
 }
 
+/* Watch / Locals rows at the IDE's list row height (data tips: the dense one). */
 .yi-vt-cell {
   min-width: 0;
-  padding: 1px var(--sp-space-xs);
+  height: var(--sp-row-height);
+  line-height: var(--sp-row-height);
+  padding: 0 var(--sp-space-xs);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -27,6 +30,8 @@
 
 .yi-vt--compact .yi-vt-cell {
   max-width: 480px;
+  height: var(--sp-control-height-sm);
+  line-height: var(--sp-control-height-sm);
 }
 
 .yi-vt-row:hover > .yi-vt-cell {
@@ -61,24 +66,24 @@
 }
 
 .yi-vt-error {
-  color: var(--sp-danger, var(--sp-text));
+  color: var(--sp-danger);
 }
 
 .yi-vt-add {
-  padding-left: calc(var(--sp-space-xs) + 12px);
+  padding-left: calc(var(--sp-space-xs) + var(--sp-icon-size));
   color: var(--sp-text-faint);
   font-style: italic;
   cursor: text;
 }
 
 .yi-vt-edit {
-  padding: 0 var(--sp-space-xs) 0 calc(var(--sp-space-xs) + 12px);
+  padding: 0 var(--sp-space-xs) 0 calc(var(--sp-space-xs) + var(--sp-icon-size));
 }
 
 .yi-vt-edit input {
   width: 100%;
-  box-sizing: border-box;
-  padding: 0 2px;
+  height: 100%;
+  padding: 0 calc(var(--sp-space-xs) - 1px);
   font: inherit;
   color: var(--sp-text);
   background: var(--sp-surface-1);
@@ -87,12 +92,12 @@
 }
 
 .yi-vt-empty {
-  padding: 2px var(--sp-space-sm);
+  padding: var(--sp-space-2xs) var(--sp-space-sm);
   font-family: var(--sp-font-mono);
-  font-size: 12px;
+  font-size: var(--sp-font-size-sm);
   color: var(--sp-text-muted);
 }
 
 .yi-vt--compact .yi-vt-row:hover > .yi-vt-cell {
-  background: var(--sp-surface-3, var(--sp-accent-soft));
+  background: var(--sp-surface-3);
 }

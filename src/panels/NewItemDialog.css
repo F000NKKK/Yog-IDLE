@@ -22,7 +22,7 @@
   overflow: auto;
   list-style: none;
   border: 1px solid var(--sp-border);
-  border-radius: var(--sp-radius-sm);
+  border-radius: var(--sp-control-radius);
 }
 
 .new-item-category,
@@ -30,7 +30,8 @@
   display: flex;
   align-items: center;
   gap: var(--sp-space-sm);
-  padding: 4px var(--sp-space-sm);
+  min-height: var(--sp-control-height);
+  padding: 0 var(--sp-space-sm);
   cursor: default;
   user-select: none;
 }
@@ -42,7 +43,7 @@
 
 .new-item-category[aria-selected="true"],
 .new-item-template[aria-selected="true"] {
-  background: var(--sp-accent-soft, var(--sp-surface-3));
+  background: var(--sp-selection);
 }
 
 .new-item-template-name {

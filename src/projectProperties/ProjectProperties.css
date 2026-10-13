@@ -97,7 +97,8 @@
   display: flex;
   align-items: center;
   gap: var(--sp-space-sm);
-  padding: var(--sp-space-xs) var(--sp-space-sm);
+  min-height: calc(var(--sp-control-height) + var(--sp-space-sm));
+  padding: var(--sp-space-2xs) var(--sp-space-sm);
 }
 
 .project-props-dep-row:hover {

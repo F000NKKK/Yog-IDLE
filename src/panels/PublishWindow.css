@@ -19,8 +19,8 @@
   align-items: center;
   gap: var(--sp-space-sm);
   flex: 0 0 auto;
-  height: 36px;
-  padding: 0 var(--sp-space-sm) 0 var(--sp-space-md);
+  height: var(--sp-caption-height);
+  padding: 0 var(--sp-space-xs) 0 var(--sp-space-md);
   background: var(--sp-surface-2);
   border-bottom: 1px solid var(--sp-border);
   cursor: grab;
@@ -51,7 +51,7 @@
 }
 
 .yi-publish-label {
-  font-size: 0.8em;
+  font-size: var(--sp-font-size-xs);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -62,7 +62,7 @@
   display: flex;
   flex-direction: column;
   border: 1px solid var(--sp-border);
-  border-radius: var(--sp-radius-md);
+  border-radius: var(--sp-radius-sm);
   background: var(--sp-surface-2);
   overflow: hidden;
 }
@@ -78,7 +78,7 @@
   display: flex;
   align-items: center;
   gap: var(--sp-space-sm);
-  padding: var(--sp-space-sm) var(--sp-space-sm) var(--sp-space-sm) var(--sp-space-md);
+  padding: var(--sp-space-xs) var(--sp-space-xs) var(--sp-space-xs) var(--sp-space-md);
 }
 
 .yi-publish-profile-row + .yi-publish-profile-row {
@@ -107,14 +107,14 @@
 }
 
 .yi-publish-profile-mode {
-  font-size: 0.85em;
+  font-size: var(--sp-font-size-xs);
   color: var(--sp-text-faint);
 }
 
 .yi-publish-profile-buttons {
   display: flex;
   flex: 0 0 auto;
-  gap: 2px;
+  gap: var(--sp-space-2xs);
 }
 
 .yi-publish-field {
@@ -129,7 +129,6 @@
 
 .yi-publish-field .sp-textfield {
   width: 100%;
-  box-sizing: border-box;
 }
 
 .yi-publish-option {
@@ -138,7 +137,7 @@
   gap: var(--sp-space-sm);
   padding: var(--sp-space-sm) var(--sp-space-md);
   border: 1px solid var(--sp-border);
-  border-radius: var(--sp-radius-md);
+  border-radius: var(--sp-radius-sm);
   cursor: pointer;
 }
 
@@ -160,7 +159,7 @@
 .yi-publish-option-text {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--sp-space-2xs);
 }
 
 .yi-publish-option-detail {
@@ -184,7 +183,7 @@
   margin: 0;
   padding: var(--sp-space-sm) var(--sp-space-md);
   border: 1px solid var(--sp-danger);
-  border-radius: var(--sp-radius-md);
+  border-radius: var(--sp-radius-sm);
   color: var(--sp-danger);
   white-space: pre-wrap;
   overflow-wrap: anywhere;
