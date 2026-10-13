@@ -1,0 +1,156 @@
+.yres-editor {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  background: var(--sp-surface-0, transparent);
+}
+
+.yres-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-space-xs);
+  padding: var(--sp-space-xs) var(--sp-space-sm);
+  border-bottom: 1px solid var(--sp-border);
+}
+
+.yres-divider {
+  width: 1px;
+  align-self: stretch;
+  margin: 2px var(--sp-space-xs);
+  background: var(--sp-border);
+}
+
+.yres-spacer {
+  flex: 1;
+}
+
+.yres-search {
+  width: 240px;
+}
+
+.yres-grid {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.yres-grid > * {
+  flex: 1;
+  min-height: 0;
+}
+
+.yres-status {
+  display: flex;
+  gap: var(--sp-space-md);
+  padding: 2px var(--sp-space-sm);
+  border-top: 1px solid var(--sp-border);
+  color: var(--sp-text-muted);
+  font-size: var(--sp-font-size-sm, 12px);
+}
+
+.yres-status-error {
+  color: var(--sp-danger);
+}
+
+.yres-status-warning {
+  color: var(--sp-warning);
+}
+
+.yres-placeholder,
+.yres-na {
+  color: var(--sp-text-faint);
+  font-style: italic;
+}
+
+.yres-newrow {
+  opacity: 0.85;
+}
+
+.yres-invalid {
+  box-shadow: inset 0 -2px 0 var(--sp-danger);
+  color: var(--sp-danger);
+}
+
+.yres-missing {
+  background: color-mix(in srgb, var(--sp-warning) 14%, transparent);
+}
+
+.yres-value {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.yres-mono {
+  font-family: var(--sp-font-mono, monospace);
+}
+
+.yres-swatch {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  border: 1px solid var(--sp-border-strong);
+  border-radius: 2px;
+  background-image: linear-gradient(45deg, #8884 25%, transparent 25%, transparent 75%, #8884 75%);
+  background-size: 6px 6px;
+}
+
+.yres-thumb {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+  image-rendering: pixelated;
+  border: 1px solid var(--sp-border);
+  border-radius: 2px;
+}
+
+.yres-check {
+  margin: 0;
+}
+
+.yres-cell-edit {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  height: 100%;
+}
+
+.yres-cell-edit > .sp-datagrid-cell-editor {
+  flex: 1;
+  min-width: 0;
+}
+
+.yres-browse {
+  flex: none;
+  height: 20px;
+  padding: 0 6px;
+  border: 1px solid var(--sp-border-strong);
+  border-radius: var(--sp-radius-xs);
+  background: var(--sp-surface-2, transparent);
+  color: var(--sp-text);
+  cursor: pointer;
+}
+
+.yres-color-input {
+  flex: none;
+  width: 24px;
+  height: 20px;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+}
+
+.yres-broken {
+  align-items: flex-start;
+  gap: var(--sp-space-sm);
+  padding: var(--sp-space-lg);
+}

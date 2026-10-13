@@ -1,7 +1,8 @@
-import { registerEditorProvider } from "substrate-platform-ui";
+import { JsonEditor, registerEditorProvider } from "substrate-platform-ui";
 import { ScreenDesigner } from "../designer/ScreenDesigner";
 import { YuiSourceEditor, YuiSplitEditor } from "../designer/YuiSplitEditor";
 import { isLangFile, LangFileEditor } from "./LangFileEditor";
+import { YRES_SOURCE_VIEW, YresEditor } from "./YresEditor";
 
 // Yog-specific editors, on top of the platform's built-in ones — imported
 // once for its side effect, before any file opens.
@@ -48,6 +49,29 @@ registerEditorProvider({
   name: "Screen Source Editor",
   extensions: ["yui"],
   component: YuiSourceEditor,
+  priority: 0,
+  kind: "text",
+});
+
+// `.yres` resource files, as Visual Studio opens `.resx`: the resource table
+// by default, the JSON a click (or F7) away.
+registerEditorProvider({
+  id: "yog.yres",
+  label: "Resources",
+  name: "Resource Editor",
+  icon: "table",
+  extensions: ["yres"],
+  component: YresEditor,
+  priority: 20,
+  kind: "designer",
+});
+
+registerEditorProvider({
+  id: YRES_SOURCE_VIEW,
+  label: "Code",
+  name: "Resource Source Editor",
+  extensions: ["yres"],
+  component: JsonEditor,
   priority: 0,
   kind: "text",
 });

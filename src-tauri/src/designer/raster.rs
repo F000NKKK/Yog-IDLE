@@ -23,6 +23,9 @@ pub enum DrawOp {
     Text { text: String, font: String, x: f32, y: f32, color: u32, shadow: bool },
     Texture { id: String, x: f32, y: f32, u0: f32, v0: f32, w: f32, h: f32, tw: f32, th: f32 },
     Item { id: String, x: f32, y: f32, size: f32 },
+    /// An `<Image>` in its content box (see [`images`](super::images)); designer-internal.
+    #[serde(skip)]
+    Image { spec: super::images::Spec, x: f32, y: f32, w: f32, h: f32 },
     Scissor { x: i32, y: i32, w: i32, h: i32 },
     ClearScissor,
 }
@@ -114,7 +117,7 @@ impl<'r> Canvas<'r> {
     /// Draws `img` texels `(u, v)`–`(u + w·tw/…)` into GUI box `x, y, w, h`
     /// — UVs normalized against the declared texture size `tw × th`.
     #[allow(clippy::too_many_arguments)]
-    fn blit(&mut self, img: &Image, x: f32, y: f32, w: f32, h: f32, uv: [f32; 4], tint: [f32; 4]) {
+    pub(super) fn blit(&mut self, img: &Image, x: f32, y: f32, w: f32, h: f32, uv: [f32; 4], tint: [f32; 4]) {
         let (xa, xb) = self.span(x, x + w, false);
         let (ya, yb) = self.span(y, y + h, true);
         let [u0, v0, u1, v1] = uv;
@@ -195,6 +198,7 @@ impl<'r> Canvas<'r> {
                 let v1 = frame / img.h as f32;
                 self.blit(&img, *x, *y, *size, *size, [0.0, 0.0, 1.0, v1], [1.0; 4]);
             }
+            DrawOp::Image { spec, x, y, w, h } => super::images::draw(self, spec, *x, *y, *w, *h),
             DrawOp::Scissor { x, y, w, h } => self.clip = Some((*x, *y, *w, *h)),
             DrawOp::ClearScissor => self.clip = None,
         }

@@ -6,6 +6,7 @@ import { openPath, revealItemInDir } from "@tauri-apps/plugin-opener";
 import {
   ContextMenu,
   FileTree,
+  Icon,
   confirmDialog,
   matchesShortcut,
   nestFiles,
@@ -114,6 +115,9 @@ function nestParent(name: string, siblings: Set<string>): string | null {
   if (designer) return siblings.has(`${designer[1]}.yui`) ? `${designer[1]}.yui` : `${designer[1]}.rs`;
   const code = /^(.*)\.rs$/.exec(lower);
   if (code && siblings.has(`${code[1]}.yui`)) return `${code[1]}.yui`;
+  // A resource set's culture variants under its neutral file: `Strings.ru_ru.yres` ▸ under `Strings.yres`.
+  const culture = /^(.*)\.[a-z]{2,3}_[a-z0-9]{2,4}\.yres$/.exec(lower);
+  if (culture && siblings.has(`${culture[1]}.yres`)) return `${culture[1]}.yres`;
   if (lower === "yog.lock") return "yog.toml";
   if (lower === "cargo.lock") return "cargo.toml";
   return null;
@@ -131,6 +135,20 @@ function withGeneratedCode(nodes: FileTreeNode[], root: string): FileTreeNode[] 
     if (!generated) return node;
     const child: FileTreeNode = { id: generated, name: baseName(generated), kind: "file", generated: true };
     return { ...node, nested: [...(node.nested ?? []), child] };
+  });
+}
+
+/** The mod's `resources/` folder and its `.yres` files get their own icons, like a C# project's Resources. */
+function withResourceIcons(nodes: FileTreeNode[], resourcesDir: string): FileTreeNode[] {
+  return nodes.map((node) => {
+    if (node.kind === "folder") {
+      const children = node.children && withResourceIcons(node.children, resourcesDir);
+      const icon = node.id.replace(/\\/g, "/") === resourcesDir.replace(/\\/g, "/") ? <Icon name="folderTable" size={15} /> : node.icon;
+      return children === node.children && icon === node.icon ? node : { ...node, children, icon };
+    }
+    const nested = node.nested && withResourceIcons(node.nested, resourcesDir);
+    const icon = /\.yres$/i.test(node.name) ? <Icon name="table" size={15} /> : node.icon;
+    return nested === node.nested && icon === node.icon ? node : { ...node, nested, icon };
   });
 }
 
@@ -158,7 +176,7 @@ function ProjectExplorerTree({ project }: { project: ProjectInfo }) {
   const treeRef = useRef(tree);
   treeRef.current = tree;
   const shownNodes = useMemo(() => {
-    const nested = nestFiles(tree.nodes, nestParent);
+    const nested = withResourceIcons(nestFiles(tree.nodes, nestParent), joinPath(project.root, "resources"));
     return project.kind === "yog-mod" ? withGeneratedCode(nested, project.root) : nested;
   }, [tree.nodes, project.kind, project.root]);
 
@@ -209,6 +227,13 @@ function ProjectExplorerTree({ project }: { project: ProjectInfo }) {
 
   async function addFromTemplate(folder: string, template: ItemTemplate, name: string) {
     const modId = await readModId(project);
+    if (template.rootFolder && folder === project.root) {
+      // `.yres` files live in `resources/`, as a C# project's `.resx` in `Resources/`.
+      const inner = joinPath(project.root, template.rootFolder);
+      if (!(await takenNames(project.root)).has(template.rootFolder.toLowerCase())) await invoke("dir_create_dir", { path: inner });
+      await tree.reload(project.root);
+      folder = inner;
+    }
     const src = joinPath(project.root, "src");
     const srcDir = isWithin(folder, src) ? folder.slice(src.length + 1).replace(/\\/g, "/") : "";
     const files = templateFiles(template, name, { modId, srcDir });

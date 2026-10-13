@@ -88,6 +88,27 @@ impl Vanilla {
         out
     }
 
+    /// The game's item and block texture names (`apple`, `stone`, ...),
+    /// sorted — what `item:` / `block:` sources can show in the designer.
+    pub fn texture_names(&self) -> (Vec<String>, Vec<String>) {
+        let (mut items, mut blocks) = (Vec::new(), Vec::new());
+        if let Ok(zip) = self.zip.lock() {
+            for name in zip.file_names() {
+                let Some(stem) = name.strip_prefix("assets/minecraft/textures/").and_then(|n| n.strip_suffix(".png")) else {
+                    continue;
+                };
+                if let Some(item) = stem.strip_prefix("item/") {
+                    items.push(item.to_string());
+                } else if let Some(block) = stem.strip_prefix("block/") {
+                    blocks.push(block.to_string());
+                }
+            }
+        }
+        items.sort();
+        blocks.sort();
+        (items, blocks)
+    }
+
     fn read(&self, key: &str) -> Option<Vec<u8>> {
         // `key` is `namespace/path` — `assets/<key>` in the jar.
         if let Ok(mut zip) = self.zip.lock()

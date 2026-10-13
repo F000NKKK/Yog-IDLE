@@ -91,7 +91,7 @@ pub fn widget(node: &YuiNode, in_canvas: bool, scroll: &HashMap<String, f32>) ->
         "Button" => widget::button(text(a("text"))),
         "ItemSlot" => widget::item_slot(a("item").unwrap_or_default()),
         "InvSlot" => widget::inv_slot(a("item").unwrap_or_default(), a("count").and_then(|c| c.trim().parse().ok()).unwrap_or(1)),
-        "Image" => widget::mc_image(a("texture").unwrap_or_default(), num(a("tex_w")).unwrap_or(16.0), num(a("tex_h")).unwrap_or(16.0)),
+        "Image" => super::images::widget(node),
         "TextBox" => text_box(node),
         _ => widget::spacer(),
     };

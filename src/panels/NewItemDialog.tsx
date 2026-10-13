@@ -17,6 +17,10 @@ export interface ItemTemplate {
   baseName: string;
   /** The files it makes for `stem` — file name → contents. Default: one empty `stem + extension`. */
   files?: (stem: string, ctx: TemplateContext) => [string, string][];
+  /** Suggest `baseName` itself before numbering (`Strings.yres`, then `Strings1.yres`). */
+  unnumbered?: boolean;
+  /** Added on the project root, the files go into this folder of it (made if missing) — `resources` for `.yres`. */
+  rootFolder?: string;
 }
 
 export interface TemplateContext {
@@ -59,13 +63,33 @@ export const ITEM_TEMPLATES: ItemTemplate[] = [
     files: (stem) => [[`${stem}.rs`, `pub fn register(registry: &mut yog_api::Registry) {\n    let _ = registry;\n}\n`]],
   },
   {
+    id: "yog-resources",
+    category: "Yog",
+    name: "Resources File",
+    description:
+      "A .yres resource set — texts (translated per language), images, sounds, colors and numbers, opened in the resource editor; yog build compiles it and generates typed accessors (Strings::example()). Goes into resources/.",
+    extension: ".yres",
+    baseName: "Strings",
+    unnumbered: true,
+    rootFolder: "resources",
+    files: (stem, { modId }) => [
+      [
+        `${stem}.yres`,
+        `{\n  "example": { "value": "Example", "comment": "Translation key ${modId}.example; ${stem}::example() in code, @${stem}.example in .yui" }\n}\n`,
+      ],
+    ],
+  },
+  {
     id: "yog-lang",
     category: "Yog",
     name: "Language File",
-    description: "Translations for the mod's text, keyed like the game's own lang files (e.g. en_us.json).",
-    extension: ".json",
-    baseName: "en_us",
-    files: (stem, { modId }) => [[`${stem}.json`, `{\n  "${modId}.example": "Example"\n}\n`]],
+    description:
+      "The texts of a resource set in another language: <Set>.<locale>.yres next to <Set>.yres (e.g. Strings.ru_ru.yres). The resource editor's All Languages view shows them side by side.",
+    extension: ".yres",
+    baseName: "Strings.ru_ru",
+    unnumbered: true,
+    rootFolder: "resources",
+    files: (stem) => [[`${stem}.yres`, "{\n}\n"]],
   },
   { id: "rust", category: "Rust", name: "Rust Source File", description: "An empty Rust module.", extension: ".rs", baseName: "module" },
   {
@@ -100,8 +124,8 @@ export function templateFiles(template: ItemTemplate, name: string, ctx: Templat
 
 /** `base1.ext`, `base2.ext`, ... — the first whose files are all free. */
 function freeName(template: ItemTemplate, taken: Set<string>): string {
-  for (let n = 1; ; n++) {
-    const name = `${template.baseName}${n}${template.extension}`;
+  for (let n = template.unnumbered ? 0 : 1; ; n++) {
+    const name = `${template.baseName}${n || ""}${template.extension}`;
     const files = templateFiles(template, name, { modId: "" }).map(([file]) => file.toLowerCase());
     if (files.every((file) => !taken.has(file))) return name;
   }

@@ -8,8 +8,10 @@ pub mod assets;
 pub mod codebehind;
 pub mod font;
 pub mod gfx;
+pub mod images;
 pub mod markup;
 pub mod raster;
+pub mod yog_image;
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -53,7 +55,7 @@ pub struct Rendered {
 }
 
 /// The mod a `.yui` belongs to: the folder holding the `src/` it's in.
-fn mod_root(yui: &Path) -> Option<PathBuf> {
+pub(crate) fn mod_root(yui: &Path) -> Option<PathBuf> {
     yui.ancestors().find(|p| p.file_name().is_some_and(|n| n == "src")).and_then(|p| p.parent()).map(Path::to_path_buf)
 }
 
@@ -63,6 +65,8 @@ type Laid = UiRoot;
 fn lay_out(root: &YuiNode, screen_w: f32, screen_h: f32, scroll: &HashMap<String, f32>) -> Laid {
     let mut ui = UiRoot::new("yog-idle:designer", markup::screen(root, screen_w, screen_h, scroll));
     ui.layout(screen_w, screen_h);
+    // `<Image>`s draw into their laid-out box (see `images`).
+    images::fit_to_layout(&mut ui.root, &ui.layout_root);
     ui
 }
 
@@ -157,6 +161,7 @@ pub struct RenderArgs {
 pub fn render(args: &RenderArgs) -> Result<Rendered, String> {
     let (sw, sh) = (args.screen_w.clamp(1, 4096), args.screen_h.clamp(1, 4096));
     let scroll = offsets(&args.path, args.preview);
+    images::set_document(mod_root(Path::new(&args.path)).as_deref());
     let laid = lay_out(&args.root, sw as f32, sh as f32, &scroll);
     let mut ops = gfx::record(sw as i32, sh as i32, |ctx| laid.render(ctx));
     apply_fonts(&args.root, &laid, &mut ops);

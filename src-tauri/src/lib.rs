@@ -568,6 +568,23 @@ async fn yui_designer_event(args: designer::EventArgs) -> Result<designer::Event
         .map_err(|e| e.to_string())
 }
 
+/// What the `<Image source>` picker offers for a `.yui`: the mod's textures,
+/// Yog's sprite names, the game's items and blocks (see `designer::images`).
+#[tauri::command]
+async fn yui_image_sources(path: String) -> Result<Vec<designer::images::Candidate>, String> {
+    tauri::async_runtime::spawn_blocking(move || designer::images::candidates(Path::new(&path)))
+        .await
+        .map_err(|e| e.to_string())
+}
+
+/// A Yog image source drawn `size` px square, as a PNG data URL.
+#[tauri::command]
+async fn yui_image_preview(path: String, source: String, size: u32) -> Result<Option<String>, String> {
+    tauri::async_runtime::spawn_blocking(move || designer::images::preview(Path::new(&path), &source, size))
+        .await
+        .map_err(|e| e.to_string())
+}
+
 /// Leaves the preview: scroll positions back to the top.
 #[tauri::command]
 fn yui_designer_reset(path: String) {
@@ -1383,6 +1400,8 @@ pub fn run() {
         yui_codegen,
         yui_designer_render,
         yui_designer_event,
+        yui_image_sources,
+        yui_image_preview,
         yui_designer_reset,
         yui_event_handler,
         pty_spawn,

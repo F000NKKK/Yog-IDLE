@@ -164,14 +164,35 @@ mod list, `yog_api` `mods_list()`).
 ## In code
 
 ```rust
-// src/res.rs
-yog_api::resources_include!("Strings");   // resources/**/Strings.yres
-yog_api::resources_include!("Icons");
+// src/lib.rs
+yog_api::resources!();
 ```
 
-pulls in `.yog-build/generated/resources/<Set>.g.rs` (written by `yog
-build`, `yog check` and `yog res check`, never committed), which declares
-`pub struct Strings;` with an associated function or constant per entry:
+declares module `res` (`crate::res`) from `.yog-build/generated/res.g.rs`
+— written by `yog build`, `yog check` and `yog res check`, never committed
+— with a unit struct per resource set and an associated function or
+constant per entry (yog-cli 0.26.1+, yog-api 0.88.1+):
+
+```rust
+pub struct Strings;
+impl Strings {
+    /// Translation key of [`Self::screen_title`]: `mymod.screen.title`.
+    pub const SCREEN_TITLE_KEY: &'static str = "mymod.screen.title";
+    /// `screen.title` — Title of the mod list screen
+    ///
+    /// Neutral text: "Yog Mods".
+    pub fn screen_title() -> String { ::yog_api::tr(Self::SCREEN_TITLE_KEY) }
+    pub const MODS_COUNT_KEY: &'static str = "mymod.mods_count";
+    pub fn mods_count(count: impl Display) -> String { ::yog_api::tr_args(Self::MODS_COUNT_KEY, &[&count]) }
+}
+pub struct Icons;
+impl Icons {
+    pub const fn logo() -> &'static str { "mymod:images/logo" }   // image/file/sound: a source / id
+    pub const ACCENT: u32 = 0xFFFF8800;                             // color
+    pub const ROWS_PER_PAGE: i64 = 20;                              // number
+    pub const SHOW_BADGES: bool = true;                             // bool
+}
+```
 
 ```rust
 use crate::res::{Icons, Strings};
@@ -179,13 +200,14 @@ use crate::res::{Icons, Strings};
 label(Strings::screen_title());
 label(Strings::mods_count(mods.len()));
 image(Icons::logo());
-register_menu_entry(Strings::MENU_BUTTON_KEY, "mymod:main"); // a key
+register_menu_entry(Strings::MENU_BUTTON_KEY, "mymod:main"); // takes a key
 ```
 
-Texts are looked up each call (`yog_api::tr`/`tr_args`), so call them when
-building the UI, not once at startup — the player can switch language at
-any time. Without generated accessors, `yog_api::tr("mymod.screen.title")`
-and `yog_api::tr!("mymod.mods_count", n)` do the same by key.
+Texts are looked up on each call (`yog_api::tr`/`tr_args`), so call them
+when building the UI, not once at startup — the player can switch language
+at any time. Without the accessors, `yog_api::tr("mymod.screen.title")` and
+`yog_api::tr!("mymod.mods_count", n)` do the same by key
+(`yog_api::translation(key)` gives `None` for an unknown one).
 
 ## In `.yui` screens
 

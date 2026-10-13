@@ -44,6 +44,10 @@ unsafe extern "C" fn text(text: YogStr, x: f32, y: f32, color: u32, shadow: bool
 #[allow(clippy::too_many_arguments)]
 unsafe extern "C" fn mc_tex(id: YogStr, x: f32, y: f32, u0: f32, v0: f32, w: f32, h: f32, tw: f32, th: f32) {
     let id = unsafe { string(id) };
+    if let Some(spec) = super::images::Spec::decode(&id) {
+        push(DrawOp::Image { spec, x, y, w, h });
+        return;
+    }
     push(DrawOp::Texture { id, x, y, u0, v0, w, h, tw, th });
 }
 unsafe extern "C" fn item(id: YogStr, x: f32, y: f32, size: f32) {

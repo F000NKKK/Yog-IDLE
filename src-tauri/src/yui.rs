@@ -1,6 +1,8 @@
 //! `.yui` screen files (the screen designer's format) — regenerating their
 //! code (`.yog-build/generated/**/*.g.rs`, what the code-behind pulls in
-//! with `yog_api::ui_include!`) when one is saved, through `yog ui gen`.
+//! with `yog_api::ui_include!`) when one is saved, through `yog ui gen` —
+//! and the same for `.yres` resource files (`res.g.rs`, through
+//! `yog res check`).
 
 use std::path::PathBuf;
 use std::process::Command;
@@ -12,12 +14,26 @@ use std::process::Command;
 /// attribute, say) or why `yog` couldn't run.
 pub fn codegen(path: &str) -> Result<String, String> {
     let file = PathBuf::from(path);
-    if file.extension().and_then(|e| e.to_str()) != Some("yui") {
-        return Err(format!("not a .yui file: {path}"));
-    }
+    let args: &[&str] = match file.extension().and_then(|e| e.to_str()) {
+        Some("yui") => &["ui", "gen"],
+        // Regenerates `.yog-build/generated/res.g.rs` (and checks the set).
+        Some("yres") => &["res", "check"],
+        _ => return Err(format!("not a .yui or .yres file: {path}")),
+    };
     let mut command = Command::new("yog");
-    command.args(["ui", "gen"]).arg(&file);
-    if let Some(dir) = file.parent().filter(|d| d.is_dir()) {
+    command.args(args);
+    if args[0] == "ui" {
+        command.arg(&file);
+    }
+    // `yog res check` works on the project in the current folder.
+    let project = file
+        .ancestors()
+        .skip(1)
+        .find(|d| d.join("yog.toml").is_file());
+    if let Some(dir) = (if args[0] == "res" { project } else { None })
+        .or(file.parent())
+        .filter(|d| d.is_dir())
+    {
         command.current_dir(dir);
     }
     let output = command
@@ -31,7 +47,7 @@ pub fn codegen(path: &str) -> Result<String, String> {
             .collect::<Vec<_>>()
             .join("\n");
         return Err(if message.trim().is_empty() {
-            format!("yog ui gen failed ({})", output.status)
+            format!("yog {} failed ({})", args.join(" "), output.status)
         } else {
             message.trim().to_string()
         });
