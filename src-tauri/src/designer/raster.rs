@@ -117,7 +117,7 @@ impl<'r> Canvas<'r> {
         Canvas {
             w,
             h,
-            rgba: vec![0; (w * h * 4) as usize],
+            rgba: vec![0; w as usize * h as usize * 4],
             scale: scale as f32,
             clip: None,
             res,
@@ -345,6 +345,19 @@ impl<'r> Canvas<'r> {
     }
 }
 
+/// The most physical pixels a canvas gets (256 MiB of RGBA).
+const MAX_PIXELS: u64 = 1 << 26;
+
+/// `scale` clamped to 1..=8, lowered until a `gui_w`×`gui_h` canvas fits [`MAX_PIXELS`].
+pub fn fit_scale(gui_w: u32, gui_h: u32, scale: u32) -> u32 {
+    let gui = u64::from(gui_w) * u64::from(gui_h);
+    let mut scale = scale.clamp(1, 8);
+    while scale > 1 && gui.saturating_mul(u64::from(scale * scale)) > MAX_PIXELS {
+        scale -= 1;
+    }
+    scale
+}
+
 /// Rasterizes a display list.
 pub fn rasterize<'r>(
     ops: &[DrawOp],
@@ -353,7 +366,7 @@ pub fn rasterize<'r>(
     scale: u32,
     res: &'r Resources,
 ) -> Canvas<'r> {
-    let mut canvas = Canvas::new(gui_w, gui_h, scale.clamp(1, 8), res);
+    let mut canvas = Canvas::new(gui_w, gui_h, fit_scale(gui_w, gui_h, scale), res);
     for op in ops {
         canvas.draw(op);
     }
@@ -369,6 +382,14 @@ mod tests {
             mod_root: None,
             vanilla: None,
         }
+    }
+
+    #[test]
+    fn huge_canvases_lower_their_scale() {
+        assert_eq!(fit_scale(400, 300, 3), 3);
+        assert_eq!(fit_scale(400, 300, 0), 1);
+        assert_eq!(fit_scale(4096, 4096, 8), 2);
+        assert_eq!(fit_scale(u32::MAX, u32::MAX, 8), 1);
     }
 
     #[test]

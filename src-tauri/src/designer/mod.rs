@@ -204,7 +204,7 @@ pub fn render(args: &RenderArgs) -> Result<Rendered, String> {
     // The inside of an expanded component instance isn't the document's.
     node_rects.retain(|r| !r.uid.contains(components::INNER));
     let res = Resources::for_mod(root.as_deref());
-    let scale = args.scale.clamp(1, 8);
+    let scale = raster::fit_scale(sw, sh, args.scale);
     let canvas = raster::rasterize(&ops, sw, sh, scale, &res);
     let real_font = res.vanilla.is_some() || canvas_font_real(&res);
     let png = canvas.png()?;
