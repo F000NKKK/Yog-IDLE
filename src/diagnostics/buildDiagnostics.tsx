@@ -11,6 +11,14 @@ const liveSet = (path: string) => `live:${path}`;
 const BUILD_DIR = ".yog-build";
 /** Coalesces a burst of build output into one Error List update. */
 const FLUSH_DELAY_MS = 100;
+/** `yog run`'s line between its build and the game's own output. */
+const LAUNCHED = "==> launched pid ";
+
+/** What a terminal would show of a line cargo redraws with `\r` (its progress bar, then the diagnostic). */
+const lastSegment = (line: string) => line.slice(line.lastIndexOf("\r") + 1);
+
+/** One diagnostic per place and message — `yog build` compiles the same code once per platform. */
+const keyOf = (d: Diagnostic) => [d.severity, d.code, d.file, d.line, d.column, d.message].join("\u0000");
 
 interface BuildParsers {
   rustc: RustcParser;
@@ -27,8 +35,10 @@ function parsersFor(root: string, project: string | undefined): BuildParsers {
 /**
  * Feeds the Error List from builds: every `yog build` (Build, a run's
  * build, a hot reload's) replaces the "build" set with what rustc and
- * yog-cli report in the Build output. Mounted once, beside the Output
- * panel's own sync.
+ * yog-cli report in the Build output. A run's build fires no
+ * `workflow-start`, so Build output arriving with no build open starts
+ * one; it ends at the game's launch or exit. Mounted once, beside the
+ * Output panel's own sync.
  */
 export function BuildDiagnosticsSync({ root, project }: { root: string | null; project?: string }) {
   useEffect(() => {
@@ -36,6 +46,7 @@ export function BuildDiagnosticsSync({ root, project }: { root: string | null; p
     setDiagnostics(BUILD_SET, []);
     clearLiveDiagnostics();
     let parsers: BuildParsers | null = null;
+    let seen = new Set<string>();
     let pending: Diagnostic[] = [];
     let timer: ReturnType<typeof setTimeout> | undefined;
     const flush = () => {
@@ -44,14 +55,19 @@ export function BuildDiagnosticsSync({ root, project }: { root: string | null; p
       pending = [];
     };
     const queue = (items: Diagnostic[]) => {
-      if (items.length === 0) return;
-      pending.push(...items);
-      timer ??= setTimeout(flush, FLUSH_DELAY_MS);
+      for (const d of items) {
+        const key = keyOf(d);
+        if (seen.has(key)) continue;
+        seen.add(key);
+        pending.push(d);
+      }
+      if (pending.length > 0) timer ??= setTimeout(flush, FLUSH_DELAY_MS);
     };
     const start = (buildRoot: string | null) => {
       clearTimeout(timer);
       timer = undefined;
       pending = [];
+      seen = new Set();
       setDiagnostics(BUILD_SET, []);
       const at = buildRoot ?? root;
       parsers = at ? parsersFor(at, project) : null;
@@ -59,6 +75,7 @@ export function BuildDiagnosticsSync({ root, project }: { root: string | null; p
     const finish = () => {
       if (!parsers) return;
       queue(parsers.rustc.flush());
+      parsers = null;
       clearTimeout(timer);
       flush();
     };
@@ -68,13 +85,15 @@ export function BuildDiagnosticsSync({ root, project }: { root: string | null; p
         if (e.stage === "building") start(null);
         else finish();
       }),
-      listenTo(EVENT.buildOutput, (line) => {
+      listenTo(EVENT.buildOutput, (raw) => {
+        const line = lastSegment(raw);
+        if (line.startsWith(LAUNCHED)) return finish();
+        if (!parsers) start(null);
         if (!parsers) return;
         queue([...parsers.rustc.push(stripLevelTag(line)), ...parsers.yog.push(line)]);
       }),
-      listenTo(EVENT.workflowExit, (payload) => {
-        if (payload) finish();
-      }),
+      // A game exiting (no payload) ends a run whose build never launched it.
+      listenTo(EVENT.workflowExit, finish),
     ]);
   }, [root, project]);
   return null;
