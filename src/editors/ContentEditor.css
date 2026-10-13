@@ -45,7 +45,7 @@
 }
 
 .content-outliner {
-  width: 220px;
+  width: 240px;
   flex: none;
   display: flex;
   flex-direction: column;
@@ -201,4 +201,198 @@
   color: var(--sp-text-muted);
   font-size: var(--sp-font-size-xs);
   font-variant-numeric: tabular-nums;
+}
+
+/* ── Paint mode ─────────────────────────────────────────────────────────── */
+
+/* The 2D texture view and the 3D view side by side. */
+.content-center {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+}
+
+.content-paint {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--sp-border);
+}
+
+.content-paint .content-pane-header {
+  font-weight: normal;
+}
+
+.content-paint-note {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--sp-text-muted);
+  font-size: var(--sp-font-size-sm);
+}
+
+.content-paint-canvas {
+  flex: 1;
+  min-height: 0;
+  background: var(--sp-surface-1, #262626);
+}
+
+.paint-canvas-hud {
+  position: absolute;
+  right: var(--sp-space-sm);
+  bottom: var(--sp-space-xs);
+  color: var(--sp-text-muted);
+  font-size: var(--sp-font-size-xs);
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+
+.paint-tools {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-space-xs);
+  padding: var(--sp-space-xs) var(--sp-space-sm) var(--sp-space-sm);
+  border-bottom: 1px solid var(--sp-border);
+}
+
+.paint-tool-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-space-2xs);
+}
+
+.paint-tool-row .paint-on {
+  background: var(--sp-selection);
+  color: var(--sp-text);
+}
+
+.paint-field {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-space-sm);
+  min-height: var(--sp-control-height);
+  font-size: var(--sp-font-size-sm);
+}
+
+.paint-field > span:first-child {
+  width: 72px;
+  flex: none;
+  color: var(--sp-text-muted);
+}
+
+.paint-field > :not(span) {
+  flex: 1;
+  min-width: 0;
+}
+
+.paint-field input[type="range"] {
+  accent-color: var(--sp-accent);
+}
+
+.paint-alpha {
+  width: 28px;
+  flex: none;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.paint-color {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-space-sm);
+}
+
+.paint-hex {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--sp-font-mono, monospace);
+}
+
+/* A color chip over a checkerboard, so alpha shows. */
+.paint-color-swatch,
+.paint-chip,
+.content-tint {
+  position: relative;
+  flex: none;
+  padding: 0;
+  border: 1px solid var(--sp-border-strong);
+  border-radius: var(--sp-control-radius);
+  background: repeating-conic-gradient(#555 0 25%, #888 0 50%) 0 0 / 8px 8px;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.paint-color-swatch {
+  width: var(--sp-control-height);
+  height: var(--sp-control-height);
+}
+
+.paint-color-swatch > span,
+.paint-chip > span,
+.content-tint > span {
+  position: absolute;
+  inset: 0;
+}
+
+.paint-color-swatch input,
+.content-tint input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.content-pane-subheader {
+  display: flex;
+  align-items: center;
+  height: var(--sp-control-height-sm);
+  color: var(--sp-text-muted);
+  font-size: var(--sp-font-size-sm);
+}
+
+.paint-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+
+.paint-chip {
+  width: 18px;
+  height: 18px;
+}
+
+.paint-chip.active {
+  outline: 2px solid var(--sp-accent);
+  outline-offset: 1px;
+}
+
+.content-layers li {
+  height: var(--sp-row-height);
+}
+
+.content-layer-thumb {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  background: repeating-conic-gradient(#555 0 25%, #777 0 50%) 0 0 / 8px 8px;
+}
+
+.content-layer-thumb img {
+  display: block;
+  width: 16px;
+  height: 16px;
+  image-rendering: pixelated;
+}
+
+.content-tint {
+  width: 14px;
+  height: 14px;
+}
+
+.content-pane-actions {
+  display: flex;
+  padding: 0 var(--sp-space-sm) var(--sp-space-sm);
 }

@@ -7,7 +7,7 @@ use std::collections::HashMap;
 
 use serde::Deserialize;
 use yog_ui::widget::{self, Widget};
-use yog_ui::{Align, Dock, FlexDir, FocusStyle, Units};
+use yog_ui::{Align, Dock, FlexDir, FocusStyle, HAlign, Track, Units, VAlign};
 
 /// One element of the designer's document (`YuiNode` in `yui.ts`).
 #[derive(Debug, Clone, Deserialize)]
@@ -26,10 +26,63 @@ impl YuiNode {
     }
 }
 
-const CONTAINERS: &[&str] = &["Screen", "Canvas", "Column", "Row", "ScrollView"];
+const CONTAINERS: &[&str] = &["Screen", "Canvas", "Column", "Row", "ScrollView", "Grid"];
 
 pub fn is_container(kind: &str) -> bool {
     CONTAINERS.contains(&kind)
+}
+
+/// A property element (`<Grid.RowDefinitions>`) — part of its parent, not a widget.
+pub fn is_property_element(node: &YuiNode) -> bool {
+    node.kind.contains('.')
+}
+
+/// The children that are widgets (property elements skipped).
+pub fn widget_children(node: &YuiNode) -> impl Iterator<Item = &YuiNode> {
+    node.children.iter().filter(|c| !is_property_element(c))
+}
+
+/// One row/column size: `Auto`, `*`, `2*`, `26` (yog-cli's `yui_grid`).
+fn track(v: &str) -> Option<Track> {
+    let v = v.trim();
+    if v.eq_ignore_ascii_case("auto") {
+        return Some(Track::auto());
+    }
+    if let Some(w) = v.strip_suffix('*') {
+        let w = if w.trim().is_empty() { 1.0 } else { w.trim().parse().ok()? };
+        return Some(Track::star(w));
+    }
+    v.parse().ok().map(Track::px)
+}
+
+/// A grid's rows (`row`) or columns: `rows="Auto,*"` or `<Grid.RowDefinitions>`.
+/// Sizes it can't read count as `*`, so the canvas still draws while typing.
+fn tracks(node: &YuiNode, row: bool) -> Option<Vec<Track>> {
+    let (attr, prop, size, min, max) =
+        if row { ("rows", "Grid.RowDefinitions", "height", "min_height", "max_height") } else { ("columns", "Grid.ColumnDefinitions", "width", "min_width", "max_width") };
+    if let Some(v) = node.attr(attr) {
+        return Some(v.split(',').map(|p| track(p).unwrap_or(Track::star(1.0))).collect());
+    }
+    let defs = node.children.iter().find(|c| c.kind == prop)?;
+    Some(
+        defs.children
+            .iter()
+            .map(|d| {
+                let mut t = track(d.attr(size).unwrap_or("*")).unwrap_or(Track::star(1.0));
+                if let Some(n) = num(d.attr(min)) {
+                    t = t.min(n);
+                }
+                if let Some(n) = num(d.attr(max)) {
+                    t = t.max(n);
+                }
+                t
+            })
+            .collect(),
+    )
+}
+
+fn cell_index(v: Option<&str>) -> Option<u16> {
+    v?.trim().parse().ok()
 }
 
 fn num(v: Option<&str>) -> Option<f32> {
@@ -86,6 +139,7 @@ pub fn widget(node: &YuiNode, in_canvas: bool, scroll: &HashMap<String, f32>) ->
     let mut w = match node.kind.as_str() {
         "Screen" | "Canvas" | "Column" => widget::panel(FlexDir::Column),
         "Row" => widget::panel(FlexDir::Row),
+        "Grid" => widget::grid(),
         "ScrollView" => widget::scroll_view(),
         "Label" => widget::label(text(a("text"))),
         "Button" => widget::button(text(a("text"))),
@@ -102,6 +156,28 @@ pub fn widget(node: &YuiNode, in_canvas: bool, scroll: &HashMap<String, f32>) ->
         if let Some(v) = num(a("height")) {
             w = w.h(Units::Px(v));
         }
+    }
+    if node.kind == "Grid" {
+        if let Some(rows) = tracks(node, true) {
+            w = w.rows(rows);
+        }
+        if let Some(cols) = tracks(node, false) {
+            w = w.cols(cols);
+        }
+        if let Some(n) = num(a("row_spacing")) {
+            w = w.row_spacing(n);
+        }
+        if let Some(n) = num(a("column_spacing")) {
+            w = w.col_spacing(n);
+        }
+    }
+    let (row, col) = (cell_index(a("Grid.Row")), cell_index(a("Grid.Column")));
+    if row.is_some() || col.is_some() {
+        w = w.cell(row.unwrap_or(0), col.unwrap_or(0));
+    }
+    let (rs, cs) = (cell_index(a("Grid.RowSpan")), cell_index(a("Grid.ColumnSpan")));
+    if rs.is_some() || cs.is_some() {
+        w = w.span(rs.unwrap_or(1), cs.unwrap_or(1));
     }
     let (x, y) = (num(a("x")), num(a("y")));
     if in_canvas || x.is_some() || y.is_some() {
@@ -141,6 +217,21 @@ pub fn widget(node: &YuiNode, in_canvas: bool, scroll: &HashMap<String, f32>) ->
                 _ => FocusStyle::Outline,
             }),
             "padding" => padding(v).map_or(w.clone(), |[t, r, b, l]| w.clone().padding(t, r, b, l)),
+            "margin" => padding(v).map_or(w.clone(), |[t, r, b, l]| w.clone().margin(t, r, b, l)),
+            "halign" => match v.trim() {
+                "left" => w.halign(HAlign::Left),
+                "center" => w.halign(HAlign::Center),
+                "right" => w.halign(HAlign::Right),
+                "stretch" => w.halign(HAlign::Stretch),
+                _ => w,
+            },
+            "valign" => match v.trim() {
+                "top" => w.valign(VAlign::Top),
+                "center" => w.valign(VAlign::Center),
+                "bottom" => w.valign(VAlign::Bottom),
+                "stretch" => w.valign(VAlign::Stretch),
+                _ => w,
+            },
             "bg" => color(v).map_or(w.clone(), |c| w.clone().bg(c)),
             "color" => color(v).map_or(w.clone(), |c| w.clone().color(c)),
             "focus_color" => color(v).map_or(w.clone(), |c| w.clone().focus_color(c)),
@@ -162,7 +253,7 @@ pub fn widget(node: &YuiNode, in_canvas: bool, scroll: &HashMap<String, f32>) ->
         }
     if is_container(&node.kind) {
         let canvas = matches!(node.kind.as_str(), "Screen" | "Canvas");
-        for child in &node.children {
+        for child in widget_children(node) {
             w = w.child(widget(child, canvas, scroll));
         }
     }

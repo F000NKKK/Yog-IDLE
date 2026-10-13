@@ -795,7 +795,7 @@ export function Viewport({
       }
       if (e.button !== 0 || !wasClick) return;
       raycaster.setFromCamera(ndc(e), camera());
-      const hits = raycaster.intersectObjects(three.model.children, true).filter((h) => h.object.userData.part === "edit");
+      const hits = raycaster.intersectObjects(three.model.children, true).filter((h) => h.object.userData.part === "edit" && h.object.userData.element !== undefined);
       const hit = hits[0];
       if (hit) propsRef.current.onSelect(hit.object.userData.element as number, hit.object.userData.face as Dir);
       else propsRef.current.onSelect(null, null);

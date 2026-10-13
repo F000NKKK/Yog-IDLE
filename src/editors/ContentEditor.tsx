@@ -50,7 +50,7 @@ import {
 import { UvEditor } from "../content/UvEditor";
 import { Viewport, type GizmoMode, type PaintHit, type Part, type TextureSource, type ViewName } from "../content/Viewport";
 import { PaintCanvas, type PaintModifiers, type PaintPhase } from "../content/paint/PaintCanvas";
-import { PAINT_TOOLS, PaintTools, usePaintState } from "../content/paint/PaintTools";
+import { PaintTools, usePaintState } from "../content/paint/PaintTools";
 import { blankImage, cloneImage, decodeImage, getPixel, sameImage, Stroke, toPngDataUrl, type PixelImage } from "../content/paint/pixels";
 import { spriteLayerElements } from "../content/spriteElements";
 import "./ContentEditor.css";
@@ -1100,7 +1100,7 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
     for (const slot of resolved.slots) {
       const own = model?.textures?.[slot];
       const shown = resolved.textures[slot];
-      const src = shown ? images[shown] : undefined;
+      const src = shown ? shownImages[shown] : undefined;
       out.push({
         id: `tex:${slot}`,
         name: slot,
@@ -1208,7 +1208,7 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
     return out;
     // `t` and the helpers read fresh state each render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [file, kind, model, resolved, mainResolved, images, choices, displaySlot, selEl, sel, face, readOnly, effectiveKey, modelKind, modelKey]);
+  }, [file, kind, model, resolved, mainResolved, shownImages, choices, displaySlot, selEl, sel, face, readOnly, effectiveKey, modelKind, modelKey]);
 
   // ── Layout ────────────────────────────────────────────────────────────────
 
@@ -1240,16 +1240,153 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
       ? DIRS.filter((d) => d !== face && selEl.faces[d]?.texture === faceData.texture).map((d) => selEl.faces[d]!.uv ?? autoUv(d, selEl.from, selEl.to))
       : [];
 
+  // The 2D paint view: the active slot's texture, the selected element's faces on it outlined.
+  const activeImg = pixelsOf(activeKey);
+  const overlays: { rect: [number, number, number, number]; primary?: boolean }[] = [];
+  if (paintOn && activeImg && activeSlot && selEl && !resolved.sprite) {
+    const sx = activeImg.w / 16;
+    const sy = (images[activeKey!]?.animated ? activeImg.w : activeImg.h) / 16;
+    for (const d of DIRS) {
+      const f = selEl.faces[d];
+      if (!f || f.texture.replace(/^#/, "") !== activeSlot) continue;
+      const [u0, v0, u1, v1] = f.uv ?? autoUv(d, selEl.from, selEl.to);
+      overlays.push({ rect: [u0 * sx, v0 * sy, u1 * sx, v1 * sy], primary: d === face });
+    }
+  }
+  const activeForeign = !!activeKey && !!images[activeKey] && !images[activeKey]!.writable;
+  const spriteNote = resolved.sprite
+    ? t("Paint the layers here or right on the model. To shape the item in 3D, convert it to elements.")
+    : null;
+
+  const paintPanel = paintOn && (
+    <>
+      <div className="content-pane-header">
+        <span>{t("Paint")}</span>
+        <span className="content-spacer" />
+        <Button variant="ghost" onClick={() => void newTexture()} title={t("A blank texture for the slot being painted")}>
+          {t("New Texture…")}
+        </Button>
+      </div>
+      <PaintTools paint={paint} onChange={setPaint} disabled={readOnly} />
+    </>
+  );
+
+  const layersPanel = resolved.sprite && (
+    <>
+      <div className="content-pane-header">
+        <span>{t("Layers")}</span>
+        <span className="content-spacer" />
+        <IconButton title={t("Add Layer")} disabled={readOnly} onClick={addLayer}>
+          <Icon name="plus" />
+        </IconButton>
+        <IconButton title={t("Move Up")} disabled={readOnly || !activeSlot || layerIndex(activeSlot) <= 0} onClick={() => activeSlot && moveLayer(activeSlot, -1)}>
+          <Icon name="arrowUp" />
+        </IconButton>
+        <IconButton
+          title={t("Move Down")}
+          disabled={readOnly || !activeSlot || layerIndex(activeSlot) < 0 || layerIndex(activeSlot) >= layers.length - 1}
+          onClick={() => activeSlot && moveLayer(activeSlot, 1)}
+        >
+          <Icon name="arrowDown" />
+        </IconButton>
+        <IconButton title={t("Remove Layer")} disabled={readOnly || layers.length < 2 || !activeSlot} onClick={() => activeSlot && removeLayer(activeSlot)}>
+          <Icon name="trash" />
+        </IconButton>
+      </div>
+      <ul className="content-elements content-layers" role="listbox">
+        {[...layers].reverse().map((slot) => {
+          const value = resolved.textures[slot];
+          const index = layerIndex(slot);
+          return (
+            <li key={slot} role="option" aria-selected={slot === activeSlot} className={slot === activeSlot ? "selected" : undefined} onClick={() => setPaintSlot(slot)}>
+              <span className="content-layer-thumb">{value && shownImages[value] && <img src={shownImages[value]!.url} alt="" />}</span>
+              <span className="content-element-name" title={value}>
+                {slot}
+                <span className="content-element-size"> {value ?? ""}</span>
+              </span>
+              <label className="content-tint" title={t("Tint preview (tint index {n}) — right-click to clear", { n: index })} onClick={(e) => e.stopPropagation()}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  setTints(({ [index]: _, ...rest }) => rest);
+                }}
+              >
+                <span style={{ background: tints[index] ?? "transparent" }} />
+                <input type="color" value={tints[index] ?? "#ffffff"} onChange={(e) => setTints((m) => ({ ...m, [index]: e.target.value }))} />
+              </label>
+            </li>
+          );
+        })}
+      </ul>
+      <p className="content-note">{spriteNote}</p>
+      <div className="content-pane-actions">
+        <Button variant="subtle" disabled={readOnly} onClick={() => void convertToElements()}>
+          {t("Convert to 3D Elements")}
+        </Button>
+      </div>
+    </>
+  );
+
+  const elementsPanel = !resolved.sprite && (
+    <>
+      <div className="content-pane-header">
+        <span>{t("Elements")}</span>
+        <span className="content-spacer" />
+        <IconButton title={t("Add Element")} disabled={readOnly} onClick={addElement}>
+          <Icon name="plus" />
+        </IconButton>
+        <IconButton title={`${t("Duplicate")} (Ctrl+D)`} disabled={readOnly || sel === null} onClick={duplicateElement}>
+          <Icon name="split" />
+        </IconButton>
+        <IconButton title={t("Move Up")} disabled={readOnly || sel === null || sel === 0} onClick={() => moveElement(-1)}>
+          <Icon name="arrowUp" />
+        </IconButton>
+        <IconButton title={t("Move Down")} disabled={readOnly || sel === null || sel === elements.length - 1} onClick={() => moveElement(1)}>
+          <Icon name="arrowDown" />
+        </IconButton>
+        <IconButton title={`${t("Delete")} (Del)`} disabled={readOnly || sel === null} onClick={deleteElement}>
+          <Icon name="trash" />
+        </IconButton>
+      </div>
+      {!resolved.own && elements.length > 0 && (
+        <p className="content-note">{t("These elements come from {parent}. Editing one copies them into this model.", { parent: model?.parent ?? "" })}</p>
+      )}
+      <ul className="content-elements" role="listbox">
+        {elements.map((el, i) => (
+          <li key={i} role="option" aria-selected={i === sel} className={i === sel ? "selected" : undefined} onClick={() => onSelect(i, null)}>
+            <Icon name={i === sel ? "check" : "grid"} size={13} />
+            <span className="content-element-name">{el.name ?? `${t("Element")} ${i + 1}`}</span>
+            <span className="content-element-size">
+              {el.to.map((x, k) => fmt(x - el.from[k])).join("×")}
+              {el.rotation?.angle ? ` ↻${el.rotation.angle}°${el.rotation.axis}` : ""}
+            </span>
+          </li>
+        ))}
+      </ul>
+      {selEl && (
+        <div className="content-faces">
+          {DIRS.map((d) => (
+            <button key={d} type="button" className={`content-face${face === d ? " selected" : ""}${selEl.faces[d] ? "" : " off"}`} onClick={() => onSelect(sel, d)}>
+              {t(d)}
+            </button>
+          ))}
+        </div>
+      )}
+    </>
+  );
+
   return (
     <div className="content-editor" ref={rootRef}>
       <div className="content-toolbar">
         <SelectField aria-label={t("Model")} value={effectiveKey} options={modelChoices} onChange={(v) => pickModel(v as ModelKey)} />
         <span className="content-divider" />
-        <Button variant={gizmo === "move" ? "primary" : "subtle"} onClick={() => setGizmo("move")} title={`${t("Move")} (G)`}>
+        <Button variant={!paintOn && gizmo === "move" ? "primary" : "subtle"} disabled={!!resolved.sprite} onClick={() => pickGizmo("move")} title={`${t("Move")} (G)`}>
           {t("Move")}
         </Button>
-        <Button variant={gizmo === "resize" ? "primary" : "subtle"} onClick={() => setGizmo("resize")} title={`${t("Resize")} (S)`}>
+        <Button variant={!paintOn && gizmo === "resize" ? "primary" : "subtle"} disabled={!!resolved.sprite} onClick={() => pickGizmo("resize")} title={`${t("Resize")} (S)`}>
           {t("Resize")}
+        </Button>
+        <Button variant={paintOn ? "primary" : "subtle"} disabled={readOnly} onClick={() => setPaintMode(true)} title={`${t("Paint the textures")} (P)`}>
+          {t("Paint")}
         </Button>
         <span className="content-divider" />
         <Button variant={shading ? "primary" : "subtle"} onClick={() => setShading((s) => !s)} title={t("Minecraft's per-face shading")}>
@@ -1302,84 +1439,51 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
       </div>
       <div className="content-body">
         <div className="content-outliner">
-          <div className="content-pane-header">
-            <span>{t("Elements")}</span>
-            <span className="content-spacer" />
-            <IconButton title={t("Add Element")} disabled={readOnly || !!resolved.sprite} onClick={addElement}>
-              <Icon name="plus" />
-            </IconButton>
-            <IconButton title={`${t("Duplicate")} (Ctrl+D)`} disabled={readOnly || sel === null} onClick={duplicateElement}>
-              <Icon name="split" />
-            </IconButton>
-            <IconButton title={t("Move Up")} disabled={readOnly || sel === null || sel === 0} onClick={() => moveElement(-1)}>
-              <Icon name="arrowUp" />
-            </IconButton>
-            <IconButton title={t("Move Down")} disabled={readOnly || sel === null || sel === elements.length - 1} onClick={() => moveElement(1)}>
-              <Icon name="arrowDown" />
-            </IconButton>
-            <IconButton title={`${t("Delete")} (Del)`} disabled={readOnly || sel === null} onClick={deleteElement}>
-              <Icon name="trash" />
-            </IconButton>
-          </div>
-          {resolved.sprite ? (
-            <p className="content-note">{t("An item sprite: the layer textures, extruded. Set Parent to empty and add elements for a 3D item.")}</p>
-          ) : (
-            <>
-              {!resolved.own && elements.length > 0 && (
-                <p className="content-note">
-                  {t("These elements come from {parent}. Editing one copies them into this model.", { parent: model?.parent ?? "" })}
-                </p>
-              )}
-              <ul className="content-elements" role="listbox">
-                {elements.map((el, i) => (
-                  <li
-                    key={i}
-                    role="option"
-                    aria-selected={i === sel}
-                    className={i === sel ? "selected" : undefined}
-                    onClick={() => onSelect(i, null)}
-                  >
-                    <Icon name={i === sel ? "check" : "grid"} size={13} />
-                    <span className="content-element-name">{el.name ?? `${t("Element")} ${i + 1}`}</span>
-                    <span className="content-element-size">
-                      {el.to.map((x, k) => fmt(x - el.from[k])).join("×")}
-                      {el.rotation?.angle ? ` ↻${el.rotation.angle}°${el.rotation.axis}` : ""}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-              {selEl && (
-                <div className="content-faces">
-                  {DIRS.map((d) => (
-                    <button
-                      key={d}
-                      type="button"
-                      className={`content-face${face === d ? " selected" : ""}${selEl.faces[d] ? "" : " off"}`}
-                      onClick={() => onSelect(sel, d)}
-                    >
-                      {t(d)}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </>
-          )}
+          {paintPanel}
+          {layersPanel}
+          {elementsPanel}
         </div>
-        <Viewport
-          className="content-viewport"
-          parts={parts}
-          images={images}
-          selected={sel}
-          selectedFace={face}
-          onSelect={onSelect}
-          onTransform={readOnly ? undefined : onTransform}
-          gizmo={gizmo}
-          shading={shading}
-          showGrid={grid}
-          renderLayer={file.block?.render_layer}
-          display={display}
-          viewRequest={viewRequest}
-        />
+        <div className="content-center">
+          {paintOn && (
+            <div className="content-paint">
+              <div className="content-pane-header">
+                <SelectField
+                  aria-label={t("Texture")}
+                  value={activeSlot ?? ""}
+                  options={paintSlots.map((s) => ({ value: s, label: `${s}: ${resolved.textures[s]}` }))}
+                  onChange={(v) => setPaintSlot(v)}
+                />
+                {activeForeign && <span className="content-paint-note">{t("Not the mod's texture — the first stroke copies it into the mod.")}</span>}
+              </div>
+              <PaintCanvas
+                className="content-paint-canvas"
+                image={activeImg ?? null}
+                overlays={overlays}
+                grid={paint.grid}
+                brushSize={paint.tool === "pencil" || paint.tool === "eraser" || paint.tool === "line" ? paint.size : 1}
+                mirrorX={paint.mirrorX}
+                onPaint={readOnly ? undefined : onCanvasPaint}
+                emptyText={activeKey ? t("Loading {texture}…", { texture: activeKey }) : t("No texture to paint. Use New Texture… or set a texture slot.")}
+              />
+            </div>
+          )}
+          <Viewport
+            className="content-viewport"
+            parts={parts}
+            images={shownImages}
+            selected={sel}
+            selectedFace={face}
+            onSelect={onSelect}
+            onTransform={readOnly || paintOn ? undefined : onTransform}
+            onPaint={paintOn ? onViewportPaint : null}
+            gizmo={gizmo}
+            shading={shading}
+            showGrid={grid}
+            renderLayer={file.block?.render_layer}
+            display={display}
+            viewRequest={viewRequest}
+          />
+        </div>
         <div className="content-side">
           <PropertyGrid
             className="content-properties"
@@ -1389,7 +1493,7 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
             properties={properties}
             persistKey="yog.content.properties"
           />
-          {faceData && face && selEl && (
+          {!paintOn && faceData && face && selEl && (
             <div className="content-uv-pane">
               <div className="content-pane-header">
                 <span>
@@ -1401,7 +1505,7 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
                 </Button>
               </div>
               <UvEditor
-                image={faceTexture ? images[faceTexture] : undefined}
+                image={faceTexture ? shownImages[faceTexture] : undefined}
                 uv={faceData.uv ?? autoUv(face, selEl.from, selEl.to)}
                 others={otherUvs}
                 readOnly={readOnly}
