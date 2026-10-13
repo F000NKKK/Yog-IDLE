@@ -43,7 +43,7 @@ async function listYres(dir: string, rel: string, out: { path: string; rel: stri
     return;
   }
   for (const e of entries) {
-    if (e.kind === "folder") await listYres(e.path, rel ? `${rel}/${e.name}` : e.name, out);
+    if (e.kind === "dir") await listYres(e.path, rel ? `${rel}/${e.name}` : e.name, out);
     else if (/\.yres$/i.test(e.name)) out.push({ path: e.path, rel });
   }
 }

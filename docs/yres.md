@@ -227,21 +227,36 @@ file), the build looks it up in the player's.
 
 ## In Yog-IDLE
 
-- **Add → New Item → Resources File** creates `resources/<Name>.yres`
-  (`Strings.yres` by default); **Language File** creates
-  `resources/Strings.<locale>.yres`. Project Explorer shows `resources/`
-  with its own icon, and the culture variants nested under their neutral
-  file.
-- The editor is a grid: Name | Value | Type | Comment. Double-click, F2
-  or just start typing to edit a cell; Enter commits and moves down, Tab
-  to the next cell, Esc cancels; the empty row at the bottom adds an entry.
-  Values are edited by type: a color picker, an image/file picker (with a
-  thumbnail for images), a number field, a checkbox. Delete removes the
-  selected rows; Ctrl+C/Ctrl+X/Ctrl+V copy rows as tab-separated text
-  (to and from a spreadsheet). The search box filters by name, value or
-  comment. Empty and duplicate names are marked red.
-- **All Languages** adds a column per culture variant; untranslated cells
-  are marked. **Add Language…** creates `<Set>.<locale>.yres` with every
-  text of the set, still to translate.
+- **Add → New Item → Resources File** creates `<Name>.yres` (`Strings.yres`
+  by default) and **Language File** `Strings.<locale>.yres`
+  (`Strings.ru_ru.yres` by default) — in `resources/` (made if missing) when
+  added on the project itself, else in the chosen folder. Project Explorer
+  shows `resources/` and `.yres` files with their own icons, and a set's
+  culture variants nested under its neutral file.
+- `.yres` files open in the resource editor: a grid of Name | Value | Type
+  | Comment (a culture variant: Name | Value | Comment, with the neutral
+  texts in a read-only column beside them). Double-click, F2 or just start
+  typing to edit a cell; Enter commits and moves down, Tab to the next
+  cell, Esc cancels; the empty row at the bottom adds an entry. Values are
+  edited by type: text, a `#AARRGGBB` field with a color picker, a path
+  with a **…** file picker (images show a thumbnail), a number, a checkbox
+  for flags; the Type cell is a drop-down. Delete removes the selected
+  rows; Ctrl+C/Ctrl+X/Ctrl+V copy rows as tab-separated Name, Value, Type,
+  Comment (pasting two or three columns from a spreadsheet works too). The
+  search box filters by name, value, comment or translation. Empty,
+  invalid and duplicate names (or names giving the same accessor) and
+  values that don't fit their type are marked red, with the reason in the
+  cell's tooltip; empty texts are highlighted.
+- **All Languages** adds a column per culture variant of the set (edited
+  in place — the change goes to that file's open tab, or straight to
+  disk); untranslated cells are highlighted. Renaming or deleting an entry
+  there does the same in every culture. **Add Language…** creates
+  `<Set>.<locale>.yres` with every text of the set, still to translate.
 - Undo/Redo, Save, dirty marks and reload on external change work as for
-  any document; **View Code** (F7) shows the JSON.
+  any document. Saving a `.yres` runs `yog res check`, regenerating
+  `res.g.rs` for the code (errors show as a notification). **View Code**
+  (F7, or the toolbar's code button) switches the tab to the JSON.
+- The screen designer shows `@Strings.title` and `@<key>` texts from the
+  mod's `.yres` files in the IDE's language (the matching culture variant,
+  else the neutral text), and `texture="@Icons.logo"` as the bundled
+  image.

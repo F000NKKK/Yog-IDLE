@@ -36,8 +36,10 @@ Works today:
   the focused editor. Files can have several views, switched from buttons
   in the tab strip: Markdown has Source, Preview and Preview to the Side
   (Ctrl+Shift+V, Ctrl+K V) with GFM, footnotes, alerts, KaTeX math,
-  highlighted code and Mermaid diagrams; `yog.lang` files open in a
-  translation designer. The chosen view is remembered per extension.
+  highlighted code and Mermaid diagrams; `.yres` resource files
+  (texts per language, images, sounds, colors — see
+  [docs/yres.md](docs/yres.md)) open in a ResX-style resource table with a
+  column per language. The chosen view is remembered per extension.
 - **Properties** — a Visual Studio–style property grid for the selection
   (project, `yog.toml` entries, files), edited in place and written back
   with formatting preserved.
