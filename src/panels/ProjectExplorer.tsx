@@ -31,6 +31,7 @@ import { openProjectProperties } from "../projectProperties/bus";
 import { registerExplorerRename, renamePath, selectionPathRemoved, selectionPathRenamed, selectMultiple, selectPath } from "../ideSelection";
 import { NewItemDialog, templateFiles, type ItemTemplate } from "./NewItemDialog";
 import { files, readModId } from "../files";
+import { useFsChanged, useWatchedFolders } from "../fsWatch";
 
 /** A folder that failed to list stays unloaded in the tree (expanding it again retries) — say why in Output rather than only the devtools console. */
 function reportListError(error: unknown, path: string) {
@@ -159,6 +160,9 @@ function ProjectExplorerTree({ project }: { project: ProjectInfo }) {
   useT();
   const shell = useShell();
   const tree = useDirectoryTree(project.root, project.name, files, reportListError, "explorer.expanded");
+  // Changes from outside (a terminal, git, a build) show up as they happen.
+  useWatchedFolders(`explorer:${project.root}`, tree.loadedFolders);
+  useFsChanged((paths) => void tree.refreshPaths(paths));
   const { tabs, pathRenamed, pathRemoved } = useOpenFiles();
   // Controlled, so a rename (here or from Properties) can carry the
   // selection over to the new path instead of losing it.

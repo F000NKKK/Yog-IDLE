@@ -40,6 +40,7 @@ import { selectPath } from "./ideSelection";
 import { addCloseGuard } from "./windowClose";
 import { useGlobalStateStore } from "./WorkspaceContext";
 import { files } from "./files";
+import { useFsChanged, useWatchedFolders } from "./fsWatch";
 
 interface FileTab {
   /** Stable for the tab's lifetime (survives a rename) — the dock panel id. */
@@ -473,10 +474,10 @@ export function OpenFilesProvider({ children }: { children: ReactNode }) {
   // without edits, and only *tell* about ones with edits — never overwrite
   // unsaved work. Files that vanished are handled like an Explorer delete.
   const warnedDisk = useRef(new Map<string, string>());
-  const recheckDisk = useCallback(async () => {
+  const recheckDisk = useCallback(async (only?: Set<string>) => {
     const vanished = new Set<string>();
     for (const tab of tabsRef.current) {
-      if (!tab.textLoaded) continue;
+      if (!tab.textLoaded || (only && !only.has(tab.path))) continue;
       let disk: string;
       try {
         disk = await files.read(tab.path);
@@ -509,6 +510,11 @@ export function OpenFilesProvider({ children }: { children: ReactNode }) {
     window.addEventListener("focus", recheck);
     return () => window.removeEventListener("focus", recheck);
   }, [recheckDisk]);
+  // ...and while it's in front too: the open files' folders are watched (a
+  // folder, not the file — editors that save by replacing the file would
+  // leave a file watch behind).
+  useWatchedFolders("open-files", tabs.filter((t) => t.textLoaded).map((t) => parentOf(t.path)));
+  useFsChanged((paths) => void recheckDisk(new Set(paths)));
 
   function getComponent(tabId: string): ComponentType {
     let component = componentCache.current.get(tabId);
