@@ -49,6 +49,9 @@ pub struct ComponentInfo {
     pub doc: String,
     #[serde(default)]
     pub props: Vec<PropInfo>,
+    /// The `.yui` declaring it (the designer's own listing; not from the host).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub file: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

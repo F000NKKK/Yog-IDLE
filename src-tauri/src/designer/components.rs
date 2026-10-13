@@ -23,9 +23,8 @@ use super::markup::YuiNode;
 /// One component of the mod.
 #[derive(Debug, Clone)]
 pub struct Def {
+    /// Name, doc, properties and the `.yui` it's declared in.
     pub info: ComponentInfo,
-    /// The `.yui` it's declared in.
-    pub file: PathBuf,
     /// The body element (`None`: none yet — drawn empty).
     pub body: Option<YuiNode>,
     /// Some binding calls code — only the mod's library can draw it.
@@ -138,7 +137,8 @@ pub fn definition(root: &YuiNode, file: &Path) -> Option<Def> {
     let body = root.children.iter().find(|c| !DECLARATIONS.contains(&c.kind.as_str())).cloned();
     let names: Vec<&str> = props.iter().map(|p| p.name.as_str()).collect();
     let compiled = body.as_ref().is_some_and(|b| calls_code(b, &names));
-    Some(Def { info: ComponentInfo { name, doc: root.attr("doc").unwrap_or_default().to_string(), props }, file: file.to_path_buf(), body, compiled })
+    let info = ComponentInfo { name, doc: root.attr("doc").unwrap_or_default().to_string(), props, file: Some(file.to_string_lossy().into_owned()) };
+    Some(Def { info, body, compiled })
 }
 
 // ── Bindings ───────────────────────────────────────────────────────────────────
