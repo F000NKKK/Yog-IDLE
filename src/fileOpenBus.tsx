@@ -32,9 +32,6 @@ export function openFile(request: FileOpenRequest): void {
   listeners.forEach((listener) => listener(request));
 }
 
-/** Alias of `openFile`, kept for existing callers. */
-export const requestOpenFile = openFile;
-
 export function onOpenFileRequest(listener: Listener): () => void {
   listeners.add(listener);
   return () => listeners.delete(listener);

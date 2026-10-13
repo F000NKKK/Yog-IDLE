@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button, Icon, SettingsWindow, useLocale, useT, type CommitResult, type SettingsSection } from "substrate-platform-ui";
 import { useOpenFiles } from "../OpenFilesContext";
-import { requestOpenFile } from "../fileOpenBus";
+import { openFile } from "../fileOpenBus";
 import { errorText, projectApi, type ProjectProps } from "./api";
 import type { ProjectPropertiesPage } from "./bus";
 import { ApplicationPage, BuildPage } from "./ApplicationPages";
@@ -100,7 +100,7 @@ export function ProjectPropertiesWindow({
         <Button
           variant="ghost"
           title={t("Open yog.toml in the editor")}
-          onClick={() => requestOpenFile({ path: `${root.replace(/[/\\]+$/, "")}/yog.toml`, name: "yog.toml" })}
+          onClick={() => openFile({ path: `${root.replace(/[/\\]+$/, "")}/yog.toml`, name: "yog.toml" })}
         >
           <Icon name="code" size={12} /> {t("View Code")}
         </Button>

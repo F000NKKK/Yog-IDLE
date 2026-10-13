@@ -67,7 +67,7 @@ import { ViewMenu } from "./ViewMenu";
 import { WorkspaceProvider } from "./WorkspaceContext";
 import { installCloseHandler } from "./windowClose";
 import { reportError } from "./reportError";
-import { requestOpenFile } from "./fileOpenBus";
+import { openFile } from "./fileOpenBus";
 import { EnvironmentWindow } from "./environment/EnvironmentWindow";
 import { EnvironmentSettingsPage, EnvironmentSync, environmentSettingsKeywords } from "./environment/EnvironmentSettings";
 import { detectEnvironment, missingRequired } from "./environment/environmentStore";
@@ -315,12 +315,12 @@ function FileMenu({ editor }: { editor: EditorActions }) {
     await openPath(dir, "project");
   }
 
-  async function openFile() {
+  async function browseForFile() {
     const chosen = await open({ multiple: false });
     if (typeof chosen !== "string") return;
     const dir = chosen.slice(0, Math.max(chosen.lastIndexOf("/"), chosen.lastIndexOf("\\")));
     await invoke("allow_path", { path: dir }).catch(() => {});
-    requestOpenFile({ path: chosen, name: chosen.split(/[/\\]/).pop() ?? chosen });
+    openFile({ path: chosen, name: chosen.split(/[/\\]/).pop() ?? chosen });
   }
 
   return (
@@ -343,7 +343,7 @@ function FileMenu({ editor }: { editor: EditorActions }) {
             { label: t("Clear Recent Folders"), onClick: () => clearRecent("folder"), disabled: recent.folder.length === 0, separatorBefore: true },
           ],
         },
-        { label: t("Open File..."), onClick: openFile },
+        { label: t("Open File..."), onClick: browseForFile },
         { label: t("Close"), shortcut: "Ctrl+F4", disabled: !tab, onClick: () => tab && void closeTab(tab.id), separatorBefore: true },
         { label: t("Close All"), disabled: tabs.length === 0, onClick: () => void closeAll() },
         { label: t("Close Folder"), disabled: !project, onClick: () => void closeFolder() },
@@ -379,7 +379,7 @@ function ProjectMenu() {
           label: t("Edit Project File"),
           disabled: !mod,
           separatorBefore: true,
-          onClick: () => mod && requestOpenFile({ path: `${mod.root.replace(/[/\\]+$/, "")}/yog.toml`, name: "yog.toml" }),
+          onClick: () => mod && openFile({ path: `${mod.root.replace(/[/\\]+$/, "")}/yog.toml`, name: "yog.toml" }),
         },
       ]}
     />
