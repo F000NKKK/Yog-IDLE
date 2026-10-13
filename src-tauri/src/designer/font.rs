@@ -394,3 +394,23 @@ pub fn styled(text: &str, color: u32) -> Vec<Styled> {
     }
     out
 }
+
+#[cfg(test)]
+mod debug_tests {
+    use super::*;
+    #[test]
+    #[ignore]
+    fn dbg_unifont() {
+        let res = Resources::for_mod(None);
+        let v = res.vanilla.as_ref().unwrap();
+        let defs = json(&res, "minecraft", "font/include/unifont.json");
+        eprintln!("defs {}", defs.len());
+        let b = res.read("minecraft", "font/unifont.zip");
+        eprintln!("zip bytes {:?}", b.as_ref().map(|b| b.len()));
+        let z = zip::ZipArchive::new(std::io::Cursor::new(b.unwrap()));
+        eprintln!("zip {:?}", z.as_ref().map(|z| z.len()).map_err(|e| e.to_string()));
+        let _ = v;
+        let f = Font::load(&res, "minecraft:default");
+        eprintln!("providers {}", f.providers.len());
+    }
+}
