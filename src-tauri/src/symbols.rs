@@ -961,7 +961,7 @@ fn main() { let é = 1; fn inner() {} }
         assert_eq!(pos, vec![2, 3, 4, 5]);
     }
 
-    fn names(index: &RootIndex, mode: CodeSearchMode, query: &str) -> Vec<(String, String)> {
+    fn names(index: &RootIndex, mode: CodeSearchMode, query: &str) -> Vec<(&'static str, String)> {
         search_index(index, query, mode, 10)
             .into_iter()
             .map(|i| (i.kind, i.name))
@@ -983,15 +983,15 @@ fn main() { let é = 1; fn inner() {} }
         index.refresh(&dir);
         assert_eq!(
             names(&index, CodeSearchMode::Types, "cli"),
-            [("struct".to_string(), "Client".to_string())]
+            [("struct", "Client".to_string())]
         );
         assert_eq!(
             names(&index, CodeSearchMode::Members, "conn"),
-            [("method".to_string(), "connect".to_string())]
+            [("method", "connect".to_string())]
         );
         assert_eq!(
             names(&index, CodeSearchMode::Files, "read"),
-            [("file".to_string(), "README.md".to_string())]
+            [("file", "README.md".to_string())]
         );
         let all = names(&index, CodeSearchMode::All, "client");
         assert_eq!(all.len(), 2);
@@ -1010,7 +1010,7 @@ fn main() { let é = 1; fn inner() {} }
         index.refresh(&dir);
         assert_eq!(
             names(&index, CodeSearchMode::Types, "srv"),
-            [("enum".to_string(), "Server".to_string())]
+            [("enum", "Server".to_string())]
         );
         assert!(names(&index, CodeSearchMode::Types, "cli").is_empty());
 

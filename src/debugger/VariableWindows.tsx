@@ -75,7 +75,7 @@ function useSourceText(file: string | null): string | null {
   useEffect(() => {
     if (!file || open) return;
     let current = true;
-    invoke<string>("file_read", { path: file })
+    files.read(file)
       .then((text) => current && setDisk({ file, text }))
       .catch(() => current && setDisk({ file, text: "" }));
     return () => {

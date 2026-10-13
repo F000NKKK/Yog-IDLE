@@ -183,7 +183,7 @@ function freeName(template: ItemTemplate, taken: Set<string>): string {
 function useTakenNames(folder: string): Set<string> | null {
   const [taken, setTaken] = useState<Set<string> | null>(null);
   useEffect(() => {
-    invoke<DirEntry[]>("dir_list", { path: folder })
+    files.list(folder)
       .then((entries) => setTaken(new Set(entries.map((e) => e.name.toLowerCase()))))
       .catch(() => setTaken(new Set()));
   }, [folder]);

@@ -261,7 +261,7 @@ export function OpenFilesProvider({ children }: { children: ReactNode }) {
       // text here would just fail, unless a text editor was asked for.
       const textLoaded = view ? editorProviderById(view)?.kind !== "binary" : !isBinaryFile(name);
       try {
-        content = textLoaded ? await invoke<string>("file_read", { path }) : "";
+        content = textLoaded ? await files.read(path) : "";
       } catch (err) {
         if (!options.silent) reportError(t("Failed to open {path}: {error}", { path, error: String(err) }));
         return null;
@@ -318,7 +318,7 @@ export function OpenFilesProvider({ children }: { children: ReactNode }) {
     }
     const written = tab.content;
     try {
-      await invoke("file_write", { path: tab.path, contents: written });
+      await files.write(tab.path, written);
     } catch (err) {
       reportError(t("Failed to save {path}: {error}", { path: tab.path, error: String(err) }));
       return false;
@@ -337,7 +337,7 @@ export function OpenFilesProvider({ children }: { children: ReactNode }) {
     if (!tab || !tab.textLoaded) return false;
     const written = tab.content;
     try {
-      await invoke("file_write", { path, contents: written });
+      await files.write(path, written);
     } catch (err) {
       reportError(t("Failed to save {path}: {error}", { path, error: String(err) }));
       return false;
@@ -417,7 +417,7 @@ export function OpenFilesProvider({ children }: { children: ReactNode }) {
     if (!tab.textLoaded && editorProviderById(view)?.kind !== "binary") {
       let content: string;
       try {
-        content = await invoke<string>("file_read", { path: tab.path });
+        content = await files.read(tab.path);
       } catch (err) {
         reportError(t("Can't open {path} as text: {error}", { path: tab.path, error: String(err) }));
         return;
@@ -472,7 +472,7 @@ export function OpenFilesProvider({ children }: { children: ReactNode }) {
       if (!tab.textLoaded) continue;
       let disk: string;
       try {
-        disk = await invoke<string>("file_read", { path: tab.path });
+        disk = await files.read(tab.path);
       } catch {
         vanished.add(tab.id);
         continue;

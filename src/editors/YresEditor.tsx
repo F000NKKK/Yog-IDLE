@@ -174,7 +174,7 @@ export function YresEditor({ path, content, onChange, readOnly, contentVersion }
   const loadSiblings = useCallback(async () => {
     let list: DirEntry[];
     try {
-      list = await invoke<DirEntry[]>("dir_list", { path: dir });
+      list = await files.list(dir);
     } catch {
       return;
     }
@@ -187,7 +187,7 @@ export function YresEditor({ path, content, onChange, readOnly, contentVersion }
         const open = tabsRef.current.find((tab) => tab.path === file.path && tab.textLoaded);
         let text: string;
         try {
-          text = open ? open.content : await invoke<string>("file_read", { path: file.path });
+          text = open ? open.content : await files.read(file.path);
         } catch {
           return null;
         }
@@ -219,7 +219,7 @@ export function YresEditor({ path, content, onChange, readOnly, contentVersion }
       if (open) updateContent(open.id, text);
       else {
         try {
-          await invoke("file_write", { path: sibling.path, contents: text });
+          await files.write(sibling.path, text);
         } catch (err) {
           reportError(t("Failed to save {path}: {error}", { path: sibling.path, error: String(err) }));
           return;
@@ -455,7 +455,7 @@ export function YresEditor({ path, content, onChange, readOnly, contentVersion }
       .filter((e) => e.type === "string" && e.name && !seen.has(e.name) && seen.add(e.name))
       .map((e): YresEntry => ({ name: e.name, type: "string", value: "" }));
     try {
-      await invoke("file_write", { path: target, contents: serializeYres(texts) });
+      await files.write(target, serializeYres(texts));
     } catch (err) {
       reportError(t("Failed to save {path}: {error}", { path: target, error: String(err) }));
       return;

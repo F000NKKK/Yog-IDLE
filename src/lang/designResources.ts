@@ -38,7 +38,7 @@ function changed() {
 async function listYres(dir: string, rel: string, out: { path: string; rel: string }[]) {
   let entries: DirEntry[];
   try {
-    entries = await invoke<DirEntry[]>("dir_list", { path: dir });
+    entries = await files.list(dir);
   } catch {
     return;
   }
@@ -63,7 +63,7 @@ async function load(root: string) {
   for (const file of files) {
     let text: string;
     try {
-      text = await invoke<string>("file_read", { path: file.path });
+      text = await files.read(file.path);
     } catch {
       continue;
     }

@@ -94,7 +94,7 @@ function copyName(name: string, taken: Set<string>): string {
 /** The mod's id from `yog.toml` — new UI screens are named under it. */
 async function readModId(project: ProjectInfo): Promise<string> {
   try {
-    const toml = await invoke<string>("file_read", { path: joinPath(project.root, "yog.toml") });
+    const toml = await files.read(joinPath(project.root, "yog.toml"));
     const id = /^\s*id\s*=\s*"([^"]+)"/m.exec(toml)?.[1];
     if (id) return id;
   } catch {
@@ -229,7 +229,7 @@ function ProjectExplorerTree({ project }: { project: ProjectInfo }) {
   }
 
   async function takenNames(folder: string): Promise<Set<string>> {
-    const entries = await invoke<DirEntry[]>("dir_list", { path: folder });
+    const entries = await files.list(folder);
     return new Set(entries.map((e) => e.name.toLowerCase()));
   }
 
@@ -238,7 +238,7 @@ function ProjectExplorerTree({ project }: { project: ProjectInfo }) {
     if (template.rootFolder && folder === project.root) {
       // `.yres` files live in `resources/`, as a C# project's `.resx` in `Resources/`.
       const inner = joinPath(project.root, template.rootFolder);
-      if (!(await takenNames(project.root)).has(template.rootFolder.toLowerCase())) await invoke("dir_create_dir", { path: inner });
+      if (!(await takenNames(project.root)).has(template.rootFolder.toLowerCase())) await files.createDir(inner);
       await tree.reload(project.root);
       folder = inner;
     }
@@ -248,8 +248,8 @@ function ProjectExplorerTree({ project }: { project: ProjectInfo }) {
     await attempt(t("Failed to create {name}", { name }), async () => {
       for (const [file, contents] of files) {
         const path = joinPath(folder, file);
-        await invoke("dir_create_file", { path });
-        if (contents) await invoke("file_write", { path, contents });
+        await files.createFile(path);
+        if (contents) await files.write(path, contents);
       }
       await tree.reload(folder);
       expand(folder);
@@ -288,7 +288,7 @@ function ProjectExplorerTree({ project }: { project: ProjectInfo }) {
       for (const from of paths) {
         const name = copyName(baseName(from), taken);
         taken.add(name.toLowerCase());
-        await invoke("dir_copy", { from, to: joinPath(folder, name) });
+        await files.copy(from, joinPath(folder, name));
       }
       await tree.reload(folder);
       expand(folder);
@@ -305,14 +305,14 @@ function ProjectExplorerTree({ project }: { project: ProjectInfo }) {
         if (copy) {
           const name = copyName(baseName(from), taken);
           taken.add(name.toLowerCase());
-          await invoke("dir_copy", { from, to: joinPath(folder, name) });
+          await files.copy(from, joinPath(folder, name));
           continue;
         }
         if (parentOf(from) === folder.replace(/[/\\]+$/, "")) continue;
         const name = baseName(from);
         if (taken.has(name.toLowerCase())) throw new Error(t('"{name}" already exists.', { name }));
         const to = joinPath(folder, name);
-        await invoke("dir_rename", { from, to });
+        await files.rename(from, to);
         taken.add(name.toLowerCase());
         touched.add(parentOf(from));
         // Open tabs and the selection follow it to the new place.

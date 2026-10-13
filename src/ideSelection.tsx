@@ -60,14 +60,14 @@ export async function renamePath(path: string, newName: string, pathRenamed: (fr
   if (to === path) return;
   // A case-only rename names the same entry on a case-insensitive disk.
   if (to.toLowerCase() !== path.toLowerCase()) {
-    const taken = await invoke("path_info", { path: to }).then(
+    const taken = await files.info(to).then(
       () => true,
       () => false
     );
     if (taken) throw new Error(t('"{name}" already exists.', { name: newName }));
   }
   const handled = explorerRename ? await explorerRename(path, newName) : false;
-  if (!handled) await invoke("dir_rename", { from: path, to });
+  if (!handled) await files.rename(path, to);
   pathRenamed(path, to);
   selectionPathRenamed(path, to);
 }

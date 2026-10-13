@@ -128,7 +128,7 @@ export function Properties() {
     (async () => {
       let next: Loaded;
       try {
-        const info = await invoke<PathInfo>("path_info", { path });
+        const info = await files.info(path);
         let manifest: Manifest | null = null;
         let error: string | null = null;
         if (info.isModProject) {
