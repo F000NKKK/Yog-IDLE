@@ -24,7 +24,7 @@ use std::process::{Child, Command, Stdio};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::sync::{Arc, Mutex};
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use nix::sys::signal::Signal;
 use nix::unistd::Pid;
@@ -519,29 +519,33 @@ fn connect_and_watch(
     debug: bool,
     native_path: PathBuf,
 ) {
-    let connect_deadline = Instant::now() + Duration::from_secs(90);
+    // No fixed deadline: before the game starts, `yog run` builds the mod
+    // (and refreshes the others it exported), and Gradle may build the
+    // runtime — minutes, not seconds. Waits for as long as the run lives.
+    let alive = || {
+        let state = app.state::<DebugState>();
+        let guard = state.0.lock().unwrap();
+        guard.as_ref().is_some_and(|s| s.id == session_id)
+    };
     let stream = loop {
         match UnixStream::connect(&socket_path) {
             Ok(s) => break Some(s),
-            Err(_) if Instant::now() < connect_deadline => {
-                std::thread::sleep(Duration::from_millis(200))
-            }
+            Err(_) if alive() => std::thread::sleep(Duration::from_millis(200)),
             Err(_) => break None,
         }
     };
 
     let Some(stream) = stream else {
-        // Not fatal for a plain run — a game that never got as far as
-        // `nativeInit` just means no live status/attach for this session, not that the game
-        // itself failed to launch.
+        // The run ended before the game opened the socket (a failed build,
+        // a crash at startup) — its own output says why.
         let _ = app.emit(
             crate::events::OUTPUT_DEBUG,
-            "[warn] control socket never connected — no live status or debugger attach available for this run".to_string(),
+            "[warn] the run ended before the game opened its control socket — see the Build output".to_string(),
         );
         if debug {
             emit_failed(
                 &app,
-                "control socket never connected — is this mod's yog-runtime new enough to support it?",
+                "the run ended before the game started — nothing to attach to",
             );
         }
         return;
