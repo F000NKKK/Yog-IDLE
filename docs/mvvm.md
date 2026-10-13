@@ -12,10 +12,10 @@ The mod needs the dependency in `yog.toml`:
 
 ```toml
 [dependencies]
-yog-kit = "0.2"
+yog-kit = "0.3"
 ```
 
-`yog build --local-api` (or `YOG_API_PATH`) also points yog-kit at the
+`YOG_API_PATH` (what `dev.sh --local-api` sets) also points yog-kit at the
 local checkout.
 
 Any layout element works in a view-model screen, including
