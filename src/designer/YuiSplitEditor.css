@@ -4,10 +4,12 @@
   flex-direction: column;
   height: 100%;
   min-height: 0;
+  overflow: hidden;
 }
 
 .yui-split-body {
   flex: 1;
+  min-width: 0;
   min-height: 0;
 }
 
@@ -23,6 +25,8 @@
   display: flex;
   align-items: center;
   gap: 2px;
+  box-sizing: border-box;
+  flex-shrink: 0;
   width: 100%;
   min-height: 24px;
   padding: 0 var(--sp-space-sm);
