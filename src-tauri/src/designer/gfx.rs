@@ -28,23 +28,62 @@ unsafe fn string(s: YogStr) -> String {
     if s.ptr.is_null() || s.len == 0 {
         return String::new();
     }
-    String::from_utf8_lossy(unsafe { std::slice::from_raw_parts(s.ptr, s.len as usize) }).into_owned()
+    String::from_utf8_lossy(unsafe { std::slice::from_raw_parts(s.ptr, s.len as usize) })
+        .into_owned()
 }
 
 unsafe extern "C" fn rect(x1: f32, y1: f32, x2: f32, y2: f32, color: u32) {
-    push(DrawOp::Rect { x1, y1, x2, y2, color });
+    push(DrawOp::Rect {
+        x1,
+        y1,
+        x2,
+        y2,
+        color,
+    });
 }
 unsafe extern "C" fn gradient(x1: f32, y1: f32, x2: f32, y2: f32, top: u32, bottom: u32) {
-    push(DrawOp::Gradient { x1, y1, x2, y2, top, bottom });
+    push(DrawOp::Gradient {
+        x1,
+        y1,
+        x2,
+        y2,
+        top,
+        bottom,
+    });
 }
 unsafe extern "C" fn text(text: YogStr, x: f32, y: f32, color: u32, shadow: bool) {
     let text = unsafe { string(text) };
-    push(DrawOp::Text { text, font: "minecraft:default".into(), x, y, color, shadow });
+    push(DrawOp::Text {
+        text,
+        font: "minecraft:default".into(),
+        x,
+        y,
+        color,
+        shadow,
+    });
 }
-unsafe extern "C" fn text_font(text: YogStr, font: YogStr, x: f32, y: f32, color: u32, shadow: bool) {
+unsafe extern "C" fn text_font(
+    text: YogStr,
+    font: YogStr,
+    x: f32,
+    y: f32,
+    color: u32,
+    shadow: bool,
+) {
     let (text, font) = unsafe { (string(text), string(font)) };
-    let font = if font.trim().is_empty() { "minecraft:default".to_string() } else { font };
-    push(DrawOp::Text { text, font, x, y, color, shadow });
+    let font = if font.trim().is_empty() {
+        "minecraft:default".to_string()
+    } else {
+        font
+    };
+    push(DrawOp::Text {
+        text,
+        font,
+        x,
+        y,
+        color,
+        shadow,
+    });
 }
 /// Measured with the same glyphs the rasterizer draws (the document's fonts).
 unsafe extern "C" fn text_width(text: YogStr, font: YogStr) -> f32 {
@@ -52,9 +91,28 @@ unsafe extern "C" fn text_width(text: YogStr, font: YogStr) -> f32 {
     super::font::Font::load(&super::images::resources(), &font).width(&text)
 }
 #[allow(clippy::too_many_arguments)]
-unsafe extern "C" fn image(source: YogStr, x: f32, y: f32, w: f32, h: f32, u: f32, v: f32, uw: f32, vh: f32, tint: u32) {
+unsafe extern "C" fn image(
+    source: YogStr,
+    x: f32,
+    y: f32,
+    w: f32,
+    h: f32,
+    u: f32,
+    v: f32,
+    uw: f32,
+    vh: f32,
+    tint: u32,
+) {
     let source = unsafe { string(source) };
-    push(DrawOp::Image { source, x, y, w, h, region: [u, v, uw, vh], tint });
+    push(DrawOp::Image {
+        source,
+        x,
+        y,
+        w,
+        h,
+        region: [u, v, uw, vh],
+        tint,
+    });
 }
 unsafe extern "C" fn image_size(source: YogStr, w: *mut f32, h: *mut f32) -> bool {
     let source = unsafe { string(source) };

@@ -3,7 +3,7 @@
 //! texture picker's list, vanilla/parent models for preview, and
 //! `yog import`.
 
-use crate::designer::assets::{split_id, Resources};
+use crate::designer::assets::{Resources, split_id};
 use base64::Engine as _;
 use serde::Serialize;
 use serde_json::{Map, Value};
@@ -26,7 +26,9 @@ fn mod_id(root: &Path) -> Option<String> {
 
 fn valid_namespace(s: &str) -> bool {
     !s.is_empty()
-        && s.bytes().all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || matches!(b, b'_' | b'.' | b'-'))
+        && s.bytes().all(|b| {
+            b.is_ascii_lowercase() || b.is_ascii_digit() || matches!(b, b'_' | b'.' | b'-')
+        })
 }
 
 #[derive(Serialize)]
@@ -90,12 +92,15 @@ fn texture_bytes(file: &Path, texture: &str) -> Result<Vec<u8>, String> {
     let root = mod_root(file);
     if let Some(r) = texture.strip_prefix('@') {
         let root = root.as_deref().ok_or("not in a mod")?;
-        let png = yres_image(root, r).ok_or_else(|| format!("no image {texture} in resources/*.yres"))?;
+        let png =
+            yres_image(root, r).ok_or_else(|| format!("no image {texture} in resources/*.yres"))?;
         return std::fs::read(&png).map_err(|e| format!("{}: {e}", png.display()));
     }
     if let Some(stem) = texture.strip_suffix(".png") {
         let root = root.as_deref().ok_or("not in a mod")?;
-        let rel = stem.trim_start_matches("./").trim_start_matches("resources/");
+        let rel = stem
+            .trim_start_matches("./")
+            .trim_start_matches("resources/");
         if rel.split('/').any(|p| p == "..") {
             return Err("a path inside resources/".into());
         }
@@ -130,7 +135,10 @@ pub fn texture(file: &Path, texture: &str) -> Result<Texture, String> {
     let bytes = texture_bytes(file, texture)?;
     let animated = image_size(&bytes).is_some_and(|(w, h)| h > w && h % w == 0);
     Ok(Texture {
-        url: format!("data:image/png;base64,{}", base64::engine::general_purpose::STANDARD.encode(&bytes)),
+        url: format!(
+            "data:image/png;base64,{}",
+            base64::engine::general_purpose::STANDARD.encode(&bytes)
+        ),
         animated,
         writable: texture_target(file, texture).is_some(),
     })
@@ -138,7 +146,10 @@ pub fn texture(file: &Path, texture: &str) -> Result<Texture, String> {
 
 /// A relative path with no `..`, root or drive parts.
 fn plain_relative(rel: &str) -> bool {
-    !rel.is_empty() && Path::new(rel).components().all(|c| matches!(c, std::path::Component::Normal(_)))
+    !rel.is_empty()
+        && Path::new(rel)
+            .components()
+            .all(|c| matches!(c, std::path::Component::Normal(_)))
 }
 
 /// Where a texture of the mod is written: a `.yres` image's png, a png
@@ -153,7 +164,9 @@ pub fn texture_target(file: &Path, texture: &str) -> Option<PathBuf> {
         return plain_relative(&rel).then_some(png);
     }
     if texture.ends_with(".png") {
-        let rel = texture.trim_start_matches("./").trim_start_matches("resources/");
+        let rel = texture
+            .trim_start_matches("./")
+            .trim_start_matches("resources/");
         return plain_relative(rel).then(|| root.join("resources").join(rel));
     }
     if texture.starts_with('#') {
@@ -164,8 +177,16 @@ pub fn texture_target(file: &Path, texture: &str) -> Option<PathBuf> {
         return None;
     }
     let resources = root.join("resources").join(format!("{path}.png"));
-    let assets = root.join("assets").join(ns).join("textures").join(format!("{path}.png"));
-    Some(if !resources.is_file() && assets.is_file() { assets } else { resources })
+    let assets = root
+        .join("assets")
+        .join(ns)
+        .join("textures")
+        .join(format!("{path}.png"));
+    Some(if !resources.is_file() && assets.is_file() {
+        assets
+    } else {
+        resources
+    })
 }
 
 /// Writes `png` (PNG bytes) to `target` (from `texture_target`), creating
@@ -201,14 +222,22 @@ pub struct TextureChoice {
 /// The `@<Set>.<name>` texts of the mod's `.yres` files — the name/tooltip picker's choices.
 pub fn strings(file: &Path) -> Vec<String> {
     let mut out = Vec::new();
-    let Some(root) = mod_root(file) else { return out };
+    let Some(root) = mod_root(file) else {
+        return out;
+    };
     for p in find(&root.join("resources"), "yres") {
-        let Some(set) = p.file_stem().and_then(|s| s.to_str()) else { continue };
+        let Some(set) = p.file_stem().and_then(|s| s.to_str()) else {
+            continue;
+        };
         if set.contains('.') {
             continue; // a culture variant
         }
-        let Ok(text) = std::fs::read_to_string(&p) else { continue };
-        let Ok(doc) = serde_json::from_str::<Map<String, Value>>(&text) else { continue };
+        let Ok(text) = std::fs::read_to_string(&p) else {
+            continue;
+        };
+        let Ok(doc) = serde_json::from_str::<Map<String, Value>>(&text) else {
+            continue;
+        };
         for (name, e) in &doc {
             let ty = e.get("type").and_then(Value::as_str);
             if e.is_string() || ty.is_none_or(|t| t == "string") {
@@ -227,26 +256,40 @@ pub fn textures(file: &Path) -> Vec<TextureChoice> {
     if let Some(root) = &root {
         let res = root.join("resources");
         for p in find(&res, "yres") {
-            let Some(set) = p.file_stem().and_then(|s| s.to_str()) else { continue };
+            let Some(set) = p.file_stem().and_then(|s| s.to_str()) else {
+                continue;
+            };
             if set.contains('.') {
                 continue; // a culture variant
             }
-            let Ok(text) = std::fs::read_to_string(&p) else { continue };
-            let Ok(doc) = serde_json::from_str::<Map<String, Value>>(&text) else { continue };
+            let Ok(text) = std::fs::read_to_string(&p) else {
+                continue;
+            };
+            let Ok(doc) = serde_json::from_str::<Map<String, Value>>(&text) else {
+                continue;
+            };
             for (name, e) in &doc {
                 if e.get("type").and_then(Value::as_str) == Some("image") {
-                    out.push(TextureChoice { value: format!("@{set}.{name}"), group: "Resource sets" });
+                    out.push(TextureChoice {
+                        value: format!("@{set}.{name}"),
+                        group: "Resource sets",
+                    });
                 }
             }
         }
         for p in find(&res, "png") {
             if let Ok(rel) = p.strip_prefix(&res) {
-                out.push(TextureChoice { value: rel.to_string_lossy().replace('\\', "/"), group: "Resources" });
+                out.push(TextureChoice {
+                    value: rel.to_string_lossy().replace('\\', "/"),
+                    group: "Resources",
+                });
             }
         }
         let assets = root.join("assets");
         for p in find(&assets, "png") {
-            let Ok(rel) = p.strip_prefix(&assets) else { continue };
+            let Ok(rel) = p.strip_prefix(&assets) else {
+                continue;
+            };
             let rel = rel.to_string_lossy().replace('\\', "/");
             if let Some((ns, rest)) = rel.split_once("/textures/")
                 && !ns.contains('/')
@@ -260,8 +303,14 @@ pub fn textures(file: &Path) -> Vec<TextureChoice> {
     }
     if let Some(v) = Resources::for_mod(root.as_deref()).vanilla {
         let (items, blocks) = v.texture_names();
-        out.extend(blocks.into_iter().map(|b| TextureChoice { value: format!("minecraft:block/{b}"), group: "Minecraft blocks" }));
-        out.extend(items.into_iter().map(|i| TextureChoice { value: format!("minecraft:item/{i}"), group: "Minecraft items" }));
+        out.extend(blocks.into_iter().map(|b| TextureChoice {
+            value: format!("minecraft:block/{b}"),
+            group: "Minecraft blocks",
+        }));
+        out.extend(items.into_iter().map(|i| TextureChoice {
+            value: format!("minecraft:item/{i}"),
+            group: "Minecraft items",
+        }));
     }
     out
 }
@@ -280,7 +329,8 @@ pub fn parent_model(file: &Path, id: &str) -> Result<Value, String> {
         let bytes = resources
             .read(ns, &format!("models/{path}.json"))
             .ok_or_else(|| format!("model {ns}:{path} not found"))?;
-        let m: Map<String, Value> = serde_json::from_slice(&bytes).map_err(|e| format!("{ns}:{path}: {e}"))?;
+        let m: Map<String, Value> =
+            serde_json::from_slice(&bytes).map_err(|e| format!("{ns}:{path}: {e}"))?;
         if let Some(Value::Object(t)) = m.get("textures") {
             for (k, v) in t {
                 textures.entry(k.clone()).or_insert_with(|| v.clone());
@@ -301,7 +351,11 @@ pub fn parent_model(file: &Path, id: &str) -> Result<Value, String> {
                 break;
             }
             Some(p) => {
-                let full = if p.contains(':') { p.to_string() } else { format!("minecraft:{p}") };
+                let full = if p.contains(':') {
+                    p.to_string()
+                } else {
+                    format!("minecraft:{p}")
+                };
                 if full == "minecraft:item/generated" || full == "minecraft:item/handheld" {
                     root_parent = Some(full.clone());
                 }
@@ -324,7 +378,13 @@ pub fn parent_model(file: &Path, id: &str) -> Result<Value, String> {
 /// `yog import <kind> <source> [--model <id>] [--force]` (`kind`: `resourcepack`,
 /// `bbmodel`, or `bbmodel-item`) in the mod of
 /// `file` (a content file or the mod folder) → what it printed.
-pub fn import(file: &Path, kind: &str, source: &str, model: Option<&str>, force: bool) -> Result<String, String> {
+pub fn import(
+    file: &Path,
+    kind: &str,
+    source: &str,
+    model: Option<&str>,
+    force: bool,
+) -> Result<String, String> {
     let root = mod_root(file).ok_or("not in a mod (no yog.toml)")?;
     // `bbmodel-item`: a Blockbench model as an item.
     let (what, item) = match kind {
@@ -346,7 +406,9 @@ pub fn import(file: &Path, kind: &str, source: &str, model: Option<&str>, force:
     if force {
         cmd.arg("--force");
     }
-    let out = cmd.output().map_err(|e| format!("failed to run yog: {e}"))?;
+    let out = cmd
+        .output()
+        .map_err(|e| format!("failed to run yog: {e}"))?;
     let text = String::from_utf8_lossy(&out.stderr).replace("yog: error: ", "");
     if out.status.success() {
         Ok(text.trim().to_string())
@@ -361,7 +423,9 @@ mod tests {
 
     #[test]
     fn png_size() {
-        let mut png = vec![0x89, b'P', b'N', b'G', 13, 10, 26, 10, 0, 0, 0, 13, b'I', b'H', b'D', b'R'];
+        let mut png = vec![
+            0x89, b'P', b'N', b'G', 13, 10, 26, 10, 0, 0, 0, 13, b'I', b'H', b'D', b'R',
+        ];
         png.extend(16u32.to_be_bytes());
         png.extend(64u32.to_be_bytes());
         assert_eq!(image_size(&png), Some((16, 64)));
@@ -388,9 +452,18 @@ mod tests {
         assert!(choices.iter().any(|c| c.value == "@Textures.ruby"));
         assert!(choices.iter().any(|c| c.value == "block/ruby.png"));
         assert_eq!(info(&file).namespace.as_deref(), Some("mymod"));
-        assert_eq!(texture_target(&file, "@Textures.ruby"), Some(dir.join("resources/block/ruby.png")));
-        assert_eq!(texture_target(&file, "item/new.png"), Some(dir.join("resources/item/new.png")));
-        assert_eq!(texture_target(&file, "mymod:item/new"), Some(dir.join("resources/item/new.png")));
+        assert_eq!(
+            texture_target(&file, "@Textures.ruby"),
+            Some(dir.join("resources/block/ruby.png"))
+        );
+        assert_eq!(
+            texture_target(&file, "item/new.png"),
+            Some(dir.join("resources/item/new.png"))
+        );
+        assert_eq!(
+            texture_target(&file, "mymod:item/new"),
+            Some(dir.join("resources/item/new.png"))
+        );
         assert_eq!(texture_target(&file, "../escape.png"), None);
         assert_eq!(texture_target(&file, "/etc/x.png"), None);
         assert_eq!(texture_target(&file, "minecraft:item/apple"), None);

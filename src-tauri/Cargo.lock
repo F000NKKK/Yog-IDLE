@@ -12,7 +12,7 @@ dependencies = [
  "fallible-iterator",
  "gimli",
  "memmap2",
- "object",
+ "object 0.39.1",
  "rustc-demangle",
  "smallvec",
  "typed-arena",
@@ -2478,7 +2478,18 @@ checksum = "2e5a6c098c7a3b6547378093f5cc30bc54fd361ce711e05293a5cc589562739b"
 dependencies = [
  "flate2",
  "memchr",
- "ruzstd",
+ "ruzstd 0.8.3",
+]
+
+[[package]]
+name = "object"
+version = "0.40.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dd229a0361b9d0d4396176e02d65897f487eebeab7caa6d443855ee152ca0b9c"
+dependencies = [
+ "flate2",
+ "memchr",
+ "ruzstd 0.9.1",
 ]
 
 [[package]]
@@ -3015,6 +3026,15 @@ name = "ruzstd"
 version = "0.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a7c1c839d570d835527c9a5e4db7cb2198683a988cb9d7293fc8674e6bd58fc8"
+dependencies = [
+ "twox-hash",
+]
+
+[[package]]
+name = "ruzstd"
+version = "0.9.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "69e4ce4a039f42bf25920b95667e4d789e98749ab11bbb8d2c2936f788421bb5"
 dependencies = [
  "twox-hash",
 ]
@@ -5191,9 +5211,9 @@ checksum = "c6974d43e4dc06ffd8e483a6e31ec785466c684ca92e54fee32d00340cf50726"
 
 [[package]]
 name = "yog-debugger"
-version = "0.8.3"
+version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0f45f989e8387c5cf70e3bb3fa3f9c760a277907adc316eb1ffb9c397b5fb2f5"
+checksum = "44b4f84aa1e85d772f4a0e3498caaa95ccea79ce4053274b3d15b51a446b5694"
 dependencies = [
  "iced-x86",
  "nix 0.31.3",
@@ -5222,7 +5242,7 @@ dependencies = [
 
 [[package]]
 name = "yog-idle-tauri"
-version = "0.1.0"
+version = "0.3.0"
 dependencies = [
  "base64 0.23.1",
  "dirs 7.0.0",
@@ -5256,13 +5276,13 @@ dependencies = [
 
 [[package]]
 name = "yog-symbols"
-version = "0.3.4"
+version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "49a24564f3d33d11ab39bcc397a7b911660a042cecbd4be369309a1c32e635ad"
+checksum = "ef7f83aba46168d34660ee90c5cef9c1ef7c4ec3531000938c282a787902896e"
 dependencies = [
  "addr2line",
  "gimli",
- "object",
+ "object 0.40.0",
 ]
 
 [[package]]

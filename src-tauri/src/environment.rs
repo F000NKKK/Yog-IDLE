@@ -1381,9 +1381,14 @@ impl Exec<'_> {
         } else {
             // pkexec shows the desktop's polkit password dialog; the paths go in as arguments, not into the script.
             let mut cmd = Command::new("pkexec");
-            cmd.args(["sh", "-c", "mkdir -p \"$2\" && cp -a \"$1\"/. \"$2\"/", "sh"])
-                .arg(from)
-                .arg(into);
+            cmd.args([
+                "sh",
+                "-c",
+                "mkdir -p \"$2\" && cp -a \"$1\"/. \"$2\"/",
+                "sh",
+            ])
+            .arg(from)
+            .arg(into);
             cmd
         };
         self.run(cmd, &what)
@@ -1998,9 +2003,15 @@ mod tests {
 
         // The toolchain needs rustup first.
         assert!(
-            plan("toolchain", &report, &settings, downloads, InstallScope::User)
-                .unwrap_err()
-                .contains("rust")
+            plan(
+                "toolchain",
+                &report,
+                &settings,
+                downloads,
+                InstallScope::User
+            )
+            .unwrap_err()
+            .contains("rust")
         );
         assert!(plan("git", &report, &settings, downloads, InstallScope::User).is_err());
 
@@ -2014,9 +2025,18 @@ mod tests {
 
         let jdk = plan("jdk-17", &report, &settings, downloads, InstallScope::User).unwrap();
         assert!(matches!(&jdk[1], Step::Extract { dest, .. } if dest == Path::new("/t/jdk")));
-        let machine = plan("jdk-17", &report, &settings, downloads, InstallScope::Machine).unwrap();
+        let machine = plan(
+            "jdk-17",
+            &report,
+            &settings,
+            downloads,
+            InstallScope::Machine,
+        )
+        .unwrap();
         assert!(matches!(&machine[1], Step::Extract { dest, .. } if dest.starts_with(downloads)));
-        assert!(matches!(machine.last(), Some(Step::CopyAsAdmin { into, .. }) if *into == system_jdk_dir()));
+        assert!(
+            matches!(machine.last(), Some(Step::CopyAsAdmin { into, .. }) if *into == system_jdk_dir())
+        );
         assert_eq!(
             plan("zig", &report, &settings, downloads, InstallScope::User).unwrap(),
             vec![Step::Zig {

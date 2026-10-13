@@ -1,6 +1,6 @@
 [package]
 name = "yog-idle-tauri"
-version = "0.1.0"
+version = "0.3.0"
 description = "Visual UI editor for Yog mods — live preview into a running Minecraft client."
 authors = ["F000NK"]
 edition = "2024"
@@ -56,7 +56,7 @@ quick-xml = "0.41"
 # Debugger integration (Linux-only, matching yog-debugger's own scope) —
 # ordinary crates.io deps, no path/git coupling to the Yog-Mod-Loader repo.
 [target.'cfg(target_os = "linux")'.dependencies]
-yog-symbols = "0.3.4"
-yog-debugger = "0.8.3"
+yog-symbols = "0.4"
+yog-debugger = "0.9"
 yog-hot-reload = "0.2"
 nix = { version = "0.31", features = ["ptrace", "signal", "process"] }

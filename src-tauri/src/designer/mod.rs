@@ -66,14 +66,20 @@ pub struct Rendered {
 
 /// The mod a `.yui` belongs to: the folder holding the `src/` it's in.
 pub(crate) fn mod_root(yui: &Path) -> Option<PathBuf> {
-    yui.ancestors().find(|p| p.file_name().is_some_and(|n| n == "src")).and_then(|p| p.parent()).map(Path::to_path_buf)
+    yui.ancestors()
+        .find(|p| p.file_name().is_some_and(|n| n == "src"))
+        .and_then(|p| p.parent())
+        .map(Path::to_path_buf)
 }
 
 /// Built and laid out like the generated `root_with`.
 type Laid = UiRoot;
 
 fn lay_out(root: &YuiNode, screen_w: f32, screen_h: f32, scroll: &HashMap<String, f32>) -> Laid {
-    let mut ui = UiRoot::new("yog-idle:designer", markup::screen(root, screen_w, screen_h, scroll));
+    let mut ui = UiRoot::new(
+        "yog-idle:designer",
+        markup::screen(root, screen_w, screen_h, scroll),
+    );
     // Text widths and image sizes come from the "host" — the designer's own
     // font and image resolution — as they do from the game in `UiRoot::render`.
     let table = gfx::api(screen_w as i32, screen_h as i32, 1.0);
@@ -87,7 +93,12 @@ fn lay_out(root: &YuiNode, screen_w: f32, screen_h: f32, scroll: &HashMap<String
 
 /// Pairs each `.yui` node with its widget and layout node (the screen's
 /// wrapper skipped; a `TextBox`'s inner parts aren't elements).
-fn walk<'a>(node: &'a YuiNode, w: &'a Widget, l: &'a LayoutNode, visit: &mut impl FnMut(&'a YuiNode, &'a Widget, &'a LayoutNode)) {
+fn walk<'a>(
+    node: &'a YuiNode,
+    w: &'a Widget,
+    l: &'a LayoutNode,
+    visit: &mut impl FnMut(&'a YuiNode, &'a Widget, &'a LayoutNode),
+) {
     visit(node, w, l);
     if !markup::is_container(&node.kind) {
         return;
@@ -99,8 +110,15 @@ fn walk<'a>(node: &'a YuiNode, w: &'a Widget, l: &'a LayoutNode, visit: &mut imp
     }
 }
 
-fn with_content<'a>(root: &'a YuiNode, laid: &'a Laid, mut visit: impl FnMut(&'a YuiNode, &'a Widget, &'a LayoutNode)) {
-    if let (Some(w), Some(l)) = (laid.root.children.first(), laid.layout_root.children.first()) {
+fn with_content<'a>(
+    root: &'a YuiNode,
+    laid: &'a Laid,
+    mut visit: impl FnMut(&'a YuiNode, &'a Widget, &'a LayoutNode),
+) {
+    if let (Some(w), Some(l)) = (
+        laid.root.children.first(),
+        laid.layout_root.children.first(),
+    ) {
         walk(root, w, l, &mut visit);
     }
 }
@@ -113,7 +131,12 @@ fn rects(root: &YuiNode, laid: &Laid) -> Vec<NodeRect> {
         out.push(NodeRect {
             uid: n.uid.clone(),
             rect: [r.x, r.y, r.w, r.h],
-            content: [r.x + p[3], r.y + p[0], (r.w - p[1] - p[3]).max(0.0), (r.h - p[0] - p[2]).max(0.0)],
+            content: [
+                r.x + p[3],
+                r.y + p[0],
+                (r.w - p[1] - p[3]).max(0.0),
+                (r.h - p[0] - p[2]).max(0.0),
+            ],
             grid: l.grid.as_ref().map(|g| GridRects {
                 rows: g.rows.iter().map(|&(a, b)| [a, b]).collect(),
                 cols: g.cols.iter().map(|&(a, b)| [a, b]).collect(),
@@ -139,7 +162,14 @@ fn offsets(path: &str, preview: bool) -> HashMap<String, f32> {
         return HashMap::new();
     }
     let p = previews().lock().unwrap_or_else(|e| e.into_inner());
-    p.get(path).map(|s| s.scroll.iter().map(|(k, v)| (k.clone(), v.offset)).collect()).unwrap_or_default()
+    p.get(path)
+        .map(|s| {
+            s.scroll
+                .iter()
+                .map(|(k, v)| (k.clone(), v.offset))
+                .collect()
+        })
+        .unwrap_or_default()
 }
 
 #[derive(Debug, Deserialize)]
@@ -159,12 +189,21 @@ pub fn render(args: &RenderArgs) -> Result<Rendered, String> {
     let scroll = offsets(&args.path, args.preview);
     images::set_document(mod_root(Path::new(&args.path)).as_deref());
     // The mod's own components: expanded from markup, or marked spacers here drawn by the designer host below.
-    let prepared = custom::prepare(&args.root, mod_root(Path::new(&args.path)).as_deref(), sw as f32, sh as f32);
+    let prepared = custom::prepare(
+        &args.root,
+        mod_root(Path::new(&args.path)).as_deref(),
+        sw as f32,
+        sh as f32,
+    );
     let laid = lay_out(&prepared.root, sw as f32, sh as f32, &scroll);
     let mut ops = gfx::record(sw as i32, sh as i32, |ctx| laid.render(ctx));
     let mut node_rects = rects(&prepared.root, &laid);
     if !prepared.is_empty() {
-        custom::splice(&mut ops, &prepared, &node_rects.iter().map(|r| (r.uid.clone(), r.rect)).collect());
+        custom::splice(
+            &mut ops,
+            &prepared,
+            &node_rects.iter().map(|r| (r.uid.clone(), r.rect)).collect(),
+        );
     }
     // The inside of an expanded component instance isn't the document's.
     node_rects.retain(|r| !r.uid.contains(components::INNER));
@@ -174,10 +213,16 @@ pub fn render(args: &RenderArgs) -> Result<Rendered, String> {
     let real_font = res.vanilla.is_some() || canvas_font_real(&res);
     let png = canvas.png()?;
     Ok(Rendered {
-        image: format!("data:image/png;base64,{}", base64::engine::general_purpose::STANDARD.encode(png)),
+        image: format!(
+            "data:image/png;base64,{}",
+            base64::engine::general_purpose::STANDARD.encode(png)
+        ),
         scale,
         rects: node_rects,
-        assets: res.vanilla.as_ref().map(|v| AssetsInfo { version: v.version.clone(), jar: v.jar.to_string_lossy().into_owned() }),
+        assets: res.vanilla.as_ref().map(|v| AssetsInfo {
+            version: v.version.clone(),
+            jar: v.jar.to_string_lossy().into_owned(),
+        }),
         real_font,
     })
 }
@@ -234,13 +279,25 @@ fn xy(rest: &str) -> Option<(f32, f32)> {
 }
 
 pub fn event(args: &EventArgs) -> EventResult {
-    let (sw, sh) = (args.screen_w.clamp(1, 4096) as f32, args.screen_h.clamp(1, 4096) as f32);
+    let (sw, sh) = (
+        args.screen_w.clamp(1, 4096) as f32,
+        args.screen_h.clamp(1, 4096) as f32,
+    );
     let scroll = offsets(&args.path, true);
-    let prepared = custom::prepare(&args.root, mod_root(Path::new(&args.path)).as_deref(), sw, sh);
+    let prepared = custom::prepare(
+        &args.root,
+        mod_root(Path::new(&args.path)).as_deref(),
+        sw,
+        sh,
+    );
     let root = &prepared.root;
     let laid = lay_out(root, sw, sh, &scroll);
     let mut out = EventResult::default();
-    let pos = args.event.split_once(':').and_then(|(_, rest)| xy(rest)).unwrap_or((args.x, args.y));
+    let pos = args
+        .event
+        .split_once(':')
+        .and_then(|(_, rest)| xy(rest))
+        .unwrap_or((args.x, args.y));
 
     // Scroll views first, as a screen's code-behind does (`ScrollState::handle`).
     if !args.event.starts_with("move:") {
@@ -268,7 +325,13 @@ pub fn event(args: &EventArgs) -> EventResult {
     if let Some(l) = laid.layout_root.children.first() {
         let found = hit(root, l, pos.0, pos.1);
         // Inside a component instance: the instance.
-        out.hit = found.map(|n| n.uid.split(components::INNER).next().unwrap_or_default().to_string());
+        out.hit = found.map(|n| {
+            n.uid
+                .split(components::INNER)
+                .next()
+                .unwrap_or_default()
+                .to_string()
+        });
         if args.event.starts_with("click:") && !out.scrolled {
             out.clicked = found.and_then(|n| n.attr("on_click")).map(str::to_string);
         }
@@ -278,7 +341,10 @@ pub fn event(args: &EventArgs) -> EventResult {
 
 /// Forgets a file's preview state (scroll positions).
 pub fn reset(path: &str) {
-    previews().lock().unwrap_or_else(|e| e.into_inner()).remove(path);
+    previews()
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .remove(path);
 }
 
 #[cfg(test)]
@@ -287,21 +353,55 @@ mod tests {
     use crate::designer::raster::DrawOp;
 
     fn node(uid: &str, kind: &str, attrs: &[(&str, &str)], children: Vec<YuiNode>) -> YuiNode {
-        YuiNode { uid: uid.into(), kind: kind.into(), attrs: attrs.iter().map(|(k, v)| (k.to_string(), v.to_string())).collect(), children }
+        YuiNode {
+            uid: uid.into(),
+            kind: kind.into(),
+            attrs: attrs
+                .iter()
+                .map(|(k, v)| (k.to_string(), v.to_string()))
+                .collect(),
+            children,
+        }
     }
 
     fn screen() -> YuiNode {
         node(
             "s",
             "Screen",
-            &[("id", "m:s"), ("width", "100"), ("height", "60"), ("bg", "#FF101010")],
+            &[
+                ("id", "m:s"),
+                ("width", "100"),
+                ("height", "60"),
+                ("bg", "#FF101010"),
+            ],
             vec![
-                node("b", "Button", &[("x", "10"), ("y", "10"), ("w", "40"), ("h", "20"), ("text", "Play"), ("on_click", "play")], vec![]),
+                node(
+                    "b",
+                    "Button",
+                    &[
+                        ("x", "10"),
+                        ("y", "10"),
+                        ("w", "40"),
+                        ("h", "20"),
+                        ("text", "Play"),
+                        ("on_click", "play"),
+                    ],
+                    vec![],
+                ),
                 node(
                     "sv",
                     "ScrollView",
                     &[("x", "60"), ("y", "0"), ("w", "30"), ("h", "30")],
-                    (0..10).map(|i| node(&format!("r{i}"), "Spacer", &[("w", "20"), ("h", "10")], vec![])).collect(),
+                    (0..10)
+                        .map(|i| {
+                            node(
+                                &format!("r{i}"),
+                                "Spacer",
+                                &[("w", "20"), ("h", "10")],
+                                vec![],
+                            )
+                        })
+                        .collect(),
                 ),
             ],
         )
@@ -324,7 +424,10 @@ mod tests {
             "d",
             "Grid.ColumnDefinitions",
             &[],
-            vec![node("c0", "ColumnDefinition", &[("width", "30")], vec![]), node("c1", "ColumnDefinition", &[], vec![])],
+            vec![
+                node("c0", "ColumnDefinition", &[("width", "30")], vec![]),
+                node("c1", "ColumnDefinition", &[], vec![]),
+            ],
         );
         let root = node(
             "s",
@@ -333,11 +436,26 @@ mod tests {
             vec![node(
                 "g",
                 "Grid",
-                &[("w", "100"), ("h", "60"), ("rows", "Auto,*"), ("column_spacing", "10")],
+                &[
+                    ("w", "100"),
+                    ("h", "60"),
+                    ("rows", "Auto,*"),
+                    ("column_spacing", "10"),
+                ],
                 vec![
                     defs,
-                    node("a", "Spacer", &[("h", "12"), ("Grid.ColumnSpan", "2")], vec![]),
-                    node("b", "Spacer", &[("Grid.Row", "1"), ("Grid.Column", "1"), ("margin", "2")], vec![]),
+                    node(
+                        "a",
+                        "Spacer",
+                        &[("h", "12"), ("Grid.ColumnSpan", "2")],
+                        vec![],
+                    ),
+                    node(
+                        "b",
+                        "Spacer",
+                        &[("Grid.Row", "1"), ("Grid.Column", "1"), ("margin", "2")],
+                        vec![],
+                    ),
                 ],
             )],
         );
@@ -353,11 +471,30 @@ mod tests {
 
     #[test]
     fn renders_through_the_recorder() {
-        let args = RenderArgs { path: "/nowhere/src/x.yui".into(), root: screen(), screen_w: 200, screen_h: 100, scale: 2, preview: false };
+        let args = RenderArgs {
+            path: "/nowhere/src/x.yui".into(),
+            root: screen(),
+            screen_w: 200,
+            screen_h: 100,
+            scale: 2,
+            preview: false,
+        };
         let laid = lay_out(&args.root, 200.0, 100.0, &HashMap::new());
         let ops = gfx::record(200, 100, |ctx| laid.render(ctx));
-        assert!(matches!(ops.first(), Some(DrawOp::Rect { color: 0xFF10_1010, .. })), "{ops:?}");
-        assert!(ops.iter().any(|o| matches!(o, DrawOp::Text { text, .. } if text == "Play")));
+        assert!(
+            matches!(
+                ops.first(),
+                Some(DrawOp::Rect {
+                    color: 0xFF10_1010,
+                    ..
+                })
+            ),
+            "{ops:?}"
+        );
+        assert!(
+            ops.iter()
+                .any(|o| matches!(o, DrawOp::Text { text, .. } if text == "Play"))
+        );
         let out = render(&args).unwrap();
         assert!(out.image.starts_with("data:image/png;base64,"));
         assert_eq!(out.rects.len(), 13);
@@ -366,7 +503,17 @@ mod tests {
     #[test]
     fn preview_clicks_and_scrolls() {
         let path = "/nowhere/src/preview_test.yui";
-        let ev = |e: &str, x: f32, y: f32| event(&EventArgs { path: path.into(), root: screen(), screen_w: 200, screen_h: 100, event: e.into(), x, y });
+        let ev = |e: &str, x: f32, y: f32| {
+            event(&EventArgs {
+                path: path.into(),
+                root: screen(),
+                screen_w: 200,
+                screen_h: 100,
+                event: e.into(),
+                x,
+                y,
+            })
+        };
         let r = ev("click:70:40", 0.0, 0.0);
         assert_eq!(r.clicked.as_deref(), Some("play"));
         assert_eq!(r.hit.as_deref(), Some("b"));
@@ -388,26 +535,108 @@ mod visual {
     #[test]
     #[ignore]
     fn sample_png() {
-        let Ok(out) = std::env::var("YOG_DESIGNER_PNG") else { return };
+        let Ok(out) = std::env::var("YOG_DESIGNER_PNG") else {
+            return;
+        };
         let n = |uid: &str, kind: &str, attrs: &[(&str, &str)]| YuiNode {
             uid: uid.into(),
             kind: kind.into(),
-            attrs: attrs.iter().map(|(k, v)| (k.to_string(), v.to_string())).collect(),
+            attrs: attrs
+                .iter()
+                .map(|(k, v)| (k.to_string(), v.to_string()))
+                .collect(),
             children: vec![],
         };
-        let mut root = n("s", "Screen", &[("width", "200"), ("height", "120"), ("bg", "#C0101010")]);
+        let mut root = n(
+            "s",
+            "Screen",
+            &[("width", "200"), ("height", "120"), ("bg", "#C0101010")],
+        );
         root.children = vec![
-            n("l", "Label", &[("x", "6"), ("y", "6"), ("text", "Привет, Minecraft! §cRed §lBold"), ("color", "#FFFFFF"), ("no_wrap", "true")]),
-            n("b", "Button", &[("x", "6"), ("y", "24"), ("w", "80"), ("h", "20"), ("text", "Play"), ("bg", "#FF555555"), ("color", "#FFFFFF")]),
-            n("t", "TextBox", &[("x", "96"), ("y", "26"), ("w", "90"), ("h", "16"), ("placeholder", "Search…")]),
-            n("i", "InvSlot", &[("x", "6"), ("y", "50"), ("item", "minecraft:diamond"), ("count", "64")]),
-            n("g", "Label", &[("x", "6"), ("y", "76"), ("text", "Galactic"), ("font", "minecraft:alt"), ("no_wrap", "true")]),
-            n("u", "Label", &[("x", "6"), ("y", "90"), ("text", "日本語 ✓ ♥"), ("no_wrap", "true")]),
+            n(
+                "l",
+                "Label",
+                &[
+                    ("x", "6"),
+                    ("y", "6"),
+                    ("text", "Привет, Minecraft! §cRed §lBold"),
+                    ("color", "#FFFFFF"),
+                    ("no_wrap", "true"),
+                ],
+            ),
+            n(
+                "b",
+                "Button",
+                &[
+                    ("x", "6"),
+                    ("y", "24"),
+                    ("w", "80"),
+                    ("h", "20"),
+                    ("text", "Play"),
+                    ("bg", "#FF555555"),
+                    ("color", "#FFFFFF"),
+                ],
+            ),
+            n(
+                "t",
+                "TextBox",
+                &[
+                    ("x", "96"),
+                    ("y", "26"),
+                    ("w", "90"),
+                    ("h", "16"),
+                    ("placeholder", "Search…"),
+                ],
+            ),
+            n(
+                "i",
+                "InvSlot",
+                &[
+                    ("x", "6"),
+                    ("y", "50"),
+                    ("item", "minecraft:diamond"),
+                    ("count", "64"),
+                ],
+            ),
+            n(
+                "g",
+                "Label",
+                &[
+                    ("x", "6"),
+                    ("y", "76"),
+                    ("text", "Galactic"),
+                    ("font", "minecraft:alt"),
+                    ("no_wrap", "true"),
+                ],
+            ),
+            n(
+                "u",
+                "Label",
+                &[
+                    ("x", "6"),
+                    ("y", "90"),
+                    ("text", "日本語 ✓ ♥"),
+                    ("no_wrap", "true"),
+                ],
+            ),
         ];
-        let args = RenderArgs { path: "/nowhere/src/x.yui".into(), root, screen_w: 220, screen_h: 130, scale: 4, preview: false };
+        let args = RenderArgs {
+            path: "/nowhere/src/x.yui".into(),
+            root,
+            screen_w: 220,
+            screen_h: 130,
+            scale: 4,
+            preview: false,
+        };
         let r = render(&args).unwrap();
         let b64 = r.image.trim_start_matches("data:image/png;base64,");
-        std::fs::write(out, base64::engine::general_purpose::STANDARD.decode(b64).unwrap()).unwrap();
+        std::fs::write(
+            out,
+            base64::engine::general_purpose::STANDARD
+                .decode(b64)
+                .unwrap(),
+        )
+        .unwrap();
         eprintln!("assets: {:?}, real font: {}", r.assets, r.real_font);
     }
 }

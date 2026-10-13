@@ -49,7 +49,11 @@ fn track(v: &str) -> Option<Track> {
         return Some(Track::auto());
     }
     if let Some(w) = v.strip_suffix('*') {
-        let w = if w.trim().is_empty() { 1.0 } else { w.trim().parse().ok()? };
+        let w = if w.trim().is_empty() {
+            1.0
+        } else {
+            w.trim().parse().ok()?
+        };
         return Some(Track::star(w));
     }
     v.parse().ok().map(Track::px)
@@ -58,10 +62,29 @@ fn track(v: &str) -> Option<Track> {
 /// A grid's rows (`row`) or columns: `rows="Auto,*"` or `<Grid.RowDefinitions>`.
 /// Sizes it can't read count as `*`, so the canvas still draws while typing.
 fn tracks(node: &YuiNode, row: bool) -> Option<Vec<Track>> {
-    let (attr, prop, size, min, max) =
-        if row { ("rows", "Grid.RowDefinitions", "height", "min_height", "max_height") } else { ("columns", "Grid.ColumnDefinitions", "width", "min_width", "max_width") };
+    let (attr, prop, size, min, max) = if row {
+        (
+            "rows",
+            "Grid.RowDefinitions",
+            "height",
+            "min_height",
+            "max_height",
+        )
+    } else {
+        (
+            "columns",
+            "Grid.ColumnDefinitions",
+            "width",
+            "min_width",
+            "max_width",
+        )
+    };
     if let Some(v) = node.attr(attr) {
-        return Some(v.split(',').map(|p| track(p).unwrap_or(Track::star(1.0))).collect());
+        return Some(
+            v.split(',')
+                .map(|p| track(p).unwrap_or(Track::star(1.0)))
+                .collect(),
+        );
     }
     let defs = node.children.iter().find(|c| c.kind == prop)?;
     Some(
@@ -92,7 +115,11 @@ fn num(v: Option<&str>) -> Option<f32> {
 /// `#RRGGBB`, `#AARRGGBB` or `0xAARRGGBB` (yog-cli's `color`).
 pub fn color(value: &str) -> Option<u32> {
     let v = value.trim();
-    let hex = v.strip_prefix('#').or_else(|| v.strip_prefix("0x")).or_else(|| v.strip_prefix("0X"))?.replace('_', "");
+    let hex = v
+        .strip_prefix('#')
+        .or_else(|| v.strip_prefix("0x"))
+        .or_else(|| v.strip_prefix("0X"))?
+        .replace('_', "");
     let n = u32::from_str_radix(&hex, 16).ok()?;
     match hex.len() {
         6 => Some(0xFF00_0000 | n),
@@ -113,7 +140,11 @@ fn size(v: &str) -> Option<Units> {
 }
 
 fn padding(v: &str) -> Option<[f32; 4]> {
-    let parts: Vec<f32> = v.split([' ', ',']).filter(|s| !s.is_empty()).map(|s| s.parse().ok()).collect::<Option<_>>()?;
+    let parts: Vec<f32> = v
+        .split([' ', ','])
+        .filter(|s| !s.is_empty())
+        .map(|s| s.parse().ok())
+        .collect::<Option<_>>()?;
     match parts.as_slice() {
         [a] => Some([*a; 4]),
         [v, h] => Some([*v, *h, *v, *h]),
@@ -144,7 +175,10 @@ pub fn widget(node: &YuiNode, in_canvas: bool, scroll: &HashMap<String, f32>) ->
         "Label" => widget::label(text(a("text"))),
         "Button" => widget::button(text(a("text"))),
         "ItemSlot" => widget::item_slot(a("item").unwrap_or_default()),
-        "InvSlot" => widget::inv_slot(a("item").unwrap_or_default(), a("count").and_then(|c| c.trim().parse().ok()).unwrap_or(1)),
+        "InvSlot" => widget::inv_slot(
+            a("item").unwrap_or_default(),
+            a("count").and_then(|c| c.trim().parse().ok()).unwrap_or(1),
+        ),
         "Image" => super::images::widget(node),
         "TextBox" => widget::text_box(text(a("text"))),
         _ => widget::spacer(),
@@ -175,7 +209,10 @@ pub fn widget(node: &YuiNode, in_canvas: bool, scroll: &HashMap<String, f32>) ->
     if row.is_some() || col.is_some() {
         w = w.cell(row.unwrap_or(0), col.unwrap_or(0));
     }
-    let (rs, cs) = (cell_index(a("Grid.RowSpan")), cell_index(a("Grid.ColumnSpan")));
+    let (rs, cs) = (
+        cell_index(a("Grid.RowSpan")),
+        cell_index(a("Grid.ColumnSpan")),
+    );
     if rs.is_some() || cs.is_some() {
         w = w.span(rs.unwrap_or(1), cs.unwrap_or(1));
     }
@@ -239,7 +276,10 @@ pub fn widget(node: &YuiNode, in_canvas: bool, scroll: &HashMap<String, f32>) ->
             "enabled" => w.enabled(v.trim() != "false"),
             "font" if !v.trim().is_empty() => w.font(v.trim()),
             "placeholder" => w.placeholder(text(Some(v))),
-            "max_length" => v.trim().parse().map_or(w.clone(), |n| w.clone().max_length(n)),
+            "max_length" => v
+                .trim()
+                .parse()
+                .map_or(w.clone(), |n| w.clone().max_length(n)),
             "on_change" => w.on_change(v),
             "on_submit" => w.on_submit(v),
             "no_wrap" if v.trim() == "true" => w.no_wrap(),
@@ -248,9 +288,10 @@ pub fn widget(node: &YuiNode, in_canvas: bool, scroll: &HashMap<String, f32>) ->
         };
     }
     if node.kind == "ScrollView"
-        && let Some(offset) = scroll.get(&node.uid) {
-            w = w.scroll_y(*offset);
-        }
+        && let Some(offset) = scroll.get(&node.uid)
+    {
+        w = w.scroll_y(*offset);
+    }
     if is_container(&node.kind) {
         let canvas = matches!(node.kind.as_str(), "Screen" | "Canvas");
         for child in widget_children(node) {
@@ -262,7 +303,12 @@ pub fn widget(node: &YuiNode, in_canvas: bool, scroll: &HashMap<String, f32>) ->
 
 /// The anchored screen (`root_with`): a `screen_w × screen_h` panel with the
 /// content placed per `anchor`.
-pub fn screen(root: &YuiNode, screen_w: f32, screen_h: f32, scroll: &HashMap<String, f32>) -> Widget {
+pub fn screen(
+    root: &YuiNode,
+    screen_w: f32,
+    screen_h: f32,
+    scroll: &HashMap<String, f32>,
+) -> Widget {
     let width = num(root.attr("width")).unwrap_or(176.0);
     let height = num(root.attr("height")).unwrap_or(166.0);
     let content = widget(root, false, scroll);
@@ -270,7 +316,10 @@ pub fn screen(root: &YuiNode, screen_w: f32, screen_h: f32, scroll: &HashMap<Str
     let cy = ((screen_h - height) / 2.0).floor();
     let anchor = root.attr("anchor").unwrap_or("center").trim();
     let content = if anchor == "fill" {
-        content.w(Units::Percent(100.0)).h(Units::Percent(100.0)).at(0.0, 0.0)
+        content
+            .w(Units::Percent(100.0))
+            .h(Units::Percent(100.0))
+            .at(0.0, 0.0)
     } else {
         let (ax, ay) = match anchor {
             "top_left" => (0.0, 0.0),
@@ -285,5 +334,8 @@ pub fn screen(root: &YuiNode, screen_w: f32, screen_h: f32, scroll: &HashMap<Str
         };
         content.at(ax.max(0.0), ay.max(0.0))
     };
-    widget::panel(FlexDir::Column).w(Units::Px(screen_w)).h(Units::Px(screen_h)).child(content)
+    widget::panel(FlexDir::Column)
+        .w(Units::Px(screen_w))
+        .h(Units::Px(screen_h))
+        .child(content)
 }

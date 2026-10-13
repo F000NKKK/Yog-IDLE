@@ -25,7 +25,12 @@ pub struct Image {
 impl Image {
     pub fn pixel(&self, x: u32, y: u32) -> [u8; 4] {
         let i = ((y * self.w + x) * 4) as usize;
-        [self.rgba[i], self.rgba[i + 1], self.rgba[i + 2], self.rgba[i + 3]]
+        [
+            self.rgba[i],
+            self.rgba[i + 1],
+            self.rgba[i + 2],
+            self.rgba[i + 3],
+        ]
     }
 
     /// Minecraft's missing texture: 16×16, magenta/black quarters.
@@ -34,7 +39,11 @@ impl Image {
         for y in 0..16 {
             for x in 0..16 {
                 let magenta = (x < 8) == (y < 8);
-                rgba.extend_from_slice(if magenta { &[0xF8, 0x00, 0xF8, 0xFF] } else { &[0, 0, 0, 0xFF] });
+                rgba.extend_from_slice(if magenta {
+                    &[0xF8, 0x00, 0xF8, 0xFF]
+                } else {
+                    &[0, 0, 0, 0xFF]
+                });
             }
         }
         Image { w: 16, h: 16, rgba }
@@ -51,8 +60,14 @@ pub fn decode_png(bytes: &[u8]) -> Option<Image> {
     let px = (w * h) as usize;
     let rgba = match info.color_type {
         png::ColorType::Rgba => buf[..px * 4].to_vec(),
-        png::ColorType::Rgb => buf[..px * 3].chunks(3).flat_map(|c| [c[0], c[1], c[2], 0xFF]).collect(),
-        png::ColorType::GrayscaleAlpha => buf[..px * 2].chunks(2).flat_map(|c| [c[0], c[0], c[0], c[1]]).collect(),
+        png::ColorType::Rgb => buf[..px * 3]
+            .chunks(3)
+            .flat_map(|c| [c[0], c[1], c[2], 0xFF])
+            .collect(),
+        png::ColorType::GrayscaleAlpha => buf[..px * 2]
+            .chunks(2)
+            .flat_map(|c| [c[0], c[0], c[0], c[1]])
+            .collect(),
         png::ColorType::Grayscale => buf[..px].iter().flat_map(|&g| [g, g, g, 0xFF]).collect(),
         png::ColorType::Indexed => return None, // EXPAND turns these into RGB(A)
     };
@@ -75,16 +90,20 @@ impl Vanilla {
     pub fn read_all(&self, key: &str) -> Vec<Vec<u8>> {
         let mut out = Vec::new();
         if let Ok(mut zip) = self.zip.lock()
-            && let Ok(mut entry) = zip.by_name(&format!("assets/{key}")) {
-                let mut bytes = Vec::new();
-                if entry.read_to_end(&mut bytes).is_ok() {
-                    out.push(bytes);
-                }
-            }
-        if let Some((dir, index)) = &self.objects
-            && let Some(bytes) = index.get(key).and_then(|hash| std::fs::read(dir.join(&hash[..2]).join(hash)).ok()) {
+            && let Ok(mut entry) = zip.by_name(&format!("assets/{key}"))
+        {
+            let mut bytes = Vec::new();
+            if entry.read_to_end(&mut bytes).is_ok() {
                 out.push(bytes);
             }
+        }
+        if let Some((dir, index)) = &self.objects
+            && let Some(bytes) = index
+                .get(key)
+                .and_then(|hash| std::fs::read(dir.join(&hash[..2]).join(hash)).ok())
+        {
+            out.push(bytes);
+        }
         out
     }
 
@@ -95,7 +114,10 @@ impl Vanilla {
         if let Ok(zip) = self.zip.lock() {
             for name in zip.file_names() {
                 let Ok(name) = name else { continue };
-                let Some(stem) = name.strip_prefix("assets/minecraft/textures/").and_then(|n| n.strip_suffix(".png")) else {
+                let Some(stem) = name
+                    .strip_prefix("assets/minecraft/textures/")
+                    .and_then(|n| n.strip_suffix(".png"))
+                else {
                     continue;
                 };
                 if let Some(item) = stem.strip_prefix("item/") {
@@ -113,12 +135,13 @@ impl Vanilla {
     fn read(&self, key: &str) -> Option<Vec<u8>> {
         // `key` is `namespace/path` — `assets/<key>` in the jar.
         if let Ok(mut zip) = self.zip.lock()
-            && let Ok(mut entry) = zip.by_name(&format!("assets/{key}")) {
-                let mut out = Vec::new();
-                if entry.read_to_end(&mut out).is_ok() {
-                    return Some(out);
-                }
+            && let Ok(mut entry) = zip.by_name(&format!("assets/{key}"))
+        {
+            let mut out = Vec::new();
+            if entry.read_to_end(&mut out).is_ok() {
+                return Some(out);
             }
+        }
         let (dir, index) = self.objects.as_ref()?;
         let hash = index.get(key)?;
         std::fs::read(dir.join(&hash[..2]).join(hash)).ok()
@@ -131,7 +154,9 @@ fn home() -> Option<PathBuf> {
 
 /// `1.21.1` > `1.20.1` > `1.9`.
 fn version_key(v: &str) -> Vec<u32> {
-    v.split(['.', '-']).map(|p| p.parse().unwrap_or(0)).collect()
+    v.split(['.', '-'])
+        .map(|p| p.parse().unwrap_or(0))
+        .collect()
 }
 
 /// Every client jar on this machine, as `(version, path)`.
@@ -147,7 +172,10 @@ fn client_jars(extra_roots: &[PathBuf]) -> Vec<(String, PathBuf)> {
     if let Some(h) = home() {
         let caches = h.join(".gradle/caches");
         version_dirs.push((caches.join("fabric-loom"), "minecraft-client.jar"));
-        version_dirs.push((caches.join("forge_gradle/minecraft_repo/versions"), "client.jar"));
+        version_dirs.push((
+            caches.join("forge_gradle/minecraft_repo/versions"),
+            "client.jar",
+        ));
         version_dirs.push((caches.join("minecraft/versions"), "client.jar"));
         version_dirs.push((h.join(".minecraft/versions"), ""));
         version_dirs.push((h.join("Library/Application Support/minecraft/versions"), ""));
@@ -159,7 +187,10 @@ fn client_jars(extra_roots: &[PathBuf]) -> Vec<(String, PathBuf)> {
         // A Yog workspace: the loader's NeoGradle caches beside the mod.
         for loader in ["neoforge", "fabric", "forge"] {
             for base in [root.join("Yog-Mod-Loader"), root.join("../Yog-Mod-Loader")] {
-                version_dirs.push((base.join(loader).join(".gradle/caches/minecraft/versions"), "client.jar"));
+                version_dirs.push((
+                    base.join(loader).join(".gradle/caches/minecraft/versions"),
+                    "client.jar",
+                ));
             }
         }
     }
@@ -205,7 +236,8 @@ fn asset_objects(version: &str) -> Option<(PathBuf, HashMap<String, String>)> {
         };
         for e in entries.flatten() {
             let name = e.file_name().to_string_lossy().into_owned();
-            let exact = name.starts_with(&format!("{version}-")) || name == format!("{version}.json");
+            let exact =
+                name.starts_with(&format!("{version}-")) || name == format!("{version}.json");
             if best.as_ref().is_some_and(|b| b.0 || !exact) {
                 continue;
             }
@@ -274,7 +306,10 @@ pub fn split_id(id: &str) -> (&str, &str) {
 impl Resources {
     pub fn for_mod(mod_root: Option<&Path>) -> Resources {
         let roots: Vec<PathBuf> = mod_root.into_iter().map(Path::to_path_buf).collect();
-        let parents: Vec<PathBuf> = roots.iter().filter_map(|r| r.parent().map(Path::to_path_buf)).collect();
+        let parents: Vec<PathBuf> = roots
+            .iter()
+            .filter_map(|r| r.parent().map(Path::to_path_buf))
+            .collect();
         Resources {
             mod_root: mod_root.map(Path::to_path_buf),
             vanilla: vanilla(&[roots, parents].concat()),
@@ -284,7 +319,11 @@ impl Resources {
     /// The bytes of `assets/<ns>/<path>`.
     pub fn read(&self, ns: &str, path: &str) -> Option<Vec<u8>> {
         if let Some(root) = &self.mod_root {
-            for base in [root.join("assets"), root.join("src/assets"), root.join("resources/assets")] {
+            for base in [
+                root.join("assets"),
+                root.join("src/assets"),
+                root.join("resources/assets"),
+            ] {
                 if let Ok(bytes) = std::fs::read(base.join(ns).join(path)) {
                     return Some(bytes);
                 }
@@ -303,7 +342,10 @@ impl Resources {
             return hit.clone();
         }
         let (ns, path) = split_id(id);
-        let image = self.read(ns, path).and_then(|b| decode_png(&b)).map(Arc::new);
+        let image = self
+            .read(ns, path)
+            .and_then(|b| decode_png(&b))
+            .map(Arc::new);
         if let Ok(mut c) = cache.lock() {
             c.insert(key, image.clone());
         }

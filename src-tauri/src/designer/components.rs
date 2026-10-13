@@ -7,8 +7,8 @@
 //! (`{x:Bind caption()}`) are *compiled*: the designer host draws those with
 //! the mod's library ([`custom`](super::custom)).
 
-use std::collections::hash_map::DefaultHasher;
 use std::collections::HashMap;
+use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, OnceLock, PoisonError};
@@ -51,10 +51,20 @@ fn element(e: &BytesStart, uid: String) -> Result<YuiNode, String> {
     let mut attrs = HashMap::new();
     for a in e.attributes() {
         let a = a.map_err(|e| e.to_string())?;
-        let value = a.normalized_value(XmlVersion::Implicit1_0).map_err(|e| e.to_string())?;
-        attrs.insert(String::from_utf8_lossy(a.key.as_ref()).into_owned(), value.into_owned());
+        let value = a
+            .normalized_value(XmlVersion::Implicit1_0)
+            .map_err(|e| e.to_string())?;
+        attrs.insert(
+            String::from_utf8_lossy(a.key.as_ref()).into_owned(),
+            value.into_owned(),
+        );
     }
-    Ok(YuiNode { uid, kind, attrs, children: Vec::new() })
+    Ok(YuiNode {
+        uid,
+        kind,
+        attrs,
+        children: Vec::new(),
+    })
 }
 
 /// A `.yui` document's element tree, uids `c0`, `c0/1`, ...
@@ -101,7 +111,9 @@ fn pascal(stem: &str) -> String {
     stem.split(['_', '-'])
         .map(|w| {
             let mut c = w.chars();
-            c.next().map(|f| f.to_uppercase().collect::<String>() + c.as_str()).unwrap_or_default()
+            c.next()
+                .map(|f| f.to_uppercase().collect::<String>() + c.as_str())
+                .unwrap_or_default()
         })
         .collect()
 }
@@ -122,15 +134,28 @@ pub fn definition(root: &YuiNode, file: &Path) -> Option<Def> {
         .iter()
         .filter(|c| DECLARATIONS.contains(&c.kind.as_str()))
         .map(|c| {
-            let kind = if c.kind == "Event" { "event".to_string() } else { c.attr("type").unwrap_or("text").trim().to_string() };
-            let options: Vec<String> = c.attr("options").unwrap_or_default().split(',').map(|s| s.trim().to_string()).filter(|s| !s.is_empty()).collect();
-            let default = c.attr("default").map(str::to_string).unwrap_or_else(|| match kind.as_str() {
-                "number" | "int" => "0".into(),
-                "bool" => "false".into(),
-                "color" => "#FFFFFFFF".into(),
-                "choice" => options.first().cloned().unwrap_or_default(),
-                _ => String::new(),
-            });
+            let kind = if c.kind == "Event" {
+                "event".to_string()
+            } else {
+                c.attr("type").unwrap_or("text").trim().to_string()
+            };
+            let options: Vec<String> = c
+                .attr("options")
+                .unwrap_or_default()
+                .split(',')
+                .map(|s| s.trim().to_string())
+                .filter(|s| !s.is_empty())
+                .collect();
+            let default =
+                c.attr("default")
+                    .map(str::to_string)
+                    .unwrap_or_else(|| match kind.as_str() {
+                        "number" | "int" => "0".into(),
+                        "bool" => "false".into(),
+                        "color" => "#FFFFFFFF".into(),
+                        "choice" => options.first().cloned().unwrap_or_default(),
+                        _ => String::new(),
+                    });
             PropInfo {
                 name: c.attr("name").unwrap_or_default().trim().to_string(),
                 kind,
@@ -141,11 +166,20 @@ pub fn definition(root: &YuiNode, file: &Path) -> Option<Def> {
             }
         })
         .collect();
-    let body = root.children.iter().find(|c| !DECLARATIONS.contains(&c.kind.as_str())).cloned();
+    let body = root
+        .children
+        .iter()
+        .find(|c| !DECLARATIONS.contains(&c.kind.as_str()))
+        .cloned();
     let names: Vec<&str> = props.iter().map(|p| p.name.as_str()).collect();
     let compiled = body.as_ref().is_some_and(|b| calls_code(b, &names));
     let text = |key: &str| root.attr(key).unwrap_or_default().trim().to_string();
-    let size = |key: &str| root.attr(key).and_then(|v| v.trim().parse::<f32>().ok()).filter(|n| *n > 0.0).unwrap_or(0.0);
+    let size = |key: &str| {
+        root.attr(key)
+            .and_then(|v| v.trim().parse::<f32>().ok())
+            .filter(|n| *n > 0.0)
+            .unwrap_or(0.0)
+    };
     let info = ComponentInfo {
         name,
         description: text("description"),
@@ -158,7 +192,11 @@ pub fn definition(root: &YuiNode, file: &Path) -> Option<Def> {
         props,
         file: Some(file.to_string_lossy().into_owned()),
     };
-    Some(Def { info, body, compiled })
+    Some(Def {
+        info,
+        body,
+        compiled,
+    })
 }
 
 // ── Bindings ───────────────────────────────────────────────────────────────────
@@ -181,7 +219,11 @@ pub fn binding(value: &str) -> Option<&str> {
 }
 
 fn calls_code(node: &YuiNode, props: &[&str]) -> bool {
-    node.attrs.values().filter_map(|v| binding(v)).any(|e| !props.contains(&e)) || node.children.iter().any(|c| calls_code(c, props))
+    node.attrs
+        .values()
+        .filter_map(|v| binding(v))
+        .any(|e| !props.contains(&e))
+        || node.children.iter().any(|c| calls_code(c, props))
 }
 
 /// `node` and its subtree with every binding to a property replaced by its
@@ -211,11 +253,24 @@ pub fn bind_values(node: &YuiNode, values: &HashMap<String, String>) -> YuiNode 
             attrs.insert(k.to_string(), v.clone());
         }
     }
-    YuiNode { uid: node.uid.clone(), kind: node.kind.clone(), attrs, children: node.children.iter().map(|c| bind_values(c, values)).collect() }
+    YuiNode {
+        uid: node.uid.clone(),
+        kind: node.kind.clone(),
+        attrs,
+        children: node
+            .children
+            .iter()
+            .map(|c| bind_values(c, values))
+            .collect(),
+    }
 }
 
 fn defaults(def: &Def) -> HashMap<String, String> {
-    def.info.props.iter().map(|p| (p.name.clone(), p.default.clone())).collect()
+    def.info
+        .props
+        .iter()
+        .map(|p| (p.name.clone(), p.default.clone()))
+        .collect()
 }
 
 fn with_uids(node: &mut YuiNode, uid: &str) {
@@ -241,7 +296,12 @@ pub fn expand(def: &Def, instance: &YuiNode) -> YuiNode {
         }
     }
     let Some(body) = &def.body else {
-        return YuiNode { uid: instance.uid.clone(), kind: "Spacer".into(), attrs: own, children: Vec::new() };
+        return YuiNode {
+            uid: instance.uid.clone(),
+            kind: "Spacer".into(),
+            attrs: own,
+            children: Vec::new(),
+        };
     };
     let mut tree = bind_values(body, &values);
     with_uids(&mut tree, &instance.uid);
@@ -255,15 +315,31 @@ pub fn design_root(root: &YuiNode) -> YuiNode {
     let def = definition(root, Path::new("component.yui"));
     let values = def.as_ref().map(defaults).unwrap_or_default();
     let mut attrs = HashMap::from([
-        ("width".to_string(), root.attr("design_w").unwrap_or("120").to_string()),
-        ("height".to_string(), root.attr("design_h").unwrap_or("40").to_string()),
+        (
+            "width".to_string(),
+            root.attr("design_w").unwrap_or("120").to_string(),
+        ),
+        (
+            "height".to_string(),
+            root.attr("design_h").unwrap_or("40").to_string(),
+        ),
         ("anchor".to_string(), "center".to_string()),
     ]);
     if let Some(bg) = root.attr("d:bg") {
         attrs.insert("bg".into(), bg.to_string());
     }
-    let children = root.children.iter().filter(|c| !DECLARATIONS.contains(&c.kind.as_str())).map(|c| bind_values(c, &values)).collect();
-    YuiNode { uid: root.uid.clone(), kind: "Screen".into(), attrs, children }
+    let children = root
+        .children
+        .iter()
+        .filter(|c| !DECLARATIONS.contains(&c.kind.as_str()))
+        .map(|c| bind_values(c, &values))
+        .collect();
+    YuiNode {
+        uid: root.uid.clone(),
+        kind: "Screen".into(),
+        attrs,
+        children,
+    }
 }
 
 // ── The mod's components ─────────────────────────────────────────────────────────
@@ -286,7 +362,10 @@ fn fingerprint(files: &[PathBuf]) -> u64 {
         f.hash(&mut h);
         if let Ok(m) = std::fs::metadata(f) {
             m.len().hash(&mut h);
-            m.modified().ok().and_then(|t| t.duration_since(SystemTime::UNIX_EPOCH).ok()).hash(&mut h);
+            m.modified()
+                .ok()
+                .and_then(|t| t.duration_since(SystemTime::UNIX_EPOCH).ok())
+                .hash(&mut h);
         }
     }
     h.finish()
@@ -305,7 +384,10 @@ pub fn scan_with_revision(mod_root: &Path) -> (u64, Arc<Vec<Def>>) {
     let files = yui_files(mod_root);
     let fp = fingerprint(&files);
     let cache = CACHE.get_or_init(Default::default);
-    if let Some((seen, defs)) = cache.lock().unwrap_or_else(PoisonError::into_inner).get(mod_root)
+    if let Some((seen, defs)) = cache
+        .lock()
+        .unwrap_or_else(PoisonError::into_inner)
+        .get(mod_root)
         && *seen == fp
     {
         return (fp, defs.clone());
@@ -322,7 +404,10 @@ pub fn scan_with_revision(mod_root: &Path) -> (u64, Arc<Vec<Def>>) {
         })
         .collect();
     let defs = Arc::new(defs);
-    cache.lock().unwrap_or_else(PoisonError::into_inner).insert(mod_root.to_path_buf(), (fp, defs.clone()));
+    cache
+        .lock()
+        .unwrap_or_else(PoisonError::into_inner)
+        .insert(mod_root.to_path_buf(), (fp, defs.clone()));
     (fp, defs)
 }
 
@@ -349,21 +434,35 @@ mod tests {
         assert_eq!(def.info.props.len(), 3);
         assert_eq!(def.info.props[2].kind, "event");
         assert_eq!(def.info.props[0].category, "Data");
-        assert_eq!((def.info.description.as_str(), def.info.icon.as_str()), ("@Strings.pill", "item:name_tag"));
-        assert_eq!((def.info.design_w, def.info.design_h, def.info.toolbox), (40.0, 12.0, false));
+        assert_eq!(
+            (def.info.description.as_str(), def.info.icon.as_str()),
+            ("@Strings.pill", "item:name_tag")
+        );
+        assert_eq!(
+            (def.info.design_w, def.info.design_h, def.info.toolbox),
+            (40.0, 12.0, false)
+        );
         assert!(!def.compiled);
         assert_eq!(def.body.as_ref().unwrap().children[0].uid, "c0/3/0");
 
         let inst = YuiNode {
             uid: "n7".into(),
             kind: "Pill".into(),
-            attrs: HashMap::from([("x".into(), "4".into()), ("label".into(), "Hi".into()), ("bg".into(), "#FF000000".into())]),
+            attrs: HashMap::from([
+                ("x".into(), "4".into()),
+                ("label".into(), "Hi".into()),
+                ("bg".into(), "#FF000000".into()),
+            ]),
             children: vec![],
         };
         let t = expand(&def, &inst);
         assert_eq!(t.uid, "n7");
         assert_eq!(t.kind, "Row");
-        assert_eq!(t.attr("bg"), Some("#FF000000"), "the instance's own attributes win");
+        assert_eq!(
+            t.attr("bg"),
+            Some("#FF000000"),
+            "the instance's own attributes win"
+        );
         assert_eq!(t.attr("x"), Some("4"));
         assert_eq!(t.attr("on_click"), Some(""));
         assert_eq!(t.attr("min_w"), Some("30"));
@@ -371,7 +470,14 @@ mod tests {
         assert_eq!(t.children[0].attr("text"), Some("Hi"));
 
         let screen = design_root(&tree);
-        assert_eq!((screen.kind.as_str(), screen.attr("width"), screen.children.len()), ("Screen", Some("40"), 1));
+        assert_eq!(
+            (
+                screen.kind.as_str(),
+                screen.attr("width"),
+                screen.children.len()
+            ),
+            ("Screen", Some("40"), 1)
+        );
         assert_eq!(screen.children[0].attr("bg"), Some("#FF2D4A8A"));
         assert_eq!(screen.children[0].uid, "c0/3", "the document's uids stay");
     }
@@ -385,6 +491,12 @@ mod tests {
         let screen = design_root(&tree);
         assert_eq!(screen.children[0].attr("text"), Some("{caption()}"));
         assert_eq!(screen.children[0].attr("color"), Some("#FF0000"));
-        assert!(definition(&parse_tree("<Screen id='a:b'/>").unwrap(), Path::new("a.yui")).is_none());
+        assert!(
+            definition(
+                &parse_tree("<Screen id='a:b'/>").unwrap(),
+                Path::new("a.yui")
+            )
+            .is_none()
+        );
     }
 }

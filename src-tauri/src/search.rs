@@ -932,16 +932,26 @@ mod tests {
                 include_generated,
                 ..query("needle")
             };
-            run_search(Some(&root), Scope::Project, &q, &[], 100, &|| true, &mut |f| {
-                files.push(f.rel_path)
-            })
+            run_search(
+                Some(&root),
+                Scope::Project,
+                &q,
+                &[],
+                100,
+                &|| true,
+                &mut |f| files.push(f.rel_path),
+            )
             .unwrap();
             files
         };
         assert_eq!(search(false), ["notes.md", "src/lib.rs"]);
         assert_eq!(
             search(true),
-            ["notes.md", "src/lib.rs", ".yog-build/generated/screens/menu.g.rs"]
+            [
+                "notes.md",
+                "src/lib.rs",
+                ".yog-build/generated/screens/menu.g.rs"
+            ]
         );
         let _ = std::fs::remove_dir_all(&dir);
     }

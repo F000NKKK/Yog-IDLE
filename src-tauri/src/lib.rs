@@ -10,14 +10,14 @@ use substrate_platform::{
 };
 use tauri::{AppHandle, Emitter, Manager, State};
 
+mod content;
+mod designer;
 mod environment;
 mod git;
 mod project_properties;
 mod properties;
 mod search;
 mod symbols;
-mod designer;
-mod content;
 mod yui;
 
 #[cfg(target_os = "linux")]
@@ -560,7 +560,11 @@ fn content_info(state: State<'_, AppState>, path: String) -> Result<content::Con
 
 /// A texture as a content file names it, as a data URL.
 #[tauri::command]
-async fn content_texture(state: State<'_, AppState>, path: String, texture: String) -> Result<content::Texture, String> {
+async fn content_texture(
+    state: State<'_, AppState>,
+    path: String,
+    texture: String,
+) -> Result<content::Texture, String> {
     validate_within_roots(&state, Path::new(&path))?;
     tauri::async_runtime::spawn_blocking(move || content::texture(Path::new(&path), &texture))
         .await
@@ -571,20 +575,33 @@ async fn content_texture(state: State<'_, AppState>, path: String, texture: Stri
 /// bytes) to where the file names it (see `content::texture_target`) —
 /// never outside the mod or the open project. Returns the written path.
 #[tauri::command]
-async fn content_save_texture(state: State<'_, AppState>, path: String, texture: String, png: String) -> Result<String, String> {
+async fn content_save_texture(
+    state: State<'_, AppState>,
+    path: String,
+    texture: String,
+    png: String,
+) -> Result<String, String> {
     validate_within_roots(&state, Path::new(&path))?;
-    let target = content::texture_target(Path::new(&path), &texture).ok_or_else(|| format!("{texture} isn't a texture of this mod"))?;
+    let target = content::texture_target(Path::new(&path), &texture)
+        .ok_or_else(|| format!("{texture} isn't a texture of this mod"))?;
     validate_within_roots(&state, &target)?;
     use base64::Engine as _;
-    let bytes = base64::engine::general_purpose::STANDARD.decode(png.as_bytes()).map_err(|e| e.to_string())?;
-    tauri::async_runtime::spawn_blocking(move || content::write_png(&target, &bytes).map(|()| target.to_string_lossy().into_owned()))
-        .await
-        .map_err(|e| e.to_string())?
+    let bytes = base64::engine::general_purpose::STANDARD
+        .decode(png.as_bytes())
+        .map_err(|e| e.to_string())?;
+    tauri::async_runtime::spawn_blocking(move || {
+        content::write_png(&target, &bytes).map(|()| target.to_string_lossy().into_owned())
+    })
+    .await
+    .map_err(|e| e.to_string())?
 }
 
 /// The texture picker's choices for a content file.
 #[tauri::command]
-async fn content_textures(state: State<'_, AppState>, path: String) -> Result<Vec<content::TextureChoice>, String> {
+async fn content_textures(
+    state: State<'_, AppState>,
+    path: String,
+) -> Result<Vec<content::TextureChoice>, String> {
     validate_within_roots(&state, Path::new(&path))?;
     tauri::async_runtime::spawn_blocking(move || content::textures(Path::new(&path)))
         .await
@@ -602,7 +619,11 @@ async fn content_strings(state: State<'_, AppState>, path: String) -> Result<Vec
 
 /// A model by id with its parents flattened, for previewing a raw parent.
 #[tauri::command]
-async fn content_parent_model(state: State<'_, AppState>, path: String, id: String) -> Result<serde_json::Value, String> {
+async fn content_parent_model(
+    state: State<'_, AppState>,
+    path: String,
+    id: String,
+) -> Result<serde_json::Value, String> {
     validate_within_roots(&state, Path::new(&path))?;
     tauri::async_runtime::spawn_blocking(move || content::parent_model(Path::new(&path), &id))
         .await
@@ -620,9 +641,11 @@ async fn content_import(
     force: bool,
 ) -> Result<String, String> {
     validate_within_roots(&state, Path::new(&path))?;
-    tauri::async_runtime::spawn_blocking(move || content::import(Path::new(&path), &kind, &source, model.as_deref(), force))
-        .await
-        .map_err(|e| e.to_string())?
+    tauri::async_runtime::spawn_blocking(move || {
+        content::import(Path::new(&path), &kind, &source, model.as_deref(), force)
+    })
+    .await
+    .map_err(|e| e.to_string())?
 }
 
 /// Draws a `.yui` screen the way the game does (see `designer/`): yog-ui's
@@ -654,10 +677,16 @@ async fn yui_image_sources(path: String) -> Result<Vec<designer::images::Candida
 
 /// A Yog image source drawn `size` px square, as a PNG data URL.
 #[tauri::command]
-async fn yui_image_preview(path: String, source: String, size: u32) -> Result<Option<String>, String> {
-    tauri::async_runtime::spawn_blocking(move || designer::images::preview(Path::new(&path), &source, size))
-        .await
-        .map_err(|e| e.to_string())
+async fn yui_image_preview(
+    path: String,
+    source: String,
+    size: u32,
+) -> Result<Option<String>, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        designer::images::preview(Path::new(&path), &source, size)
+    })
+    .await
+    .map_err(|e| e.to_string())
 }
 
 /// Leaves the preview: scroll positions back to the top.

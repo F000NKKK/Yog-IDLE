@@ -11,7 +11,7 @@ use std::sync::{Arc, Mutex, OnceLock};
 
 use serde_json::Value;
 
-use super::assets::{decode_png, split_id, Image, Resources};
+use super::assets::{Image, Resources, decode_png, split_id};
 
 /// One glyph's metrics and (unless it's blank) its bitmap.
 pub struct Glyph {
@@ -82,7 +82,12 @@ fn lenient_json(bytes: &[u8]) -> Option<Value> {
         }
         if c == '"' {
             in_str = true;
-        } else if c == ',' && chars[i + 1..].iter().find(|c| !c.is_whitespace()).is_some_and(|&n| n == ']' || n == '}') {
+        } else if c == ','
+            && chars[i + 1..]
+                .iter()
+                .find(|c| !c.is_whitespace())
+                .is_some_and(|&n| n == ']' || n == '}')
+        {
             continue;
         }
         out.push(c);
@@ -94,14 +99,25 @@ fn json(res: &Resources, ns: &str, path: &str) -> Vec<Value> {
     // A mod's own definition first, then vanilla's — both count, like stacked resource packs.
     let mut out = Vec::new();
     if let Some(root) = &res.mod_root {
-        for base in [root.join("assets"), root.join("src/assets"), root.join("resources/assets")] {
-            if let Some(v) = std::fs::read(base.join(ns).join(path)).ok().and_then(|b| lenient_json(&b)) {
+        for base in [
+            root.join("assets"),
+            root.join("src/assets"),
+            root.join("resources/assets"),
+        ] {
+            if let Some(v) = std::fs::read(base.join(ns).join(path))
+                .ok()
+                .and_then(|b| lenient_json(&b))
+            {
                 out.push(v);
             }
         }
     }
     if let Some(v) = &res.vanilla {
-        out.extend(v.read_all(&format!("{ns}/{path}")).iter().filter_map(|b| lenient_json(b)));
+        out.extend(
+            v.read_all(&format!("{ns}/{path}"))
+                .iter()
+                .filter_map(|b| lenient_json(b)),
+        );
     }
     out
 }
@@ -127,7 +143,9 @@ fn unihex(res: &Resources, file: &str, overrides: &[Value]) -> Option<Arc<Unihex
         let mut zip = zip::ZipArchive::new(std::io::Cursor::new(bytes)).ok()?;
         let mut glyphs = HashMap::new();
         for i in 0..zip.len() {
-            let Ok(mut entry) = zip.by_index(i) else { continue };
+            let Ok(mut entry) = zip.by_index(i) else {
+                continue;
+            };
             if !entry.name().is_ok_and(|n| n.ends_with(".hex")) {
                 continue;
             }
@@ -136,8 +154,12 @@ fn unihex(res: &Resources, file: &str, overrides: &[Value]) -> Option<Arc<Unihex
                 continue;
             }
             for line in text.lines() {
-                let Some((cp, data)) = line.split_once(':') else { continue };
-                let Ok(cp) = u32::from_str_radix(cp.trim(), 16) else { continue };
+                let Some((cp, data)) = line.split_once(':') else {
+                    continue;
+                };
+                let Ok(cp) = u32::from_str_radix(cp.trim(), 16) else {
+                    continue;
+                };
                 let data = data.trim();
                 let row_digits = data.len() / 16;
                 if !matches!(row_digits, 2 | 4 | 6 | 8) || data.len() % 16 != 0 {
@@ -166,7 +188,12 @@ fn unihex(res: &Resources, file: &str, overrides: &[Value]) -> Option<Arc<Unihex
         .iter()
         .filter_map(|o| {
             let ch = |k: &str| o.get(k)?.as_str()?.chars().next().map(|c| c as u32);
-            Some((ch("from")?, ch("to")?, o.get("left")?.as_i64()? as i32, o.get("right")?.as_i64()? as i32))
+            Some((
+                ch("from")?,
+                ch("to")?,
+                o.get("left")?.as_i64()? as i32,
+                o.get("right")?.as_i64()? as i32,
+            ))
         })
         .collect();
     Some(Arc::new(UnihexProvider { glyphs, overrides }))
@@ -178,7 +205,9 @@ fn load_providers(res: &Resources, id: &str, depth: usize, out: &mut Vec<Provide
     }
     let (ns, path) = split_id(id);
     for def in json(res, ns, &format!("font/{path}.json")) {
-        let Some(list) = def.get("providers").and_then(Value::as_array) else { continue };
+        let Some(list) = def.get("providers").and_then(Value::as_array) else {
+            continue;
+        };
         for p in list {
             if !filter_passes(p) {
                 continue;
@@ -207,8 +236,15 @@ fn load_providers(res: &Resources, id: &str, depth: usize, out: &mut Vec<Provide
                     }
                 }
                 Some("unihex") => {
-                    let file = p.get("hex_file").and_then(Value::as_str).unwrap_or_default();
-                    let overrides = p.get("size_overrides").and_then(Value::as_array).cloned().unwrap_or_default();
+                    let file = p
+                        .get("hex_file")
+                        .and_then(Value::as_str)
+                        .unwrap_or_default();
+                    let overrides = p
+                        .get("size_overrides")
+                        .and_then(Value::as_array)
+                        .cloned()
+                        .unwrap_or_default();
                     if let Some(u) = unihex(res, file, &overrides) {
                         out.push(Provider::Unihex(u));
                     }
@@ -223,7 +259,12 @@ fn bitmap(res: &Resources, p: &Value) -> Option<BitmapProvider> {
     let file = p.get("file")?.as_str()?;
     let (ns, path) = split_id(file);
     let image = Arc::new(decode_png(&res.read(ns, &format!("textures/{path}"))?)?);
-    let rows: Vec<Vec<char>> = p.get("chars")?.as_array()?.iter().filter_map(|r| Some(r.as_str()?.chars().collect())).collect();
+    let rows: Vec<Vec<char>> = p
+        .get("chars")?
+        .as_array()?
+        .iter()
+        .filter_map(|r| Some(r.as_str()?.chars().collect()))
+        .collect();
     let cols = rows.first()?.len() as u32;
     if cols == 0 || rows.is_empty() {
         return None;
@@ -307,7 +348,13 @@ impl UnihexProvider {
             advance: (width / 2 + 1) as f32,
             shadow_offset: 0.5,
             bold_offset: 0.5,
-            bitmap: (width > 0).then_some(GlyphBitmap { w: width, h: 16, rgba, oversample: 2.0, top: 0.0 }),
+            bitmap: (width > 0).then_some(GlyphBitmap {
+                w: width,
+                h: 16,
+                rgba,
+                oversample: 2.0,
+                top: 0.0,
+            }),
         })
     }
 }
@@ -325,7 +372,13 @@ fn missing_glyph() -> Glyph {
         advance: 6.0,
         shadow_offset: 1.0,
         bold_offset: 1.0,
-        bitmap: Some(GlyphBitmap { w: 5, h: 8, rgba, oversample: 1.0, top: 0.0 }),
+        bitmap: Some(GlyphBitmap {
+            w: 5,
+            h: 8,
+            rgba,
+            oversample: 1.0,
+            top: 0.0,
+        }),
     }
 }
 
@@ -334,7 +387,11 @@ impl Font {
     pub fn load(res: &Resources, font_id: &str) -> Arc<Font> {
         type Cache = Mutex<HashMap<(Option<std::path::PathBuf>, String), Arc<Font>>>;
         static CACHE: OnceLock<Cache> = OnceLock::new();
-        let id = if font_id.trim().is_empty() { "minecraft:default" } else { font_id.trim() };
+        let id = if font_id.trim().is_empty() {
+            "minecraft:default"
+        } else {
+            font_id.trim()
+        };
         let key = (res.mod_root.clone(), id.to_string());
         let cache = CACHE.get_or_init(Default::default);
         if let Some(f) = cache.lock().ok().and_then(|c| c.get(&key).cloned()) {
@@ -346,7 +403,10 @@ impl Font {
             // An unknown font falls back to the default one, as in game.
             load_providers(res, "minecraft:default", 0, &mut providers);
         }
-        let font = Arc::new(Font { providers, cache: Mutex::new(HashMap::new()) });
+        let font = Arc::new(Font {
+            providers,
+            cache: Mutex::new(HashMap::new()),
+        });
         if let Ok(mut c) = cache.lock() {
             c.insert(key, font.clone());
         }
@@ -366,7 +426,12 @@ impl Font {
             self.providers
                 .iter()
                 .find_map(|p| match p {
-                    Provider::Space(a) => a.get(&ch).map(|&advance| Glyph { advance, shadow_offset: 1.0, bold_offset: 1.0, bitmap: None }),
+                    Provider::Space(a) => a.get(&ch).map(|&advance| Glyph {
+                        advance,
+                        shadow_offset: 1.0,
+                        bold_offset: 1.0,
+                        bitmap: None,
+                    }),
                     Provider::Bitmap(b) => b.glyph(ch),
                     Provider::Unihex(u) => u.glyph(ch),
                 })
@@ -382,7 +447,17 @@ impl Font {
     /// Advance of `text` in GUI px (`Font.width`) — for measuring text the way the game will.
     #[allow(dead_code)]
     pub fn width(&self, text: &str) -> f32 {
-        styled(text, 0xFFFF_FFFF).iter().map(|s| self.glyph(s.ch).advance + if s.bold { self.glyph(s.ch).bold_offset } else { 0.0 }).sum()
+        styled(text, 0xFFFF_FFFF)
+            .iter()
+            .map(|s| {
+                self.glyph(s.ch).advance
+                    + if s.bold {
+                        self.glyph(s.ch).bold_offset
+                    } else {
+                        0.0
+                    }
+            })
+            .sum()
     }
 }
 
@@ -398,14 +473,20 @@ pub struct Styled {
 
 /// Legacy chat colors `§0`–`§f`.
 const CODES: [u32; 16] = [
-    0x000000, 0x0000AA, 0x00AA00, 0x00AAAA, 0xAA0000, 0xAA00AA, 0xFFAA00, 0xAAAAAA, 0x555555, 0x5555FF, 0x55FF55, 0x55FFFF, 0xFF5555, 0xFF55FF,
-    0xFFFF55, 0xFFFFFF,
+    0x000000, 0x0000AA, 0x00AA00, 0x00AAAA, 0xAA0000, 0xAA00AA, 0xFFAA00, 0xAAAAAA, 0x555555,
+    0x5555FF, 0x55FF55, 0x55FFFF, 0xFF5555, 0xFF55FF, 0xFFFF55, 0xFFFFFF,
 ];
 
 /// `text` split into characters with the style `§` codes give them —
 /// `StringDecomposer.iterateFormatted`.
 pub fn styled(text: &str, color: u32) -> Vec<Styled> {
-    let base = Styled { ch: ' ', color, bold: false, underline: false, strike: false };
+    let base = Styled {
+        ch: ' ',
+        color,
+        bold: false,
+        underline: false,
+        strike: false,
+    };
     let mut cur = base;
     let mut out = Vec::new();
     let mut it = text.chars();
@@ -414,7 +495,10 @@ pub fn styled(text: &str, color: u32) -> Vec<Styled> {
             let Some(code) = it.next() else { break };
             let code = code.to_ascii_lowercase();
             if let Some(i) = code.to_digit(16) {
-                cur = Styled { color: (color & 0xFF00_0000) | CODES[i as usize], ..base };
+                cur = Styled {
+                    color: (color & 0xFF00_0000) | CODES[i as usize],
+                    ..base
+                };
             } else {
                 match code {
                     'l' => cur.bold = true,
@@ -430,7 +514,6 @@ pub fn styled(text: &str, color: u32) -> Vec<Styled> {
     }
     out
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -454,7 +537,13 @@ mod tests {
 
     #[test]
     fn without_game_files_text_measures_with_the_missing_glyph() {
-        let f = Font::load(&Resources { mod_root: None, vanilla: None }, "minecraft:default");
+        let f = Font::load(
+            &Resources {
+                mod_root: None,
+                vanilla: None,
+            },
+            "minecraft:default",
+        );
         assert!(!f.is_real());
         assert_eq!(f.width("ab"), 12.0);
     }

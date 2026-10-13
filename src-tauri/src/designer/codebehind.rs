@@ -66,7 +66,9 @@ pub fn code_behind_path(yui: &Path) -> PathBuf {
 }
 
 fn stem(yui: &Path) -> String {
-    yui.file_stem().map(|s| s.to_string_lossy().into_owned()).unwrap_or_else(|| "screen".into())
+    yui.file_stem()
+        .map(|s| s.to_string_lossy().into_owned())
+        .unwrap_or_else(|| "screen".into())
 }
 
 fn skeleton(yui: &Path, constant: &str, handler: &str) -> String {
@@ -131,7 +133,10 @@ impl<'ast> Visit<'ast> for FindMatch {
     }
 
     fn visit_expr_match(&mut self, m: &'ast syn::ExprMatch) {
-        let events_arm = m.arms.iter().any(|a| pat_path(&a.pat).is_some_and(|p| p.starts_with("events::")));
+        let events_arm = m
+            .arms
+            .iter()
+            .any(|a| pat_path(&a.pat).is_some_and(|p| p.starts_with("events::")));
         let scrutinee = quote_ish(&m.expr);
         let score = if events_arm {
             2
@@ -146,11 +151,20 @@ impl<'ast> Visit<'ast> for FindMatch {
                 .iter()
                 .find(|a| matches!(&a.pat, syn::Pat::Wild(_) | syn::Pat::Ident(_)))
                 .and_then(|a| pat_start(&a.pat));
-            let arm_col = m.arms.first().and_then(|a| pat_start(&a.pat)).map_or(m.match_token.span.start().column + 4, |(_, c)| c);
+            let arm_col = m
+                .arms
+                .first()
+                .and_then(|a| pat_start(&a.pat))
+                .map_or(m.match_token.span.start().column + 4, |(_, c)| c);
             let close = m.brace_token.span.close();
             self.best = Some((
                 score,
-                MatchInfo { catch_all, close: (close.start().line, close.start().column), arm_col, fn_end: self.fn_end },
+                MatchInfo {
+                    catch_all,
+                    close: (close.start().line, close.start().column),
+                    arm_col,
+                    fn_end: self.fn_end,
+                },
             ));
         }
         syn::visit::visit_expr_match(self, m);
@@ -174,7 +188,14 @@ fn pat_start(p: &syn::Pat) -> Option<(usize, usize)> {
 
 fn pat_path(p: &syn::Pat) -> Option<String> {
     match p {
-        syn::Pat::Path(p) => Some(p.path.segments.iter().map(|s| s.ident.to_string()).collect::<Vec<_>>().join("::")),
+        syn::Pat::Path(p) => Some(
+            p.path
+                .segments
+                .iter()
+                .map(|s| s.ident.to_string())
+                .collect::<Vec<_>>()
+                .join("::"),
+        ),
         _ => None,
     }
 }
@@ -206,7 +227,9 @@ fn line_start(src: &str, line: usize) -> usize {
     if line <= 1 {
         return 0;
     }
-    src.match_indices('\n').nth(line - 2).map_or(src.len(), |(i, _)| i + 1)
+    src.match_indices('\n')
+        .nth(line - 2)
+        .map_or(src.len(), |(i, _)| i + 1)
 }
 
 /// Adds (or finds) the handler for `event` in `src`; `None` when there's no
@@ -217,7 +240,9 @@ pub fn add_handler(src: &str, event: &str) -> Result<(String, usize, usize, bool
     let arm_ref = format!("events::{constant}");
     let handler = handler_name(event);
     // Already handled: go to the handler fn if there is one, else the arm.
-    if let Some(at) = src.find(&arm_ref).filter(|&at| !src[at + arm_ref.len()..].starts_with(|c: char| c.is_alphanumeric() || c == '_')) {
+    if let Some(at) = src.find(&arm_ref).filter(|&at| {
+        !src[at + arm_ref.len()..].starts_with(|c: char| c.is_alphanumeric() || c == '_')
+    }) {
         let fn_def = format!("fn {handler}(");
         if let Some((line, col)) = find(src, &fn_def) {
             return Ok((src.to_string(), line + 1, col + 4, false));
@@ -227,7 +252,10 @@ pub fn add_handler(src: &str, event: &str) -> Result<(String, usize, usize, bool
         return Ok((src.to_string(), line, col, false));
     }
     let file = syn::parse_file(src).map_err(|e| format!("the code-behind doesn't parse: {e}"))?;
-    let mut finder = FindMatch { best: None, fn_end: 0 };
+    let mut finder = FindMatch {
+        best: None,
+        fn_end: 0,
+    };
     finder.visit_file(&file);
     let Some((_, m)) = finder.best else {
         return Err("no `match` over the clicked event (`match clicked.as_str() { … }`) to add the handler to".into());
@@ -243,8 +271,16 @@ pub fn add_handler(src: &str, event: &str) -> Result<(String, usize, usize, bool
     let mut edits = vec![(arm_at, arm)];
     if !has_fn {
         // The fn: after the fn holding the match (or at the end).
-        let fn_at = if m.fn_end > 0 { line_start(src, m.fn_end + 1) } else { src.len() };
-        let lead = if fn_at == src.len() && !src.ends_with('\n') { "\n\n" } else { "\n" };
+        let fn_at = if m.fn_end > 0 {
+            line_start(src, m.fn_end + 1)
+        } else {
+            src.len()
+        };
+        let lead = if fn_at == src.len() && !src.ends_with('\n') {
+            "\n\n"
+        } else {
+            "\n"
+        };
         edits.push((fn_at, format!("{lead}fn {handler}() {{\n    \n}}\n")));
     }
     edits.sort_by_key(|(at, _)| std::cmp::Reverse(*at));
@@ -266,14 +302,24 @@ pub fn ensure_handler(yui: &Path, event: &str) -> Result<HandlerLocation, String
         let text = skeleton(yui, &const_name(event), &handler);
         std::fs::write(&rs, &text).map_err(|e| format!("{}: {e}", rs.display()))?;
         let (line, _) = find(&text, &format!("fn {handler}() {{")).unwrap_or((1, 1));
-        return Ok(HandlerLocation { path, line: line + 1, column: 5, changed: true });
+        return Ok(HandlerLocation {
+            path,
+            line: line + 1,
+            column: 5,
+            changed: true,
+        });
     }
     let src = std::fs::read_to_string(&rs).map_err(|e| format!("{}: {e}", rs.display()))?;
     let (text, line, column, changed) = add_handler(&src, event)?;
     if changed {
         std::fs::write(&rs, &text).map_err(|e| format!("{}: {e}", rs.display()))?;
     }
-    Ok(HandlerLocation { path, line, column, changed })
+    Ok(HandlerLocation {
+        path,
+        line,
+        column,
+        changed,
+    })
 }
 
 #[cfg(test)]
@@ -311,7 +357,10 @@ fn close() {}
         let (out, line, col, changed) = add_handler(SRC, "play_click").unwrap();
         assert!(changed);
         assert!(out.contains("        events::DONE => close(),\n        events::PLAY_CLICK => play_click(),\n        other => {"), "{out}");
-        assert!(out.contains("    true\n}\n\nfn play_click() {\n    \n}\n\nfn close() {}"), "{out}");
+        assert!(
+            out.contains("    true\n}\n\nfn play_click() {\n    \n}\n\nfn close() {}"),
+            "{out}"
+        );
         let lines: Vec<&str> = out.lines().collect();
         assert_eq!(lines[line - 2], "fn play_click() {");
         assert_eq!(col, 5);

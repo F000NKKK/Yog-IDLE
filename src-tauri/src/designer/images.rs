@@ -11,11 +11,13 @@ use std::cell::RefCell;
 use std::path::Path;
 use std::sync::Arc;
 
-use yog_gfx::image::{fit, sprite as find_sprite, ImageSource, LegacyRegion, Sprite, Stretch, SPRITES};
+use yog_gfx::image::{
+    ImageSource, LegacyRegion, SPRITES, Sprite, Stretch, fit, sprite as find_sprite,
+};
 use yog_ui::widget::{self, Widget};
 
-use super::assets::{split_id, Image, Resources};
-use super::markup::{color, YuiNode};
+use super::assets::{Image, Resources, split_id};
+use super::markup::{YuiNode, color};
 use super::raster::Canvas;
 
 struct Doc {
@@ -37,13 +39,17 @@ fn mod_id(root: &Path) -> Option<String> {
 /// The `.yui` being laid out and drawn: its mod's resources (images, fonts)
 /// and id (for `mod:` sources). Set before every layout.
 pub fn set_document(mod_root: Option<&Path>) {
-    let doc = Doc { res: Resources::for_mod(mod_root), mod_id: mod_root.and_then(mod_id) };
+    let doc = Doc {
+        res: Resources::for_mod(mod_root),
+        mod_id: mod_root.and_then(mod_id),
+    };
     DOC.with(|d| *d.borrow_mut() = Some(doc));
 }
 
 /// The current document's resources (vanilla only without one).
 pub fn resources() -> Resources {
-    DOC.with(|d| d.borrow().as_ref().map(|d| d.res.clone())).unwrap_or_else(|| Resources::for_mod(None))
+    DOC.with(|d| d.borrow().as_ref().map(|d| d.res.clone()))
+        .unwrap_or_else(|| Resources::for_mod(None))
 }
 
 fn with_doc<R>(f: impl FnOnce(Option<&Doc>) -> R) -> R {
@@ -75,8 +81,14 @@ pub fn stretch(v: &str) -> Stretch {
 
 /// `uv="u v w h"`.
 fn uv(v: &str) -> Option<[f32; 4]> {
-    let p: Vec<f32> = v.split([' ', ',']).filter(|s| !s.is_empty()).map(|s| s.parse().ok()).collect::<Option<_>>()?;
-    <[f32; 4]>::try_from(p).ok().filter(|r| r[2] > 0.0 && r[3] > 0.0)
+    let p: Vec<f32> = v
+        .split([' ', ','])
+        .filter(|s| !s.is_empty())
+        .map(|s| s.parse().ok())
+        .collect::<Option<_>>()?;
+    <[f32; 4]>::try_from(p)
+        .ok()
+        .filter(|r| r[2] > 0.0 && r[3] > 0.0)
 }
 
 /// The widget for an `<Image>` — what the generated code builds: `source`,
@@ -111,7 +123,8 @@ fn has_atlas() -> bool {
 fn item_texture(id: &str, block: bool) -> Option<Arc<Image>> {
     let (ns, name) = split_id(id);
     let item = format!("{ns}:textures/item/{name}.png");
-    let blocks = ["", "_front", "_side", "_top"].map(|s| format!("{ns}:textures/block/{name}{s}.png"));
+    let blocks =
+        ["", "_front", "_side", "_top"].map(|s| format!("{ns}:textures/block/{name}{s}.png"));
     let mut order: Vec<&String> = blocks.iter().collect();
     if block {
         order.push(&item);
@@ -145,7 +158,15 @@ fn blit_px(c: &mut Canvas, img: &Image, dest: [f32; 4], src: [f32; 4], t: u32) {
         return;
     }
     let (iw, ih) = (img.w as f32, img.h as f32);
-    c.blit(img, x, y, w, h, [u / iw, v / ih, (u + uw) / iw, (v + vh) / ih], tint(t));
+    c.blit(
+        img,
+        x,
+        y,
+        w,
+        h,
+        [u / iw, v / ih, (u + uw) / iw, (v + vh) / ih],
+        tint(t),
+    );
 }
 
 /// A texture region, nine-sliced by `border` when stretched (the runtime's
@@ -158,8 +179,16 @@ fn nine_slice(c: &mut Canvas, img: &Image, region: [f32; 4], border: f32, dest: 
         blit_px(c, img, dest, region, t);
         return;
     }
-    let cols = [(x, b, u, b), (x + b, w - 2.0 * b, u + b, rw - 2.0 * b), (x + w - b, b, u + rw - b, b)];
-    let rows = [(y, b, v, b), (y + b, h - 2.0 * b, v + b, rh - 2.0 * b), (y + h - b, b, v + rh - b, b)];
+    let cols = [
+        (x, b, u, b),
+        (x + b, w - 2.0 * b, u + b, rw - 2.0 * b),
+        (x + w - b, b, u + rw - b, b),
+    ];
+    let rows = [
+        (y, b, v, b),
+        (y + b, h - 2.0 * b, v + b, rh - 2.0 * b),
+        (y + h - b, b, v + rh - b, b),
+    ];
     for (dy, dh, sv, sh) in rows {
         for (dx, dw, su, sw) in cols {
             blit_px(c, img, [dx, dy, dw, dh], [su, sv, sw, sh], t);
@@ -185,23 +214,55 @@ fn sprite(c: &mut Canvas, sp: &Sprite, dest: [f32; 4], t: u32) {
         && let Some(img) = texture(&format!("minecraft:textures/gui/sprites/{atlas}.png"))
     {
         // Animated sprites stack their frames vertically: the first one.
-        let frame_h = if img.h > img.w && sp.h <= sp.w { img.w as f32 * sp.h / sp.w } else { img.h as f32 };
-        nine_slice(c, &img, [0.0, 0.0, img.w as f32, frame_h], sp.border, dest, t);
+        let frame_h = if img.h > img.w && sp.h <= sp.w {
+            img.w as f32 * sp.h / sp.w
+        } else {
+            img.h as f32
+        };
+        nine_slice(
+            c,
+            &img,
+            [0.0, 0.0, img.w as f32, frame_h],
+            sp.border,
+            dest,
+            t,
+        );
         return;
     }
-    if let Some(LegacyRegion { texture: tex, u, v, w, h, tex_w, .. }) = sp.legacy
+    if let Some(LegacyRegion {
+        texture: tex,
+        u,
+        v,
+        w,
+        h,
+        tex_w,
+        ..
+    }) = sp.legacy
         && let Some(img) = texture(tex)
     {
         // Resource packs may ship the sheet at a higher resolution.
         let k = img.w as f32 / tex_w;
-        nine_slice(c, &img, [u * k, v * k, w * k, h * k], sp.border * k, dest, t);
+        nine_slice(
+            c,
+            &img,
+            [u * k, v * k, w * k, h * k],
+            sp.border * k,
+            dest,
+            t,
+        );
         return;
     }
     missing(c, dest);
 }
 
 fn missing(c: &mut Canvas, dest: [f32; 4]) {
-    blit_px(c, &Image::missing(), dest, [0.0, 0.0, 16.0, 16.0], 0xFFFF_FFFF);
+    blit_px(
+        c,
+        &Image::missing(),
+        dest,
+        [0.0, 0.0, 16.0, 16.0],
+        0xFFFF_FFFF,
+    );
 }
 
 /// `draw2d_image`: `source` into `dest` (`x y w h`, already fitted by
@@ -222,14 +283,21 @@ pub fn draw(c: &mut Canvas, source: &str, dest: [f32; 4], region: [f32; 4], t: u
         },
         Some(ImageSource::Sprite(name)) => match find_sprite(&name) {
             Some(sp) => sprite(c, sp, dest, t),
-            None => match name.split_once(':').and_then(|(ns, p)| texture(&format!("{ns}:textures/gui/sprites/{p}.png"))) {
+            None => match name
+                .split_once(':')
+                .and_then(|(ns, p)| texture(&format!("{ns}:textures/gui/sprites/{p}.png")))
+            {
                 Some(img) => blit_px(c, &img, dest, [0.0, 0.0, img.w as f32, img.h as f32], t),
                 None => missing(c, dest),
             },
         },
         Some(ImageSource::Texture(id)) => match texture(&id) {
             Some(img) => {
-                let src = if region[2] > 0.0 && region[3] > 0.0 { region } else { [0.0, 0.0, img.w as f32, img.h as f32] };
+                let src = if region[2] > 0.0 && region[3] > 0.0 {
+                    region
+                } else {
+                    [0.0, 0.0, img.w as f32, img.h as f32]
+                };
                 blit_px(c, &img, dest, src, t);
             }
             None => missing(c, dest),
@@ -250,7 +318,9 @@ pub struct Candidate {
 
 /// `.png` files under `dir` (recursively), as paths relative to it without the extension.
 fn pngs(dir: &Path, prefix: &str, out: &mut Vec<String>) {
-    let Ok(entries) = std::fs::read_dir(dir) else { return };
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return;
+    };
     for e in entries.flatten() {
         let name = e.file_name().to_string_lossy().into_owned();
         let p = e.path();
@@ -271,12 +341,20 @@ pub fn candidates(path: &Path) -> Vec<Candidate> {
         && let Some(id) = mod_id(root)
     {
         let mut own = Vec::new();
-        for base in [root.join("assets"), root.join("src/assets"), root.join("resources/assets")] {
+        for base in [
+            root.join("assets"),
+            root.join("src/assets"),
+            root.join("resources/assets"),
+        ] {
             pngs(&base.join(&id).join("textures"), "", &mut own);
         }
         own.sort();
         own.dedup();
-        out.extend(own.into_iter().map(|p| Candidate { source: format!("mod:{p}"), group: "mod".into(), detail: format!("assets/{id}/textures/{p}.png") }));
+        out.extend(own.into_iter().map(|p| Candidate {
+            source: format!("mod:{p}"),
+            group: "mod".into(),
+            detail: format!("assets/{id}/textures/{p}.png"),
+        }));
     }
     out.extend(SPRITES.iter().map(|s| Candidate {
         source: format!("sprite:{}", s.name),
@@ -286,8 +364,16 @@ pub fn candidates(path: &Path) -> Vec<Candidate> {
     let res = Resources::for_mod(root.as_deref());
     if let Some(v) = &res.vanilla {
         let (items, blocks) = v.texture_names();
-        out.extend(items.into_iter().map(|n| Candidate { source: format!("item:{n}"), group: "item".into(), detail: String::new() }));
-        out.extend(blocks.into_iter().map(|n| Candidate { source: format!("block:{n}"), group: "block".into(), detail: String::new() }));
+        out.extend(items.into_iter().map(|n| Candidate {
+            source: format!("item:{n}"),
+            group: "item".into(),
+            detail: String::new(),
+        }));
+        out.extend(blocks.into_iter().map(|n| Candidate {
+            source: format!("block:{n}"),
+            group: "block".into(),
+            detail: String::new(),
+        }));
     }
     out
 }
@@ -305,9 +391,11 @@ pub fn preview(path: &Path, source: &str, size: u32) -> Option<String> {
     let ([x, y, w, h], _) = fit(Stretch::Uniform, nw, nh, 0.0, 0.0, size as f32, size as f32);
     draw(&mut c, &source, [x, y, w, h], [0.0; 4], 0xFFFF_FFFF);
     let png = c.png().ok()?;
-    Some(format!("data:image/png;base64,{}", base64::engine::general_purpose::STANDARD.encode(png)))
+    Some(format!(
+        "data:image/png;base64,{}",
+        base64::engine::general_purpose::STANDARD.encode(png)
+    ))
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -330,29 +418,102 @@ mod tests {
     #[ignore]
     fn sample_png() {
         use base64::Engine as _;
-        let Ok(out) = std::env::var("YOG_IMAGES_PNG") else { return };
+        let Ok(out) = std::env::var("YOG_IMAGES_PNG") else {
+            return;
+        };
         let n = |uid: &str, attrs: &[(&str, &str)]| YuiNode {
             uid: uid.into(),
             kind: "Image".into(),
-            attrs: attrs.iter().map(|(k, v)| (k.to_string(), v.to_string())).collect(),
+            attrs: attrs
+                .iter()
+                .map(|(k, v)| (k.to_string(), v.to_string()))
+                .collect(),
             children: vec![],
         };
-        let mut root = n("s", &[("width", "200"), ("height", "120"), ("bg", "#C0101010")]);
+        let mut root = n(
+            "s",
+            &[("width", "200"), ("height", "120"), ("bg", "#C0101010")],
+        );
         root.kind = "Screen".into();
         root.children = vec![
             // w/h larger than the texture.
-            n("a", &[("x", "4"), ("y", "4"), ("w", "156"), ("h", "29"), ("source", "minecraft:item/apple"), ("bg", "#40FFFFFF")]),
-            n("b", &[("x", "4"), ("y", "36"), ("w", "32"), ("h", "32"), ("source", "item:apple")]),
-            n("c", &[("x", "40"), ("y", "36"), ("w", "32"), ("h", "32"), ("source", "block:crafting_table")]),
-            n("d", &[("x", "76"), ("y", "36"), ("w", "100"), ("h", "20"), ("source", "sprite:button"), ("stretch", "Fill")]),
-            n("e", &[("x", "76"), ("y", "60"), ("source", "sprite:icon/heart")]),
+            n(
+                "a",
+                &[
+                    ("x", "4"),
+                    ("y", "4"),
+                    ("w", "156"),
+                    ("h", "29"),
+                    ("source", "minecraft:item/apple"),
+                    ("bg", "#40FFFFFF"),
+                ],
+            ),
+            n(
+                "b",
+                &[
+                    ("x", "4"),
+                    ("y", "36"),
+                    ("w", "32"),
+                    ("h", "32"),
+                    ("source", "item:apple"),
+                ],
+            ),
+            n(
+                "c",
+                &[
+                    ("x", "40"),
+                    ("y", "36"),
+                    ("w", "32"),
+                    ("h", "32"),
+                    ("source", "block:crafting_table"),
+                ],
+            ),
+            n(
+                "d",
+                &[
+                    ("x", "76"),
+                    ("y", "36"),
+                    ("w", "100"),
+                    ("h", "20"),
+                    ("source", "sprite:button"),
+                    ("stretch", "Fill"),
+                ],
+            ),
+            n(
+                "e",
+                &[("x", "76"), ("y", "60"), ("source", "sprite:icon/heart")],
+            ),
             n("f", &[("x", "90"), ("y", "60"), ("source", "sprite:slot")]),
-            n("g", &[("x", "4"), ("y", "72"), ("w", "64"), ("h", "40"), ("source", "item:diamond"), ("stretch", "Fill"), ("tint", "#FF80FF80")]),
+            n(
+                "g",
+                &[
+                    ("x", "4"),
+                    ("y", "72"),
+                    ("w", "64"),
+                    ("h", "40"),
+                    ("source", "item:diamond"),
+                    ("stretch", "Fill"),
+                    ("tint", "#FF80FF80"),
+                ],
+            ),
         ];
-        let args = super::super::RenderArgs { path: "/nowhere/src/x.yui".into(), root, screen_w: 200, screen_h: 120, scale: 4, preview: false };
+        let args = super::super::RenderArgs {
+            path: "/nowhere/src/x.yui".into(),
+            root,
+            screen_w: 200,
+            screen_h: 120,
+            scale: 4,
+            preview: false,
+        };
         let r = super::super::render(&args).unwrap();
         let b64 = r.image.trim_start_matches("data:image/png;base64,");
-        std::fs::write(out, base64::engine::general_purpose::STANDARD.decode(b64).unwrap()).unwrap();
+        std::fs::write(
+            out,
+            base64::engine::general_purpose::STANDARD
+                .decode(b64)
+                .unwrap(),
+        )
+        .unwrap();
         eprintln!("assets: {:?}", r.assets);
     }
 }
