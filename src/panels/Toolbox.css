@@ -70,3 +70,11 @@
   text-align: center;
   color: var(--sp-accent);
 }
+
+.toolbox-note {
+  margin: 2px var(--sp-space-md) 2px calc(var(--sp-space-md) + 1em);
+  color: var(--sp-text-faint);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

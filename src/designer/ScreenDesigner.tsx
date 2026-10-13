@@ -511,9 +511,12 @@ export function ScreenDesigner({ path, content, onChange, readOnly, contentVersi
     return intoTarget(d, (primary && findParent(d.root, primary.uid)) || d.root);
   };
 
-  /** A built-in kind or one of the mod's components — what may be added (never a root). */
-  const addable = (kind: string) =>
-    kind !== "Screen" && ((KINDS as readonly string[]).includes(kind) || !!findComponent(components, kind));
+  /** A built-in kind or one of the mod's components — what may be added (never a root, nor a component into itself). */
+  const addable = (kind: string) => {
+    const root = sessionRef.current?.doc.root;
+    if (kind === "Screen" || (root && isComponentDoc(root) && root.attrs.name === kind)) return false;
+    return (KINDS as readonly string[]).includes(kind) || !!findComponent(components, kind);
+  };
 
   /** Index among `container`'s children where something dropped at `point` goes (flow containers). */
   const flowIndex = (container: YuiNode, point: DesignPoint, skip: ReadonlySet<string>): number => {
@@ -769,8 +772,9 @@ export function ScreenDesigner({ path, content, onChange, readOnly, contentVersi
     if (!first) return;
     const data: YuiSelectionData = {
       path,
-      objectName: nodes.length > 1 ? tn(nodes.length, "{count} widget", "{count} widgets", { count: nodes.length }) : (first.attrs.id ?? ""),
-      objectType: nodes.length > 1 ? "" : t(KIND_INFO[first.kind as YuiKind]?.label ?? first.kind),
+      objectName: nodes.length > 1 ? tn(nodes.length, "{count} widget", "{count} widgets", { count: nodes.length }) : (first.attrs.id ?? first.attrs.name ?? ""),
+      objectType:
+        nodes.length > 1 ? "" : KIND_INFO[first.kind as YuiKind] ? t(KIND_INFO[first.kind as YuiKind].label) : findComponent(components, first.kind) ? t("{name} (component)", { name: first.kind }) : first.kind,
       objectKey: `${path}#${uids.join(",")}`,
       properties: widgetProperties(
         nodes,
@@ -780,6 +784,7 @@ export function ScreenDesigner({ path, content, onChange, readOnly, contentVersi
           open: (node, attr) => void openHandlerRef.current(node.uid, attr),
         },
         path,
+        components,
       ),
     };
     setSelection({ id: data.objectKey, kind: "yui.widget", data, source: "editor" });
