@@ -1295,6 +1295,7 @@ function McText({ text, x, y, scale, color, shadow, zoom }: { text: string; x: n
 }
 
 function McWidget({ widget, node, zoom }: { widget: LWidget; node: LNode; zoom: number }) {
+  if (!widget.visible) return null;
   const r = node.rect;
   const s = widget.style;
   const parts: ReactNode[] = [];
