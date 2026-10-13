@@ -2,6 +2,7 @@
 // (`text.rs`), so the designer places every widget exactly where the game
 // will. Keep in step with the crate.
 
+import { designImage, designText } from "../lang/designResources";
 import { CANVAS_KINDS, parseColor, parseNumber, type YuiNode } from "./yui";
 
 export const LINE_H = 9;
@@ -305,11 +306,11 @@ export function toWidget(node: YuiNode, inCanvas: boolean): LWidget {
     uid: node.uid,
     kind,
     dir: node.kind === "Row" ? "row" : "column",
-    text: a.text ?? "",
-    placeholder: a.placeholder ?? "",
+    text: designText(a.text ?? ""),
+    placeholder: designText(a.placeholder ?? ""),
     item: a.item ?? "",
     count: Math.max(0, Math.floor(parseNumber(a.count) ?? 1)),
-    texture: a.texture ?? "",
+    texture: designImage(a.texture ?? ""),
     texW,
     texH,
     style,

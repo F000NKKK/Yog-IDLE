@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ComponentType, type ReactNode } from "react";
+import { invalidateDesignResources } from "./lang/designResources";
 import { invoke } from "@tauri-apps/api/core";
 import {
   editorProviderById,
@@ -292,6 +293,7 @@ export function OpenFilesProvider({ children }: { children: ReactNode }) {
       prev.map((t) => (t.id === id ? { ...t, diskContent: written, missing: false, dirty: t.content !== written } : t))
     );
     if (/\.(yui|yres)$/i.test(tab.path)) regenerateScreen(tab.path);
+    if (/\.yres$/i.test(tab.path)) invalidateDesignResources();
     return true;
   }, []);
 

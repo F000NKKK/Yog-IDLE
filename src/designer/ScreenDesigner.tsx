@@ -56,6 +56,7 @@ import {
   type YuiNode,
 } from "./yui";
 import { patchYui } from "./yuiText";
+import { useDesignResources, withDesignResources } from "../lang/designResources";
 import "./ScreenDesigner.css";
 
 /** What Properties shows for the designer's selection (`setSelection` kind `"yui.widget"`). */
@@ -388,6 +389,8 @@ export function ScreenDesigner({ path, content, onChange, readOnly, contentVersi
   // ── Layout ────────────────────────────────────────────────────────────────
 
   const res = RESOLUTIONS[view.res] ?? RESOLUTIONS[0];
+  // `@Strings.title` texts shown from the mod's .yres files (docs/yres.md).
+  const resourcesVersion = useDesignResources(modRootOf(path));
   const layout = useMemo(() => {
     if (!doc) return null;
     const widget = screenWidget(doc.root, res.w, res.h);
@@ -395,7 +398,7 @@ export function ScreenDesigner({ path, content, onChange, readOnly, contentVersi
     const geo = new Map<string, Geo>();
     collect(widget, tree, geo);
     return { widget, tree, geo };
-  }, [doc, res.w, res.h]);
+  }, [doc, res.w, res.h, resourcesVersion]);
 
   // ── The real picture ──────────────────────────────────────────────────────
   // yog-ui's own layout and render — the code the game runs — drawn with the
@@ -437,7 +440,7 @@ export function ScreenDesigner({ path, content, onChange, readOnly, contentVersi
     const { w, h } = res;
     // A short debounce: typing in the XAML re-parses on every key.
     const timer = setTimeout(() => {
-      invoke<RenderReply>("yui_designer_render", { args: { path, root: drawnRoot, screenW: w, screenH: h, scale, preview: previewing } })
+      invoke<RenderReply>("yui_designer_render", { args: { path, root: withDesignResources(drawnRoot), screenW: w, screenH: h, scale, preview: previewing } })
         .then((reply) => {
           if (seq !== renderSeq.current) return;
           const geo = new Map<string, Geo>(reply.rects.map((r) => [r.uid, { rect: toRect(r.rect), content: toRect(r.content) }]));
@@ -451,7 +454,7 @@ export function ScreenDesigner({ path, content, onChange, readOnly, contentVersi
         });
     }, 16);
     return () => clearTimeout(timer);
-  }, [path, drawnRoot, res, view.zoom, previewing, previewTick]);
+  }, [path, drawnRoot, res, view.zoom, previewing, previewTick, resourcesVersion]);
 
   useEffect(() => () => void invoke("yui_designer_reset", { path }).catch(() => {}), [path]);
 
@@ -904,7 +907,7 @@ export function ScreenDesigner({ path, content, onChange, readOnly, contentVersi
       return;
     }
     eventBusy.current = true;
-    invoke<EventReply>("yui_designer_event", { args: { path, root, screenW: res.w, screenH: res.h, event, x, y } })
+    invoke<EventReply>("yui_designer_event", { args: { path, root: withDesignResources(root), screenW: res.w, screenH: res.h, event, x, y } })
       .then((r) => {
         setHovered(r.hit);
         if (event.startsWith("click:")) setPressed(r.hit);
