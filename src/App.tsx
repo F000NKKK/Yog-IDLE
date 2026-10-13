@@ -72,6 +72,8 @@ import { EnvironmentSettingsPage, EnvironmentSync, environmentSettingsKeywords }
 import { detectEnvironment, missingRequired } from "./environment/environmentStore";
 import { ProjectPropertiesWindow } from "./projectProperties/ProjectPropertiesWindow";
 import { onOpenProjectProperties, openProjectProperties, type ProjectPropertiesPage } from "./projectProperties/bus";
+import { ErrorListPanel } from "./panels/ErrorListPanel";
+import { BuildDiagnosticsSync } from "./diagnostics/buildDiagnostics";
 import { OUTPUT_SOURCES, OutputSourceSync, setOutputSource, useOutputSource, type OutputSource } from "./outputSource";
 
 import { GitChangesWindow, GIT_CHANGES_PANEL } from "./git/GitChangesWindow";
@@ -159,6 +161,7 @@ function makeToolWindows() {
       { id: "properties", title: t("Properties"), component: Properties } satisfies PanelDef,
     ],
     bottom: [
+      { id: "errorList", title: t("Error List"), component: ErrorListPanel } satisfies PanelDef,
       { id: "output", title: t("Output"), component: OutputToolWindow } satisfies PanelDef,
       { id: "terminal", title: t("Terminal"), component: TerminalPanel } satisfies PanelDef,
       { id: "debug", title: t("Debug"), component: DebugPanel } satisfies PanelDef,
@@ -611,6 +614,7 @@ function App() {
   return (
     <main className="app-root">
       <OutputSourceSync />
+      <BuildDiagnosticsSync root={project?.root ?? null} project={project?.name} />
       <EnvironmentSync onOpenInstaller={openInstaller} />
       <Shell
         onOpenSettings={() => {

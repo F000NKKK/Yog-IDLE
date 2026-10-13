@@ -92,7 +92,8 @@ type Payloads = {
   "environment-output": string;
   "git-output": string;
   "ide-output": string;
-  "workflow-start": unknown;
+  /** The project the run builds. */
+  "workflow-start": { root: string } | null;
   /** A game exiting fires this too, with no payload. */
   "workflow-exit": WorkflowExitEvent | null;
   "game-status": GameStatusEvent;

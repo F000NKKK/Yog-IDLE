@@ -16,7 +16,7 @@ pub const OUTPUT_ENVIRONMENT: &str = "environment-output";
 /// Source Control's git commands.
 pub const OUTPUT_GIT: &str = "git-output";
 
-/// A Build/Publish workflow (or a run's build) started.
+/// A Build/Publish workflow (or a run's build) started, for project `root`.
 pub const WORKFLOW_START: &str = "workflow-start";
 /// A workflow finished — or, payload-less, the game exited.
 pub const WORKFLOW_EXIT: &str = "workflow-exit";

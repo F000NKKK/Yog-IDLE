@@ -12,7 +12,7 @@ use std::process::Command;
 /// project from the `yog.toml` above the file). `Ok` carries the
 /// generated file's path; `Err` the generator's message (an invalid
 /// attribute, say) or why `yog` couldn't run.
-pub fn codegen(path: &str) -> Result<String, String> {
+pub fn codegen(path: &str) -> Result<Codegen, String> {
     let file = PathBuf::from(path);
     let args: &[&str] = match file.extension().and_then(|e| e.to_str()) {
         Some("yui") => &["ui", "gen"],
@@ -54,9 +54,20 @@ pub fn codegen(path: &str) -> Result<String, String> {
             message.trim().to_string()
         });
     }
-    // "==> src/foo.yui -> /project/.yog-build/generated/foo.g.rs"
-    Ok(stderr
-        .lines()
-        .find_map(|l| l.rsplit_once(" -> ").map(|(_, out)| out.trim().to_string()))
-        .unwrap_or_default())
+    Ok(Codegen {
+        // "==> src/foo.yui -> /project/.yog-build/generated/foo.g.rs"
+        generated: stderr
+            .lines()
+            .find_map(|l| l.rsplit_once(" -> ").map(|(_, out)| out.trim().to_string()))
+            .unwrap_or_default(),
+        log: stderr.into_owned(),
+    })
+}
+
+/// A successful regeneration: the generated file, and what `yog` said on
+/// the way — its warnings go to the Error List.
+#[derive(serde::Serialize)]
+pub struct Codegen {
+    pub generated: String,
+    pub log: String,
 }

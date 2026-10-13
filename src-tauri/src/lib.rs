@@ -565,7 +565,7 @@ async fn format_supported(path: String) -> bool {
 
 /// Regenerates a saved `.yui` screen's generated `.g.rs` (see `yui.rs`).
 #[tauri::command]
-async fn yui_codegen(state: State<'_, AppState>, path: String) -> Result<String, String> {
+async fn yui_codegen(state: State<'_, AppState>, path: String) -> Result<yui::Codegen, String> {
     validate_within_roots(&state, Path::new(&path))?;
     tauri::async_runtime::spawn_blocking(move || yui::codegen(&path))
         .await
@@ -932,6 +932,21 @@ struct WorkflowState {
     running: Mutex<HashMap<u64, WorkflowHandle>>,
 }
 
+/// Payload of `workflow-start` — the project the run builds (the Error List
+/// resolves the build's relative paths against it).
+#[derive(Clone, Serialize)]
+struct WorkflowStart {
+    root: String,
+}
+
+impl WorkflowStart {
+    fn of(root: &Path) -> Self {
+        Self {
+            root: root.to_string_lossy().into_owned(),
+        }
+    }
+}
+
 /// Payload of `workflow-exit` for a workflow run — how it ended.
 #[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -958,11 +973,12 @@ fn run_and_stream(
         let _ = out_app.emit(crate::events::OUTPUT_BUILD, format_log_line(line));
     });
 
+    let start = WorkflowStart::of(&root);
     let handle = substrate_platform::run_workflow(file, name, vars, root, sink);
     let state = app.state::<WorkflowState>();
     let id = state.next_id.fetch_add(1, Ordering::Relaxed);
     state.running.lock().unwrap().insert(id, handle.clone());
-    let _ = app.emit(crate::events::WORKFLOW_START, ());
+    let _ = app.emit(crate::events::WORKFLOW_START, start);
     std::thread::spawn(move || {
         let result = handle.wait();
         app.state::<WorkflowState>()
@@ -1218,7 +1234,7 @@ async fn mod_clean(
 ) -> Result<(), String> {
     let root = PathBuf::from(project_root);
     validate_within_roots(&state, &root)?;
-    let _ = app.emit(crate::events::WORKFLOW_START, ());
+    let _ = app.emit(crate::events::WORKFLOW_START, WorkflowStart::of(&root));
     let out_app = app.clone();
     let success = tauri::async_runtime::spawn_blocking(move || {
         let mut success = true;

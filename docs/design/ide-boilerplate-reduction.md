@@ -378,7 +378,7 @@ guard (`:231-234`) that the Project Properties window doesn't have.
 
 **Saved: ~120 TS (Properties.tsx 352-431 and the manifest plumbing), ~130 Rust.**
 
-### Decision needed
+### Decision (decided 2026-10-13: as recommended)
 
 - **D3** — Should the Properties tool window keep showing *editable* `[mod]` fields at
   all, or show read-only summary rows + an "Open Project Properties" `edit` (…) button on
@@ -441,7 +441,7 @@ Use `Result`-unwrapping mode (`specta` "throw" error handling) so call sites sta
 
 **Saved: ~350 lines; more importantly, removes a whole class of silent drift.**
 
-### Decision needed
+### Decision (decided 2026-10-13: as recommended)
 
 - **D4** — Accept `tauri-specta` (+ `specta`, `specta-typescript`) as dependencies of
   `yog-idle-tauri`? Alternative with zero new deps: a hand-kept `commands.ts` that at
@@ -548,7 +548,7 @@ export function useDebugCommands() {
 
 **Saved: ~250 lines; menus show the user's real shortcuts; "Ctrl+0 Ctrl+R" exists once.**
 
-### Decision needed
+### Decision (decided 2026-10-13: as recommended)
 
 - **D6** — Unify `MenuBarDropdownEntry` / `ContextMenuItem` / `ToolbarItem` /
   `TreeMenuItem` into one `MenuEntry` (breaking change across Substrate, all call sites
@@ -719,7 +719,7 @@ calls `useT`), which removes ~100 `t(...)` wrappers from descriptor code.
 
 **Saved: ~150 lines** (ContentEditor ~90, Properties ~40, designer ~20).
 
-### Decision needed
+### Decision (decided 2026-10-13: as recommended)
 
 - **D7** — Have `PropertyGrid` translate `name`/`category`/`description` itself
   (with a `raw: true` escape for mod-provided component property names, as
@@ -774,7 +774,7 @@ from `collect_commands!` (one list instead of two).
 
 **Saved: ~180 Rust lines** (≈2 per command × 66 + blocking 17×3 + project commands ~80, minus ~40 new).
 
-### Decision needed
+### Decision (decided 2026-10-13: as recommended)
 
 - **D8** — Where does `Scoped`/the project-roots sandbox live? `substrate-platform`
   has no Tauri dependency today. Options: (a) keep in Yog-IDLE (simplest);
@@ -849,7 +849,7 @@ setting of `OutputPanel`'s "ide" source). The locale entries collapse too: today
 
 **Saved: ~60 lines; one rule for "is a backend message translated" (always).**
 
-### Decision needed
+### Decision (decided 2026-10-13: as recommended)
 
 - **D9** — Backend errors are English strings that the UI translates by exact match
   (`t(String(err))`). Keep that, or have Rust return `{ code, params }` and translate
