@@ -14,6 +14,9 @@ export const EVENT = {
   /** IDE-side messages (`reportError`, the Project Explorer, the designer) — emitted by the front end only. */
   ideOutput: "ide-output",
 
+  /** Paths changed outside the IDE, in the folders `fs_watch` names (see `fsWatch.tsx`). */
+  fsChanged: "fs-changed",
+
   workflowStart: "workflow-start",
   workflowExit: "workflow-exit",
   gameStatus: "game-status",
@@ -92,6 +95,7 @@ type Payloads = {
   "environment-output": string;
   "git-output": string;
   "ide-output": string;
+  "fs-changed": string[];
   /** The project the run builds. */
   "workflow-start": { root: string } | null;
   /** A game exiting fires this too, with no payload. */
