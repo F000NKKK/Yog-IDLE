@@ -44,9 +44,7 @@ function loadRecent(kind: OpenKind): RecentEntry[] {
   try {
     const parsed: unknown = JSON.parse(localStorage.getItem(RECENT_KEYS[kind]) ?? "[]");
     if (!Array.isArray(parsed)) return [];
-    // Older builds stored bare root paths.
     return parsed.flatMap((e): RecentEntry[] => {
-      if (typeof e === "string") return [{ root: e, name: baseName(e) }];
       if (e && typeof e.root === "string" && typeof e.name === "string") return [{ root: e.root, name: e.name }];
       return [];
     });
@@ -65,8 +63,7 @@ function loadLast(): { root: string; kind: OpenKind } | null {
   } catch {
     // fall through
   }
-  const legacy = loadRecent("project")[0];
-  return legacy ? { root: legacy.root, kind: "project" } : null;
+  return null;
 }
 
 const ProjectContext = createContext<ProjectContextValue | null>(null);
