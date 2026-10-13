@@ -94,22 +94,41 @@ export function linePoints(x0: number, y0: number, x1: number, y1: number): [num
 export function fill(img: PixelImage, x: number, y: number, c: Rgba, global: boolean, mirrorX = false) {
   const target = getPixel(img, x, y);
   if (!target || sameColor(target, c)) return;
-  const at = (px: number, py: number) => getPixel(img, px, py);
+  const { w, h, data } = img;
+  const [r, g, b, a] = target;
+  // `sameColor(pixel at i, target)` without allocating the pixel.
+  const matches = (i: number) => (a === 0 ? data[i + 3] === 0 : data[i] === r && data[i + 1] === g && data[i + 2] === b && data[i + 3] === a);
+  const paint = (i: number) => {
+    data[i] = c[0];
+    data[i + 1] = c[1];
+    data[i + 2] = c[2];
+    data[i + 3] = c[3];
+  };
   if (global) {
-    for (let py = 0; py < img.h; py++) for (let px = 0; px < img.w; px++) if (sameColor(at(px, py)!, target)) setPixel(img, px, py, c);
+    for (let i = 0; i < data.length; i += 4) if (matches(i)) paint(i);
     return;
   }
-  const seen = new Uint8Array(img.w * img.h);
-  const stack: [number, number][] = [[x, y]];
-  while (stack.length) {
-    const [px, py] = stack.pop()!;
-    if (px < 0 || py < 0 || px >= img.w || py >= img.h || seen[py * img.w + px]) continue;
-    seen[py * img.w + px] = 1;
-    if (!sameColor(at(px, py)!, target)) continue;
-    setPixel(img, px, py, c);
-    stack.push([px + 1, py], [px - 1, py], [px, py + 1], [px, py - 1]);
+  // Pixel indices; each is pushed at most once, so `w * h` slots suffice.
+  const seen = new Uint8Array(w * h);
+  const stack = new Int32Array(w * h);
+  let top = 0;
+  const push = (p: number) => {
+    if (seen[p]) return;
+    seen[p] = 1;
+    stack[top++] = p;
+  };
+  push(y * w + x);
+  while (top) {
+    const p = stack[--top];
+    if (!matches(p * 4)) continue;
+    paint(p * 4);
+    const px = p % w;
+    if (px + 1 < w) push(p + 1);
+    if (px > 0) push(p - 1);
+    if (p + w < w * h) push(p + w);
+    if (p >= w) push(p - w);
   }
-  if (mirrorX) fill(img, img.w - 1 - x, y, c, false);
+  if (mirrorX) fill(img, w - 1 - x, y, c, false);
 }
 
 /**
