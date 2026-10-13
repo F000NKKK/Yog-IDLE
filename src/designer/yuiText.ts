@@ -235,9 +235,11 @@ export function patchYui(text: string, prev: YuiDoc, next: YuiDoc): string {
     }
     // The text between children (whitespace, comments) goes with the child after it.
     const gapBefore = (i: number) => text.slice(i === 0 ? span.tagEnd : span.children[i - 1].end, span.children[i].start);
+    const oldIndex = new Map<string, number>();
+    old.children.forEach((o, i) => oldIndex.has(o.uid) || oldIndex.set(o.uid, i));
     let inner = "";
     for (const c of node.children) {
-      const k = old.children.findIndex((o) => o.uid === c.uid);
+      const k = oldIndex.get(c.uid) ?? -1;
       inner += (k >= 0 ? gapBefore(k) : `\n${kidIndent}`) + render(c, kidIndent);
     }
     const tail = text.slice(span.children[span.children.length - 1].end, span.closeStart);

@@ -152,14 +152,16 @@ export function escapeAttr(value: string): string {
 
 /** Where an attribute goes in `ATTR_ORDER` — unknown ones after every known one. */
 export function attrRank(name: string): number {
-  const i = ATTR_ORDER.indexOf(name);
-  return i < 0 ? ATTR_ORDER.length : i;
+  return ATTR_RANK.get(name) ?? ATTR_ORDER.length;
 }
 
+const ATTR_RANK = new Map(ATTR_ORDER.map((k, i) => [k, i]));
+
 export function orderedAttrs(attrs: Record<string, string>): [string, string][] {
-  const keys = Object.keys(attrs);
-  const known = ATTR_ORDER.filter((k) => k in attrs);
-  return [...known, ...keys.filter((k) => !ATTR_ORDER.includes(k))].map((k) => [k, attrs[k]]);
+  // A stable sort keeps unknown attributes in their written order.
+  return Object.keys(attrs)
+    .sort((a, b) => attrRank(a) - attrRank(b))
+    .map((k) => [k, attrs[k]]);
 }
 
 // ── Writing (Visual Studio's XAML formatting) ────────────────────────────────
