@@ -42,14 +42,14 @@ struct GameStatus {
 
 fn emit_exited(app: &AppHandle) {
     let _ = app.emit(
-        "game-status",
+        crate::events::GAME_STATUS,
         GameStatus {
             stage: "exited",
             pid: None,
             mods: Vec::new(),
         },
     );
-    let _ = app.emit("workflow-exit", ());
+    let _ = app.emit(crate::events::WORKFLOW_EXIT, ());
 }
 
 /// Spawns `yog run <config_name>` with its output streamed to Output and
@@ -71,7 +71,7 @@ pub fn run(app: AppHandle, project_root: String, config_name: String) -> Result<
         _output: output,
     });
     let _ = app.emit(
-        "game-status",
+        crate::events::GAME_STATUS,
         GameStatus {
             stage: "starting",
             pid: None,

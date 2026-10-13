@@ -20,9 +20,7 @@ use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter, State};
 
 use crate::AppState;
-
-/// The Output panel source git's own output goes to.
-pub const OUTPUT_GIT: &str = "git-output";
+use crate::events::OUTPUT_GIT;
 
 /// Files larger than this aren't shown in a diff.
 const MAX_DIFF_BYTES: usize = 8 * 1024 * 1024;

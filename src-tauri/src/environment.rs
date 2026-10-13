@@ -31,8 +31,7 @@ use std::time::{Duration, Instant};
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter, Manager, State};
 
-/// The Output panel source installs write to.
-pub const OUTPUT_ENVIRONMENT: &str = "environment-output";
+use crate::events::OUTPUT_ENVIRONMENT;
 
 /// Key of the Environment options in the app-wide `state.json` (written by
 /// the frontend's global store; read here at startup).
@@ -1666,7 +1665,7 @@ pub fn environment_install(
                 }
                 Event::Progress { fraction, message } => {
                     let _ = emit_app.emit(
-                        "environment-progress",
+                        crate::events::ENVIRONMENT_PROGRESS,
                         ProgressPayload {
                             component: emit_id.clone(),
                             fraction,
@@ -1695,7 +1694,7 @@ pub fn environment_install(
             let _ = app.emit(OUTPUT_ENVIRONMENT, line);
             let failed = result.is_err();
             let _ = app.emit(
-                "environment-install-done",
+                crate::events::ENVIRONMENT_INSTALL_DONE,
                 DonePayload {
                     component: id,
                     success: !failed,
@@ -1709,7 +1708,7 @@ pub fn environment_install(
         }
         let _ = std::fs::remove_dir_all(&downloads);
         *state.install.lock().unwrap() = None;
-        let _ = app.emit("environment-install-finished", ());
+        let _ = app.emit(crate::events::ENVIRONMENT_INSTALL_FINISHED, ());
     });
     Ok(())
 }

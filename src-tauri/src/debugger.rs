@@ -482,7 +482,7 @@ pub fn run_with_mode(
         tracer: None,
     });
     let _ = app.emit(
-        "game-status",
+        crate::events::GAME_STATUS,
         GameStatus {
             stage: "starting",
             pid: None,
@@ -539,7 +539,7 @@ fn connect_and_watch(
         // `nativeInit` just means no live status/attach for this session, not that the game
         // itself failed to launch.
         let _ = app.emit(
-            crate::OUTPUT_DEBUG,
+            crate::events::OUTPUT_DEBUG,
             "[warn] control socket never connected — no live status or debugger attach available for this run".to_string(),
         );
         if debug {
@@ -584,7 +584,7 @@ fn connect_and_watch(
         }
     }
     let _ = app.emit(
-        "game-status",
+        crate::events::GAME_STATUS,
         GameStatus {
             stage: "ready",
             pid: Some(real_pid),
@@ -653,7 +653,7 @@ fn handle_control_event(
     match event.get("event").and_then(|v| v.as_str()) {
         Some("mods") => {
             let _ = app.emit(
-                "game-status",
+                crate::events::GAME_STATUS,
                 GameStatus {
                     stage: "ready",
                     pid: Some(real_pid),
@@ -675,13 +675,13 @@ fn handle_control_event(
                 }
                 // Nobody asked (or it already timed out) — still worth showing.
                 None => {
-                    let _ = app.emit(crate::OUTPUT_DEBUG, format!("[control] {raw}"));
+                    let _ = app.emit(crate::events::OUTPUT_DEBUG, format!("[control] {raw}"));
                 }
             }
         }
         other => {
             let _ = app.emit(
-                crate::OUTPUT_DEBUG,
+                crate::events::OUTPUT_DEBUG,
                 format!("[control] {}: {raw}", other.unwrap_or("unknown")),
             );
         }
@@ -715,11 +715,11 @@ fn emit_hot_reload(
         _ => "",
     };
     let _ = app.emit(
-        crate::OUTPUT_BUILD,
+        crate::events::OUTPUT_BUILD,
         format!("{prefix}hot reload: {message}"),
     );
     let _ = app.emit(
-        "hot-reload",
+        crate::events::HOT_RELOAD,
         HotReloadEvent {
             stage,
             mod_id: mod_id.to_string(),
@@ -815,7 +815,7 @@ fn run_hot_reload(
             let out_app = app.clone();
             std::thread::spawn(move || {
                 for line in BufReader::new(pipe).lines().map_while(Result::ok) {
-                    let _ = out_app.emit(crate::OUTPUT_BUILD, line);
+                    let _ = out_app.emit(crate::events::OUTPUT_BUILD, line);
                 }
             })
         })
@@ -911,20 +911,20 @@ fn mark_exited(app: &AppHandle, session_id: u64) {
     };
     if had_session {
         let _ = app.emit(
-            "game-status",
+            crate::events::GAME_STATUS,
             GameStatus {
                 stage: "exited",
                 pid: None,
                 mods: Vec::new(),
             },
         );
-        let _ = app.emit("debug-stopped", DebugStoppedEvent::exited());
+        let _ = app.emit(crate::events::DEBUG_STOPPED, DebugStoppedEvent::exited());
         // `useModRunTargets`'s `running` flag only ever resets on this
         // event (a holdover from the old `run_and_stream`-based flow,
         // which fired it automatically) — without it, `RunBar`'s Start
         // button stays disabled forever after the game exits, since
         // nothing in this newer control-socket flow ever emitted it.
-        let _ = app.emit("workflow-exit", ());
+        let _ = app.emit(crate::events::WORKFLOW_EXIT, ());
     }
 }
 
@@ -963,8 +963,8 @@ fn spawn_exit_watcher(app: AppHandle, session_id: u64) {
 /// to already be open than the Debug panel is at the point an attach fails.
 fn emit_failed(app: &AppHandle, message: impl Into<String>) {
     let message = message.into();
-    let _ = app.emit("debug-attach-failed", message.clone());
-    let _ = app.emit(crate::OUTPUT_DEBUG, format!("[error] {message}"));
+    let _ = app.emit(crate::events::DEBUG_ATTACH_FAILED, message.clone());
+    let _ = app.emit(crate::events::OUTPUT_DEBUG, format!("[error] {message}"));
 }
 
 /// An attached session's tracer gave up mid-session — reported as
@@ -985,11 +985,14 @@ fn emit_session_failed(app: &AppHandle, session_id: u64, real_pid: i32, message:
         return;
     }
     if process_gone(real_pid) {
-        let _ = app.emit("debug-stopped", DebugStoppedEvent::exited());
+        let _ = app.emit(crate::events::DEBUG_STOPPED, DebugStoppedEvent::exited());
         return;
     }
-    let _ = app.emit("debug-failed", message.clone());
-    let _ = app.emit(crate::OUTPUT_DEBUG, format!("[error] debugger: {message}"));
+    let _ = app.emit(crate::events::DEBUG_FAILED, message.clone());
+    let _ = app.emit(
+        crate::events::OUTPUT_DEBUG,
+        format!("[error] debugger: {message}"),
+    );
 }
 
 /// Whether `pid` has exited (or is only a zombie left to be reaped).
@@ -1092,7 +1095,7 @@ fn tracer_main(
     while let Ok(cmd) = rx.try_recv() {
         tracer.apply(&app, cmd);
     }
-    let _ = app.emit("debug-attached", real_pid);
+    let _ = app.emit(crate::events::DEBUG_ATTACHED, real_pid);
 
     let mut resume = Some(Resume::Continue);
     loop {
@@ -1502,7 +1505,7 @@ impl Tracer {
             _ => Vec::new(),
         };
         let _ = app.emit(
-            "debug-stopped",
+            crate::events::DEBUG_STOPPED,
             DebugStoppedEvent {
                 reason: reason_str.to_string(),
                 stack_trace: if exited {
@@ -1519,7 +1522,7 @@ impl Tracer {
 }
 
 fn warn(app: &AppHandle, message: String) {
-    let _ = app.emit(crate::OUTPUT_DEBUG, format!("[warn] {message}"));
+    let _ = app.emit(crate::events::OUTPUT_DEBUG, format!("[warn] {message}"));
 }
 
 /// Mirrors the editor gutter: every breakpoint the user currently has set,
@@ -1773,15 +1776,15 @@ pub fn debug_stop(app: AppHandle, state: State<DebugState>) -> Result<(), String
     let _ = session.wrapper.wait();
 
     let _ = app.emit(
-        "game-status",
+        crate::events::GAME_STATUS,
         GameStatus {
             stage: "exited",
             pid: None,
             mods: Vec::new(),
         },
     );
-    let _ = app.emit("debug-stopped", DebugStoppedEvent::exited());
-    let _ = app.emit("workflow-exit", ());
+    let _ = app.emit(crate::events::DEBUG_STOPPED, DebugStoppedEvent::exited());
+    let _ = app.emit(crate::events::WORKFLOW_EXIT, ());
     Ok(())
 }
 
@@ -1831,13 +1834,6 @@ fn permission_denied_message(pid: i32, ptracer: Option<bool>) -> String {
             scope.map_or_else(|| "?".to_string(), |s| s.to_string())
         ),
     }
-}
-
-/// Restarts Yog-IDLE — after `debug_grant_ptrace_capability`, which only
-/// takes effect for a fresh `exec()`.
-#[tauri::command]
-pub fn app_restart(app: AppHandle) {
-    app.restart();
 }
 
 /// A capability can only be granted to a binary's on-disk file (checked at

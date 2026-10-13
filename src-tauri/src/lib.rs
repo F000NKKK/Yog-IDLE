@@ -13,6 +13,7 @@ use tauri::{AppHandle, Emitter, Manager, State};
 mod content;
 mod designer;
 mod environment;
+mod events;
 mod git;
 mod project_properties;
 mod properties;
@@ -792,13 +793,6 @@ fn workflow_list(
     Ok(list)
 }
 
-/// The Output panel's sources — one event each, picked from its "Show
-/// output from" dropdown: builds and workflows, the running game's own
-/// output, and the debugger's messages.
-pub(crate) const OUTPUT_BUILD: &str = "workflow-output";
-pub(crate) const OUTPUT_GAME: &str = "game-output";
-pub(crate) const OUTPUT_DEBUG: &str = "debug-output";
-
 /// Starts `cmd` (a `yog run`) so it outlives Yog-IDLE: in its own process
 /// group (a Ctrl+C or hang-up aimed at the IDE's group doesn't reach it),
 /// and writing to a log file rather than pipes — when the IDE exits, a pipe
@@ -872,16 +866,20 @@ pub(crate) fn stream_yog_run(app: &AppHandle, log: PathBuf) -> OutputTail {
             let text = line.trim_end_matches(['\n', '\r']).to_string();
             line.clear();
             let event = if launched {
-                OUTPUT_GAME
+                events::OUTPUT_GAME
             } else {
                 launched = text.starts_with("==> launched pid ");
-                OUTPUT_BUILD
+                events::OUTPUT_BUILD
             };
             let _ = app.emit(event, format_stderr_line(text));
         }
         // A last line the run never finished.
         if !line.is_empty() {
-            let event = if launched { OUTPUT_GAME } else { OUTPUT_BUILD };
+            let event = if launched {
+                events::OUTPUT_GAME
+            } else {
+                events::OUTPUT_BUILD
+            };
             let _ = app.emit(event, format_stderr_line(line.trim_end().to_string()));
         }
         let _ = std::fs::remove_file(&log);
@@ -939,14 +937,14 @@ fn run_and_stream(
     let sink = LogSink::new();
     let out_app = app.clone();
     sink.on_push(move |line| {
-        let _ = out_app.emit("workflow-output", format_log_line(line));
+        let _ = out_app.emit(crate::events::OUTPUT_BUILD, format_log_line(line));
     });
 
     let handle = substrate_platform::run_workflow(file, name, vars, root, sink);
     let state = app.state::<WorkflowState>();
     let id = state.next_id.fetch_add(1, Ordering::Relaxed);
     state.running.lock().unwrap().insert(id, handle.clone());
-    let _ = app.emit("workflow-start", ());
+    let _ = app.emit(crate::events::WORKFLOW_START, ());
     std::thread::spawn(move || {
         let result = handle.wait();
         app.state::<WorkflowState>()
@@ -955,7 +953,7 @@ fn run_and_stream(
             .unwrap()
             .remove(&id);
         let _ = app.emit(
-            "workflow-exit",
+            crate::events::WORKFLOW_EXIT,
             WorkflowExit {
                 success: result.is_success(),
                 cancelled: result == WorkflowResult::Cancelled,
@@ -1207,7 +1205,7 @@ async fn mod_clean(
 ) -> Result<(), String> {
     let root = PathBuf::from(project_root);
     validate_within_roots(&state, &root)?;
-    let _ = app.emit("workflow-start", ());
+    let _ = app.emit(crate::events::WORKFLOW_START, ());
     let out_app = app.clone();
     let success = tauri::async_runtime::spawn_blocking(move || {
         let mut success = true;
@@ -1223,14 +1221,14 @@ async fn mod_clean(
                     format!("[error] failed to remove {}: {err}", path.display())
                 }
             };
-            let _ = out_app.emit("workflow-output", line);
+            let _ = out_app.emit(crate::events::OUTPUT_BUILD, line);
         }
         success
     })
     .await
     .unwrap_or(false);
     let _ = app.emit(
-        "workflow-exit",
+        crate::events::WORKFLOW_EXIT,
         WorkflowExit {
             success,
             cancelled: false,
@@ -1421,7 +1419,7 @@ fn pty_spawn(
         rows,
         move |data| {
             let _ = out_app.emit(
-                "pty-output",
+                crate::events::PTY_OUTPUT,
                 PtyOutput {
                     id: out_id.clone(),
                     data,
@@ -1430,7 +1428,7 @@ fn pty_spawn(
         },
         move || {
             let _ = exit_app.emit(
-                "pty-exit",
+                crate::events::PTY_EXIT,
                 PtyExit {
                     id: exit_id.clone(),
                 },
@@ -1466,7 +1464,13 @@ fn pty_kill(state: State<PtyState>, id: String) -> Result<(), String> {
     Ok(())
 }
 
-#[cfg_attr(mobile, tauri::mobile_entry_point)]
+/// Restarts Yog-IDLE — e.g. after `debug_grant_ptrace_capability`, which
+/// only takes effect for a fresh `exec()`.
+#[tauri::command]
+fn app_restart(app: AppHandle) {
+    app.restart();
+}
+
 /// `yog-idle --designer-host`: the screen designer's host process for a
 /// mod's custom components (see `designer::host`) instead of the IDE.
 pub fn designer_host() {
@@ -1492,6 +1496,7 @@ async fn yui_designer_components(path: String) -> Result<designer::custom::Snaps
     .map_err(|e| e.to_string())?
 }
 
+#[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let context = tauri::generate_context!();
     // Before any thread exists: the Environment options go into this
@@ -1590,7 +1595,7 @@ pub fn run() {
         debugger::debug_children,
         debugger::debug_pause,
         debugger::debug_grant_ptrace_capability,
-        debugger::app_restart,
+        app_restart,
         debug_supported,
         search::find_in_files,
         search::find_cancel,
