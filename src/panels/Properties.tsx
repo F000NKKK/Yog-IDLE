@@ -154,7 +154,11 @@ export function Properties() {
     // The screen designer's selected widgets — it builds the rows itself.
     const widget = selection.data as unknown as YuiSelectionData;
     return (
-      <PropertyGrid objectName={widget.objectName} objectType={widget.objectType} objectKey={widget.objectKey} properties={widget.properties} persistKey="properties" />
+      <PropertyGrid
+        objectName={widget.objectName}
+        objectType={widget.objectType}
+        objectDescription={widget.objectDescription}
+        objectKey={widget.objectKey} properties={widget.properties} persistKey="properties" />
     );
   }
   if (selection.kind === "multiple") return <PropertyGrid properties={[]} emptyLabel={t("Multiple items are selected.")} />;

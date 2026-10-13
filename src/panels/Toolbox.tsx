@@ -1,8 +1,10 @@
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { SearchField, beginItemDrag, useT } from "substrate-platform-ui";
 import { TOOLBOX_MIME, useActiveDesigner } from "../designer/activeDesigner";
 import { useComponents } from "../designer/components";
 import { KIND_INFO, KINDS } from "../designer/yui";
+import { imagePreview, imageSourcesVersion, subscribeImageSources } from "../designer/imageSources";
+import { designImage, designText, useDesignResources } from "../lang/designResources";
 import { useProject } from "../ProjectContext";
 import "./Toolbox.css";
 
@@ -14,6 +16,8 @@ interface Entry {
   label: string;
   description: string;
   glyph: string;
+  /** An image (a component's icon) shown instead of the glyph. */
+  icon?: string | null;
 }
 
 interface Group {
@@ -53,6 +57,12 @@ export function Toolbox() {
   const designer = useActiveDesigner();
   const { project } = useProject();
   const components = useComponents(designer?.path ?? project?.root);
+  /** Inside the mod: where its texts and icons resolve from. */
+  const modRoot = project?.root ?? null;
+  const iconBase = designer?.path ?? (modRoot ? `${modRoot}/src` : null);
+  // Display names, descriptions and icons may be @Strings.key / @Icons.key; previews load in the background.
+  useDesignResources(modRoot);
+  useSyncExternalStore(subscribeImageSources, imageSourcesVersion);
   const [query, setQuery] = useState("");
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const needle = query.trim().toLowerCase();
@@ -72,15 +82,31 @@ export function Toolbox() {
     const editing = designer?.doc.root.kind === "Component" ? designer.doc.root.attrs.name : undefined;
     const building = components.compiled.length > 0 && components.status === "building";
     const failed = components.compiled.length > 0 && components.status === "failed";
-    groups.push({
-      key: "components",
-      title: t("{name} Components", { name: components.modName }),
-      entries: components.components
-        .filter((c) => c.name !== editing)
-        .map((c) => ({ kind: c.name, label: c.name, description: c.doc || c.name, glyph: "◇" })),
-      note: building ? t("Building designer library…") : failed ? t("The designer library failed to build: {error}", { error: components.error ?? "" }) : undefined,
-      empty: t("No components yet — Add > New Item > Component (.yui)."),
-    });
+    const fallback = t("{name} Components", { name: components.modName });
+    const listed = components.components.filter((c) => c.toolbox && c.name !== editing);
+    // The mod's own category first (always shown, even empty), then the ones components name.
+    const titles = [fallback, ...new Set(listed.map((c) => (c.category ? designText(c.category) : fallback)))];
+    for (const title of new Set(titles)) {
+      const own = title === fallback;
+      groups.push({
+        key: `components:${title}`,
+        title,
+        entries: listed
+          .filter((c) => (c.category ? designText(c.category) : fallback) === title)
+          .map((c) => {
+            const icon = c.icon && iconBase ? imagePreview(iconBase, designImage(c.icon)) : null;
+            return {
+              kind: c.name,
+              label: designText(c.display_name || c.name),
+              description: c.description ? designText(c.description) : c.name,
+              glyph: "◇",
+              icon,
+            };
+          }),
+        note: own ? (building ? t("Building designer library…") : failed ? t("The designer library failed to build: {error}", { error: components.error ?? "" }) : undefined) : undefined,
+        empty: own ? t("No components yet — Add > New Item > Component (.yui).") : undefined,
+      });
+    }
   }
 
   const add = (kind: string) => {
@@ -134,7 +160,7 @@ export function Toolbox() {
                       if (e.key === "Enter") add(entry.kind);
                     }}
                   >
-                    <span className="toolbox-glyph">{entry.glyph}</span>
+                    {entry.icon ? <img className="toolbox-icon" src={entry.icon} alt="" draggable={false} /> : <span className="toolbox-glyph">{entry.glyph}</span>}
                     {entry.label}
                   </div>
                 ))}

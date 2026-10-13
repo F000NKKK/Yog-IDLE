@@ -78,3 +78,10 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+.toolbox-icon {
+  width: 16px;
+  height: 16px;
+  image-rendering: pixelated;
+  flex: none;
+}

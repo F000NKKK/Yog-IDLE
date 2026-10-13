@@ -15,12 +15,27 @@ export interface ComponentProp {
   kind: string;
   default: string;
   doc: string;
+  /** The property grid category (empty: the component's own). */
+  category: string;
   options: string[];
 }
 
+/** A component and its designer metadata — texts may be `@Set.key` (resolve with `designText`). */
 export interface ComponentInfo {
   name: string;
-  doc: string;
+  /** Toolbox tooltip and property grid description. */
+  description: string;
+  /** The toolbox label (empty: `name`). */
+  display_name: string;
+  /** A Yog image source or `@Icons.x` (empty: a glyph). */
+  icon: string;
+  /** The toolbox category (empty: "<mod> Components"). */
+  category: string;
+  /** Canvas size for editing it, and an instance's size when dropped (0: unset). */
+  design_w: number;
+  design_h: number;
+  /** Whether the toolbox offers it. */
+  toolbox: boolean;
   props: ComponentProp[];
   /** The `.yui` declaring it. */
   file?: string;
@@ -155,7 +170,7 @@ export function designRoot(root: YuiNode): YuiNode {
   if (!isComponentDoc(root)) return root;
   const values: Record<string, string> = {};
   for (const c of root.children) if (c.kind === "Property" && c.attrs.name) values[c.attrs.name] = c.attrs.default ?? "";
-  const attrs: Record<string, string> = { width: root.attrs.width ?? "120", height: root.attrs.height ?? "40", anchor: "center" };
+  const attrs: Record<string, string> = { width: root.attrs.design_w ?? "120", height: root.attrs.design_h ?? "40", anchor: "center" };
   if (root.attrs["d:bg"]) attrs.bg = root.attrs["d:bg"];
   return { uid: root.uid, kind: "Screen", attrs, children: root.children.filter((c) => !DECLARATION_KINDS.has(c.kind)).map((c) => bindValues(c, values)) };
 }

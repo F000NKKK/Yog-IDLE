@@ -58,7 +58,7 @@ import {
   type YuiNode,
 } from "./yui";
 import { patchYui } from "./yuiText";
-import { useDesignResources, withDesignResources } from "../lang/designResources";
+import { designText, useDesignResources, withDesignResources } from "../lang/designResources";
 import "./ScreenDesigner.css";
 
 /** What Properties shows for the designer's selection (`setSelection` kind `"yui.widget"`). */
@@ -66,6 +66,8 @@ export interface YuiSelectionData {
   path: string;
   objectName: string;
   objectType: string;
+  /** A component instance's description (its `.yui`'s `description`). */
+  objectDescription?: string;
   objectKey: string;
   properties: PropertyDescriptor[];
 }
@@ -557,7 +559,11 @@ export function ScreenDesigner({ path, content, onChange, readOnly, contentVersi
     const picked = (targetUid && findNode(s.doc.root, targetUid)) || (point ? s.doc.root : null);
     const target = picked ? intoTarget(s.doc, picked) : insertionTarget(s.doc, s.selection);
     if (!target) return;
-    const node = newNode(kind);
+    let node = newNode(kind);
+    // A component comes in at its design size, when it declares one.
+    const info = findComponent(components, kind);
+    if (info?.design_w) node = withAttrs(node, { w: String(info.design_w) });
+    if (info?.design_h) node = withAttrs(node, { h: String(info.design_h) });
     commit(placeNew(s.doc, node, target, point), [node.uid]);
   };
 
@@ -690,7 +696,9 @@ export function ScreenDesigner({ path, content, onChange, readOnly, contentVersi
       if (!node) return;
       const r = change.rect;
       if (node.uid === d.root.uid) {
-        commit({ ...d, root: withAttrs(d.root, { width: round(r.w), height: round(r.h) }) });
+        // A component document's canvas is its design size.
+        const [wk, hk] = isComponentDoc(d.root) ? ["design_w", "design_h"] : ["width", "height"];
+        commit({ ...d, root: withAttrs(d.root, { [wk]: round(r.w), [hk]: round(r.h) }) });
         return;
       }
       const parent = findParent(d.root, node.uid)!;
@@ -770,11 +778,19 @@ export function ScreenDesigner({ path, content, onChange, readOnly, contentVersi
     const nodes = uids.map((uid) => findNode(s.doc.root, uid)).filter((n): n is YuiNode => !!n);
     const first = nodes[0];
     if (!first) return;
+    const instanceOf = nodes.length === 1 ? findComponent(components, first.kind) : null;
     const data: YuiSelectionData = {
       path,
       objectName: nodes.length > 1 ? tn(nodes.length, "{count} widget", "{count} widgets", { count: nodes.length }) : (first.attrs.id ?? first.attrs.name ?? ""),
       objectType:
-        nodes.length > 1 ? "" : KIND_INFO[first.kind as YuiKind] ? t(KIND_INFO[first.kind as YuiKind].label) : findComponent(components, first.kind) ? t("{name} (component)", { name: first.kind }) : first.kind,
+        nodes.length > 1
+          ? ""
+          : KIND_INFO[first.kind as YuiKind]
+            ? t(KIND_INFO[first.kind as YuiKind].label)
+            : instanceOf
+              ? t("{name} (component)", { name: designText(instanceOf.display_name || instanceOf.name) })
+              : first.kind,
+      objectDescription: instanceOf?.description ? designText(instanceOf.description) : undefined,
       objectKey: `${path}#${uids.join(",")}`,
       properties: widgetProperties(
         nodes,

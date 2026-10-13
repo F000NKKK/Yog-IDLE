@@ -5,6 +5,7 @@ import { t, type PropertyDescriptor, type PropertyValue, type XmlSchema } from "
 import { imagePreview, imageSources, suggestImageAlias } from "./imageSources";
 import { CONTAINER_KINDS, cssColor, KIND_INFO, KINDS, parseColor, parseNumber, type YuiNode } from "./yui";
 import { findComponent, type ComponentInfo, type ComponentsSnapshot } from "./components";
+import { designText } from "../lang/designResources";
 
 type AttrKind = "text" | "number" | "units" | "color" | "bool" | "enum" | "padding" | "uv" | "image";
 
@@ -85,12 +86,16 @@ const applies = (spec: AttrSpec, kind: string) => (!spec.only || spec.only.inclu
 /** A `<Property type>`'s types — `event` is an `<Event>`. */
 const PROP_TYPES = ["text", "number", "int", "bool", "color", "choice", "image"] as const;
 
-/** The `<Component>` root of a component's own `.yui`. */
+/** The `<Component>` root of a component's own `.yui` — its designer metadata. */
 const COMPONENT_SPECS: AttrSpec[] = [
   { attr: "name", name: "Name", category: "Component", kind: "text", description: "The component's name (PascalCase) — its element in other .yui files (<StatBar .../>) and its Rust type." },
-  { attr: "doc", name: "Description", category: "Component", kind: "text", description: "What it is — the Toolbox's tooltip and the generated type's doc comment." },
-  { attr: "width", name: "Design Width", category: "Design", kind: "number", fallback: "120", description: "The designer's canvas width for editing it (not its size where it's used — that's its body's w, or the instance's)." },
-  { attr: "height", name: "Design Height", category: "Design", kind: "number", fallback: "40", description: "The designer's canvas height for editing it." },
+  { attr: "display_name", name: "Display Name", category: "Toolbox", kind: "text", description: "The Toolbox's label for it (default: Name). @Strings.key for a translated text." },
+  { attr: "description", name: "Description", category: "Toolbox", kind: "text", description: "What it is — the Toolbox's tooltip and the Properties description of its instances. @Strings.key for a translated text." },
+  { attr: "icon", name: "Icon", category: "Toolbox", kind: "image", description: "The Toolbox's icon: a Yog image source (item:apple, sprite:button, mod:gui/logo) or @Icons.name." },
+  { attr: "category", name: "Category", category: "Toolbox", kind: "text", description: "The Toolbox category it's listed in (default: \"<mod> Components\"). @Strings.key for a translated text." },
+  { attr: "toolbox", name: "Show in Toolbox", category: "Toolbox", kind: "bool", fallback: "true", description: "Whether the Toolbox offers it — false for parts used only inside the mod's other components." },
+  { attr: "design_w", name: "Design Width", category: "Design", kind: "number", fallback: "120", description: "The canvas width for editing it, and an instance's width when dropped from the Toolbox." },
+  { attr: "design_h", name: "Design Height", category: "Design", kind: "number", fallback: "40", description: "The canvas height for editing it, and an instance's height when dropped from the Toolbox." },
   { attr: "d:bg", name: "Design Background", category: "Design", kind: "color", description: "A background drawn only in the designer, behind the component." },
 ];
 
@@ -101,25 +106,27 @@ const PROPERTY_SPECS: AttrSpec[] = [
   { attr: "default", name: "Default", category: "Property", kind: "text", description: "Its value when an instance doesn't set it — also what the designer shows here." },
   { attr: "options", name: "Options", category: "Property", kind: "text", description: "A choice property's values, comma-separated." },
   { attr: "doc", name: "Description", category: "Property", kind: "text", description: "Shown in Properties for instances and as the field's doc comment." },
+  { attr: "category", name: "Category", category: "Property", kind: "text", description: "The Properties category instances show it in (default: the component's name)." },
 ];
 
 /** An `<Event>` declaration. */
 const EVENT_SPECS: AttrSpec[] = [
   { attr: "name", name: "Name", category: "Event", kind: "text", description: "The event's name (on_select) — instances name the event raised; bind a button's on_click to it with {x:Bind on_select}." },
   { attr: "doc", name: "Description", category: "Event", kind: "text", description: "Shown in Properties for instances." },
+  { attr: "category", name: "Category", category: "Event", kind: "text", description: "The Properties category instances show it in (default: Events)." },
 ];
 
-/** An instance's rows for the component's declared properties, in its own category. */
+/** An instance's rows for the component's declared properties, in their categories (default: the component's name / Events). */
 function instanceSpecs(info: ComponentInfo): AttrSpec[] {
   return info.props.map((p) => ({
     attr: p.name,
     name: p.name,
-    category: p.kind === "event" ? "Events" : info.name,
-    raw: p.kind !== "event",
+    category: p.category ? designText(p.category) : p.kind === "event" ? t("Events") : designText(info.display_name || info.name),
+    raw: true,
     kind: p.kind === "bool" ? "bool" : p.kind === "choice" ? "enum" : p.kind === "number" || p.kind === "int" ? "number" : p.kind === "color" ? "color" : p.kind === "image" ? "image" : "text",
     options: p.kind === "choice" ? p.options : undefined,
     fallback: p.kind === "event" || p.default === "" ? undefined : p.default,
-    description: p.doc || `${info.name}.${p.name}`,
+    description: p.doc ? designText(p.doc) : `${info.name}.${p.name}`,
   }));
 }
 
@@ -201,7 +208,7 @@ export function widgetProperties(
         // Choosing the default removes the attribute — the file stays minimal.
         const error = apply(spec.attr, text === "" || text === spec.fallback ? undefined : text);
         // Naming an event (as in Visual Studio's Events tab) takes you to its handler.
-        if (!error && text !== "" && spec.category === "Events" && !spec.raw && events && nodes.length === 1 && SPECS.includes(spec)) events.open(nodes[0], spec.attr);
+        if (!error && text !== "" && spec.category === "Events" && SPECS.includes(spec) && events && nodes.length === 1) events.open(nodes[0], spec.attr);
         return error;
       },
     };
@@ -241,8 +248,26 @@ export function widgetProperties(
  */
 export function yuiSchema(): XmlSchema {
   const children = KINDS.filter((k) => k !== "Screen");
+  const attributes = (specs: AttrSpec[]) =>
+    specs.map((spec) => ({
+      name: spec.attr,
+      values: spec.kind === "bool" ? ["true", "false"] : spec.kind === "enum" ? spec.options : spec.suggestions,
+      completion: { info: t(spec.description), detail: spec.fallback !== undefined ? `= ${spec.fallback}` : undefined },
+    }));
+  // A component's own .yui (docs/yui.md, "Components").
+  const component = [
+    {
+      name: "Component",
+      top: true,
+      children: ["Property", "Event", ...children],
+      completion: { info: t("A reusable component: its properties and events, then one body element bound to them with {x:Bind name}.") },
+      attributes: attributes(COMPONENT_SPECS),
+    },
+    { name: "Property", top: false, children: [], completion: { info: t("A property of the component — an attribute of its instances.") }, attributes: attributes(PROPERTY_SPECS) },
+    { name: "Event", top: false, children: [], completion: { info: t("An event the component raises — instances name it.") }, attributes: attributes(EVENT_SPECS) },
+  ];
   return {
-    elements: KINDS.map((kind) => ({
+    elements: [...component, ...KINDS.map((kind) => ({
       name: kind,
       top: kind === "Screen",
       children: CONTAINER_KINDS.has(kind) ? children : [],
@@ -252,6 +277,6 @@ export function yuiSchema(): XmlSchema {
         values: spec.kind === "bool" ? ["true", "false"] : spec.kind === "enum" ? spec.options : spec.kind === "units" ? ["auto"] : spec.suggestions,
         completion: { info: t(spec.description), detail: spec.fallback !== undefined ? `= ${spec.fallback}` : undefined },
       })),
-    })),
+    }))],
   };
 }
