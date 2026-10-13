@@ -2,13 +2,16 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import {
   Button,
+  confirmDialog,
   Icon,
   IconButton,
+  notify,
   notifyDocumentCommands,
   PropertyGrid,
   promptDialog,
   registerDocumentCommands,
   SelectField,
+  showDialog,
   useKeybinding,
   useT,
   type EditorProps,
@@ -45,7 +48,11 @@ import {
   type Vec3,
 } from "../content/model";
 import { UvEditor } from "../content/UvEditor";
-import { Viewport, type GizmoMode, type Part, type TextureSource, type ViewName } from "../content/Viewport";
+import { Viewport, type GizmoMode, type PaintHit, type Part, type TextureSource, type ViewName } from "../content/Viewport";
+import { PaintCanvas, type PaintModifiers, type PaintPhase } from "../content/paint/PaintCanvas";
+import { PAINT_TOOLS, PaintTools, usePaintState } from "../content/paint/PaintTools";
+import { blankImage, cloneImage, decodeImage, getPixel, sameImage, Stroke, toPngDataUrl, type PixelImage } from "../content/paint/pixels";
+import { spriteLayerElements } from "../content/spriteElements";
 import "./ContentEditor.css";
 
 export const CONTENT_SOURCE_VIEW = "yog.content.source";
@@ -68,7 +75,8 @@ interface Resolved {
   textures: Record<string, string>;
   /** Slots this model can use (its own and inherited), for pickers. */
   slots: string[];
-  sprite?: string[];
+  /** An item sprite: its layers (`layer0`, …) with textures, in order. */
+  sprite?: { slot: string; texture: string }[];
   /** The elements are the model's own (editable). */
   own: boolean;
   display: Partial<Record<DisplaySlot, DisplayTransform>>;
@@ -110,8 +118,8 @@ function resolve(model: Model | undefined, kind: "block" | "item", parents: Reco
     Object.keys(textures)
       .filter((k) => /^layer\d+$/.test(k))
       .sort((a, b) => Number(a.slice(5)) - Number(b.slice(5)))
-      .map((k) => resolved[k])
-      .filter((v): v is string => !!v);
+      .filter((k) => !!resolved[k])
+      .map((slot) => ({ slot, texture: resolved[slot] }));
   let display: Resolved["display"];
   if (tpl?.sprite) display = defaultDisplay(parent === "handheld" ? "handheld" : "generated");
   else if (raw) display = raw.display ?? {};
@@ -125,6 +133,31 @@ function resolve(model: Model | undefined, kind: "block" | "item", parents: Reco
   if (raw?.elements) return { elements: raw.elements, textures: resolved, slots, own: false, display };
   // No elements yet — an empty, editable model.
   return { elements: [], textures: resolved, slots, own: !parent, display };
+}
+
+/** A texture as loaded: its image, and whether it's the mod's own file (paintable in place). */
+type LoadedTexture = TextureSource & { writable: boolean };
+
+/** One step of undo: the file's text and the textures it touched (`null`: the texture didn't exist — a new one). */
+interface HistoryEntry {
+  text: string;
+  pixels: Record<string, PixelImage | null>;
+}
+
+/** A texture painted in the editor (not saved yet, or saved and still shown from memory). */
+interface Edited {
+  img: PixelImage;
+  url: string;
+}
+
+const LAYER = /^layer(\d+)$/;
+const layerIndex = (slot: string) => Number(LAYER.exec(slot)?.[1] ?? -1);
+
+/** Every texture value the file's models name. */
+function namedTextures(f: ContentFile): Set<string> {
+  const out = new Set<string>();
+  for (const m of [f.model, f.item_model, f.states?.connect?.arm]) for (const v of Object.values(m?.textures ?? {})) out.add(v);
+  return out;
 }
 
 const fmt = (n: number) => String(Math.round(n * 1000) / 1000);
@@ -175,7 +208,7 @@ const ARM_TEMPLATE = (texture: string): Model => ({
  */
 export function ContentEditor({ path, content, onChange, readOnly, contentVersion }: EditorProps) {
   const t = useT();
-  const { tabs, setView } = useOpenFiles();
+  const { tabs, setView, setSideState } = useOpenFiles();
   const kind = kindOf(path) ?? "block";
   const parsed = useMemo(() => parseContent(content), [content]);
   const file = useMemo<ContentFile>(() => (parsed.ok ? parsed.file : {}), [parsed]);
@@ -189,10 +222,22 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
   const [displaySlot, setDisplaySlot] = useState<DisplaySlot | "">("");
   const [variant, setVariant] = useState(0);
   const [viewRequest, setViewRequest] = useState<{ view: ViewName; key: number } | null>(null);
-  const [images, setImages] = useState<Record<string, TextureSource | undefined>>({});
+  const [images, setImages] = useState<Record<string, LoadedTexture | undefined>>({});
   const [parents, setParents] = useState<Record<string, ParentModel | null>>({});
   const [choices, setChoices] = useState<{ textures: string[]; strings: string[] }>({ textures: [], strings: [] });
   const rootRef = useRef<HTMLDivElement>(null);
+
+  // Paint mode: the textures' pixels, decoded from disk (`decoded`), painted
+  // (`edited`), and as last saved (`saved`).
+  const [paintMode, setPaintMode] = useState(false);
+  const { state: paint, set: setPaint, used: usedColor } = usePaintState("yog.content.paint");
+  const [paintSlot, setPaintSlot] = useState<string | null>(null);
+  const [tints, setTints] = useState<Record<number, string>>({});
+  const [decoded, setDecoded] = useState<Record<string, { url: string; img: PixelImage }>>({});
+  const [edited, setEdited] = useState<Record<string, Edited>>({});
+  const [saved, setSaved] = useState<Record<string, PixelImage>>({});
+  const editedRef = useRef(edited);
+  editedRef.current = edited;
 
   // A model key that no longer exists (the arm removed, say) → the main model.
   const effectiveKey: ModelKey = modelOf(file, modelKey) || modelKey === "model" ? modelKey : "model";
@@ -208,12 +253,31 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
 
   const contentRef = useRef(content);
   contentRef.current = content;
-  const history = useRef<{ past: string[]; future: string[] }>({ past: [], future: [] });
+  const history = useRef<{ past: HistoryEntry[]; future: HistoryEntry[] }>({ past: [], future: [] });
   useEffect(() => {
     history.current = { past: [], future: [] };
     setImages({});
+    setEdited({});
+    setSaved({});
     notifyDocumentCommands();
   }, [contentVersion]);
+
+  const pushHistory = useCallback((entry: HistoryEntry) => {
+    history.current.past.push(entry);
+    history.current.future = [];
+    notifyDocumentCommands();
+  }, []);
+
+  /** Sets painted textures (`null`: back to what's on disk / gone). */
+  const setEditedImages = useCallback((patch: Record<string, PixelImage | null>) => {
+    const next = { ...editedRef.current };
+    for (const [k, img] of Object.entries(patch)) {
+      if (img) next[k] = { img, url: toPngDataUrl(img) };
+      else delete next[k];
+    }
+    editedRef.current = next;
+    setEdited(next);
+  }, []);
 
   const update = useCallback(
     (edit: (draft: ContentFile) => void) => {
@@ -222,24 +286,27 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
       edit(draft);
       const text = serializeContent(draft);
       if (text === contentRef.current) return;
-      history.current.past.push(contentRef.current);
-      history.current.future = [];
+      pushHistory({ text: contentRef.current, pixels: {} });
       onChange(text);
-      notifyDocumentCommands();
     },
-    [onChange, readOnly, parsed]
+    [onChange, readOnly, parsed, pushHistory]
   );
 
   const step = useCallback(
     (back: boolean) => {
       const h = history.current;
-      const text = (back ? h.past : h.future).pop();
-      if (text === undefined || readOnly) return;
-      (back ? h.future : h.past).push(contentRef.current);
-      onChange(text);
+      const entry = (back ? h.past : h.future).pop();
+      if (entry === undefined || readOnly) return;
+      const cur = editedRef.current;
+      (back ? h.future : h.past).push({
+        text: contentRef.current,
+        pixels: Object.fromEntries(Object.keys(entry.pixels).map((k) => [k, cur[k]?.img ?? null])),
+      });
+      if (entry.text !== contentRef.current) onChange(entry.text);
+      if (Object.keys(entry.pixels).length) setEditedImages(entry.pixels);
       notifyDocumentCommands();
     },
-    [onChange, readOnly]
+    [onChange, readOnly, setEditedImages]
   );
 
   /** Edits the current model's own elements (copying a template's/parent's in first). */
@@ -291,7 +358,7 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
     const v = new Set<string>();
     for (const r of [resolved, mainResolved]) {
       for (const x of Object.values(r.textures)) v.add(x);
-      for (const x of r.sprite ?? []) v.add(x);
+      for (const x of r.sprite ?? []) v.add(x.texture);
     }
     return [...v];
   }, [resolved, mainResolved]);
@@ -303,11 +370,91 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
     for (const value of wanted) {
       if (requested.current.has(value)) continue;
       requested.current.add(value);
-      invoke<TextureSource>("content_texture", { path, texture: value })
+      invoke<LoadedTexture>("content_texture", { path, texture: value })
         .then((src) => setImages((m) => ({ ...m, [value]: src })))
         .catch(() => setImages((m) => ({ ...m, [value]: undefined })));
     }
   }, [wanted, path, images]);
+
+  // ── Painted textures: pixels, dirty state, Save, external changes ─────────
+
+  const decoding = useRef(new Set<string>());
+  useEffect(() => {
+    for (const [key, src] of Object.entries(images)) {
+      if (!src || decoded[key]?.url === src.url || decoding.current.has(src.url)) continue;
+      decoding.current.add(src.url);
+      decodeImage(src.url)
+        .then((img) => setDecoded((d) => ({ ...d, [key]: { url: src.url, img } })))
+        .catch(() => {})
+        .finally(() => decoding.current.delete(src.url));
+    }
+  }, [images, decoded]);
+
+  /** A texture's pixels as shown (painted, else as on disk). */
+  const pixelsOf = (key: string | undefined): PixelImage | undefined => (key ? (edited[key]?.img ?? decoded[key]?.img) : undefined);
+
+  const named = useMemo(() => namedTextures(file), [file]);
+  /** Painted textures that differ from the file (new ones only while the file still names them). */
+  const dirtyKeys = useMemo(
+    () =>
+      Object.keys(edited).filter((k) => {
+        const base = saved[k] ?? decoded[k]?.img;
+        return base ? !sameImage(edited[k].img, base) : named.has(k);
+      }),
+    [edited, saved, decoded, named]
+  );
+
+  /** What the view and the pickers show: painted textures over the loaded ones. */
+  const shownImages = useMemo(() => {
+    const out: Record<string, LoadedTexture | undefined> = { ...images };
+    for (const [k, e] of Object.entries(edited)) out[k] = { url: e.url, animated: images[k]?.animated ?? false, writable: true };
+    return out;
+  }, [images, edited]);
+
+  const saveState = useRef({ dirtyKeys, edited, images });
+  saveState.current = { dirtyKeys, edited, images };
+  const saveTextures = useCallback(async () => {
+    const { dirtyKeys: keys, edited: cur } = saveState.current;
+    const written: Record<string, Edited> = {};
+    for (const key of keys) {
+      const e = cur[key];
+      await invoke<string>("content_save_texture", { path, texture: key, png: e.url.slice(e.url.indexOf(",") + 1) });
+      written[key] = e;
+    }
+    setSaved((s) => ({ ...s, ...Object.fromEntries(Object.entries(written).map(([k, e]) => [k, e.img])) }));
+    setImages((m) => {
+      const next = { ...m };
+      for (const [k, e] of Object.entries(written)) next[k] = { url: e.url, animated: m[k]?.animated ?? false, writable: true };
+      return next;
+    });
+  }, [path]);
+  const sideDirty = !readOnly && dirtyKeys.length > 0;
+  useEffect(() => setSideState(path, { dirty: sideDirty, save: saveTextures }), [path, sideDirty, saveTextures, setSideState]);
+  useEffect(() => () => setSideState(path, null), [path, setSideState]);
+
+  // A texture changed on disk (another editor, git) shows up when the window
+  // regains focus — unless it has unsaved paint here.
+  useEffect(() => {
+    const recheck = () => {
+      const { dirtyKeys: keys, images: cur } = saveState.current;
+      for (const key of Object.keys(cur)) {
+        if (keys.includes(key)) continue;
+        invoke<LoadedTexture>("content_texture", { path, texture: key })
+          .then((src) => {
+            if (saveState.current.images[key]?.url === src.url) return;
+            setImages((m) => ({ ...m, [key]: src }));
+            setSaved((s) => {
+              const { [key]: _, ...rest } = s;
+              return rest;
+            });
+            if (editedRef.current[key]) setEditedImages({ [key]: null });
+          })
+          .catch(() => {});
+      }
+    };
+    window.addEventListener("focus", recheck);
+    return () => window.removeEventListener("focus", recheck);
+  }, [path, setEditedImages]);
 
   // ── What the view draws ───────────────────────────────────────────────────
 
@@ -318,13 +465,14 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
       elements: resolved.elements,
       textures: resolved.textures,
       sprite: resolved.sprite,
+      tints,
       editable: true,
       x: rot?.x,
       y: rot?.y,
     };
     if (effectiveKey !== "arm") return [own];
     return [{ elements: mainResolved.elements, textures: mainResolved.textures, sprite: mainResolved.sprite, ghost: true }, own];
-  }, [resolved, mainResolved, effectiveKey, rot]);
+  }, [resolved, mainResolved, effectiveKey, rot, tints]);
 
   const display = useMemo(() => {
     if (!displaySlot) return null;
@@ -344,6 +492,205 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
       }),
     [editElements]
   );
+
+  // ── Painting ──────────────────────────────────────────────────────────────
+
+  const paintOn = !readOnly && (paintMode || !!resolved.sprite);
+  const faceSlot = selEl && face ? selEl.faces[face]?.texture.replace(/^#/, "") : undefined;
+  const paintSlots = resolved.slots.filter((s) => resolved.textures[s] && s !== "particle");
+  const activeSlot = paintSlot && paintSlots.includes(paintSlot) ? paintSlot : faceSlot && paintSlots.includes(faceSlot) ? faceSlot : (paintSlots[0] ?? null);
+  const activeKey = activeSlot ? resolved.textures[activeSlot] : undefined;
+  // The 2D view follows the face picked in the outliner or the view.
+  useEffect(() => {
+    if (faceSlot) setPaintSlot(faceSlot);
+  }, [faceSlot]);
+
+  /** A new png under `resources/` for `slot` — `item/<file>.png`, `block/<file>_<slot>.png` and the like, not yet taken. */
+  const newTexturePath = (slot: string): string => {
+    const stem = (path.split(/[\\/]/).pop() ?? "texture").replace(/\.(yblock|yitem)$/i, "").toLowerCase().replace(/[^a-z0-9_.-]/g, "_");
+    const folder = modelKind === "item" || resolved.sprite ? "item" : "block";
+    const several = paintSlots.length > 1 || effectiveKey === "arm";
+    const base = `${folder}/${stem}${several ? `_${slot}` : ""}`;
+    const taken = new Set([...choices.textures, ...Object.keys(editedRef.current), ...named]);
+    let value = `${base}.png`;
+    for (let n = 2; taken.has(value); n++) value = `${base}_${n}.png`;
+    return value;
+  };
+
+  /** Points `slot` at a new texture `img` (a copy, or a blank one) — one undo step with `entry`'s text. */
+  const assignTexture = (slot: string, img: PixelImage): { key: string; entry: HistoryEntry } => {
+    const key = newTexturePath(slot);
+    const entry: HistoryEntry = { text: contentRef.current, pixels: { [key]: null } };
+    const draft = clone(file);
+    const m = ensureModel(draft, effectiveKey);
+    m.textures = { ...(m.textures ?? {}), [slot]: key };
+    onChange(serializeContent(draft));
+    setEditedImages({ [key]: img });
+    return { key, entry };
+  };
+
+  const stroke = useRef<{ stroke: Stroke; slot: string; key: string; entry: HistoryEntry; frame: number } | null>(null);
+
+  const beginPaint = (slot: string, x: number, y: number, pick: boolean) => {
+    if (!paintOn || stroke.current) return;
+    let key = resolved.textures[slot];
+    let base = pixelsOf(key);
+    if (!key || !base) return;
+    if (paint.tool === "picker" || pick) {
+      const c = getPixel(base, x, y);
+      if (c) setPaint({ color: c, ...(paint.tool === "picker" ? { tool: "pencil" as const } : {}) });
+      return;
+    }
+    if (paint.tool === "fill" && !getPixel(base, x, y)) return;
+    let entry: HistoryEntry;
+    const writable = images[key]?.writable ?? key in editedRef.current;
+    if (!writable) {
+      // Not the mod's texture (Minecraft's, another mod's): paint a copy in the mod.
+      base = cloneImage(base);
+      ({ key, entry } = assignTexture(slot, base));
+      notify({ level: "info", message: t("Copied into the mod: {path}", { path: `resources/${key}` }) });
+    } else entry = { text: contentRef.current, pixels: { [key]: base } };
+    const s = new Stroke(base, paint, x, y);
+    stroke.current = { stroke: s, slot, key, entry, frame: 0 };
+    setEditedImages({ [key]: s.image });
+  };
+
+  const movePaint = (x: number, y: number) => {
+    const cur = stroke.current;
+    if (!cur) return;
+    cur.stroke.move(x, y);
+    // At most one redraw a frame.
+    if (!cur.frame)
+      cur.frame = requestAnimationFrame(() => {
+        cur.frame = 0;
+        if (stroke.current === cur) setEditedImages({ [cur.key]: cur.stroke.image });
+      });
+  };
+
+  const endPaint = () => {
+    const cur = stroke.current;
+    if (!cur) return;
+    stroke.current = null;
+    cancelAnimationFrame(cur.frame);
+    setEditedImages({ [cur.key]: cur.stroke.image });
+    const copied = cur.entry.pixels[cur.key] === null;
+    if (copied || !sameImage(cur.stroke.image, cur.stroke.base)) {
+      pushHistory(cur.entry);
+      if (cur.stroke.settings.tool !== "eraser") usedColor(cur.stroke.settings.color);
+    }
+  };
+
+  const onCanvasPaint = (x: number, y: number, phase: PaintPhase, mods: PaintModifiers) => {
+    if (phase === "down") activeSlot && beginPaint(activeSlot, x, y, mods.alt);
+    else if (phase === "move") movePaint(x, y);
+    else endPaint();
+  };
+
+  const onViewportPaint = (hit: PaintHit | null, phase: "down" | "move" | "up", alt: boolean) => {
+    if (phase === "down") {
+      if (!hit) return;
+      if (hit.element !== null) {
+        setSelected(hit.element);
+        setFace(hit.face);
+      }
+      setPaintSlot(hit.slot);
+      beginPaint(hit.slot, hit.x, hit.y, alt);
+    } else if (phase === "move") {
+      if (hit && hit.slot === stroke.current?.slot) movePaint(hit.x, hit.y);
+    } else endPaint();
+  };
+
+  const newTexture = async () => {
+    const slot = activeSlot ?? (resolved.sprite ? "layer0" : resolved.slots[0]);
+    if (!slot) return;
+    const r = await showDialog({
+      title: t("New Texture"),
+      message: t("A blank texture for the {slot} slot, saved in the mod's resources/ with the file.", { slot }),
+      buttons: [
+        { id: "cancel", label: t("Cancel") },
+        { id: "16", label: "16×16", variant: "primary" },
+        { id: "32", label: "32×32" },
+        { id: "64", label: "64×64" },
+      ],
+    });
+    const n = Number(r.button);
+    if (!n) return;
+    const { entry } = assignTexture(slot, blankImage(n, n));
+    pushHistory(entry);
+    setPaintSlot(slot);
+  };
+
+  // ── Sprite layers ─────────────────────────────────────────────────────────
+
+  const layers = useMemo(
+    () => resolved.slots.filter((s) => LAYER.test(s)).sort((a, b) => layerIndex(a) - layerIndex(b)),
+    [resolved.slots]
+  );
+
+  /** Rewrites the layers as `values` (`layer0`, `layer1`, … in order). */
+  const setLayers = (values: string[]) =>
+    update((d) => {
+      const m = ensureModel(d, effectiveKey);
+      const tex = Object.fromEntries(Object.entries(m.textures ?? {}).filter(([k]) => !LAYER.test(k)));
+      values.forEach((v, i) => (tex[`layer${i}`] = v));
+      m.textures = tex;
+    });
+  const layerValues = () => layers.map((s) => model?.textures?.[s] ?? resolved.textures[s] ?? "");
+
+  const addLayer = () => {
+    const first = pixelsOf(resolved.textures.layer0);
+    const slot = `layer${layers.length}`;
+    const { entry } = assignTexture(slot, blankImage(first?.w ?? 16, first?.h ?? 16));
+    pushHistory(entry);
+    setPaintSlot(slot);
+  };
+  const removeLayer = (slot: string) => {
+    setLayers(layerValues().filter((_, i) => layers[i] !== slot));
+    setPaintSlot("layer0");
+  };
+  const moveLayer = (slot: string, by: -1 | 1) => {
+    const i = layers.indexOf(slot);
+    const values = layerValues();
+    if (i + by < 0 || i + by >= values.length) return;
+    [values[i], values[i + by]] = [values[i + by], values[i]];
+    setLayers(values);
+    setPaintSlot(`layer${i + by}`);
+  };
+
+  /** The sprite as elements of the model's own (one per rectangle of opaque pixels). */
+  const convertToElements = async () => {
+    const sprite = resolved.sprite;
+    if (!sprite) return;
+    const els: Element[] = [];
+    for (const [i, { slot, texture }] of sprite.entries()) {
+      const img = pixelsOf(texture);
+      if (!img) {
+        reportError(t("The texture {texture} isn't loaded.", { texture }));
+        return;
+      }
+      els.push(...spriteLayerElements(img, slot, i, images[texture]?.animated ? img.w : img.h));
+    }
+    if (
+      els.length > 256 &&
+      !(await confirmDialog({
+        title: t("Convert to 3D Elements"),
+        message: t("This makes {n} elements — a lot for one model. Convert anyway?", { n: els.length }),
+        confirmLabel: t("Convert"),
+      }))
+    )
+      return;
+    update((d) => {
+      const m = ensureModel(d, effectiveKey);
+      m.textures = { ...Object.fromEntries(sprite.map((l) => [l.slot, l.texture])), ...(m.textures ?? {}) };
+      delete m.parent;
+      m.elements = els;
+      m.display = clone(resolved.display);
+      m.gui_light = "front";
+    });
+    setPaintMode(true);
+    setSelected(null);
+    setFace(null);
+  };
 
   // ── Element commands ──────────────────────────────────────────────────────
 
@@ -442,8 +789,25 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
   useKeybinding("Ctrl+X", () => void commands.current.copyElement().then((ok) => ok && commands.current.deleteElement()), { when: editable });
   useKeybinding("Ctrl+V", () => void commands.current.pasteElement(), { when: editable });
   useKeybinding("Ctrl+D", () => commands.current.duplicateElement(), { when: editable });
-  useKeybinding("G", () => setGizmo("move"), { when: editable });
-  useKeybinding("S", () => setGizmo("resize"), { when: editable });
+  const pickGizmo = (g: GizmoMode) => {
+    setGizmo(g);
+    setPaintMode(false);
+  };
+  useKeybinding("G", () => pickGizmo("move"), { when: editable });
+  useKeybinding("S", () => pickGizmo("resize"), { when: editable });
+  useKeybinding("P", () => setPaintMode(true), { when: editable });
+  const painting = () => editable() && (paintMode || !!resolved.sprite);
+  const paintRef = useRef(paint);
+  paintRef.current = paint;
+  useKeybinding("B", () => setPaint({ tool: "pencil" }), { when: painting });
+  useKeybinding("E", () => setPaint({ tool: "eraser" }), { when: painting });
+  useKeybinding("F", () => setPaint({ tool: "fill" }), { when: painting });
+  useKeybinding("I", () => setPaint({ tool: "picker" }), { when: painting });
+  useKeybinding("L", () => setPaint({ tool: "line" }), { when: painting });
+  useKeybinding("R", () => setPaint({ tool: "rect" }), { when: painting });
+  useKeybinding("M", () => setPaint({ mirrorX: !paintRef.current.mirrorX }), { when: painting });
+  useKeybinding("[", () => setPaint({ size: Math.max(1, paintRef.current.size - 1) }), { when: painting });
+  useKeybinding("]", () => setPaint({ size: Math.min(4, paintRef.current.size + 1) }), { when: painting });
   useKeybinding("F7", viewCode, { when: focusedWithin });
 
   useEffect(
