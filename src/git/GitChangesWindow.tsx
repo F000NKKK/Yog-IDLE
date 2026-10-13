@@ -235,15 +235,26 @@ function CommitBox() {
   function setAmend(value: boolean) {
     commitDraft.amend = value;
     setAmendState(value);
-    // Visual Studio fills in the last commit's message to edit.
-    if (value && !commitDraft.message.trim() && root) {
-      gitApi
-        .lastMessage(root)
-        .then((last) => {
-          if (commitDraft.amend && !commitDraft.message.trim()) setMessage(last);
-        })
-        .catch(() => {});
+    if (!value) {
+      // Like Visual Studio: unticking takes back the last commit's message if it wasn't edited.
+      const inserted = commitDraft.amendInserted;
+      commitDraft.amendInserted = null;
+      if (inserted !== null && commitDraft.message.startsWith(inserted)) setMessage(commitDraft.message.slice(inserted.length));
+      return;
     }
+    // Visual Studio puts the last commit's message in front of whatever was being written.
+    if (!root) return;
+    gitApi
+      .lastMessage(root)
+      .then((last) => {
+        last = last.trimEnd();
+        if (!commitDraft.amend || !last) return;
+        const current = commitDraft.message;
+        const inserted = current.trim() ? `${last}\n\n` : last;
+        commitDraft.amendInserted = inserted;
+        setMessage(current.trim() ? inserted + current : inserted);
+      })
+      .catch(() => {});
   }
 
   const canCommit = !busy && !!status && (amend ? !!status.head : !nothing && !!message.trim());

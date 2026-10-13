@@ -54,7 +54,12 @@ export function gitState(): GitState {
 }
 
 /** The commit message being written in Git Changes — kept across its remounts (moving it to another dock) and reopenings. */
-export const commitDraft = { message: "", amend: false };
+export const commitDraft = {
+  message: "",
+  amend: false,
+  /** What ticking Amend put into the message (the last commit's message, plus a separator when it went in front of existing text) — taken back out on unticking if still there. */
+  amendInserted: null as string | null,
+};
 
 /** Points the store at another project (or none). */
 export function setGitRoot(root: string | null): void {
@@ -184,6 +189,7 @@ export async function commit(then: CommitThen = "nothing"): Promise<void> {
   if (!result) return;
   commitDraft.message = "";
   commitDraft.amend = false;
+  commitDraft.amendInserted = null;
   set({});
   notify({ level: "info", message: t("Commit {hash} created locally.", { hash: result.hash }) });
   if (then !== "nothing") await remote(then === "push" ? "push" : "sync");
