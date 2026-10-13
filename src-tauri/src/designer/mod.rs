@@ -6,8 +6,10 @@
 
 pub mod assets;
 pub mod codebehind;
+pub mod custom;
 pub mod font;
 pub mod gfx;
+pub mod host;
 pub mod images;
 pub mod markup;
 pub mod raster;
@@ -142,8 +144,14 @@ pub fn render(args: &RenderArgs) -> Result<Rendered, String> {
     let (sw, sh) = (args.screen_w.clamp(1, 4096), args.screen_h.clamp(1, 4096));
     let scroll = offsets(&args.path, args.preview);
     images::set_document(mod_root(Path::new(&args.path)).as_deref());
-    let laid = lay_out(&args.root, sw as f32, sh as f32, &scroll);
-    let ops = gfx::record(sw as i32, sh as i32, |ctx| laid.render(ctx));
+    // The mod's own components: marked spacers here, drawn by the designer host below.
+    let prepared = custom::prepare(&args.root, mod_root(Path::new(&args.path)).as_deref(), sw as f32, sh as f32);
+    let laid = lay_out(&prepared.root, sw as f32, sh as f32, &scroll);
+    let mut ops = gfx::record(sw as i32, sh as i32, |ctx| laid.render(ctx));
+    let node_rects = rects(&prepared.root, &laid);
+    if !prepared.is_empty() {
+        custom::splice(&mut ops, &prepared, &node_rects.iter().map(|r| (r.uid.clone(), r.rect)).collect());
+    }
     let res = Resources::for_mod(mod_root(Path::new(&args.path)).as_deref());
     let scale = args.scale.clamp(1, 8);
     let canvas = raster::rasterize(&ops, sw, sh, scale, &res);
@@ -152,7 +160,7 @@ pub fn render(args: &RenderArgs) -> Result<Rendered, String> {
     Ok(Rendered {
         image: format!("data:image/png;base64,{}", base64::engine::general_purpose::STANDARD.encode(png)),
         scale,
-        rects: rects(&args.root, &laid),
+        rects: node_rects,
         assets: res.vanilla.as_ref().map(|v| AssetsInfo { version: v.version.clone(), jar: v.jar.to_string_lossy().into_owned() }),
         real_font,
     })
@@ -212,14 +220,16 @@ fn xy(rest: &str) -> Option<(f32, f32)> {
 pub fn event(args: &EventArgs) -> EventResult {
     let (sw, sh) = (args.screen_w.clamp(1, 4096) as f32, args.screen_h.clamp(1, 4096) as f32);
     let scroll = offsets(&args.path, true);
-    let laid = lay_out(&args.root, sw, sh, &scroll);
+    let prepared = custom::prepare(&args.root, mod_root(Path::new(&args.path)).as_deref(), sw, sh);
+    let root = &prepared.root;
+    let laid = lay_out(root, sw, sh, &scroll);
     let mut out = EventResult::default();
     let pos = args.event.split_once(':').and_then(|(_, rest)| xy(rest)).unwrap_or((args.x, args.y));
 
     // Scroll views first, as a screen's code-behind does (`ScrollState::handle`).
     if !args.event.starts_with("move:") {
         let mut views: Vec<(&YuiNode, &LayoutNode)> = Vec::new();
-        with_content(&args.root, &laid, |n, _, l| {
+        with_content(root, &laid, |n, _, l| {
             if n.kind == "ScrollView" {
                 views.push((n, l));
             }
@@ -240,7 +250,7 @@ pub fn event(args: &EventArgs) -> EventResult {
         }
     }
     if let Some(l) = laid.layout_root.children.first() {
-        let found = hit(&args.root, l, pos.0, pos.1);
+        let found = hit(root, l, pos.0, pos.1);
         out.hit = found.map(|n| n.uid.clone());
         if args.event.starts_with("click:") && !out.scrolled {
             out.clicked = found.and_then(|n| n.attr("on_click")).map(str::to_string);
