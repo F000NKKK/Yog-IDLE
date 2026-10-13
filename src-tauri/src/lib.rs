@@ -973,12 +973,12 @@ fn run_and_stream(
         let _ = out_app.emit(crate::events::OUTPUT_BUILD, format_log_line(line));
     });
 
-    let start = WorkflowStart::of(&root);
+    // Before the run starts, so none of its output precedes it.
+    let _ = app.emit(crate::events::WORKFLOW_START, WorkflowStart::of(&root));
     let handle = substrate_platform::run_workflow(file, name, vars, root, sink);
     let state = app.state::<WorkflowState>();
     let id = state.next_id.fetch_add(1, Ordering::Relaxed);
     state.running.lock().unwrap().insert(id, handle.clone());
-    let _ = app.emit(crate::events::WORKFLOW_START, start);
     std::thread::spawn(move || {
         let result = handle.wait();
         app.state::<WorkflowState>()

@@ -11,6 +11,8 @@ const liveSet = (path: string) => `live:${path}`;
 const BUILD_DIR = ".yog-build";
 /** Coalesces a burst of build output into one Error List update. */
 const FLUSH_DELAY_MS = 100;
+/** yog-cli's first line of a build. */
+const BUILDING = "==> building ";
 /** `yog run`'s line between its build and the game's own output. */
 const LAUNCHED = "==> launched pid ";
 
@@ -36,7 +38,7 @@ function parsersFor(root: string, project: string | undefined): BuildParsers {
  * Feeds the Error List from builds: every `yog build` (Build, a run's
  * build, a hot reload's) replaces the "build" set with what rustc and
  * yog-cli report in the Build output. A run's build fires no
- * `workflow-start`, so Build output arriving with no build open starts
+ * `workflow-start`, so yog-cli's `==> building` with no build open starts
  * one; it ends at the game's launch or exit. Mounted once, beside the
  * Output panel's own sync.
  */
@@ -88,7 +90,7 @@ export function BuildDiagnosticsSync({ root, project }: { root: string | null; p
       listenTo(EVENT.buildOutput, (raw) => {
         const line = lastSegment(raw);
         if (line.startsWith(LAUNCHED)) return finish();
-        if (!parsers) start(null);
+        if (!parsers && line.startsWith(BUILDING)) start(null);
         if (!parsers) return;
         queue([...parsers.rustc.push(stripLevelTag(line)), ...parsers.yog.push(line)]);
       }),
