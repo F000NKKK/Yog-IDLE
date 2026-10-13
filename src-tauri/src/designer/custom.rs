@@ -628,6 +628,48 @@ mod tests {
         assert!(ops.iter().any(|o| matches!(o, DrawOp::Text { text, x, .. } if text == "<StatBar>" && *x == 7.0)));
     }
 
+    /// The whole path — `yog designer-lib`, the host process, splicing — on a real mod:
+    /// `YOG_DESIGNER_MOD=../../Yog-Modlist YOG_IDLE_DESIGNER_HOST=target/debug/yog-idle-tauri
+    /// YOG_DESIGNER_PNG=out.png cargo test --lib designer::custom -- --ignored`
+    #[test]
+    #[ignore]
+    fn draws_a_mods_components() {
+        let (Ok(root), Ok(out)) = (std::env::var("YOG_DESIGNER_MOD"), std::env::var("YOG_DESIGNER_PNG")) else { return };
+        let root = std::fs::canonicalize(root).unwrap();
+        let started = Instant::now();
+        while status(&root).status == Status::Building || started.elapsed() < DEBOUNCE {
+            assert!(started.elapsed() < Duration::from_secs(600), "build took too long");
+            std::thread::sleep(Duration::from_millis(200));
+        }
+        let snap = status(&root);
+        assert_eq!(snap.status, Status::Ready, "{:?}", snap.error);
+        eprintln!("{}: {:?}", snap.mod_name, snap.components.iter().map(|c| &c.name).collect::<Vec<_>>());
+        let doc = node(
+            "s",
+            "Screen",
+            &[("width", "160"), ("height", "70"), ("bg", "#E0101010")],
+            vec![
+                node("p", "Pill", &[("x", "6"), ("y", "6"), ("label", "Custom!")], vec![]),
+                node("b", "StatBar", &[("x", "6"), ("y", "24"), ("w", "140"), ("label", "Loaded"), ("value", "0.7")], vec![]),
+                node("m", "Missing", &[("x", "6"), ("y", "44"), ("w", "140"), ("h", "22")], vec![]),
+            ],
+        );
+        let args = super::super::RenderArgs {
+            path: root.join("src/demo.yui").to_string_lossy().into_owned(),
+            root: doc,
+            screen_w: 170,
+            screen_h: 80,
+            scale: 4,
+            preview: false,
+        };
+        let r = super::super::render(&args).unwrap();
+        use base64::Engine as _;
+        let png = base64::engine::general_purpose::STANDARD.decode(r.image.trim_start_matches("data:image/png;base64,")).unwrap();
+        std::fs::write(out, png).unwrap();
+        let pill = r.rects.iter().find(|n| n.uid == "p").unwrap();
+        assert!(pill.rect[2] > 10.0 && pill.rect[3] < 20.0, "{:?}", pill.rect);
+    }
+
     #[test]
     fn cargo_errors_are_picked_out() {
         let e = build_errors("   Compiling x\nerror[E0425]: cannot find value `y`\n  --> src/lib.rs:3:5\n   |\nerror: could not compile `x`\n");
