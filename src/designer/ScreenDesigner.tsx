@@ -109,12 +109,40 @@ const RESOLUTIONS: { w: number; h: number; label: string }[] = [
 const ZOOMS = [1, 2, 3, 4];
 const GRID = 2;
 
+/** One undo step: the document as it was, its exact text (so undoing back to the saved text clears the dirty mark), and what was selected. */
+interface HistoryEntry {
+  doc: YuiDoc;
+  text: string;
+  selection: string[];
+}
+
 interface Session {
   text: string;
   doc: YuiDoc;
-  past: YuiDoc[];
-  future: YuiDoc[];
+  past: HistoryEntry[];
+  future: HistoryEntry[];
   selection: string[];
+  /** Linked to the XAML (whose history is CodeMirror's): the selection that went with each text the designer wrote or left — restored when undo/redo brings that text back. */
+  selectionByText: Map<string, number[][]>;
+}
+
+/** Remembers `selection` (as child-index paths) for `text`, keeping the map small. */
+function rememberSelection(s: Session, text: string, doc: YuiDoc, selection: string[]) {
+  s.selectionByText.delete(text);
+  s.selectionByText.set(
+    text,
+    selection.map((uid) => pathOf(doc.root, uid)).filter((p): p is number[] => !!p)
+  );
+  while (s.selectionByText.size > 400) s.selectionByText.delete(s.selectionByText.keys().next().value!);
+}
+
+/** Focus is in a text box (or a code editor) whose own Ctrl+Z undoes typing. */
+function inTextField(): boolean {
+  const el = document.activeElement;
+  if (!(el instanceof HTMLElement)) return false;
+  if (el instanceof HTMLTextAreaElement) return true;
+  if (el instanceof HTMLInputElement) return !["checkbox", "radio", "button", "submit", "range", "color", "file"].includes(el.type);
+  return el.isContentEditable;
 }
 
 interface ViewSettings {
@@ -190,7 +218,7 @@ export function ScreenDesigner({ path, content, onChange, readOnly, contentVersi
       }
       if (text.trim() === "") {
         const doc = newScreen(`mymod:${stemOf(path)}`);
-        const session: Session = { text: serializeYui(doc), doc, past: [], future: [], selection: [] };
+        const session: Session = { text: serializeYui(doc), doc, past: [], future: [], selection: [], selectionByText: new Map() };
         sessionRef.current = session;
         sessions.set(path, session);
         setError(null);
@@ -213,7 +241,7 @@ export function ScreenDesigner({ path, content, onChange, readOnly, contentVersi
       }
       try {
         const doc = parseYui(text);
-        const session: Session = { text, doc, past: [], future: [], selection: [] };
+        const session: Session = { text, doc, past: [], future: [], selection: [], selectionByText: new Map() };
         sessionRef.current = session;
         sessions.set(path, session);
         setError(null);
@@ -241,12 +269,14 @@ export function ScreenDesigner({ path, content, onChange, readOnly, contentVersi
     (next: YuiDoc, nextSelection?: string[]) => {
       const s = sessionRef.current;
       if (!s || readOnly || next === s.doc) return;
+      const before = s.text;
       if (link) {
         const text = link.write(s.doc, next);
         if (text === null) return;
+        rememberSelection(s, before, s.doc, s.selection);
         s.text = text;
       } else {
-        s.past.push(s.doc);
+        s.past.push({ doc: s.doc, text: s.text, selection: s.selection });
         if (s.past.length > 200) s.past.shift();
         s.future = [];
         // Only what changed is rewritten — the rest of the file stays as the user wrote it.
@@ -256,6 +286,7 @@ export function ScreenDesigner({ path, content, onChange, readOnly, contentVersi
       s.doc = next;
       if (nextSelection) s.selection = nextSelection;
       s.selection = s.selection.filter((uid) => findNode(next.root, uid));
+      if (link) rememberSelection(s, s.text, next, s.selection);
       setRevision((r) => r + 1);
       notifyDocumentCommands();
     },
@@ -281,12 +312,13 @@ export function ScreenDesigner({ path, content, onChange, readOnly, contentVersi
       }
       const from = back ? s.past : s.future;
       const to = back ? s.future : s.past;
-      const doc = from.pop();
-      if (!doc) return;
-      to.push(s.doc);
-      s.text = patchYui(s.text, s.doc, doc);
-      s.doc = doc;
-      s.selection = s.selection.filter((uid) => findNode(doc.root, uid));
+      const entry = from.pop();
+      if (!entry) return;
+      to.push({ doc: s.doc, text: s.text, selection: s.selection });
+      // The exact text it had — undoing back to what's saved leaves the tab clean.
+      s.text = entry.text;
+      s.doc = entry.doc;
+      s.selection = entry.selection.filter((uid) => findNode(entry.doc.root, uid));
       onChange(s.text);
       setRevision((r) => r + 1);
       notifyDocumentCommands();
@@ -631,12 +663,16 @@ export function ScreenDesigner({ path, content, onChange, readOnly, contentVersi
         receive: (doc, text) => {
           const s = sessionRef.current;
           if (s) {
-            // Same nodes, same uids: the selection survives the re-parse.
+            // Same nodes, same uids: the selection survives the re-parse —
+            // and a text undo/redo brought back gets the selection it had.
             s.doc = { ...doc, root: adoptUids(s.doc.root, doc.root) };
             s.text = text;
-            s.selection = s.selection.filter((uid) => findNode(s.doc.root, uid));
+            const remembered = s.selectionByText.get(text);
+            s.selection = remembered
+              ? remembered.map((p) => nodeAtPath(s.doc.root, p)?.uid).filter((uid): uid is string => !!uid)
+              : s.selection.filter((uid) => findNode(s.doc.root, uid));
           } else {
-            const session: Session = { text, doc, past: [], future: [], selection: [] };
+            const session: Session = { text, doc, past: [], future: [], selection: [], selectionByText: new Map() };
             sessionRef.current = session;
             sessions.set(path, session);
           }
@@ -696,9 +732,15 @@ export function ScreenDesigner({ path, content, onChange, readOnly, contentVersi
   };
   const editable = () => focused() && !readOnly;
   const keyOpts = { when: editable };
+  // Undo/redo, as in Visual Studio, act on the active designer from anywhere
+  // that has no undo of its own — the canvas, the Toolbox, Document Outline,
+  // the Properties grid between edits — not just while the canvas has focus.
+  const isActiveRef = useRef(isActive);
+  isActiveRef.current = isActive;
+  const historyOpts = { when: () => !readOnly && (focused() || (isActiveRef.current && !inTextField())) };
   useKeybinding(["Delete"], () => commands.current.deleteSelection(), keyOpts);
-  useKeybinding("Ctrl+Z", () => commands.current.step(true), keyOpts);
-  useKeybinding(["Ctrl+Y", "Ctrl+Shift+Z"], () => commands.current.step(false), keyOpts);
+  useKeybinding("Ctrl+Z", () => commands.current.step(true), historyOpts);
+  useKeybinding(["Ctrl+Y", "Ctrl+Shift+Z"], () => commands.current.step(false), historyOpts);
   useKeybinding("Ctrl+C", () => void commands.current.copySelection(), { when: focused });
   useKeybinding("Ctrl+X", () => void (commands.current.copySelection() && commands.current.deleteSelection()), keyOpts);
   useKeybinding("Ctrl+V", () => commands.current.paste(), keyOpts);

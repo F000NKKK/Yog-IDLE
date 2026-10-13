@@ -4,7 +4,7 @@
 // write back.
 
 /** Every element the format knows, in Toolbox order. */
-export const KINDS = ["Screen", "Canvas", "Column", "Row", "ScrollView", "Label", "Button", "Spacer", "ItemSlot", "InvSlot", "Image"] as const;
+export const KINDS = ["Screen", "Canvas", "Column", "Row", "ScrollView", "Label", "Button", "TextBox", "Spacer", "ItemSlot", "InvSlot", "Image"] as const;
 export type YuiKind = (typeof KINDS)[number];
 
 export interface YuiNode {
@@ -46,6 +46,8 @@ export const ATTR_ORDER = [
   "modal",
   "pause",
   "text",
+  "placeholder",
+  "max_length",
   "item",
   "count",
   "texture",
@@ -60,6 +62,7 @@ export const ATTR_ORDER = [
   "align",
   "bg",
   "color",
+  "font",
   "font_scale",
   "shadow",
   "no_wrap",
@@ -68,6 +71,8 @@ export const ATTR_ORDER = [
   "focus_color",
   "enabled",
   "on_click",
+  "on_change",
+  "on_submit",
 ];
 
 function fromElement(el: Element): YuiNode {
@@ -360,6 +365,13 @@ export const KIND_INFO: Record<YuiKind, KindInfo> = {
     group: "Common Controls",
     description: "Clickable text that raises an on_click event.",
     defaults: { w: "80", h: "20", text: "Button", bg: "#FF555555", color: "#FFFFFF" },
+  },
+  TextBox: {
+    kind: "TextBox",
+    label: "Text Box",
+    group: "Common Controls",
+    description: "A one-line text input: click to focus, type, Enter raises on_submit; each edit raises on_change (TextBoxState in code).",
+    defaults: { w: "100", h: "16", placeholder: "Text" },
   },
   Spacer: { kind: "Spacer", label: "Spacer", group: "Common Controls", description: "Invisible space; give it flex to push siblings apart.", defaults: { w: "8", h: "8" } },
   ItemSlot: {
