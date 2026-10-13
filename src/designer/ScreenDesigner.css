@@ -10,10 +10,9 @@
 .yui-designer-toolbar {
   display: flex;
   align-items: center;
-  gap: var(--sp-space-md);
-  box-sizing: border-box;
+  gap: var(--sp-toolbar-gap);
   min-height: var(--sp-toolbar-height);
-  padding: 2px var(--sp-space-md);
+  padding: 1px var(--sp-toolbar-padding-x);
   border-bottom: 1px solid var(--sp-border);
   background: var(--sp-surface-1);
   color: var(--sp-text-muted);
@@ -28,15 +27,23 @@
   gap: var(--sp-space-xs);
 }
 
+/* Same box as Substrate's Button / SelectField. */
 .yui-designer-toolbar select,
 .yui-designer-toolbar button {
   font: inherit;
   color: var(--sp-text);
-  background: var(--sp-surface-2);
+  background-color: var(--sp-surface-2);
   border: 1px solid var(--sp-border);
-  border-radius: var(--sp-radius-sm);
-  min-height: var(--sp-icon-btn-size);
-  padding: 1px var(--sp-space-sm);
+  border-radius: var(--sp-control-radius);
+  height: var(--sp-control-height);
+  padding: 0 var(--sp-control-padding-x);
+}
+
+.yui-designer-toolbar select {
+  appearance: none;
+  padding-right: var(--sp-select-chevron-space);
+  background: var(--sp-surface-2) var(--sp-select-chevron) no-repeat right var(--sp-control-padding-x) center;
+  line-height: calc(var(--sp-control-height) - 2px);
 }
 
 .yui-designer-toolbar button:hover:not(:disabled) {
@@ -48,10 +55,13 @@
   color: var(--sp-text-faint);
 }
 
+/* = `.sp-toolbar-separator` */
 .yui-designer-sep {
+  flex: none;
   width: 1px;
-  align-self: stretch;
-  background: var(--sp-border);
+  height: var(--sp-icon-size);
+  margin: 0 var(--sp-toolbar-separator-margin);
+  background: var(--sp-border-strong);
 }
 
 .yui-designer-status {

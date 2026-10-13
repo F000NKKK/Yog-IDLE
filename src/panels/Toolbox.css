@@ -1,5 +1,7 @@
 /* Toolbox — the screen designer's widget palette, Visual Studio style. */
+/* Group names and items line up on one text column, past the 16px expander. */
 .toolbox {
+  --toolbox-indent: calc(var(--sp-space-sm) + var(--sp-icon-size) + var(--sp-space-xs));
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -28,7 +30,8 @@
   align-items: center;
   gap: var(--sp-space-xs);
   width: 100%;
-  padding: 2px var(--sp-space-sm);
+  height: var(--sp-row-height);
+  padding: 0 var(--sp-space-sm);
   border: none;
   background: var(--sp-surface-1);
   color: var(--sp-text);
@@ -39,7 +42,9 @@
 }
 
 .toolbox-chevron {
-  width: 1em;
+  flex: none;
+  width: var(--sp-icon-size);
+  text-align: center;
   color: var(--sp-text-muted);
 }
 
@@ -47,7 +52,8 @@
   display: flex;
   align-items: center;
   gap: var(--sp-space-sm);
-  padding: 2px var(--sp-space-md) 2px calc(var(--sp-space-md) + 1em);
+  min-height: var(--sp-row-height);
+  padding: 0 var(--sp-space-sm) 0 var(--toolbox-indent);
   cursor: grab;
   outline: none;
 }
@@ -72,7 +78,7 @@
 }
 
 .toolbox-note {
-  margin: 2px var(--sp-space-md) 2px calc(var(--sp-space-md) + 1em);
+  margin: 0 var(--sp-space-sm) var(--sp-space-2xs) var(--toolbox-indent);
   color: var(--sp-text-faint);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -80,8 +86,8 @@
 }
 
 .toolbox-icon {
-  width: 16px;
-  height: 16px;
+  width: var(--sp-icon-size);
+  height: var(--sp-icon-size);
   image-rendering: pixelated;
   flex: none;
 }

@@ -24,12 +24,11 @@
 .yui-split-bar {
   display: flex;
   align-items: center;
-  gap: 2px;
-  box-sizing: border-box;
+  gap: var(--sp-space-2xs);
   flex-shrink: 0;
   width: 100%;
   min-height: var(--sp-toolbar-height);
-  padding: 0 var(--sp-space-sm);
+  padding: 0 var(--sp-toolbar-padding-x);
   background: var(--sp-surface-1);
   border-top: 1px solid var(--sp-border);
   font: var(--sp-font-size) var(--sp-font-ui);
@@ -51,8 +50,9 @@
   background: transparent;
   color: var(--sp-text-muted);
   font: inherit;
-  padding: 2px var(--sp-space-md);
-  border-radius: var(--sp-radius-sm);
+  height: var(--sp-control-height);
+  padding: 0 var(--sp-space-md);
+  border-radius: var(--sp-control-radius);
   cursor: pointer;
 }
 
@@ -73,7 +73,7 @@
 /* Over the designer while the markup doesn't parse — the last valid layout stays visible under it. */
 .yui-split-error {
   position: absolute;
-  top: 30px;
+  top: calc(var(--sp-toolbar-height) + var(--sp-space-xs));
   left: var(--sp-space-md);
   right: var(--sp-space-md);
   z-index: 5;
