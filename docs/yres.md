@@ -217,7 +217,7 @@ A `text` or `placeholder` attribute starting with `@` is a resource:
 <Label text="@Strings.screen.title" />    <!-- a .yres text -->
 <Label text="@minecraft.gui.done" />      <!-- any translation key -->
 <Label text="@@home" />                   <!-- the literal text "@home" -->
-<Image texture="@Icons.logo" />           <!-- a .yres image -->
+<Image source="@Icons.logo" />            <!-- a .yres image -->
 ```
 
 `@<Set>.<name>` is an entry of `resources/<Set>.yres` (its `key`, or its

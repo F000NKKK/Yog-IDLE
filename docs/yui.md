@@ -149,6 +149,14 @@ Kind-specific: `text` (Label, Button, TextBox), `placeholder`, `max_length`,
 (InvSlot), `texture`, `tex_w`, `tex_h` (Image). Unknown elements or
 attributes are errors, reported with their line by `yog ui gen`/`yog build`.
 
+**Resources and translations.** A `text` or `placeholder` starting with
+`@` is looked up when the tree is built, in the player's language:
+`text="@Strings.screen.title"` is a text of `resources/Strings.yres`, any
+other `@some.key` a translation key as is, and `@@` starts a literal `@`
+(`text="@@home"` shows `@home`). An Image's `source="@Icons.logo"` is an
+image of `resources/Icons.yres`. See [`.yres` resource files](yres.md); the
+designer shows the texts in the IDE's language.
+
 The designer never rewrites the whole file: an edit there changes only the
 attributes or elements it touched (a start tag that gains or loses
 attributes is laid out again), so comments, attribute order and your own
