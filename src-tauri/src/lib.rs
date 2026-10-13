@@ -168,6 +168,31 @@ fn copy_recursive(from: &Path, to: &Path) -> std::io::Result<()> {
     }
 }
 
+/// The watcher behind `fs_watch`, created on first use.
+#[derive(Default)]
+struct WatchState(std::sync::OnceLock<substrate_platform::DirWatcher>);
+
+/// Watches exactly `folders` (the Project Explorer's listed folders, the
+/// open files' folders) for changes made outside the IDE; each burst comes
+/// back as one `fs-changed` with the changed paths, spelled like `folders`.
+#[tauri::command]
+fn fs_watch(app: AppHandle, state: State<WatchState>, folders: Vec<String>) -> Result<(), String> {
+    let watcher = match state.0.get() {
+        Some(w) => w,
+        None => {
+            let w = substrate_platform::DirWatcher::new(substrate_platform::watch::DEFAULT_QUIET, move |paths| {
+                let paths: Vec<String> = paths.iter().map(|p| p.to_string_lossy().into_owned()).collect();
+                let _ = app.emit(events::FS_CHANGED, paths);
+            })
+            .map_err(|e| e.to_string())?;
+            let _ = state.0.set(w);
+            state.0.get().expect("just set")
+        }
+    };
+    watcher.set(folders.into_iter().map(PathBuf::from));
+    Ok(())
+}
+
 #[tauri::command]
 fn file_read(path: String) -> Result<String, String> {
     // Any file may be *read* — a debugger frame in `std` or a dependency,
@@ -1618,6 +1643,7 @@ pub fn run() {
         .manage(PtyState::default())
         .manage(WorkflowState::default())
         .manage(AppState::default())
+        .manage(WatchState::default())
         .manage(environment::EnvironmentState::with_settings(env_settings))
         .manage(search::SearchState::default())
         .manage(symbols::SymbolIndexState::default());
@@ -1625,6 +1651,7 @@ pub fn run() {
     let builder = builder.manage(debugger::DebugState::default());
 
     let builder = builder.invoke_handler(tauri::generate_handler![
+        fs_watch,
         yui_codegen,
         content_texture,
         content_textures,
