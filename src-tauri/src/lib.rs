@@ -17,6 +17,7 @@ mod properties;
 mod search;
 mod symbols;
 mod designer;
+mod content;
 mod yui;
 
 #[cfg(target_os = "linux")]
@@ -546,6 +547,56 @@ async fn format_supported(path: String) -> bool {
 async fn yui_codegen(state: State<'_, AppState>, path: String) -> Result<String, String> {
     validate_within_roots(&state, Path::new(&path))?;
     tauri::async_runtime::spawn_blocking(move || yui::codegen(&path))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+/// The mod of a `.yblock`/`.yitem` file (see `content.rs`).
+#[tauri::command]
+fn content_info(state: State<'_, AppState>, path: String) -> Result<content::ContentInfo, String> {
+    validate_within_roots(&state, Path::new(&path))?;
+    Ok(content::info(Path::new(&path)))
+}
+
+/// A texture as a content file names it, as a data URL.
+#[tauri::command]
+async fn content_texture(state: State<'_, AppState>, path: String, texture: String) -> Result<content::Texture, String> {
+    validate_within_roots(&state, Path::new(&path))?;
+    tauri::async_runtime::spawn_blocking(move || content::texture(Path::new(&path), &texture))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+/// The texture picker's choices for a content file.
+#[tauri::command]
+async fn content_textures(state: State<'_, AppState>, path: String) -> Result<Vec<content::TextureChoice>, String> {
+    validate_within_roots(&state, Path::new(&path))?;
+    tauri::async_runtime::spawn_blocking(move || content::textures(Path::new(&path)))
+        .await
+        .map_err(|e| e.to_string())
+}
+
+/// A model by id with its parents flattened, for previewing a raw parent.
+#[tauri::command]
+async fn content_parent_model(state: State<'_, AppState>, path: String, id: String) -> Result<serde_json::Value, String> {
+    validate_within_roots(&state, Path::new(&path))?;
+    tauri::async_runtime::spawn_blocking(move || content::parent_model(Path::new(&path), &id))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+/// `yog import resourcepack|bbmodel` into the mod of `path`.
+#[tauri::command]
+async fn content_import(
+    state: State<'_, AppState>,
+    path: String,
+    kind: String,
+    source: String,
+    model: Option<String>,
+    force: bool,
+) -> Result<String, String> {
+    validate_within_roots(&state, Path::new(&path))?;
+    tauri::async_runtime::spawn_blocking(move || content::import(Path::new(&path), &kind, &source, model.as_deref(), force))
         .await
         .map_err(|e| e.to_string())?
 }
@@ -1417,6 +1468,11 @@ pub fn run() {
 
     let builder = builder.invoke_handler(tauri::generate_handler![
         yui_codegen,
+        content_info,
+        content_texture,
+        content_textures,
+        content_parent_model,
+        content_import,
         yui_designer_render,
         yui_designer_components,
         yui_designer_event,

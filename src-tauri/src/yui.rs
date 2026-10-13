@@ -18,19 +18,21 @@ pub fn codegen(path: &str) -> Result<String, String> {
         Some("yui") => &["ui", "gen"],
         // Regenerates `.yog-build/generated/res.g.rs` (and checks the set).
         Some("yres") => &["res", "check"],
-        _ => return Err(format!("not a .yui or .yres file: {path}")),
+        // Regenerates `.yog-build/generated/yog-content.g.rs` (and checks every content file).
+        Some("yblock" | "yitem") => &["content", "check"],
+        _ => return Err(format!("not a .yui, .yres, .yblock or .yitem file: {path}")),
     };
     let mut command = Command::new("yog");
     command.args(args);
     if args[0] == "ui" {
         command.arg(&file);
     }
-    // `yog res check` works on the project in the current folder.
+    // `yog res check` / `yog content check` work on the project in the current folder.
     let project = file
         .ancestors()
         .skip(1)
         .find(|d| d.join("yog.toml").is_file());
-    if let Some(dir) = (if args[0] == "res" { project } else { None })
+    if let Some(dir) = (if args[0] != "ui" { project } else { None })
         .or(file.parent())
         .filter(|d| d.is_dir())
     {
