@@ -1,0 +1,636 @@
+//! The mod's own `.yui` components (`yog_api::ui_component!`) in the
+//! designer, drawn for real by the mod's code: a designer host process
+//! ([`host`](super::host)) per mod loads the mod's library built for this
+//! machine (`yog designer-lib`) and draws components on request.
+//!
+//! This side supervises it — rebuilds the library and restarts the host
+//! when the mod's sources change (debounced), restarts nothing while they
+//! don't — and fits the components into the designer's picture: each custom
+//! element is laid out by yog-ui as a spacer of the component's (measured)
+//! size, painted with a marker color; the marker's fill in the recorded
+//! display list is then replaced by the host's drawing of the component.
+//! While the library builds, or when it can't be built or loaded, the
+//! element is a labelled placeholder box instead ("designer could not
+//! load"), never an IDE crash.
+
+use std::collections::hash_map::DefaultHasher;
+use std::collections::HashMap;
+use std::hash::{Hash, Hasher};
+use std::io::{BufRead, BufReader, Read, Write};
+use std::path::{Path, PathBuf};
+use std::process::{Child, ChildStdin, Command, Stdio};
+use std::sync::mpsc::{self, Receiver, RecvTimeoutError};
+use std::sync::{Arc, Mutex, OnceLock, PoisonError};
+use std::time::{Duration, Instant, SystemTime};
+
+use serde::Serialize;
+use serde_json::{json, Value};
+
+use super::host::{ComponentInfo, RenderReq, MARK};
+use super::markup::YuiNode;
+use super::raster::DrawOp;
+
+/// Elements the designer draws itself (yog-ui's and yog-kit's); any other
+/// PascalCase element is a custom component (as for `yog build`).
+const BUILT_IN: &[&str] = &[
+    "Screen", "Canvas", "Column", "Row", "ScrollView", "Label", "Button", "TextBox", "ItemSlot", "InvSlot", "Image", "Spacer",
+    "ToggleButton", "ListView", "ItemsControl", "ContentPresenter", "DataTemplate", "Dialog",
+];
+
+/// What every element takes that sizes/places it — kept on the stand-in
+/// spacer; the rest (the component's own properties and its style) goes
+/// to the host.
+const LAYOUT_ATTRS: &[&str] = &["x", "y", "w", "h", "min_w", "min_h", "dock", "flex", "id", "on_click", "enabled", "visible"];
+
+/// Quiet time after a source change before the library is rebuilt.
+const DEBOUNCE: Duration = Duration::from_millis(800);
+/// How long one host answer may take (a component looping forever).
+const ANSWER_TIMEOUT: Duration = Duration::from_secs(10);
+
+pub fn is_component(kind: &str) -> bool {
+    !BUILT_IN.contains(&kind)
+        && kind.chars().next().is_some_and(|c| c.is_ascii_uppercase())
+        && kind.chars().all(|c| c.is_ascii_alphanumeric() || c == '_')
+}
+
+/// The designer library's state, as the toolbox shows it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum Status {
+    /// The mod declares no components (no `ui_component!` in its sources).
+    None,
+    /// Building the library / starting the host.
+    Building,
+    Ready,
+    Failed,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Snapshot {
+    pub status: Status,
+    pub error: Option<String>,
+    pub components: Vec<ComponentInfo>,
+    /// The mod's display name (`yog.toml` `name`, else its id) for the toolbox category.
+    pub mod_name: String,
+}
+
+struct HostProc {
+    child: Child,
+    stdin: ChildStdin,
+    answers: Receiver<String>,
+    stderr: Arc<Mutex<String>>,
+    lib_copy: PathBuf,
+}
+
+impl HostProc {
+    fn spawn(lib: &Path, mod_root: &Path) -> Result<(Self, Vec<ComponentInfo>), String> {
+        let exe = match std::env::var_os("YOG_IDLE_DESIGNER_HOST") {
+            Some(p) => PathBuf::from(p),
+            None => std::env::current_exe().map_err(|e| e.to_string())?,
+        };
+        let mut child = Command::new(exe)
+            .arg("--designer-host")
+            .current_dir(mod_root)
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .map_err(|e| format!("can't start the designer host: {e}"))?;
+        let stdin = child.stdin.take().ok_or("no host stdin")?;
+        let stdout = child.stdout.take().ok_or("no host stdout")?;
+        let mut stderr_pipe = child.stderr.take().ok_or("no host stderr")?;
+        let (tx, answers) = mpsc::channel();
+        std::thread::spawn(move || {
+            for line in BufReader::new(stdout).lines() {
+                let Ok(line) = line else { break };
+                if let Some(answer) = line.strip_prefix(MARK)
+                    && tx.send(answer.to_string()).is_err()
+                {
+                    break;
+                }
+            }
+        });
+        let stderr = Arc::new(Mutex::new(String::new()));
+        let tail = stderr.clone();
+        std::thread::spawn(move || {
+            let mut buf = [0u8; 4096];
+            while let Ok(n) = stderr_pipe.read(&mut buf) {
+                if n == 0 {
+                    break;
+                }
+                let mut t = tail.lock().unwrap_or_else(PoisonError::into_inner);
+                t.push_str(&String::from_utf8_lossy(&buf[..n]));
+                if t.len() > 16_000 {
+                    let cut = t.len() - 8_000;
+                    let cut = (cut..t.len()).find(|i| t.is_char_boundary(*i)).unwrap_or(t.len());
+                    t.drain(..cut);
+                }
+            }
+        });
+        let mut host = HostProc { child, stdin, answers, stderr, lib_copy: lib.to_path_buf() };
+        let answer = host.ask(&json!({"cmd": "load", "lib": lib, "modRoot": mod_root}), Duration::from_secs(30))?;
+        let components = serde_json::from_value(answer.get("components").cloned().unwrap_or_default()).map_err(|e| e.to_string())?;
+        Ok((host, components))
+    }
+
+    fn ask(&mut self, request: &Value, timeout: Duration) -> Result<Value, String> {
+        writeln!(self.stdin, "{request}").and_then(|_| self.stdin.flush()).map_err(|_| self.died())?;
+        match self.answers.recv_timeout(timeout) {
+            Ok(line) => {
+                let v: Value = serde_json::from_str(&line).map_err(|e| format!("bad host answer: {e}"))?;
+                if v.get("ok").and_then(Value::as_bool) == Some(true) {
+                    Ok(v)
+                } else {
+                    Err(v.get("error").and_then(Value::as_str).unwrap_or("the designer host failed").to_string())
+                }
+            }
+            Err(RecvTimeoutError::Timeout) => {
+                let _ = self.child.kill();
+                Err("the designer host stopped responding (a component that never returns?) — it was stopped".into())
+            }
+            Err(RecvTimeoutError::Disconnected) => Err(self.died()),
+        }
+    }
+
+    fn died(&mut self) -> String {
+        let _ = self.child.wait();
+        // Give the stderr reader a moment to drain the last words.
+        std::thread::sleep(Duration::from_millis(50));
+        let tail = self.stderr.lock().unwrap_or_else(PoisonError::into_inner).clone();
+        let tail: Vec<&str> = tail.lines().rev().take(12).collect::<Vec<_>>().into_iter().rev().collect();
+        format!("the designer host crashed{}", if tail.is_empty() { String::new() } else { format!(":\n{}", tail.join("\n")) })
+    }
+}
+
+impl Drop for HostProc {
+    fn drop(&mut self) {
+        let _ = self.child.kill();
+        let _ = self.child.wait();
+        let _ = std::fs::remove_file(&self.lib_copy);
+    }
+}
+
+type Drawn = (f32, f32, Vec<DrawOp>);
+
+struct ModState {
+    status: Status,
+    error: Option<String>,
+    components: Vec<ComponentInfo>,
+    mod_name: String,
+    /// The sources the current library (or failure) came from.
+    built: Option<u64>,
+    /// The latest sources seen, and since when (debounce).
+    seen: Option<(u64, Instant)>,
+    building: bool,
+    host: Option<HostProc>,
+    generation: u64,
+    cache: HashMap<String, Result<Drawn, String>>,
+}
+
+impl ModState {
+    fn new() -> Self {
+        Self {
+            status: Status::None,
+            error: None,
+            components: Vec::new(),
+            mod_name: String::new(),
+            built: None,
+            seen: None,
+            building: false,
+            host: None,
+            generation: 0,
+            cache: HashMap::new(),
+        }
+    }
+
+    fn snapshot(&self) -> Snapshot {
+        Snapshot { status: self.status, error: self.error.clone(), components: self.components.clone(), mod_name: self.mod_name.clone() }
+    }
+
+    fn render(&mut self, req: &RenderReq) -> Result<Drawn, String> {
+        let key = serde_json::to_string(req).unwrap_or_default();
+        if let Some(hit) = self.cache.get(&key) {
+            return hit.clone();
+        }
+        let Some(host) = self.host.as_mut() else {
+            return Err(self.error.clone().unwrap_or_else(|| "the designer library isn't loaded".into()));
+        };
+        let mut request = serde_json::to_value(req).unwrap_or_default();
+        request["cmd"] = json!("render");
+        let result = host.ask(&request, ANSWER_TIMEOUT).and_then(|v| {
+            let dim = |k: &str| v.get(k).and_then(Value::as_f64).unwrap_or(0.0) as f32;
+            let ops: Vec<DrawOp> = serde_json::from_value(v.get("ops").cloned().unwrap_or_default()).map_err(|e| e.to_string())?;
+            Ok((dim("w"), dim("h"), ops))
+        });
+        if result.is_err() && host.child.try_wait().ok().flatten().is_some() {
+            // The host is gone: say so until the next build brings a new one.
+            self.host = None;
+            self.status = Status::Failed;
+            self.error = result.clone().err();
+            self.cache.clear();
+            return result;
+        }
+        if self.cache.len() > 512 {
+            self.cache.clear();
+        }
+        self.cache.insert(key, result.clone());
+        result
+    }
+}
+
+type Shared = Arc<Mutex<ModState>>;
+
+fn mods() -> &'static Mutex<HashMap<PathBuf, Shared>> {
+    static M: OnceLock<Mutex<HashMap<PathBuf, Shared>>> = OnceLock::new();
+    M.get_or_init(Default::default)
+}
+
+fn state(root: &Path) -> Shared {
+    mods().lock().unwrap_or_else(PoisonError::into_inner).entry(root.to_path_buf()).or_insert_with(|| Arc::new(Mutex::new(ModState::new()))).clone()
+}
+
+fn lock(s: &Shared) -> std::sync::MutexGuard<'_, ModState> {
+    s.lock().unwrap_or_else(PoisonError::into_inner)
+}
+
+/// The mod's Rust sources, `yog.toml` and resources — what the library is built from.
+fn sources(root: &Path) -> Vec<PathBuf> {
+    let mut out = vec![root.join("yog.toml")];
+    for dir in ["src", "resources"] {
+        let walk = ignore::WalkBuilder::new(root.join(dir)).hidden(false).build();
+        for entry in walk.flatten() {
+            let p = entry.path();
+            let ext = p.extension().and_then(|e| e.to_str()).unwrap_or_default();
+            let name = p.file_name().and_then(|n| n.to_str()).unwrap_or_default();
+            if p.is_file() && matches!(ext, "rs" | "toml" | "yres" | "json" | "png") && !name.ends_with(".designer.rs") {
+                out.push(p.to_path_buf());
+            }
+        }
+    }
+    out.sort();
+    out
+}
+
+fn fingerprint(files: &[PathBuf]) -> u64 {
+    let mut h = DefaultHasher::new();
+    for f in files {
+        f.hash(&mut h);
+        if let Ok(m) = std::fs::metadata(f) {
+            m.len().hash(&mut h);
+            m.modified().ok().and_then(|t| t.duration_since(SystemTime::UNIX_EPOCH).ok()).hash(&mut h);
+        }
+    }
+    h.finish()
+}
+
+fn declares_components(files: &[PathBuf]) -> bool {
+    files
+        .iter()
+        .filter(|f| f.extension().is_some_and(|e| e == "rs"))
+        .any(|f| std::fs::read_to_string(f).is_ok_and(|s| s.contains("ui_component!")))
+}
+
+fn mod_name(root: &Path) -> String {
+    let toml = std::fs::read_to_string(root.join("yog.toml")).unwrap_or_default();
+    let field = |key: &str| {
+        toml.lines()
+            .map(str::trim)
+            .find_map(|l| l.strip_prefix(key).map(str::trim_start).and_then(|r| r.strip_prefix('=')).map(|v| v.trim().trim_matches('"').to_string()))
+    };
+    // `@Strings.x` names a resource text — the id reads better than the reference.
+    field("name").filter(|n| !n.is_empty() && !n.starts_with('@')).or_else(|| field("id")).unwrap_or_else(|| {
+        root.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default()
+    })
+}
+
+/// The mod's components and the library's state; starts a rebuild (and
+/// host restart) when the sources changed and have been quiet a moment.
+/// Cheap enough to poll.
+pub fn status(root: &Path) -> Snapshot {
+    let shared = state(root);
+    let files = sources(root);
+    let fp = fingerprint(&files);
+    let mut s = lock(&shared);
+    if s.mod_name.is_empty() {
+        s.mod_name = mod_name(root);
+    }
+    if s.building || s.built == Some(fp) {
+        return s.snapshot();
+    }
+    if !declares_components(&files) {
+        s.status = Status::None;
+        s.error = None;
+        s.components.clear();
+        s.host = None;
+        s.built = Some(fp);
+        return s.snapshot();
+    }
+    let now = Instant::now();
+    match s.seen {
+        Some((seen, since)) if seen == fp => {
+            if now.duration_since(since) < DEBOUNCE && s.built.is_some() {
+                return s.snapshot();
+            }
+        }
+        _ => {
+            s.seen = Some((fp, now));
+            if s.built.is_some() {
+                return s.snapshot();
+            }
+        }
+    }
+    s.building = true;
+    s.status = Status::Building;
+    s.mod_name = mod_name(root);
+    let snapshot = s.snapshot();
+    drop(s);
+    let root = root.to_path_buf();
+    std::thread::spawn(move || rebuild(&root, &shared, fp));
+    snapshot
+}
+
+/// `yog designer-lib`, then a fresh host on a copy of the library (cargo
+/// may overwrite the original while the host has it loaded).
+fn rebuild(root: &Path, shared: &Shared, fp: u64) {
+    let result = build_lib(root).and_then(|lib| {
+        let generation = lock(shared).generation + 1;
+        let copy = std::env::temp_dir().join("yog-idle-designer").join(format!(
+            "{}-{}-{generation}{}",
+            lib.file_stem().unwrap_or_default().to_string_lossy(),
+            std::process::id(),
+            lib.extension().map(|e| format!(".{}", e.to_string_lossy())).unwrap_or_default()
+        ));
+        std::fs::create_dir_all(copy.parent().unwrap_or(Path::new("."))).map_err(|e| e.to_string())?;
+        std::fs::copy(&lib, &copy).map_err(|e| format!("copying {}: {e}", lib.display()))?;
+        HostProc::spawn(&copy, root).inspect_err(|_| {
+            let _ = std::fs::remove_file(&copy);
+        })
+    });
+    let mut s = lock(shared);
+    s.building = false;
+    s.built = Some(fp);
+    s.generation += 1;
+    s.cache.clear();
+    match result {
+        Ok((host, components)) => {
+            s.host = Some(host);
+            s.components = components;
+            s.status = Status::Ready;
+            s.error = None;
+        }
+        Err(e) => {
+            s.host = None;
+            s.status = Status::Failed;
+            s.error = Some(e);
+        }
+    }
+}
+
+fn build_lib(root: &Path) -> Result<PathBuf, String> {
+    let out = Command::new("yog")
+        .arg("designer-lib")
+        .current_dir(root)
+        .stdin(Stdio::null())
+        .output()
+        .map_err(|e| format!("failed to run yog: {e}"))?;
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    if out.status.success() {
+        let path = stdout.lines().map(str::trim).rfind(|l| !l.is_empty()).unwrap_or_default();
+        return if Path::new(path).is_file() { Ok(PathBuf::from(path)) } else { Err(format!("yog designer-lib gave no library path:\n{stdout}")) };
+    }
+    if stderr.contains("unknown command: designer-lib") {
+        return Err("this yog CLI can't build designer libraries — update it (Tools → Environment, or `cargo install yog-cli`)".into());
+    }
+    Err(build_errors(&stderr))
+}
+
+/// Cargo's errors (each with its location), else the output's tail.
+fn build_errors(stderr: &str) -> String {
+    let lines: Vec<&str> = stderr.lines().collect();
+    let mut out = Vec::new();
+    for (i, l) in lines.iter().enumerate() {
+        if l.starts_with("error") && !l.starts_with("error: could not compile") {
+            out.push(l.to_string());
+            if let Some(at) = lines.get(i + 1).filter(|n| n.trim_start().starts_with("-->")) {
+                out.push(at.trim().to_string());
+            }
+        }
+    }
+    if out.is_empty() {
+        out = lines.iter().rev().take(15).rev().map(|l| l.to_string()).collect();
+    }
+    let text = out.join("\n");
+    if text.trim().is_empty() { "building the designer library failed".into() } else { text.chars().take(4000).collect() }
+}
+
+// ── Fitting components into the picture ────────────────────────────────────────
+
+/// A custom element of the document being drawn.
+struct Slot {
+    uid: String,
+    marker: u32,
+    req: RenderReq,
+    /// Why it can't be drawn (placeholder text).
+    problem: Option<String>,
+}
+
+/// The document with custom elements replaced by marked spacers.
+pub struct Prepared {
+    pub root: YuiNode,
+    slots: Vec<Slot>,
+    mod_root: Option<PathBuf>,
+}
+
+impl Prepared {
+    pub fn is_empty(&self) -> bool {
+        self.slots.is_empty()
+    }
+}
+
+fn marker(i: usize) -> u32 {
+    // Alpha 1: never a real color in a .yui, invisible if left behind.
+    0x01_D0_0000 | (i as u32 & 0xFFFF)
+}
+
+fn px(v: Option<&str>) -> Option<f32> {
+    let v = v?.trim();
+    if v.ends_with('%') { None } else { v.parse().ok() }
+}
+
+/// Measures each custom element through the host (its natural size, when
+/// the element doesn't size it in px) and swaps it for a marked spacer.
+pub fn prepare(root: &YuiNode, mod_root: Option<&Path>, screen_w: f32, screen_h: f32) -> Prepared {
+    let mut prepared = Prepared { root: root.clone(), slots: Vec::new(), mod_root: mod_root.map(Path::to_path_buf) };
+    if !has_custom(root) {
+        return prepared;
+    }
+    let snapshot = mod_root.map(status);
+    let shared = mod_root.map(state);
+    let mut slots = Vec::new();
+    replace(&mut prepared.root, &mut |node| {
+        let name = node.kind.clone();
+        let props: Vec<(String, String)> = node.attrs.iter().filter(|(k, _)| !LAYOUT_ATTRS.contains(&k.as_str())).map(|(k, v)| (k.clone(), v.clone())).collect();
+        let (w, h) = (px(node.attr("w")), px(node.attr("h")));
+        let req = RenderReq { name: name.clone(), props, w: w.unwrap_or(0.0), h: h.unwrap_or(0.0), avail_w: screen_w, avail_h: screen_h };
+        let problem = match &snapshot {
+            None => Some("not inside a mod (no src/ folder)".to_string()),
+            Some(s) => match s.status {
+                Status::Building => Some("Building designer library…".to_string()),
+                Status::Failed => Some(format!("The designer could not load the mod's library:\n{}", s.error.clone().unwrap_or_default())),
+                Status::None => Some(format!("no component <{name}> — declare it with yog_api::ui_component!")),
+                Status::Ready if !s.components.iter().any(|c| c.name == name) => Some(format!("no component <{name}> in this mod")),
+                Status::Ready => None,
+            },
+        };
+        let (mut nw, mut nh) = (w.unwrap_or(80.0), h.unwrap_or(if problem.is_some() { 24.0 } else { 20.0 }));
+        let problem = match (problem, &shared) {
+            (None, Some(sh)) if w.is_none() || h.is_none() => match lock(sh).render(&req) {
+                Ok((mw, mh, _)) => {
+                    nw = w.unwrap_or(mw);
+                    nh = h.unwrap_or(mh);
+                    None
+                }
+                Err(e) => Some(e),
+            },
+            (p, _) => p,
+        };
+        let i = slots.len();
+        let mut attrs: HashMap<String, String> = node.attrs.iter().filter(|(k, _)| LAYOUT_ATTRS.contains(&k.as_str())).map(|(k, v)| (k.clone(), v.clone())).collect();
+        attrs.entry("w".into()).or_insert_with(|| nw.to_string());
+        attrs.entry("h".into()).or_insert_with(|| nh.to_string());
+        attrs.insert("bg".into(), format!("#{:08X}", marker(i)));
+        slots.push(Slot { uid: node.uid.clone(), marker: marker(i), req, problem });
+        *node = YuiNode { uid: node.uid.clone(), kind: "Spacer".into(), attrs, children: Vec::new() };
+    });
+    prepared.slots = slots;
+    prepared
+}
+
+fn has_custom(node: &YuiNode) -> bool {
+    is_component(&node.kind) || node.children.iter().any(has_custom)
+}
+
+fn replace(node: &mut YuiNode, f: &mut impl FnMut(&mut YuiNode)) {
+    if is_component(&node.kind) {
+        f(node);
+        return;
+    }
+    for child in &mut node.children {
+        replace(child, f);
+    }
+}
+
+/// Replaces each marker fill in `ops` with the component drawn at its
+/// element's laid-out rect (`rects`: uid → `x y w h`), clipped to the part
+/// that was visible (the marker fill, already cut to scroll views).
+pub fn splice(ops: &mut Vec<DrawOp>, prepared: &Prepared, rects: &HashMap<String, [f32; 4]>) {
+    if prepared.slots.is_empty() {
+        return;
+    }
+    let shared = prepared.mod_root.as_deref().map(state);
+    let mut out = Vec::with_capacity(ops.len());
+    for op in ops.drain(..) {
+        let DrawOp::Rect { x1, y1, x2, y2, color } = op else {
+            out.push(op);
+            continue;
+        };
+        let Some(slot) = prepared.slots.iter().find(|s| s.marker == color) else {
+            out.push(op);
+            continue;
+        };
+        let [x, y, w, h] = rects.get(&slot.uid).copied().unwrap_or([x1, y1, x2 - x1, y2 - y1]);
+        let drawn = match (&slot.problem, &shared) {
+            (Some(p), _) => Err(p.clone()),
+            (None, None) => Err("not inside a mod".into()),
+            (None, Some(sh)) => lock(sh).render(&RenderReq { w, h, ..slot.req.clone() }).map(|(_, _, ops)| ops),
+        };
+        let inner = drawn.unwrap_or_else(|e| placeholder(&slot.req.name, &e, w, h));
+        out.push(DrawOp::Scissor { x: x1.floor() as i32, y: y1.floor() as i32, w: (x2.ceil() - x1.floor()) as i32, h: (y2.ceil() - y1.floor()) as i32 });
+        out.extend(inner.into_iter().map(|o| translate(o, x, y)));
+        out.push(DrawOp::ClearScissor);
+    }
+    *ops = out;
+}
+
+fn translate(op: DrawOp, dx: f32, dy: f32) -> DrawOp {
+    match op {
+        DrawOp::Rect { x1, y1, x2, y2, color } => DrawOp::Rect { x1: x1 + dx, y1: y1 + dy, x2: x2 + dx, y2: y2 + dy, color },
+        DrawOp::Gradient { x1, y1, x2, y2, top, bottom } => DrawOp::Gradient { x1: x1 + dx, y1: y1 + dy, x2: x2 + dx, y2: y2 + dy, top, bottom },
+        DrawOp::Text { text, font, x, y, color, shadow } => DrawOp::Text { text, font, x: x + dx, y: y + dy, color, shadow },
+        DrawOp::Texture { id, x, y, u0, v0, w, h, tw, th } => DrawOp::Texture { id, x: x + dx, y: y + dy, u0, v0, w, h, tw, th },
+        DrawOp::Item { id, x, y, size } => DrawOp::Item { id, x: x + dx, y: y + dy, size },
+        DrawOp::Image { source, x, y, w, h, region, tint } => DrawOp::Image { source, x: x + dx, y: y + dy, w, h, region, tint },
+        // yog-ui clips in software; a component's own scissor would undo the slot's.
+        DrawOp::Scissor { .. } | DrawOp::ClearScissor => DrawOp::Rect { x1: 0.0, y1: 0.0, x2: 0.0, y2: 0.0, color: 0 },
+    }
+}
+
+/// The box shown for a component that can't be drawn: its name and why.
+pub fn placeholder(name: &str, message: &str, w: f32, h: f32) -> Vec<DrawOp> {
+    let building = message.starts_with("Building");
+    let border = if building { 0xFF_8080B0 } else { 0xFF_E05050 };
+    let mut ops = vec![
+        DrawOp::Rect { x1: 0.0, y1: 0.0, x2: w, y2: h, color: 0xD0_202028 },
+        DrawOp::Rect { x1: 0.0, y1: 0.0, x2: w, y2: 1.0, color: border },
+        DrawOp::Rect { x1: 0.0, y1: h - 1.0, x2: w, y2: h, color: border },
+        DrawOp::Rect { x1: 0.0, y1: 0.0, x2: 1.0, y2: h, color: border },
+        DrawOp::Rect { x1: w - 1.0, y1: 0.0, x2: w, y2: h, color: border },
+    ];
+    let cols = (((w - 6.0) / 6.0).floor() as usize).max(4);
+    let mut lines = vec![format!("<{name}>")];
+    for l in message.lines() {
+        let chars: Vec<char> = l.chars().collect();
+        lines.extend(chars.chunks(cols).map(|c| c.iter().collect::<String>()));
+    }
+    for (i, line) in lines.iter().enumerate() {
+        let y = 3.0 + i as f32 * 10.0;
+        if y + 8.0 > h {
+            break;
+        }
+        let color = if i == 0 { 0xFF_FFFFFF } else if building { 0xFF_B0B0D0 } else { 0xFF_FF9090 };
+        ops.push(DrawOp::Text { text: line.clone(), font: "minecraft:default".into(), x: 3.0, y, color, shadow: false });
+    }
+    ops
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn node(uid: &str, kind: &str, attrs: &[(&str, &str)], children: Vec<YuiNode>) -> YuiNode {
+        YuiNode { uid: uid.into(), kind: kind.into(), attrs: attrs.iter().map(|(k, v)| (k.to_string(), v.to_string())).collect(), children }
+    }
+
+    #[test]
+    fn custom_elements_become_marked_spacers_with_placeholders() {
+        let root = node(
+            "s",
+            "Screen",
+            &[("width", "100"), ("height", "60")],
+            vec![node("c", "StatBar", &[("x", "4"), ("y", "6"), ("w", "50"), ("value", "0.5")], vec![]), node("l", "Label", &[("text", "hi")], vec![])],
+        );
+        assert!(is_component("StatBar") && !is_component("Label") && !is_component("statBar"));
+        let p = prepare(&root, None, 200.0, 100.0);
+        let c = &p.root.children[0];
+        assert_eq!(c.kind, "Spacer");
+        assert_eq!(c.attr("w"), Some("50"));
+        assert_eq!(c.attr("h"), Some("24"));
+        assert_eq!(c.attr("bg"), Some("#01D00000"));
+        assert!(c.attr("value").is_none());
+        assert_eq!(p.slots[0].req.props, vec![("value".to_string(), "0.5".to_string())]);
+
+        let mut ops = vec![DrawOp::Rect { x1: 4.0, y1: 6.0, x2: 54.0, y2: 30.0, color: marker(0) }, DrawOp::ClearScissor];
+        let rects = HashMap::from([("c".to_string(), [4.0, 6.0, 50.0, 24.0])]);
+        splice(&mut ops, &p, &rects);
+        assert!(matches!(ops[0], DrawOp::Scissor { x: 4, y: 6, w: 50, h: 24 }));
+        assert!(ops.iter().any(|o| matches!(o, DrawOp::Text { text, x, .. } if text == "<StatBar>" && *x == 7.0)));
+    }
+
+    #[test]
+    fn cargo_errors_are_picked_out() {
+        let e = build_errors("   Compiling x\nerror[E0425]: cannot find value `y`\n  --> src/lib.rs:3:5\n   |\nerror: could not compile `x`\n");
+        assert_eq!(e, "error[E0425]: cannot find value `y`\n--> src/lib.rs:3:5");
+    }
+}
