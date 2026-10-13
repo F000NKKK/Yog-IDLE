@@ -1,30 +1,23 @@
 //! `<Image>` in the designer: Yog image sources (`item:apple`,
 //! `sprite:button`, `mod:gui/logo`, `mymod:gui/logo` — see
-//! [`yog_image`](super::yog_image)) resolved against the local game files
-//! and the mod's `assets/`, the way the Yog runtime resolves them in game.
-//!
-//! The published yog-ui (0.35) only has `McImage` (a raw texture blit at
-//! its natural size), so an `<Image>` is built as an `McImage` whose id
-//! carries the whole element ([`encode`]), resized to its laid-out content
-//! box ([`fit_to_layout`]); the recording `draw2d_mc_tex` turns it back into
-//! a [`DrawOp::Image`](super::raster::DrawOp::Image) and the rasterizer draws
-//! it here ([`draw`]). With yog-ui 0.36 on crates.io this becomes
-//! `widget::image(..)` + `draw2d_image`, same as the generated code.
+//! `yog_gfx::image`) resolved against the local game files and the mod's
+//! `assets/`, the way the Yog runtime resolves them in game: yog-ui's
+//! `Image` widget lays out and fits the picture, then calls `draw2d_image`
+//! / `image_size`, which the recording table (`gfx`) answers from here.
+//! Also the Properties window's `source` picker ([`candidates`],
+//! [`preview`]).
 
 use std::cell::RefCell;
 use std::path::Path;
 use std::sync::Arc;
 
-use yog_ui::layout::LayoutNode;
-use yog_ui::widget::{Widget, WidgetKind};
+use yog_gfx::image::{fit, sprite as find_sprite, ImageSource, LegacyRegion, Sprite, Stretch, SPRITES};
+use yog_ui::widget::{self, Widget};
+use yog_ui::Units;
 
 use super::assets::{split_id, Image, Resources};
 use super::markup::{color, YuiNode};
 use super::raster::Canvas;
-use super::yog_image::{self as yi, fit, ImageSource, LegacyRegion, Sprite, Stretch};
-
-/// Prefix of an encoded `<Image>` in an `McImage` id.
-const PREFIX: &str = "yog-image:";
 
 struct Doc {
     res: Resources,
@@ -42,26 +35,36 @@ fn mod_id(root: &Path) -> Option<String> {
     doc.get("mod")?.get("id")?.as_str().map(str::to_string)
 }
 
-/// The `.yui` being laid out (for `mod:` sources and image sizes).
+/// The `.yui` being laid out and drawn: its mod's resources (images, fonts)
+/// and id (for `mod:` sources). Set before every layout.
 pub fn set_document(mod_root: Option<&Path>) {
     let doc = Doc { res: Resources::for_mod(mod_root), mod_id: mod_root.and_then(mod_id) };
     DOC.with(|d| *d.borrow_mut() = Some(doc));
+}
+
+/// The current document's resources (vanilla only without one).
+pub fn resources() -> Resources {
+    DOC.with(|d| d.borrow().as_ref().map(|d| d.res.clone())).unwrap_or_else(|| Resources::for_mod(None))
 }
 
 fn with_doc<R>(f: impl FnOnce(Option<&Doc>) -> R) -> R {
     DOC.with(|d| f(d.borrow().as_ref()))
 }
 
-/// What an `<Image>` asks for (the `.yui` attributes, parsed).
-#[derive(Debug, Clone, PartialEq)]
-pub struct Spec {
-    pub source: String,
-    pub stretch: Stretch,
-    /// Source region `u v w h` in image pixels.
-    pub uv: Option<[f32; 4]>,
-    pub tint: u32,
+/// `mod:<path>` → `<mod id>:<path>` (what `yog build` writes into the
+/// generated code); other sources unchanged.
+pub fn resolve_mod(source: &str) -> String {
+    let source = source.trim();
+    match source.strip_prefix("mod:") {
+        Some(path) => match with_doc(|d| d.and_then(|d| d.mod_id.clone())) {
+            Some(id) => format!("{id}:{path}"),
+            None => source.to_string(),
+        },
+        None => source.to_string(),
+    }
 }
 
+/// `stretch` attribute → [`Stretch`] (case-insensitive, like `yog build`).
 pub fn stretch(v: &str) -> Stretch {
     match v.trim().to_ascii_lowercase().as_str() {
         "none" => Stretch::None,
@@ -71,82 +74,36 @@ pub fn stretch(v: &str) -> Stretch {
     }
 }
 
+/// `uv="u v w h"`.
 fn uv(v: &str) -> Option<[f32; 4]> {
     let p: Vec<f32> = v.split([' ', ',']).filter(|s| !s.is_empty()).map(|s| s.parse().ok()).collect::<Option<_>>()?;
     <[f32; 4]>::try_from(p).ok().filter(|r| r[2] > 0.0 && r[3] > 0.0)
 }
 
-impl Spec {
-    /// From an `<Image>` node: `source` (or the deprecated `texture`),
-    /// `stretch`, `uv`, `tint`.
-    pub fn of(node: &YuiNode) -> Spec {
-        let source = node.attr("source").or_else(|| node.attr("texture")).unwrap_or_default().trim().to_string();
-        Spec {
-            source,
-            stretch: node.attr("stretch").map(stretch).unwrap_or_default(),
-            uv: node.attr("uv").and_then(uv),
-            tint: node.attr("tint").and_then(color).unwrap_or(0xFFFF_FFFF),
-        }
-    }
-
-    fn encode(&self) -> String {
-        let uv = self.uv.map_or("-".to_string(), |[u, v, w, h]| format!("{u},{v},{w},{h}"));
-        format!("{PREFIX}{}|{uv}|{:08X}|{}", self.stretch as u8, self.tint, self.source)
-    }
-
-    pub fn decode(id: &str) -> Option<Spec> {
-        let mut parts = id.strip_prefix(PREFIX)?.splitn(4, '|');
-        let stretch = match parts.next()? {
-            "0" => Stretch::None,
-            "1" => Stretch::Fill,
-            "3" => Stretch::UniformToFill,
-            _ => Stretch::Uniform,
-        };
-        let uv = uv(parts.next()?);
-        let tint = u32::from_str_radix(parts.next()?, 16).ok()?;
-        Some(Spec { source: parts.next()?.to_string(), stretch, uv, tint })
-    }
-
-    /// Natural size: the `uv` region's, else the source's.
-    fn natural_size(&self) -> (f32, f32) {
-        match self.uv {
-            Some([_, _, w, h]) => (w, h),
-            None => source_size(&self.source),
-        }
-    }
-}
-
-/// The widget for an `<Image>` (sized to its natural size until laid out).
+/// The widget for an `<Image>` — what the generated code builds: `source`
+/// (or the deprecated `texture`), `stretch`, `uv`, `tint`; the deprecated
+/// `tex_w`/`tex_h` are the default `w`/`h`.
 pub fn widget(node: &YuiNode) -> Widget {
-    let spec = Spec::of(node);
-    let (w, h) = spec.natural_size();
-    yog_ui::widget::mc_image(spec.encode(), w, h)
-}
-
-/// Sets each image's drawn size to its laid-out content box.
-pub fn fit_to_layout(w: &mut Widget, l: &LayoutNode) {
-    if let WidgetKind::McImage { id, img_w, img_h } = &mut w.kind
-        && id.starts_with(PREFIX)
-    {
-        let p = w.style.pad;
-        *img_w = (l.rect.w - p[1] - p[3]).max(0.0);
-        *img_h = (l.rect.h - p[0] - p[2]).max(0.0);
+    let a = |k: &str| node.attr(k);
+    let source = a("source").or_else(|| a("texture")).unwrap_or_default();
+    let mut w = widget::image(resolve_mod(source));
+    if let Some(s) = a("stretch") {
+        w = w.stretch(stretch(s));
     }
-    for (cw, cl) in w.children.iter_mut().zip(&l.children) {
-        fit_to_layout(cw, cl);
+    if let Some(r) = a("uv").and_then(uv) {
+        w = w.region(r);
     }
-}
-
-/// A source with `mod:` filled in from the document's mod id.
-fn resolve(source: &str) -> Option<ImageSource> {
-    let parsed = ImageSource::parse(source)?;
-    match parsed {
-        ImageSource::ModPath(path) => {
-            let id = with_doc(|d| d.and_then(|d| d.mod_id.clone()))?;
-            Some(ImageSource::ModPath(path).with_mod_id(&id))
-        }
-        other => Some(other),
+    if let Some(t) = a("tint").and_then(color) {
+        w = w.tint(t);
     }
+    let num = |k: &str| a(k).and_then(|v| v.trim().parse::<f32>().ok());
+    if a("w").is_none() && let Some(v) = num("tex_w") {
+        w = w.w(Units::Px(v));
+    }
+    if a("h").is_none() && let Some(v) = num("tex_h") {
+        w = w.h(Units::Px(v));
+    }
+    w
 }
 
 fn texture(id: &str) -> Option<Arc<Image>> {
@@ -173,12 +130,14 @@ fn item_texture(id: &str, block: bool) -> Option<Arc<Image>> {
     order.into_iter().find_map(|t| texture(t))
 }
 
-/// Natural size of `source` in GUI pixels.
-pub fn source_size(source: &str) -> (f32, f32) {
-    match resolve(source) {
-        Some(ImageSource::Sprite(name)) => yi::sprite(&name).map_or((16.0, 16.0), |s| s.size(has_atlas())),
-        Some(ImageSource::Texture(id)) => texture(&id).map_or((16.0, 16.0), |i| (i.w as f32, i.h as f32)),
-        _ => (16.0, 16.0),
+/// Natural size of `source` in GUI pixels (`image_size`); `None` when it
+/// can't be resolved.
+pub fn source_size(source: &str) -> Option<(f32, f32)> {
+    match ImageSource::parse(source)? {
+        ImageSource::Item(_) | ImageSource::Block(_) => Some((16.0, 16.0)),
+        ImageSource::Sprite(name) => find_sprite(&name).map(|s| s.size(has_atlas())),
+        ImageSource::Texture(id) => texture(&id).map(|i| (i.w as f32, i.h as f32)),
+        ImageSource::ModPath(_) => None,
     }
 }
 
@@ -234,7 +193,9 @@ fn sprite(c: &mut Canvas, sp: &Sprite, dest: [f32; 4], t: u32) {
     if let Some(atlas) = sp.atlas
         && let Some(img) = texture(&format!("minecraft:textures/gui/sprites/{atlas}.png"))
     {
-        nine_slice(c, &img, [0.0, 0.0, img.w as f32, img.h.min(img.w.max(1) * 64) as f32], sp.border, dest, t);
+        // Animated sprites stack their frames vertically: the first one.
+        let frame_h = if img.h > img.w && sp.h <= sp.w { img.w as f32 * sp.h / sp.w } else { img.h as f32 };
+        nine_slice(c, &img, [0.0, 0.0, img.w as f32, frame_h], sp.border, dest, t);
         return;
     }
     if let Some(LegacyRegion { texture: tex, u, v, w, h, tex_w, .. }) = sp.legacy
@@ -252,41 +213,33 @@ fn missing(c: &mut Canvas, dest: [f32; 4]) {
     blit_px(c, &Image::missing(), dest, [0.0, 0.0, 16.0, 16.0], 0xFFFF_FFFF);
 }
 
-/// Draws an `<Image>` into its content box `x, y, w, h`.
-pub fn draw(c: &mut Canvas, spec: &Spec, x: f32, y: f32, w: f32, h: f32) {
-    let source = resolve(&spec.source);
-    let whole = matches!(source, Some(ImageSource::Item(_) | ImageSource::Block(_) | ImageSource::Sprite(_)));
-    let stretch = match spec.stretch {
-        Stretch::UniformToFill if whole => Stretch::Uniform,
-        s => s,
-    };
-    let (nw, nh) = spec.natural_size();
-    let ([dx, dy, dw, dh], [u0, v0, u1, v1]) = fit(stretch, nw, nh, x, y, w, h);
-    let dest = [dx, dy, dw, dh];
-    if dw <= 0.0 || dh <= 0.0 {
+/// `draw2d_image`: `source` into `dest` (`x y w h`, already fitted by
+/// yog-ui); `region` `u v w h` in image pixels (`w <= 0`: whole image).
+pub fn draw(c: &mut Canvas, source: &str, dest: [f32; 4], region: [f32; 4], t: u32) {
+    if dest[2] <= 0.0 || dest[3] <= 0.0 {
         return;
     }
-    match source {
+    let first_frame = |img: &Image| [0.0, 0.0, img.w as f32, img.w.min(img.h) as f32];
+    match ImageSource::parse(source) {
         Some(ImageSource::Item(id)) => match item_texture(&id, false) {
-            Some(img) => blit_px(c, &img, dest, [0.0, 0.0, img.w as f32, img.w.min(img.h) as f32], spec.tint),
+            Some(img) => blit_px(c, &img, dest, first_frame(&img), 0xFFFF_FFFF),
             None => missing(c, dest),
         },
         Some(ImageSource::Block(id)) => match item_texture(&id, true) {
-            Some(img) => blit_px(c, &img, dest, [0.0, 0.0, img.w as f32, img.w.min(img.h) as f32], spec.tint),
+            Some(img) => blit_px(c, &img, dest, first_frame(&img), 0xFFFF_FFFF),
             None => missing(c, dest),
         },
-        Some(ImageSource::Sprite(name)) => match yi::sprite(&name) {
-            Some(sp) => sprite(c, sp, dest, spec.tint),
+        Some(ImageSource::Sprite(name)) => match find_sprite(&name) {
+            Some(sp) => sprite(c, sp, dest, t),
             None => match name.split_once(':').and_then(|(ns, p)| texture(&format!("{ns}:textures/gui/sprites/{p}.png"))) {
-                Some(img) => blit_px(c, &img, dest, [0.0, 0.0, img.w as f32, img.h as f32], spec.tint),
+                Some(img) => blit_px(c, &img, dest, [0.0, 0.0, img.w as f32, img.h as f32], t),
                 None => missing(c, dest),
             },
         },
         Some(ImageSource::Texture(id)) => match texture(&id) {
             Some(img) => {
-                let [ru, rv, rw, rh] = spec.uv.unwrap_or([0.0, 0.0, img.w as f32, img.h as f32]);
-                let src = [ru + u0 * rw, rv + v0 * rh, (u1 - u0) * rw, (v1 - v0) * rh];
-                blit_px(c, &img, dest, src, spec.tint);
+                let src = if region[2] > 0.0 && region[3] > 0.0 { region } else { [0.0, 0.0, img.w as f32, img.h as f32] };
+                blit_px(c, &img, dest, src, t);
             }
             None => missing(c, dest),
         },
@@ -334,7 +287,7 @@ pub fn candidates(path: &Path) -> Vec<Candidate> {
         own.dedup();
         out.extend(own.into_iter().map(|p| Candidate { source: format!("mod:{p}"), group: "mod".into(), detail: format!("assets/{id}/textures/{p}.png") }));
     }
-    out.extend(yi::SPRITES.iter().map(|s| Candidate {
+    out.extend(SPRITES.iter().map(|s| Candidate {
         source: format!("sprite:{}", s.name),
         group: "sprite".into(),
         detail: format!("{} ({}×{})", s.description, s.w, s.h),
@@ -356,8 +309,10 @@ pub fn preview(path: &Path, source: &str, size: u32) -> Option<String> {
     let size = size.clamp(8, 256);
     let res = Resources::for_mod(root.as_deref());
     let mut c = Canvas::new(size, size, 1, &res);
-    let spec = Spec { source: source.to_string(), stretch: Stretch::Uniform, uv: None, tint: 0xFFFF_FFFF };
-    draw(&mut c, &spec, 0.0, 0.0, size as f32, size as f32);
+    let source = resolve_mod(source);
+    let (nw, nh) = source_size(&source).unwrap_or((16.0, 16.0));
+    let ([x, y, w, h], _) = fit(Stretch::Uniform, nw, nh, 0.0, 0.0, size as f32, size as f32);
+    draw(&mut c, &source, [x, y, w, h], [0.0; 4], 0xFFFF_FFFF);
     let png = c.png().ok()?;
     Some(format!("data:image/png;base64,{}", base64::engine::general_purpose::STANDARD.encode(png)))
 }
@@ -368,11 +323,14 @@ mod tests {
     use super::*;
 
     #[test]
-    fn specs_round_trip() {
-        let spec = Spec { source: "item:apple".into(), stretch: Stretch::Fill, uv: Some([1.0, 2.0, 3.0, 4.0]), tint: 0x80FF_0000 };
-        assert_eq!(Spec::decode(&spec.encode()), Some(spec));
+    fn attributes_parse_like_yog_build() {
         assert_eq!(stretch("UniformToFill"), Stretch::UniformToFill);
+        assert_eq!(stretch("fill"), Stretch::Fill);
         assert_eq!(stretch("bogus"), Stretch::Uniform);
+        assert_eq!(uv("0 0 16 8"), Some([0.0, 0.0, 16.0, 8.0]));
+        assert_eq!(uv("0 0 0 8"), None);
+        assert_eq!(source_size("item:apple"), Some((16.0, 16.0)));
+        assert_eq!(source_size("nonsense"), None);
     }
 
     /// `YOG_IMAGES_PNG=out.png cargo test --lib designer::images -- --ignored`:
