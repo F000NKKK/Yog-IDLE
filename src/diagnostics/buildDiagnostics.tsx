@@ -32,6 +32,9 @@ function parsersFor(root: string, project: string | undefined): BuildParsers {
  */
 export function BuildDiagnosticsSync({ root, project }: { root: string | null; project?: string }) {
   useEffect(() => {
+    // Another project (or none): the previous one's diagnostics don't apply.
+    setDiagnostics(BUILD_SET, []);
+    clearLiveDiagnostics();
     let parsers: BuildParsers | null = null;
     let pending: Diagnostic[] = [];
     let timer: ReturnType<typeof setTimeout> | undefined;
@@ -79,16 +82,12 @@ export function BuildDiagnosticsSync({ root, project }: { root: string | null; p
 
 /**
  * A saved `.yui`/`.yres`/`.yblock`/`.yitem` file's check (see
- * `regenerateScreen`): `log` is yog's output — an error message, or its
- * warnings on success. Replaces that file's live set.
+ * `regenerateScreen`): `log` is yog's output in folder `root` — its error
+ * and warnings. Replaces that file's live set.
  */
-export function setSavedFileDiagnostics(path: string, root: string, log: string, failed: boolean): void {
+export function setSavedFileDiagnostics(path: string, root: string, log: string): void {
   const parser = createYogParser({ root, origin: "live" });
-  const lines = log.split("\n");
-  // `yui_codegen` strips the `yog: error: ` prefix from a failure's lines —
-  // put it back on the unindented ones (progress lines start with `==>`).
-  const restore = (line: string) => (failed && /^[^\s=]/.test(line) && !line.startsWith("yog: error: ") ? `yog: error: ${line}` : line);
-  const items = lines.flatMap((line) => parser.push(restore(line)));
+  const items = log.split("\n").flatMap((line) => parser.push(line));
   // A failure that names no file is still about this one.
   setDiagnostics(liveSet(path), items.map((d) => (d.file ? d : { ...d, file: path })));
 }

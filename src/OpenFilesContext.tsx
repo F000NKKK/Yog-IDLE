@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ComponentType, type ReactNode } from "react";
 import { invalidateDesignResources } from "./lang/designResources";
+import { setSavedFileDiagnostics } from "./diagnostics/buildDiagnostics";
 import { invoke } from "@tauri-apps/api/core";
 import {
   editorProviderById,
@@ -210,9 +211,14 @@ async function askToSave(names: string[]): Promise<string> {
  * so the code-behind sees it without a build.
  */
 function regenerateScreen(path: string) {
-  invoke<string>("yui_codegen", { path }).catch((err) =>
-    notify({ level: "warn", message: t("Couldn't generate the code for {name}: {error}", { name: baseName(path), error: String(err) }) })
-  );
+  const fail = (error: string) =>
+    notify({ level: "warn", message: t("Couldn't generate the code for {name}: {error}", { name: baseName(path), error }) });
+  invoke<{ error: string | null; log: string; root: string }>("yui_codegen", { path })
+    .then(({ error, log, root }) => {
+      setSavedFileDiagnostics(path, root, log);
+      if (error) fail(error);
+    })
+    .catch((err) => fail(String(err)));
 }
 
 /**

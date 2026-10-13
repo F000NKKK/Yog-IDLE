@@ -9,9 +9,9 @@ use std::process::Command;
 
 /// Runs `yog ui gen <path>` in the file's folder, so a saved screen's
 /// generated `foo.g.rs` is current without a full build (`yog` finds the
-/// project from the `yog.toml` above the file). `Ok` carries the
-/// generated file's path; `Err` the generator's message (an invalid
-/// attribute, say) or why `yog` couldn't run.
+/// project from the `yog.toml` above the file). The result carries what
+/// `yog` printed either way — its errors and warnings go to the Error List;
+/// `Err` only when `yog` couldn't run at all.
 pub fn codegen(path: &str) -> Result<Codegen, String> {
     let file = PathBuf::from(path);
     let args: &[&str] = match file.extension().and_then(|e| e.to_str()) {
@@ -32,42 +32,48 @@ pub fn codegen(path: &str) -> Result<Codegen, String> {
         .ancestors()
         .skip(1)
         .find(|d| crate::manifest::path(d).is_file());
-    if let Some(dir) = (if args[0] != "ui" { project } else { None })
+    let dir = (if args[0] != "ui" { project } else { None })
         .or(file.parent())
-        .filter(|d| d.is_dir())
-    {
+        .filter(|d| d.is_dir());
+    if let Some(dir) = dir {
         command.current_dir(dir);
     }
     let output = command
         .output()
         .map_err(|e| format!("failed to run yog: {e}"))?;
-    let stderr = String::from_utf8_lossy(&output.stderr);
-    if !output.status.success() {
-        let message = stderr
-            .lines()
-            .map(|l| l.trim_start_matches("yog: error: "))
-            .collect::<Vec<_>>()
-            .join("\n");
-        return Err(if message.trim().is_empty() {
-            format!("yog {} failed ({})", args.join(" "), output.status)
-        } else {
-            message.trim().to_string()
-        });
-    }
+    let log = String::from_utf8_lossy(&output.stderr).into_owned();
+    let ok = output.status.success();
     Ok(Codegen {
         // "==> src/foo.yui -> /project/.yog-build/generated/foo.g.rs"
-        generated: stderr
+        generated: log
             .lines()
             .find_map(|l| l.rsplit_once(" -> ").map(|(_, out)| out.trim().to_string()))
+            .filter(|_| ok)
             .unwrap_or_default(),
-        log: stderr.into_owned(),
+        error: (!ok).then(|| {
+            let message = log
+                .lines()
+                .map(|l| l.trim_start_matches("yog: error: "))
+                .collect::<Vec<_>>()
+                .join("\n");
+            if message.trim().is_empty() {
+                format!("yog {} failed ({})", args.join(" "), output.status)
+            } else {
+                message.trim().to_string()
+            }
+        }),
+        root: dir.map(|d| d.to_string_lossy().into_owned()).unwrap_or_default(),
+        log,
     })
 }
 
-/// A successful regeneration: the generated file, and what `yog` said on
-/// the way — its warnings go to the Error List.
+/// One regeneration: the generated file (empty on failure), the failure's
+/// message, and `yog`'s full output with the folder it ran in — what the
+/// Error List reads the file's errors and warnings from.
 #[derive(serde::Serialize)]
 pub struct Codegen {
     pub generated: String,
+    pub error: Option<String>,
     pub log: String,
+    pub root: String,
 }
