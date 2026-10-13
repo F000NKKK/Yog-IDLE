@@ -174,6 +174,8 @@ export interface LWidget {
   texW: number;
   texH: number;
   style: Style;
+  /** `false` = collapsed (`visible="false"`, or `d:visible` at design time): no space, not drawn — `Widget::visible`. */
+  visible: boolean;
   children: LWidget[];
 }
 
@@ -256,6 +258,11 @@ const LEAF_OF: Record<string, Leaf> = {
   Spacer: "spacer",
 };
 
+/** A flag attribute at design time: only a literal `false` is false (a `{x:Bind ...}` shows as true). */
+function designFlag(value: string | undefined): boolean {
+  return value?.trim() !== "false";
+}
+
 /** The widget a `.yui` node becomes — what its generated builder code would build. Lenient: a bad value falls back to the default. */
 export function toWidget(node: YuiNode, inCanvas: boolean): LWidget {
   const a = node.attrs;
@@ -314,6 +321,7 @@ export function toWidget(node: YuiNode, inCanvas: boolean): LWidget {
     texW,
     texH,
     style,
+    visible: designFlag(a["d:visible"] ?? a.visible),
     children: LEAF_OF[node.kind] === "panel" ? node.children.map((c) => toWidget(c, canvas)) : [],
   };
 }
@@ -471,7 +479,7 @@ function layoutChildren(w: LWidget, node: LNode, shrink: Shrink | null) {
   const crossOffset = (content: number, size: number) =>
     !crossBounded ? 0 : s.align === "center" ? (content - size) / 2 : s.align === "end" ? content - size : 0;
   const effectiveFlex = (c: LWidget) => (c.style.dock === "fill" ? Math.max(c.style.flex, 1) : c.style.flex);
-  const inFlow = (c: LWidget) => c.style.pos === null && !((dir === "row" && c.style.dock === "right") || (dir === "column" && c.style.dock === "bottom"));
+  const inFlow = (c: LWidget) => c.visible && c.style.pos === null && !((dir === "row" && c.style.dock === "right") || (dir === "column" && c.style.dock === "bottom"));
   const stretches = (dock: Dock) =>
     crossBounded && (dir === "row" ? dock === "fill" || dock === "left" || dock === "right" : dock === "fill" || dock === "top" || dock === "bottom");
 
@@ -480,6 +488,12 @@ function layoutChildren(w: LWidget, node: LNode, shrink: Shrink | null) {
   let usedMain = 0;
   for (const child of w.children) {
     const cn: LNode = { uid: child.uid, rect: { x: 0, y: 0, w: 0, h: 0 }, children: [] };
+    if (!child.visible) {
+      // Collapsed: a zero rect at the content box's corner, out of the flow.
+      cn.rect = { x: x + s.pad[3], y: y + s.pad[0], w: 0, h: 0 };
+      childNodes.push(cn);
+      continue;
+    }
     if (child.style.pos) {
       const [px, py] = child.style.pos;
       const mw = bounded(contentW) ? Math.max(0, contentW - px) : UNBOUNDED;
@@ -503,7 +517,7 @@ function layoutChildren(w: LWidget, node: LNode, shrink: Shrink | null) {
     if (inFlow(child)) totalFlex += ef;
     childNodes.push(cn);
   }
-  const placed = w.children.filter((c) => c.style.pos === null).length;
+  const placed = w.children.filter((c) => c.visible && c.style.pos === null).length;
   usedMain += s.gap * Math.max(0, placed - 1);
   const available = mainBounded ? (dir === "row" ? contentW : contentH) - usedMain : 0;
   let pos = dir === "row" ? s.pad[3] : s.pad[0];
@@ -535,12 +549,12 @@ function layoutChildren(w: LWidget, node: LNode, shrink: Shrink | null) {
   let rpos: number;
   if (mainBounded) rpos = dir === "row" ? x + s.pad[3] + contentW : y + s.pad[0] + contentH;
   else {
-    const docked = w.children.map((c, i) => [c, childNodes[i]] as const).filter(([c]) => !inFlow(c) && c.style.pos === null);
+    const docked = w.children.map((c, i) => [c, childNodes[i]] as const).filter(([c]) => c.visible && !inFlow(c) && c.style.pos === null);
     const span = docked.reduce((sum, [, n]) => sum + (dir === "row" ? n.rect.w : n.rect.h), 0) + s.gap * Math.max(0, docked.length - 1);
     rpos = (dir === "row" ? x : y) + pos + span;
   }
   w.children.forEach((child, i) => {
-    if (inFlow(child) || child.style.pos) return;
+    if (!child.visible || inFlow(child) || child.style.pos) return;
     const cn = childNodes[i];
     const stretch = stretches(child.style.dock);
     let cx: number;
@@ -561,7 +575,7 @@ function layoutChildren(w: LWidget, node: LNode, shrink: Shrink | null) {
   });
 
   w.children.forEach((child, i) => {
-    if (!child.style.pos) return;
+    if (!child.style.pos || !child.visible) return;
     arrange(child, childNodes[i], x + s.pad[3] + child.style.pos[0], y + s.pad[0] + child.style.pos[1]);
   });
 
