@@ -1,0 +1,375 @@
+// The `.yblock` / `.yitem` format (see docs/blocks-items.md) as the model
+// editor sees it: types, Minecraft's constraints, the templates' geometry,
+// face UVs, display defaults, and the file's text form.
+
+export type Dir = "down" | "up" | "north" | "south" | "west" | "east";
+export const DIRS: Dir[] = ["down", "up", "north", "south", "west", "east"];
+export type Vec3 = [number, number, number];
+export type Uv = [number, number, number, number];
+export type Axis = "x" | "y" | "z";
+
+export interface Face {
+  texture: string;
+  uv?: Uv;
+  rotation?: number;
+  cullface?: Dir;
+  tint?: number;
+}
+
+export interface Element {
+  name?: string;
+  from: Vec3;
+  to: Vec3;
+  rotation?: { axis: Axis; angle: number; origin?: Vec3; rescale?: boolean };
+  shade?: boolean;
+  faces: Partial<Record<Dir, Face>>;
+}
+
+export interface DisplayTransform {
+  rotation?: Vec3;
+  translation?: Vec3;
+  scale?: Vec3;
+}
+
+export const DISPLAY_SLOTS = [
+  "gui",
+  "ground",
+  "fixed",
+  "head",
+  "thirdperson_righthand",
+  "thirdperson_lefthand",
+  "firstperson_righthand",
+  "firstperson_lefthand",
+] as const;
+export type DisplaySlot = (typeof DISPLAY_SLOTS)[number];
+
+export interface Model {
+  parent?: string;
+  textures?: Record<string, string>;
+  elements?: Element[];
+  display?: Partial<Record<DisplaySlot, DisplayTransform>>;
+  ambient_occlusion?: boolean;
+  gui_light?: "front" | "side";
+}
+
+export interface BlockProps {
+  hardness?: number;
+  resistance?: number;
+  sound?: string;
+  light?: number;
+  tool?: string;
+  tool_level?: string;
+  requires_tool?: boolean;
+  collision?: boolean;
+  slipperiness?: number;
+  shape?: "auto" | "full" | number[];
+  render_layer?: string;
+  drops?: "self" | "none" | { item?: string; count?: number | [number, number] };
+  connect_groups?: string[];
+}
+
+export interface ItemProps {
+  stack_size?: number;
+  durability?: number;
+  fire_resistant?: boolean;
+  fuel_ticks?: number;
+  food?: { nutrition: number; saturation?: number; always_edible?: boolean };
+}
+
+export interface StateRotation {
+  x?: number;
+  y?: number;
+  weight?: number;
+  uvlock?: boolean;
+}
+
+export interface ContentFile {
+  id?: string;
+  name?: string;
+  tooltip?: string;
+  register?: "auto" | "manual";
+  block?: BlockProps;
+  item?: ItemProps;
+  model?: Model;
+  item_model?: Model;
+  states?: { rotations?: StateRotation[]; connect?: { arm: Model; uvlock?: boolean } };
+  [key: string]: unknown;
+}
+
+export type Kind = "block" | "item";
+export const kindOf = (path: string): Kind | null => (/\.yblock$/i.test(path) ? "block" : /\.yitem$/i.test(path) ? "item" : null);
+
+export const SOUNDS = ["stone", "wood", "grass", "gravel", "sand", "snow", "metal", "glass", "wool", "nether_brick"];
+export const TOOLS = ["pickaxe", "axe", "shovel", "hoe"];
+export const TOOL_LEVELS = ["stone", "iron", "diamond"];
+export const RENDER_LAYERS = ["solid", "cutout", "cutout_mipped", "translucent"];
+/** Element rotation angles Minecraft allows. */
+export const ANGLES = [-45, -22.5, 0, 22.5, 45];
+
+export interface Template {
+  name: string;
+  slots: string[];
+  /** An item sprite (`generated`, `handheld`) — item models only. */
+  sprite?: boolean;
+}
+
+export const TEMPLATES: Template[] = [
+  { name: "cube_all", slots: ["all"] },
+  { name: "cube_column", slots: ["end", "side"] },
+  { name: "cube_bottom_top", slots: ["top", "bottom", "side"] },
+  { name: "cube", slots: ["down", "up", "north", "south", "west", "east"] },
+  { name: "orientable", slots: ["front", "side", "top"] },
+  { name: "cross", slots: ["cross"] },
+  { name: "generated", slots: ["layer0"], sprite: true },
+  { name: "handheld", slots: ["layer0"], sprite: true },
+];
+export const templateOf = (parent?: string) => TEMPLATES.find((t) => t.name === parent);
+
+const full = (faces: Partial<Record<Dir, string>>, cull = true): Element => ({
+  from: [0, 0, 0],
+  to: [16, 16, 16],
+  faces: Object.fromEntries(
+    Object.entries(faces).map(([d, tex]) => [d, { texture: tex!, ...(cull ? { cullface: d as Dir } : {}) }])
+  ) as Element["faces"],
+});
+
+/** The elements a block template stands for (vanilla's own). */
+export function templateElements(name: string): Element[] | null {
+  switch (name) {
+    case "cube_all":
+      return [full({ down: "#all", up: "#all", north: "#all", south: "#all", west: "#all", east: "#all" })];
+    case "cube_column":
+      return [full({ down: "#end", up: "#end", north: "#side", south: "#side", west: "#side", east: "#side" })];
+    case "cube_bottom_top":
+      return [full({ down: "#bottom", up: "#top", north: "#side", south: "#side", west: "#side", east: "#side" })];
+    case "cube":
+      return [full({ down: "#down", up: "#up", north: "#north", south: "#south", west: "#west", east: "#east" })];
+    case "orientable":
+      return [full({ down: "#top", up: "#top", north: "#front", south: "#side", west: "#side", east: "#side" })];
+    case "cross":
+      return [
+        {
+          from: [0.8, 0, 8],
+          to: [15.2, 16, 8],
+          rotation: { origin: [8, 8, 8], axis: "y", angle: 45, rescale: true },
+          shade: false,
+          faces: { north: { uv: [0, 0, 16, 16], texture: "#cross" }, south: { uv: [0, 0, 16, 16], texture: "#cross" } },
+        },
+        {
+          from: [8, 0, 0.8],
+          to: [8, 16, 15.2],
+          rotation: { origin: [8, 8, 8], axis: "y", angle: 45, rescale: true },
+          shade: false,
+          faces: { west: { uv: [0, 0, 16, 16], texture: "#cross" }, east: { uv: [0, 0, 16, 16], texture: "#cross" } },
+        },
+      ];
+    default:
+      return null;
+  }
+}
+
+/** Minecraft's UV for a face without one: from the element's position. */
+export function autoUv(dir: Dir, from: Vec3, to: Vec3): Uv {
+  const [x1, y1, z1] = from;
+  const [x2, y2, z2] = to;
+  switch (dir) {
+    case "down":
+      return [x1, 16 - z2, x2, 16 - z1];
+    case "up":
+      return [x1, z1, x2, z2];
+    case "north":
+      return [16 - x2, 16 - y2, 16 - x1, 16 - y1];
+    case "south":
+      return [x1, 16 - y2, x2, 16 - y1];
+    case "west":
+      return [z1, 16 - y2, z2, 16 - y1];
+    case "east":
+      return [16 - z2, 16 - y2, 16 - z1, 16 - y1];
+  }
+}
+
+/** The face's corners seen from outside: top-left, top-right, bottom-right, bottom-left. */
+export function faceCorners(dir: Dir, from: Vec3, to: Vec3): Vec3[] {
+  const [x1, y1, z1] = from;
+  const [x2, y2, z2] = to;
+  switch (dir) {
+    case "north":
+      return [[x2, y2, z1], [x1, y2, z1], [x1, y1, z1], [x2, y1, z1]];
+    case "south":
+      return [[x1, y2, z2], [x2, y2, z2], [x2, y1, z2], [x1, y1, z2]];
+    case "west":
+      return [[x1, y2, z1], [x1, y2, z2], [x1, y1, z2], [x1, y1, z1]];
+    case "east":
+      return [[x2, y2, z2], [x2, y2, z1], [x2, y1, z1], [x2, y1, z2]];
+    case "up":
+      return [[x1, y2, z1], [x2, y2, z1], [x2, y2, z2], [x1, y2, z2]];
+    case "down":
+      return [[x1, y1, z2], [x2, y1, z2], [x2, y1, z1], [x1, y1, z1]];
+  }
+}
+
+/** Minecraft's face brightness with shading on. */
+export const FACE_SHADE: Record<Dir, number> = { up: 1, down: 0.5, north: 0.8, south: 0.8, west: 0.6, east: 0.6 };
+
+export const DIR_NORMAL: Record<Dir, Vec3> = {
+  down: [0, -1, 0],
+  up: [0, 1, 0],
+  north: [0, 0, -1],
+  south: [0, 0, 1],
+  west: [-1, 0, 0],
+  east: [1, 0, 0],
+};
+
+/** The display transforms a model inherits from vanilla's `block/block` or `item/generated|handheld`. */
+export function defaultDisplay(kind: "block" | "generated" | "handheld"): Partial<Record<DisplaySlot, DisplayTransform>> {
+  if (kind === "block") {
+    return {
+      gui: { rotation: [30, 225, 0], translation: [0, 0, 0], scale: [0.625, 0.625, 0.625] },
+      ground: { rotation: [0, 0, 0], translation: [0, 3, 0], scale: [0.25, 0.25, 0.25] },
+      fixed: { rotation: [0, 0, 0], translation: [0, 0, 0], scale: [0.5, 0.5, 0.5] },
+      head: { rotation: [0, 0, 0], translation: [0, 0, 0], scale: [1, 1, 1] },
+      thirdperson_righthand: { rotation: [75, 45, 0], translation: [0, 2.5, 0], scale: [0.375, 0.375, 0.375] },
+      thirdperson_lefthand: { rotation: [75, 45, 0], translation: [0, 2.5, 0], scale: [0.375, 0.375, 0.375] },
+      firstperson_righthand: { rotation: [0, 45, 0], translation: [0, 0, 0], scale: [0.4, 0.4, 0.4] },
+      firstperson_lefthand: { rotation: [0, 225, 0], translation: [0, 0, 0], scale: [0.4, 0.4, 0.4] },
+    };
+  }
+  const hand =
+    kind === "handheld"
+      ? {
+          thirdperson_righthand: { rotation: [0, -90, 55] as Vec3, translation: [0, 4, 0.5] as Vec3, scale: [0.85, 0.85, 0.85] as Vec3 },
+          thirdperson_lefthand: { rotation: [0, 90, -55] as Vec3, translation: [0, 4, 0.5] as Vec3, scale: [0.85, 0.85, 0.85] as Vec3 },
+        }
+      : {
+          thirdperson_righthand: { rotation: [0, 0, 0] as Vec3, translation: [0, 3, 1] as Vec3, scale: [0.55, 0.55, 0.55] as Vec3 },
+          thirdperson_lefthand: { rotation: [0, 0, 0] as Vec3, translation: [0, 3, 1] as Vec3, scale: [0.55, 0.55, 0.55] as Vec3 },
+        };
+  return {
+    gui: {},
+    ground: { rotation: [0, 0, 0], translation: [0, 2, 0], scale: [0.5, 0.5, 0.5] },
+    head: { rotation: [0, 180, 0], translation: [0, 13, 7], scale: [1, 1, 1] },
+    fixed: { rotation: [0, 180, 0], translation: [0, 0, 0], scale: [1, 1, 1] },
+    ...hand,
+    firstperson_righthand: { rotation: [0, -90, 25], translation: [1.13, 3.2, 1.13], scale: [0.68, 0.68, 0.68] },
+    firstperson_lefthand: { rotation: [0, 90, -25], translation: [1.13, 3.2, 1.13], scale: [0.68, 0.68, 0.68] },
+  };
+}
+
+// ── Text ─────────────────────────────────────────────────────────────────────
+
+export type Parsed = { ok: true; file: ContentFile } | { ok: false; error: string };
+
+/** JSON with `//` comments and trailing commas tolerated (as `yog` reads it). */
+export function parseContent(text: string): Parsed {
+  try {
+    const cleaned = stripJsonComments(text);
+    const value = JSON.parse(cleaned) as unknown;
+    if (!value || typeof value !== "object" || Array.isArray(value)) return { ok: false, error: "The file must be one JSON object." };
+    return { ok: true, file: value as ContentFile };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : String(e) };
+  }
+}
+
+function stripJsonComments(text: string): string {
+  let out = "";
+  let inString = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (inString) {
+      out += c;
+      if (c === "\\") out += text[++i] ?? "";
+      else if (c === '"') inString = false;
+    } else if (c === '"') {
+      inString = true;
+      out += c;
+    } else if (c === "/" && text[i + 1] === "/") {
+      while (i < text.length && text[i] !== "\n") i++;
+      out += "\n";
+    } else out += c;
+  }
+  return out.replace(/,(\s*[}\]])/g, "$1");
+}
+
+const round = (n: number) => Math.round(n * 10000) / 10000;
+
+/** The file's text: two-space indent, short arrays/objects of scalars on one line (`"uv": [0, 0, 16, 16]`). */
+export function serializeContent(file: ContentFile): string {
+  const scalar = (v: unknown): string | null => {
+    if (v === null) return "null";
+    if (typeof v === "number") return String(round(v));
+    if (typeof v === "boolean") return String(v);
+    if (typeof v === "string") return JSON.stringify(v);
+    return null;
+  };
+  const inline = (v: unknown): string | null => {
+    const s = scalar(v);
+    if (s !== null) return s;
+    let out: string;
+    if (Array.isArray(v)) {
+      if (v.length === 0) return "[]";
+      if (!v.every((x) => typeof x === "number" || typeof x === "boolean")) return null;
+      out = `[${v.map((x) => scalar(x)).join(", ")}]`;
+    } else if (v && typeof v === "object") {
+      const entries = Object.entries(v).filter(([, x]) => x !== undefined);
+      if (entries.length === 0) return "{}";
+      const parts: string[] = [];
+      for (const [k, x] of entries) {
+        if (x && typeof x === "object" && !Array.isArray(x)) return null;
+        const s2 = inline(x);
+        if (s2 === null) return null;
+        parts.push(`${JSON.stringify(k)}: ${s2}`);
+      }
+      out = `{ ${parts.join(", ")} }`;
+    } else return null;
+    return out.length <= 72 ? out : null;
+  };
+  const write = (v: unknown, indent: number): string => {
+    const one = inline(v);
+    if (one !== null) return one;
+    const pad = "  ".repeat(indent + 1);
+    const end = "  ".repeat(indent);
+    if (Array.isArray(v)) return `[\n${v.map((x) => pad + write(x, indent + 1)).join(",\n")}\n${end}]`;
+    const entries = Object.entries(v as object).filter(([, x]) => x !== undefined);
+    return `{\n${entries.map(([k, x]) => `${pad}${JSON.stringify(k)}: ${write(x, indent + 1)}`).join(",\n")}\n${end}}`;
+  };
+  return `${write(file, 0)}\n`;
+}
+
+/** A deep copy (files are plain JSON). */
+export const clone = <T>(v: T): T => JSON.parse(JSON.stringify(v)) as T;
+
+// ── New files ────────────────────────────────────────────────────────────────
+
+export function newBlockFile(name: string): string {
+  return serializeContent({
+    name,
+    block: { hardness: 1.5, resistance: 6, sound: "stone", tool: "pickaxe" },
+    model: { parent: "cube_all", textures: { all: "minecraft:block/stone" } },
+  });
+}
+
+export function newItemFile(name: string): string {
+  return serializeContent({
+    name,
+    item: { stack_size: 64 },
+    model: { parent: "generated", textures: { layer0: "minecraft:item/apple" } },
+  });
+}
+
+/** A block with its own item sprite (`item_model`). */
+export function newBlockWithItemFile(name: string): string {
+  return serializeContent({
+    name,
+    block: { hardness: 1.5, resistance: 6, sound: "stone", tool: "pickaxe" },
+    model: { parent: "cube_all", textures: { all: "minecraft:block/stone" } },
+    item_model: { parent: "generated", textures: { layer0: "minecraft:item/apple" } },
+  });
+}
+
+/** `ruby_ore` → `Ruby Ore`. */
+export const titleOf = (stem: string) =>
+  stem
+    .replace(/[_-]+/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase())
+    .trim();

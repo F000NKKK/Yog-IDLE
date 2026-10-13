@@ -660,8 +660,6 @@ registerTranslations("ru", {
   "View Designer": "Открыть конструктор",
   "Couldn't read yog.toml: {error}": "Не удалось прочитать yog.toml: {error}",
   Application: "Приложение",
-  "This project uses the legacy [package] table — yog still reads it; new projects use [mod].":
-    "В этом проекте используется устаревшая таблица [package] — yog по-прежнему ее читает; новые проекты используют [mod].",
   "What the mod is called and who made it — the [mod] table of yog.toml.": "Как называется мод и кто его создал — таблица [mod] файла yog.toml.",
   Identity: "Идентификация",
   "Mod ID": "Идентификатор мода",

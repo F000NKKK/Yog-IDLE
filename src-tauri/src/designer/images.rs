@@ -13,7 +13,6 @@ use std::sync::Arc;
 
 use yog_gfx::image::{fit, sprite as find_sprite, ImageSource, LegacyRegion, Sprite, Stretch, SPRITES};
 use yog_ui::widget::{self, Widget};
-use yog_ui::Units;
 
 use super::assets::{split_id, Image, Resources};
 use super::markup::{color, YuiNode};
@@ -80,12 +79,11 @@ fn uv(v: &str) -> Option<[f32; 4]> {
     <[f32; 4]>::try_from(p).ok().filter(|r| r[2] > 0.0 && r[3] > 0.0)
 }
 
-/// The widget for an `<Image>` — what the generated code builds: `source`
-/// (or the deprecated `texture`), `stretch`, `uv`, `tint`; the deprecated
-/// `tex_w`/`tex_h` are the default `w`/`h`.
+/// The widget for an `<Image>` — what the generated code builds: `source`,
+/// `stretch`, `uv`, `tint`.
 pub fn widget(node: &YuiNode) -> Widget {
     let a = |k: &str| node.attr(k);
-    let source = a("source").or_else(|| a("texture")).unwrap_or_default();
+    let source = a("source").unwrap_or_default();
     let mut w = widget::image(resolve_mod(source));
     if let Some(s) = a("stretch") {
         w = w.stretch(stretch(s));
@@ -95,13 +93,6 @@ pub fn widget(node: &YuiNode) -> Widget {
     }
     if let Some(t) = a("tint").and_then(color) {
         w = w.tint(t);
-    }
-    let num = |k: &str| a(k).and_then(|v| v.trim().parse::<f32>().ok());
-    if a("w").is_none() && let Some(v) = num("tex_w") {
-        w = w.w(Units::Px(v));
-    }
-    if a("h").is_none() && let Some(v) = num("tex_h") {
-        w = w.h(Units::Px(v));
     }
     w
 }
@@ -349,8 +340,8 @@ mod tests {
         let mut root = n("s", &[("width", "200"), ("height", "120"), ("bg", "#C0101010")]);
         root.kind = "Screen".into();
         root.children = vec![
-            // The reported case: a raw path, w/h larger than the texture.
-            n("a", &[("x", "4"), ("y", "4"), ("w", "156"), ("h", "29"), ("texture", "minecraft:textures/item/apple.png"), ("tex_w", "16"), ("tex_h", "16"), ("bg", "#40FFFFFF")]),
+            // w/h larger than the texture.
+            n("a", &[("x", "4"), ("y", "4"), ("w", "156"), ("h", "29"), ("source", "minecraft:item/apple"), ("bg", "#40FFFFFF")]),
             n("b", &[("x", "4"), ("y", "36"), ("w", "32"), ("h", "32"), ("source", "item:apple")]),
             n("c", &[("x", "40"), ("y", "36"), ("w", "32"), ("h", "32"), ("source", "block:crafting_table")]),
             n("d", &[("x", "76"), ("y", "36"), ("w", "100"), ("h", "20"), ("source", "sprite:button"), ("stretch", "Fill")]),

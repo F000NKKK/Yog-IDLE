@@ -1,5 +1,5 @@
 //! A `.yui` tree (as the designer holds it) → the `yog_ui::Widget` tree the
-//! generated `*.designer.rs` builds in game — the same builder calls `yog
+//! generated `.g.rs` builds in game — the same builder calls `yog
 //! build` emits (yog-cli `yui.rs`), made directly instead of as source —
 //! wrapped like the generated `root_with` (the screen panel, anchored).
 

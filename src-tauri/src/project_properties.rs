@@ -159,14 +159,14 @@ fn collect_run_targets(table: &Table, prefix: &str, out: &mut Vec<RunTarget>) {
     }
 }
 
-fn props_of(doc: &DocumentMut, section: &str, root: &Path) -> ProjectProps {
+fn props_of(doc: &DocumentMut, root: &Path) -> ProjectProps {
     let mut run_targets = Vec::new();
     if let Some(run) = doc.get("run").and_then(Item::as_table) {
         collect_run_targets(run, "", &mut run_targets);
     }
     let deps = doc.get("dependencies");
     ProjectProps {
-        manifest: properties::summarize(doc, section),
+        manifest: properties::summarize(doc),
         yog_api_version: deps.and_then(Item::as_table_like).and_then(|t| {
             YOG_API_KEYS
                 .iter()
@@ -184,8 +184,8 @@ fn write(path: &Path, doc: &DocumentMut) -> Result<(), String> {
 }
 
 pub fn read(root: &Path) -> Result<ProjectProps, String> {
-    let (doc, section) = properties::load(&manifest(root))?;
-    Ok(props_of(&doc, section, root))
+    let doc = properties::load(&manifest(root))?;
+    Ok(props_of(&doc, root))
 }
 
 /// Loads, edits, writes back, and returns the new state.
@@ -194,10 +194,10 @@ fn edit(
     change: impl FnOnce(&mut DocumentMut) -> Result<(), String>,
 ) -> Result<ProjectProps, String> {
     let path = manifest(root);
-    let (mut doc, section) = properties::load(&path)?;
+    let mut doc = properties::load(&path)?;
     change(&mut doc)?;
     write(&path, &doc)?;
-    Ok(props_of(&doc, section, root))
+    Ok(props_of(&doc, root))
 }
 
 /// A `[mod]` field or `authors` (see `properties::set_manifest_field`).

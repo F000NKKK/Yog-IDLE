@@ -94,8 +94,6 @@ const EDITIONS: &[&str] = &["2015", "2018", "2021", "2024"];
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ManifestOut {
-    /// `"mod"`, or the legacy `"package"` some older projects still use.
-    section: String,
     /// Every present key of `TEXT_FIELDS`.
     fields: BTreeMap<String, String>,
     authors: Vec<String>,
@@ -116,16 +114,15 @@ fn manifest_path(project_root: &Path) -> std::path::PathBuf {
     project_root.join("yog.toml")
 }
 
-pub(crate) fn load(path: &Path) -> Result<(DocumentMut, &'static str), String> {
+pub(crate) fn load(path: &Path) -> Result<DocumentMut, String> {
     let text = std::fs::read_to_string(path).map_err(|e| format!("{}: {e}", path.display()))?;
     let doc: DocumentMut = text
         .parse()
         .map_err(|e| format!("yog.toml isn't valid TOML: {e}"))?;
-    let section = ["mod", "package"]
-        .into_iter()
-        .find(|s| doc.get(s).is_some_and(Item::is_table))
-        .ok_or("yog.toml has no [mod] section")?;
-    Ok((doc, section))
+    if !doc.get("mod").is_some_and(Item::is_table) {
+        return Err("yog.toml has no [mod] section".into());
+    }
+    Ok(doc)
 }
 
 fn table_len(doc: &DocumentMut, dotted: &[&str]) -> usize {
@@ -139,8 +136,8 @@ fn table_len(doc: &DocumentMut, dotted: &[&str]) -> usize {
     item.as_table_like().map_or(0, |t| t.iter().count())
 }
 
-pub(crate) fn summarize(doc: &DocumentMut, section: &str) -> ManifestOut {
-    let table = doc[section].as_table_like();
+pub(crate) fn summarize(doc: &DocumentMut) -> ManifestOut {
+    let table = doc["mod"].as_table_like();
     let text = |key: &str| {
         table
             .and_then(|t| t.get(key))
@@ -173,7 +170,6 @@ pub(crate) fn summarize(doc: &DocumentMut, section: &str) -> ManifestOut {
                 .count()
         });
     ManifestOut {
-        section: section.to_string(),
         fields,
         authors,
         dependencies,
@@ -188,8 +184,8 @@ pub(crate) fn summarize(doc: &DocumentMut, section: &str) -> ManifestOut {
 }
 
 pub fn read_manifest(project_root: &Path) -> Result<ManifestOut, String> {
-    let (doc, section) = load(&manifest_path(project_root))?;
-    Ok(summarize(&doc, section))
+    let doc = load(&manifest_path(project_root))?;
+    Ok(summarize(&doc))
 }
 
 /// `yog-cli` reads `yog.toml` line by line and takes values verbatim
@@ -255,7 +251,7 @@ pub fn set_manifest_field(
     value: FieldValue,
 ) -> Result<ManifestOut, String> {
     let path = manifest_path(project_root);
-    let (mut doc, section) = load(&path)?;
+    let mut doc = load(&path)?;
     let new_value: Option<Value> = match (key, value) {
         ("authors", FieldValue::List(list)) => {
             let list: Vec<String> = list
@@ -283,7 +279,7 @@ pub fn set_manifest_field(
         _ => return Err(format!("'{key}' isn't an editable yog.toml field")),
     };
 
-    let table = doc[section]
+    let table = doc["mod"]
         .as_table_mut()
         .ok_or("yog.toml has no [mod] section")?;
     match new_value {
@@ -306,7 +302,7 @@ pub fn set_manifest_field(
         },
     }
     std::fs::write(&path, doc.to_string()).map_err(|e| format!("{}: {e}", path.display()))?;
-    Ok(summarize(&doc, section))
+    Ok(summarize(&doc))
 }
 
 #[cfg(test)]

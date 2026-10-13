@@ -20,7 +20,6 @@ interface PathInfo {
 
 /** `mod_manifest_read`/`mod_manifest_set`'s answer — a mod's `yog.toml`, summarized. */
 interface Manifest {
-  section: string;
   fields: Partial<Record<ManifestField, string>>;
   authors: string[];
   dependencies: number;

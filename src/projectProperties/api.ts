@@ -32,7 +32,6 @@ export interface RunPreset extends RunTarget {
 
 export interface ProjectProps {
   manifest: {
-    section: string;
     fields: Record<string, string>;
     authors: string[];
     yogApiPath: string | null;

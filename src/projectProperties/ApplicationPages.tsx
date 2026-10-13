@@ -23,11 +23,7 @@ export function ApplicationPage({ root, props, apply }: PageProps) {
   return (
     <FormPage
       title={t("Application")}
-      description={
-        props.manifest.section === "package"
-          ? t("This project uses the legacy [package] table — yog still reads it; new projects use [mod].")
-          : t("What the mod is called and who made it — the [mod] table of yog.toml.")
-      }
+      description={t("What the mod is called and who made it — the [mod] table of yog.toml.")}
     >
       <FormSection title={t("Identity")}>
         <FormField label={t("Mod ID")} required hint={t("Lowercase letters, digits, '-' and '_'. Other mods depend on it by this id.")}>

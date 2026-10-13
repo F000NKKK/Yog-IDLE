@@ -268,9 +268,7 @@ export function toWidget(node: YuiNode, inCanvas: boolean): LWidget {
   const a = node.attrs;
   const kind = LEAF_OF[node.kind] ?? "spacer";
   const style = defaultStyle();
-  const texW = parseNumber(a.tex_w) ?? 16;
-  const texH = parseNumber(a.tex_h) ?? 16;
-  // Constructors that set a size (`inv_slot`, `mc_image`).
+  // Constructors that set a size (`inv_slot`).
   if (kind === "inv_slot") {
     style.w = { t: "px", v: 18 };
     style.h = { t: "px", v: 18 };
@@ -279,10 +277,6 @@ export function toWidget(node: YuiNode, inCanvas: boolean): LWidget {
     style.bg = 0xff000000;
     style.color = 0xffe0e0e0;
     style.pad = [0, 4, 0, 4];
-  } else if (kind === "image") {
-    // `widget::image` sizes itself from its source; the deprecated tex_w/tex_h are a default size.
-    if (a.tex_w !== undefined && texW > 0) style.w = { t: "px", v: texW };
-    if (a.tex_h !== undefined && texH > 0) style.h = { t: "px", v: texH };
   }
   if (node.kind === "Screen") {
     const w = parseNumber(a.width);

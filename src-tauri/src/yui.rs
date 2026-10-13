@@ -1,8 +1,8 @@
 //! `.yui` screen files (the screen designer's format) — regenerating their
 //! code (`.yog-build/generated/**/*.g.rs`, what the code-behind pulls in
 //! with `yog_api::ui_include!`) when one is saved, through `yog ui gen` —
-//! and the same for `.yres` resource files (`res.g.rs`, through
-//! `yog res check`).
+//! and the same for `.yres` resource files (`resources/<Set>.g.rs`,
+//! through `yog res check`).
 
 use std::path::PathBuf;
 use std::process::Command;
@@ -16,7 +16,7 @@ pub fn codegen(path: &str) -> Result<String, String> {
     let file = PathBuf::from(path);
     let args: &[&str] = match file.extension().and_then(|e| e.to_str()) {
         Some("yui") => &["ui", "gen"],
-        // Regenerates `.yog-build/generated/res.g.rs` (and checks the set).
+        // Regenerates `.yog-build/generated/resources/<Set>.g.rs` (and checks the set).
         Some("yres") => &["res", "check"],
         // Regenerates `.yog-build/generated/yog-content.g.rs` (and checks every content file).
         Some("yblock" | "yitem") => &["content", "check"],

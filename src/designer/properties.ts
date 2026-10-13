@@ -23,8 +23,6 @@ interface AttrSpec {
   not?: readonly string[];
   /** Values offered in an editable combo box (any other text is accepted too). */
   suggestions?: readonly string[];
-  /** Superseded: shown only on widgets that still have it. */
-  deprecated?: boolean;
 }
 
 const TEXT_KINDS = ["Label", "Button", "TextBox"];
@@ -74,9 +72,6 @@ const SPECS: AttrSpec[] = [
   { attr: "stretch", name: "Stretch", category: "Data", kind: "enum", options: ["None", "Fill", "Uniform", "UniformToFill"], fallback: "Uniform", only: ["Image"], description: "How the image fills the widget: None = natural size, centered; Fill = the whole box; Uniform = as large as fits, aspect kept; UniformToFill = covers the box, aspect kept, the overflow cut (textures only)." },
   { attr: "uv", name: "Region", category: "Data", kind: "uv", only: ["Image"], description: "Part of a texture to show, `u v w h` in the image's pixels (textures only). Empty = the whole image." },
   { attr: "tint", name: "Tint", category: "Appearance", kind: "color", fallback: "#FFFFFFFF", only: ["Image"], description: "Multiplies the image's colors — `#RRGGBB` or `#AARRGGBB` (items aren't tinted)." },
-  { attr: "texture", name: "Texture (deprecated)", category: "Data", kind: "text", only: ["Image"], deprecated: true, description: "Deprecated — use Source. A raw resource path such as `minecraft:textures/item/apple.png` depends on the Minecraft version." },
-  { attr: "tex_w", name: "Texture Width (deprecated)", category: "Data", kind: "number", only: ["Image"], deprecated: true, description: "Deprecated — the image's size comes from its source; set Width instead." },
-  { attr: "tex_h", name: "Texture Height (deprecated)", category: "Data", kind: "number", only: ["Image"], deprecated: true, description: "Deprecated — the image's size comes from its source; set Height instead." },
 ];
 
 const applies = (spec: AttrSpec, kind: string) => (!spec.only || spec.only.includes(kind)) && !spec.not?.includes(kind);
@@ -126,7 +121,6 @@ export function widgetProperties(nodes: YuiNode[], apply: (attr: string, value: 
   for (const spec of SPECS) {
     if (!nodes.every((n) => applies(spec, n.kind))) continue;
     if (spec.attr === "id" && nodes.length > 1) continue;
-    if (spec.deprecated && !nodes.some((n) => n.attrs[spec.attr] !== undefined)) continue;
     const values = nodes.map((n) => n.attrs[spec.attr]);
     const same = values.every((v) => v === values[0]);
     const raw = same ? values[0] : undefined;
