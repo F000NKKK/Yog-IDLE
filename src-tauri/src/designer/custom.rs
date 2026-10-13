@@ -32,6 +32,7 @@ use super::components::{self, Def};
 use super::host::{ComponentInfo, MARK, RenderReq};
 use super::markup::YuiNode;
 use super::raster::DrawOp;
+use crate::manifest;
 
 /// Elements the designer draws itself (yog-ui's and yog-kit's); any other
 /// PascalCase element is a custom component (as for `yog build`).
@@ -364,7 +365,7 @@ fn lock(s: &Shared) -> std::sync::MutexGuard<'_, ModState> {
 
 /// The mod's Rust sources, `yog.toml` and resources — what the library is built from.
 fn sources(root: &Path) -> Vec<PathBuf> {
-    let mut out = vec![root.join("yog.toml")];
+    let mut out = vec![manifest::path(root)];
     for dir in ["src", "resources"] {
         let walk = ignore::WalkBuilder::new(root.join(dir))
             .hidden(false)
@@ -401,15 +402,8 @@ fn fingerprint(files: &[PathBuf]) -> u64 {
 }
 
 fn mod_name(root: &Path) -> String {
-    let toml = std::fs::read_to_string(root.join("yog.toml")).unwrap_or_default();
-    let field = |key: &str| {
-        toml.lines().map(str::trim).find_map(|l| {
-            l.strip_prefix(key)
-                .map(str::trim_start)
-                .and_then(|r| r.strip_prefix('='))
-                .map(|v| v.trim().trim_matches('"').to_string())
-        })
-    };
+    let toml = std::fs::read_to_string(manifest::path(root)).unwrap_or_default();
+    let field = |key: &str| manifest::mod_field(&toml, key);
     // `@Strings.x` names a resource text — the id reads better than the reference.
     field("name")
         .filter(|n| !n.is_empty() && !n.starts_with('@'))

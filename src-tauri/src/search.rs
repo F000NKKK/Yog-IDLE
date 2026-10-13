@@ -28,8 +28,8 @@ const SKIP_DIRS: &[&str] = &[
     ".svn",
     "target",
     "node_modules",
-    ".yog-build",
-    ".yog-idle",
+    crate::manifest::BUILD_DIR,
+    crate::manifest::IDLE_DIR,
 ];
 
 /// Files larger than this are assumed not to be source and skipped.
@@ -240,14 +240,15 @@ pub fn project_files(root: &Path, mask: &FileMask) -> Vec<PathBuf> {
         .collect()
 }
 
-/// Where `yog` generates screen code (`.yui` → `.g.rs`), under a project root.
-pub const GENERATED_DIR: &str = ".yog-build/generated";
+/// Where `yog` generates screen code (`.yui` → `.g.rs`), under the build
+/// folder of a project root.
+const GENERATED_DIR: &str = "generated";
 
 /// The generated code files under `root` (`.yog-build/generated/**/*.rs`)
 /// that pass `mask`, in path order — not project files (all of `.yog-build`
 /// is skipped and git-ignored), but worth searching like VS's `*.g.cs`.
 pub fn generated_files(root: &Path, mask: &FileMask) -> Vec<PathBuf> {
-    let dir = root.join(GENERATED_DIR);
+    let dir = root.join(crate::manifest::BUILD_DIR).join(GENERATED_DIR);
     if !dir.is_dir() {
         return Vec::new();
     }

@@ -31,7 +31,7 @@ pub fn codegen(path: &str) -> Result<String, String> {
     let project = file
         .ancestors()
         .skip(1)
-        .find(|d| d.join("yog.toml").is_file());
+        .find(|d| crate::manifest::path(d).is_file());
     if let Some(dir) = (if args[0] != "ui" { project } else { None })
         .or(file.parent())
         .filter(|d| d.is_dir())

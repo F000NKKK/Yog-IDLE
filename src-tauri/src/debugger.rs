@@ -34,6 +34,8 @@ use yog_debugger::{Debugger, SourceBreakpoints, StepKind, StopReason, is_library
 use yog_hot_reload::{GenerationAllocator, ModuleGeneration};
 use yog_symbols::{FrameRegs, SymbolTable, TargetMemory, ValueNode, ValueRef};
 
+use crate::manifest;
+
 /// Everything the tracer thread owns for one attached debug session — see
 /// `tracer_main`. Never leaves that thread.
 struct Tracer {
@@ -320,27 +322,10 @@ fn to_snake_name(id: &str) -> String {
     out
 }
 
-/// Reads `[mod]`/`[package]`'s `id` out of a `yog.toml` — the minimal slice
-/// of yog-cli's own parsing this needs, not a general yog.toml reader.
-fn read_mod_id(contents: &str) -> Option<String> {
-    let mut section = "";
-    for raw in contents.lines() {
-        let line = raw.trim();
-        if line.starts_with('[') && line.ends_with(']') {
-            section = &line[1..line.len() - 1];
-            continue;
-        }
-        if section != "mod" && section != "package" {
-            continue;
-        }
-        if let Some(value) = line
-            .strip_prefix("id")
-            .and_then(|rest| rest.trim_start().strip_prefix('='))
-        {
-            return Some(value.trim().trim_matches('"').to_string());
-        }
-    }
-    None
+/// `[mod] id` of the mod at `root`.
+fn mod_id(root: &Path) -> Result<String, String> {
+    let text = std::fs::read_to_string(manifest::path(root)).map_err(|e| e.to_string())?;
+    manifest::mod_field(&text, "id").ok_or_else(|| "yog.toml has no [mod] id".to_string())
 }
 
 /// The local, just-built unstripped native's path — `target/<triple>/
@@ -450,8 +435,7 @@ pub fn run_with_mode(
     mode: String,
 ) -> Result<(), String> {
     let root = PathBuf::from(&project_root);
-    let yog_toml = std::fs::read_to_string(root.join("yog.toml")).map_err(|e| e.to_string())?;
-    let mod_id = read_mod_id(&yog_toml).ok_or("yog.toml has no [mod]/[package] id")?;
+    let mod_id = mod_id(&root)?;
     let debug = mode == "debug";
     let native_path = local_native_path(&root, &mod_id);
     let socket_path = control_socket_path();
@@ -740,8 +724,7 @@ fn emit_hot_reload(
 /// `run_with_mode`'s about not blocking an invoke on a long-running wait.
 pub fn hot_reload(app: AppHandle, project_root: String) -> Result<(), String> {
     let root = PathBuf::from(&project_root);
-    let yog_toml = std::fs::read_to_string(root.join("yog.toml")).map_err(|e| e.to_string())?;
-    let mod_id = read_mod_id(&yog_toml).ok_or("yog.toml has no [mod]/[package] id")?;
+    let mod_id = mod_id(&root)?;
 
     let (session_id, debug_mode) = {
         let debug_state = app.state::<DebugState>();

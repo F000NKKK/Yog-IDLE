@@ -64,7 +64,7 @@ pub struct ProjectProps {
 const YOG_API_KEYS: &[&str] = &["yog-api", "yog_api", "yog_api_version"];
 
 fn manifest(root: &Path) -> PathBuf {
-    root.join("yog.toml")
+    crate::manifest::path(root)
 }
 
 fn str_list(item: Option<&Item>) -> Vec<String> {
@@ -572,7 +572,7 @@ pub fn remove_run_target(root: &Path, id: &str) -> Result<ProjectProps, String> 
 // ── Project build platforms (.yog-idle/settings.json) ──────────────────────
 
 fn settings_file(root: &Path) -> PathBuf {
-    root.join(".yog-idle").join("settings.json")
+    root.join(crate::manifest::IDLE_DIR).join("settings.json")
 }
 
 pub fn read_build_targets(root: &Path) -> Vec<String> {

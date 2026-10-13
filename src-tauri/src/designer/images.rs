@@ -31,9 +31,7 @@ thread_local! {
 
 /// `[mod] id` from `<root>/yog.toml`.
 fn mod_id(root: &Path) -> Option<String> {
-    let text = std::fs::read_to_string(root.join("yog.toml")).ok()?;
-    let doc: toml::Table = text.parse().ok()?;
-    doc.get("mod")?.get("id")?.as_str().map(str::to_string)
+    crate::manifest::read_mod_field(root, "id")
 }
 
 /// The `.yui` being laid out and drawn: its mod's resources (images, fonts)

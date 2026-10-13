@@ -15,6 +15,7 @@ mod designer;
 mod environment;
 mod events;
 mod git;
+mod manifest;
 mod project_properties;
 mod properties;
 mod search;
@@ -218,7 +219,7 @@ fn mod_manifest_set(
     value: properties::FieldValue,
 ) -> Result<properties::ManifestOut, String> {
     let root = PathBuf::from(&project_root);
-    validate_within_roots(&state, &root.join("yog.toml"))?;
+    validate_within_roots(&state, &manifest::path(&root))?;
     properties::set_manifest_field(&root, &key, value)
 }
 
@@ -422,7 +423,7 @@ fn project_close(state: State<AppState>) {
 /// The project-local folder Yog-IDLE keeps its own per-project data in
 /// (publish profiles, `workspace.json`) — see `ensure_gitignored`.
 fn idle_dir(project_root: &Path) -> PathBuf {
-    project_root.join(".yog-idle")
+    project_root.join(manifest::IDLE_DIR)
 }
 
 fn workspace_file(project_root: &Path) -> PathBuf {
@@ -550,13 +551,6 @@ async fn yui_codegen(state: State<'_, AppState>, path: String) -> Result<String,
     tauri::async_runtime::spawn_blocking(move || yui::codegen(&path))
         .await
         .map_err(|e| e.to_string())?
-}
-
-/// The mod of a `.yblock`/`.yitem` file (see `content.rs`).
-#[tauri::command]
-fn content_info(state: State<'_, AppState>, path: String) -> Result<content::ContentInfo, String> {
-    validate_within_roots(&state, Path::new(&path))?;
-    Ok(content::info(Path::new(&path)))
 }
 
 /// A texture as a content file names it, as a data URL.
@@ -1076,28 +1070,23 @@ fn parse_mod_run_targets(contents: &str) -> Vec<ModRunTarget> {
         let Some((_, display_name, command, args)) = current.as_mut() else {
             continue;
         };
-        if let Some(value) = line
-            .strip_prefix("name")
-            .and_then(|rest| rest.trim_start().strip_prefix('='))
-        {
-            *display_name = Some(value.trim().trim_matches('"').to_string());
-        } else if let Some(value) = line
-            .strip_prefix("command")
-            .and_then(|rest| rest.trim_start().strip_prefix('='))
-        {
-            *command = Some(value.trim().trim_matches('"').to_string());
-        } else if let Some(value) = line
-            .strip_prefix("args")
-            .and_then(|rest| rest.trim_start().strip_prefix('='))
-        {
-            *args = value
-                .trim()
-                .trim_start_matches('[')
-                .trim_end_matches(']')
-                .split(',')
-                .map(|s| s.trim().trim_matches('"').to_string())
-                .filter(|s| !s.is_empty())
-                .collect();
+        let Some((key, raw)) = line.split_once('=') else {
+            continue;
+        };
+        let Some(value) = manifest::line_value(raw) else {
+            continue;
+        };
+        let text = |v: &toml::Value| v.as_str().map(str::to_string);
+        match key.trim() {
+            "name" => *display_name = text(&value),
+            "command" => *command = text(&value),
+            "args" => {
+                *args = value
+                    .as_array()
+                    .map(|a| a.iter().filter_map(text).collect())
+                    .unwrap_or_default()
+            }
+            _ => {}
         }
     }
     flush(current, &mut targets);
@@ -1112,7 +1101,7 @@ fn mod_run_targets(
     project_root: String,
 ) -> Result<Vec<ModRunTarget>, String> {
     validate_within_roots(&state, Path::new(&project_root))?;
-    let path = PathBuf::from(&project_root).join("yog.toml");
+    let path = manifest::path(Path::new(&project_root));
     let contents = std::fs::read_to_string(&path).map_err(|e| e.to_string())?;
     Ok(parse_mod_run_targets(&contents))
 }
@@ -1209,7 +1198,7 @@ async fn mod_clean(
     let out_app = app.clone();
     let success = tauri::async_runtime::spawn_blocking(move || {
         let mut success = true;
-        for dir in ["target", ".yog-build", "artifacts"] {
+        for dir in ["target", manifest::BUILD_DIR, "artifacts"] {
             let path = root.join(dir);
             if !path.exists() {
                 continue;
@@ -1249,7 +1238,7 @@ struct PublishProfile {
 }
 
 fn publish_profiles_dir(project_root: &Path) -> PathBuf {
-    project_root.join(".yog-idle").join("publish-profiles")
+    idle_dir(project_root).join("publish-profiles")
 }
 
 /// Adds `.yog-idle/` to the project's `.gitignore` the first time a profile
@@ -1258,7 +1247,7 @@ fn publish_profiles_dir(project_root: &Path) -> PathBuf {
 /// something that belongs in version control by default.
 fn ensure_gitignored(project_root: &Path) {
     let gitignore_path = project_root.join(".gitignore");
-    let entry = ".yog-idle/";
+    let entry = format!("{}/", manifest::IDLE_DIR);
     let existing = std::fs::read_to_string(&gitignore_path).unwrap_or_default();
     if existing.lines().any(|line| line.trim() == entry) {
         return;
@@ -1267,7 +1256,7 @@ fn ensure_gitignored(project_root: &Path) {
     if !updated.is_empty() && !updated.ends_with('\n') {
         updated.push('\n');
     }
-    updated.push_str(entry);
+    updated.push_str(&entry);
     updated.push('\n');
     let _ = std::fs::write(&gitignore_path, updated);
 }
@@ -1485,7 +1474,7 @@ pub fn designer_host() {
 async fn yui_designer_components(path: String) -> Result<designer::custom::Snapshot, String> {
     tauri::async_runtime::spawn_blocking(move || {
         let path = Path::new(&path);
-        let root = if path.join("yog.toml").is_file() {
+        let root = if manifest::path(path).is_file() {
             path.to_path_buf()
         } else {
             designer::mod_root(path).ok_or("not inside a mod (no src/ folder)")?
@@ -1532,7 +1521,6 @@ pub fn run() {
 
     let builder = builder.invoke_handler(tauri::generate_handler![
         yui_codegen,
-        content_info,
         content_texture,
         content_textures,
         content_save_texture,
@@ -1650,4 +1638,23 @@ pub fn run() {
                 debugger::detach_on_exit(app);
             }
         });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn run_targets_read_toml_values() {
+        let text = "[mod]\nname = \"Ruby\"\n\n[run.b]\ncommand = \"cargo\" # build\nargs = [\"run\", \"--features=a,b\"]\n\n[run.a]\nname = \"Client\"\n";
+        let targets = parse_mod_run_targets(text);
+        assert_eq!(targets.len(), 2);
+        assert_eq!(targets[0].name, "a");
+        assert_eq!(targets[0].display_name.as_deref(), Some("Client"));
+        assert_eq!(targets[1].display_name, None);
+        assert_eq!(
+            targets[1].description.as_deref(),
+            Some("cargo run --features=a,b")
+        );
+    }
 }

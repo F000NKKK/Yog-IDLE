@@ -48,7 +48,7 @@ pub fn path_info(path: &Path) -> Result<PathInfo, String> {
         created: epoch_millis(meta.created()),
         read_only: meta.permissions().readonly(),
         item_count,
-        is_mod_project: is_dir && path.join("yog.toml").is_file(),
+        is_mod_project: is_dir && crate::manifest::path(path).is_file(),
     })
 }
 
@@ -111,7 +111,7 @@ pub enum FieldValue {
 }
 
 fn manifest_path(project_root: &Path) -> std::path::PathBuf {
-    project_root.join("yog.toml")
+    crate::manifest::path(project_root)
 }
 
 pub(crate) fn load(path: &Path) -> Result<DocumentMut, String> {

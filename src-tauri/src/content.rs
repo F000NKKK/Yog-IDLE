@@ -4,50 +4,16 @@
 //! `yog import`.
 
 use crate::designer::assets::{Resources, split_id};
+use crate::manifest::{self, mod_root};
 use base64::Engine as _;
 use serde::Serialize;
 use serde_json::{Map, Value};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-/// The mod a content file belongs to: the folder with `yog.toml` above it.
-pub fn mod_root(file: &Path) -> Option<PathBuf> {
-    file.ancestors()
-        .find(|d| d.join("yog.toml").is_file())
-        .map(Path::to_path_buf)
-}
-
 /// `[mod] id` of the mod at `root`.
 fn mod_id(root: &Path) -> Option<String> {
-    let text = std::fs::read_to_string(root.join("yog.toml")).ok()?;
-    let doc: toml::Table = text.parse().ok()?;
-    doc.get("mod")?.get("id")?.as_str().map(str::to_string)
-}
-
-fn valid_namespace(s: &str) -> bool {
-    !s.is_empty()
-        && s.bytes().all(|b| {
-            b.is_ascii_lowercase() || b.is_ascii_digit() || matches!(b, b'_' | b'.' | b'-')
-        })
-}
-
-#[derive(Serialize)]
-pub struct ContentInfo {
-    /// The mod's folder (with `yog.toml`), when there is one.
-    pub root: Option<String>,
-    pub mod_id: Option<String>,
-    /// The mod id when it's a valid namespace — the default of `"id"`.
-    pub namespace: Option<String>,
-}
-
-pub fn info(file: &Path) -> ContentInfo {
-    let root = mod_root(file);
-    let id = root.as_deref().and_then(mod_id);
-    ContentInfo {
-        root: root.map(|r| r.to_string_lossy().into_owned()),
-        namespace: id.clone().filter(|i| valid_namespace(i)),
-        mod_id: id,
-    }
+    manifest::read_mod_field(root, "id")
 }
 
 /// A `.yres` image entry `@<Set>.<name>` → its png file.
@@ -451,7 +417,7 @@ mod tests {
         let choices = textures(&file);
         assert!(choices.iter().any(|c| c.value == "@Textures.ruby"));
         assert!(choices.iter().any(|c| c.value == "block/ruby.png"));
-        assert_eq!(info(&file).namespace.as_deref(), Some("mymod"));
+        assert_eq!(mod_id(&dir).as_deref(), Some("mymod"));
         assert_eq!(
             texture_target(&file, "@Textures.ruby"),
             Some(dir.join("resources/block/ruby.png"))
