@@ -141,6 +141,8 @@ interface FieldBase<V, T> {
   validate?: Validator<T>;
   disabled?: (values: V) => boolean;
   visible?: (values: V) => boolean;
+  /** Extra Options-search terms beyond the label/hint (config keys like `user.name`, synonyms like "Java"). */
+  keywords?: string[];
 }
 
 export type FieldSpec<V> =
@@ -166,6 +168,8 @@ export interface FormSchema<V> {
   sections: SectionSpec<V>[];
   /** Applied to every field (e.g. "git isn't installed"). */
   disabled?: (values: V) => boolean;
+  /** Page-level extra search terms ("Git", "CARGO_HOME"). */
+  keywords?: string[];
 }
 
 /** Where a form's values come from and where commits go. */
@@ -186,7 +190,9 @@ export function useBufferedForm<V>(schema: FormSchema<V>, initial: V): {
   bind: FormSource<V>; reset(next?: V): void; submit(save: (values: V) => Promise<unknown>): Promise<boolean>;
 };
 
-/** Every label/hint/section title in English — the Options search's `keywords`. Replaces hand-kept arrays. */
+/** Every label/hint/section title in English plus the schema's and fields' `keywords` — the Options search's `keywords`.
+ *  Replaces hand-kept arrays; the explicit `keywords` keep today's non-label terms (`user.name`, "Java",
+ *  "CARGO_HOME") searchable (capability rule). */
 export function schemaKeywords(schema: FormSchema<unknown>): string[];
 
 /** The same schema as PropertyGrid rows (see finding #2). */
@@ -377,7 +383,9 @@ guard (`:231-234`) that the Project Properties window doesn't have.
 - **D3** — Should the Properties tool window keep showing *editable* `[mod]` fields at
   all, or show read-only summary rows + an "Open Project Properties" `edit` (…) button on
   the category? VS shows project properties in the Properties window only as read-only
-  identity rows. Either way it's one schema; read-only drops another ~20 lines.
+  identity rows. Either way it's one schema; read-only drops another ~20 lines. (Capability
+  rule: with read-only rows, every field stays editable one click away in Project Properties,
+  which already edits all of them.)
 
 ---
 
@@ -485,7 +493,9 @@ export interface CommandDef<A extends unknown[] = []> {
   /** Evaluated on render of any menu/toolbar showing it, and on key press. */
   enabled?: (...args: A) => boolean;
   checked?: (...args: A) => boolean;
-  run: (...args: A) => void | Promise<unknown>;
+  /** Returning `false` from a key press declines it (the key goes on to the next handler), as
+   *  `useKeybinding` allows today; `ctx.event` is the `KeyboardEvent` when a key fired it (capability rule). */
+  run: (...args: [...A, ctx?: { event?: KeyboardEvent }]) => void | boolean | Promise<unknown>;
   /** Key press only fires while this holds (focus scoping). */
   when?: () => boolean;
 }
@@ -494,13 +504,18 @@ export interface CommandDef<A extends unknown[] = []> {
 export function useCommands(defs: CommandDef[]): void;
 export function registerCommand(def: CommandDef): () => void;
 export function runCommand(id: string, ...args: unknown[]): void;
+// `useKeybinding`/`registerKeybinding` stay as the low-level path for keys that aren't commands
+// (e.g. editor-internal chords with no menu entry); a binding with an `id` is still user-rebindable.
 
 /** One entry type for menu bar, context menu and toolbar. */
 export type MenuEntry =
   | { command: string; args?: unknown[]; label?: string /* override */ }
-  | { label: string; items: MenuEntry[] }
-  | { label: string; run: () => void; disabled?: boolean; checked?: boolean; destructive?: boolean }   // ad-hoc (recent files)
+  | { label: string; items: MenuEntry[]; disabled?: boolean }
+  | { label: ReactNode; run: () => void; icon?: string; shortcut?: string; disabled?: boolean; checked?: boolean; destructive?: boolean }   // ad-hoc (recent files)
   | "separator";
+// Capability rule: the ad-hoc entry keeps everything the four old shapes allow — a ReactNode label
+// (ContextMenuItem), an icon (ToolbarItem), a display-only shortcut hint, submenus. Tree menus take
+// `(node) => MenuEntry[]`, so per-node actions keep TreeMenuItem's `onSelect(node)`; Toolbar keeps `leading`.
 
 // MenuBarItem, ContextMenu, Toolbar all take MenuEntry[]; shortcut text, enabled state,
 // icon and tooltip ("Step Over (F10)") come from the registry.
@@ -880,7 +895,9 @@ only 5 missing from `ru.ts`. The boilerplate is around it:
 - Hand-kept keyword arrays for Options search: `gitSettingsKeywords`
   (`GitSettings.tsx:77`), `environmentSettingsKeywords` (`EnvironmentSettings.tsx:51-61`),
   Substrate's `editorSettingsKeywords`, `appearanceSettingsKeywords`,
-  `internationalSettingsKeywords`. → `schemaKeywords(schema)` (#1); deleted.
+  `internationalSettingsKeywords`. → `schemaKeywords(schema)` (#1); deleted. Terms that are
+  not labels (`user.name`, "Java", "CARGO_HOME") move to the schema's `keywords` (capability rule:
+  nothing findable today stops being findable).
 - "English; shown through `t`" tables translated at render time (`MODES` in
   `PublishWindow.tsx:14-18`, `EMPTY_LABELS` in `App.tsx:136-143`, `changeKindLabel` in
   `gitApi.ts:136-155`, `LANGUAGES` in `Properties.tsx:42-62`). With `Msg` as the
