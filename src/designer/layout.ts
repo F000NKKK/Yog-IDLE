@@ -416,7 +416,12 @@ export function screenWidget(screen: YuiNode, screenW: number, screenH: number):
 
 export function compute(w: LWidget, availW: number, availH: number): LNode {
   const node: LNode = { uid: w.uid, rect: { x: 0, y: 0, w: 0, h: 0 }, children: [] };
-  layoutWidget(w, node, 0, 0, availW, availH, availW, availH);
+  measured = new Map();
+  try {
+    layoutWidget(w, node, 0, 0, availW, availH, availW, availH);
+  } finally {
+    measured = null;
+  }
   return node;
 }
 
@@ -447,7 +452,43 @@ interface Shrink {
   maxH: number;
 }
 
+/** A widget measured at the origin under some constraints, as `layoutWidget` left its node. */
+interface Measured {
+  maxW: number;
+  maxH: number;
+  basisW: number;
+  basisH: number;
+  w: number;
+  h: number;
+  grid: LNode["grid"];
+  children: LNode[];
+}
+
+/**
+ * This `compute` pass's measurements. A container measures each child, then
+ * arranges it — which measures the grandchildren again under the same
+ * constraints, and so on down: without this, the work doubles per nesting
+ * level. A measurement only depends on the widget and its constraints (the
+ * origin is always 0, 0), so a repeat is answered from here.
+ */
+let measured: Map<LWidget, Measured[]> | null = null;
+
 function layoutWidget(w: LWidget, node: LNode, x: number, y: number, maxW: number, maxH: number, basisW: number, basisH: number) {
+  if (!measured || x !== 0 || y !== 0) return measureWidget(w, node, x, y, maxW, maxH, basisW, basisH);
+  let list = measured.get(w);
+  const hit = list?.find((m) => m.maxW === maxW && m.maxH === maxH && m.basisW === basisW && m.basisH === basisH);
+  if (hit) {
+    node.rect = { x: 0, y: 0, w: hit.w, h: hit.h };
+    node.grid = hit.grid;
+    node.children = hit.children;
+    return;
+  }
+  measureWidget(w, node, 0, 0, maxW, maxH, basisW, basisH);
+  if (!list) measured.set(w, (list = []));
+  list.push({ maxW, maxH, basisW, basisH, w: node.rect.w, h: node.rect.h, grid: node.grid, children: node.children });
+}
+
+function measureWidget(w: LWidget, node: LNode, x: number, y: number, maxW: number, maxH: number, basisW: number, basisH: number) {
   const s = w.style;
   const hasChildren = isContainer(w);
   const rw = resolveSize(s.w, basisW);
