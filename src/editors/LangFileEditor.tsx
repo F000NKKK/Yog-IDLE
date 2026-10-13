@@ -117,7 +117,7 @@ export function LangFileEditor({ path, content, onChange, readOnly }: EditorProp
 
   return (
     <div style={{ height: "100%", boxSizing: "border-box" }}>
-      <DataGrid columns={columns} rows={rows} getRowId={(e) => e.id} onCellEditCommit={commitEdit} filterRow />
+      <DataGrid className="sp-datagrid--flush" columns={columns} rows={rows} getRowId={(e) => e.id} onCellEditCommit={commitEdit} filterRow />
     </div>
   );
 }

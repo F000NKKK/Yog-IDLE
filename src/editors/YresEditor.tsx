@@ -687,6 +687,7 @@ export function YresEditor({ path, content, onChange, readOnly, contentVersion }
       </div>
       <div className="yres-grid">
         <DataGrid<Row>
+          className="sp-datagrid--flush"
           key={columns.map((c) => c.key).join("|")}
           handleRef={gridRef}
           columns={columns}
