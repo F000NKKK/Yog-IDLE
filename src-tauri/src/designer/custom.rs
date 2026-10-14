@@ -51,6 +51,7 @@ const BUILT_IN: &[&str] = &[
     "PlayerInventory",
     "Image",
     "Spacer",
+    "Surface",
     "Grid",
     "RowDefinition",
     "ColumnDefinition",

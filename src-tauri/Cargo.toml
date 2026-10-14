@@ -43,7 +43,7 @@ proc-macro2 = { version = "1.0.107", features = ["span-locations"] }
 # The screen designer draws with yog-ui itself — the crate mods render with
 # in game — through a recording `YogGfxApi` (yog-abi/yog-gfx), and reads
 # Minecraft's font/textures from the local client jar (zip, png).
-yog-ui = "0.40.12"
+yog-ui = "0.40.13"
 yog-gfx = "0.25.3"
 yog-abi = "0.28.5"
 yog-book = "0.62.7"

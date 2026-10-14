@@ -1570,8 +1570,8 @@ async fn yui_designer_components(path: String) -> Result<designer::custom::Snaps
 pub mod bench {
     use std::path::{Path, PathBuf};
 
-    pub use crate::designer::{RenderArgs, render};
-    pub use crate::designer::{book, images};
+    pub use crate::designer::{EventArgs, RenderArgs, event, mod_root, render, reset};
+    pub use crate::designer::{book, custom, images};
     pub use crate::search::OpenDocument;
     pub use crate::symbols::{extract_symbols, fuzzy_match};
 

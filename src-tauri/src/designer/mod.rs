@@ -69,7 +69,7 @@ pub struct Rendered {
 
 /// The mod a file belongs to: the folder with its `yog.toml` (else the
 /// folder holding the `src/` it's in).
-pub(crate) fn mod_root(file: &Path) -> Option<PathBuf> {
+pub fn mod_root(file: &Path) -> Option<PathBuf> {
     file.ancestors().skip(1).find(|p| p.join("yog.toml").is_file()).map(Path::to_path_buf).or_else(|| {
         file.ancestors()
             .find(|p| p.file_name().is_some_and(|n| n == "src"))
@@ -197,6 +197,7 @@ pub fn render(args: &RenderArgs) -> Result<Rendered, String> {
     images::set_document(root.as_deref());
     // The mod's own components: expanded from markup, or marked spacers here drawn by the designer host below.
     let mut themed = args.root.clone();
+    markup::apply_resources(&mut themed);
     markup::apply_theme(&mut themed);
     let prepared = custom::prepare(&themed, root.as_deref(), sw as f32, sh as f32);
     let laid = lay_out(&prepared.root, sw as f32, sh as f32, &scroll);
@@ -294,6 +295,7 @@ pub fn event(args: &EventArgs) -> EventResult {
     // Laid out like `render` does: images size by the same mod's resources.
     images::set_document(mod_root.as_deref());
     let mut themed = args.root.clone();
+    markup::apply_resources(&mut themed);
     markup::apply_theme(&mut themed);
     let prepared = custom::prepare(&themed, mod_root.as_deref(), sw, sh);
     let root = &prepared.root;

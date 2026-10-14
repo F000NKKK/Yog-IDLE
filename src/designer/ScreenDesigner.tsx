@@ -117,7 +117,7 @@ const RESOLUTIONS: { w: number; h: number; label: string }[] = [
   { w: 427, h: 240, label: "427 × 240 (854 × 480, GUI 2)" },
   { w: 320, h: 240, label: "320 × 240 (minimum window)" },
 ];
-const ZOOMS = [1, 2, 3, 4];
+const ZOOMS = [1, 2, 3, 4, 5, 6, 8];
 const GRID = 2;
 
 /** One undo step: the document as it was, its exact text (so undoing back to the saved text clears the dirty mark), and what was selected. */
@@ -1176,6 +1176,36 @@ export function ScreenDesigner({ path, content, onChange, readOnly, contentVersi
     settings = { ...view, ...patch };
     setView(settings);
   };
+
+  // Ctrl+wheel (a trackpad's pinch) zooms, keeping the point under the
+  // cursor in place. A native listener: React's wheel events are passive,
+  // and the webview would zoom the whole window.
+  const zoomRef = useRef(view.zoom);
+  zoomRef.current = view.zoom;
+  const hasCanvas = !!doc && !!layout && error === null;
+  useEffect(() => {
+    const el = canvasRef.current;
+    if (!el) return;
+    const onWheel = (e: WheelEvent) => {
+      if (!(e.ctrlKey || e.metaKey) || e.deltaY === 0) return;
+      e.preventDefault();
+      const from = zoomRef.current;
+      const i = ZOOMS.indexOf(from);
+      const to = ZOOMS[Math.max(0, Math.min(ZOOMS.length - 1, (i < 0 ? 1 : i) + (e.deltaY < 0 ? 1 : -1)))];
+      if (to === from) return;
+      const r = el.getBoundingClientRect();
+      const [mx, my] = [e.clientX - r.left, e.clientY - r.top];
+      const [sx, sy] = [el.scrollLeft, el.scrollTop];
+      updateView({ zoom: to });
+      requestAnimationFrame(() => {
+        el.scrollLeft = ((sx + mx) * to) / from - mx;
+        el.scrollTop = ((sy + my) * to) / from - my;
+      });
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasCanvas]);
 
   if (error !== null || !doc || !layout) {
     return (

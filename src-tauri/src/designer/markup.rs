@@ -163,6 +163,106 @@ pub fn text(value: Option<&str>) -> String {
     }
 }
 
+/// What `yog build` does to a screen before building it (and the design
+/// view's own: `d:` values for bound ones): `<Screen.Resources>`
+/// (`@Name` values, `<Style x:Key>` with `based_on`) applied — a style's
+/// attributes on every element naming it, its own winning — and yog-kit's
+/// elements as the widgets they become (`ToggleButton` → `Button`,
+/// `ListView` → `ScrollView`, `ItemsControl`/`ContentPresenter` → a column
+/// or row). Unknown names are left as they are (`yog check` reports them).
+pub fn apply_resources(root: &mut YuiNode) {
+    let mut values: HashMap<String, String> = HashMap::new();
+    let mut styles: HashMap<String, Vec<(String, String)>> = HashMap::new();
+    if let Some(res) = root.children.iter().find(|c| c.kind.ends_with(".Resources")) {
+        let mut pending: Vec<&YuiNode> = Vec::new();
+        for r in &res.children {
+            let Some(key) = r.attr("x:Key") else { continue };
+            if r.kind == "Style" {
+                pending.push(r);
+            } else if let Some(v) = r.attr("value") {
+                values.insert(key.to_string(), v.to_string());
+            }
+        }
+        let local = |v: &str, values: &HashMap<String, String>| match v.strip_prefix('@') {
+            Some(n) if !n.contains('.') && !n.starts_with('@') => values.get(n).cloned().unwrap_or_else(|| v.to_string()),
+            _ => v.to_string(),
+        };
+        // Styles, `based_on` chains in any order.
+        while !pending.is_empty() {
+            let before = pending.len();
+            let mut rest = Vec::new();
+            for st in pending {
+                let key = st.attr("x:Key").unwrap_or_default().to_string();
+                let mut attrs = match st.attr("based_on").map(|b| b.trim().trim_start_matches('@')) {
+                    Some(b) => match styles.get(b) {
+                        Some(a) => a.clone(),
+                        None => {
+                            rest.push(st);
+                            continue;
+                        }
+                    },
+                    None => Vec::new(),
+                };
+                let mut own: Vec<(&String, &String)> = st.attrs.iter().collect();
+                own.sort();
+                for (k, v) in own {
+                    if matches!(k.as_str(), "x:Key" | "target" | "based_on") {
+                        continue;
+                    }
+                    attrs.retain(|(ek, _)| ek != k);
+                    attrs.push((k.clone(), local(v, &values)));
+                }
+                styles.insert(key, attrs);
+            }
+            if rest.len() == before {
+                break;
+            }
+            pending = rest;
+        }
+    }
+    fn walk(n: &mut YuiNode, values: &HashMap<String, String>, styles: &HashMap<String, Vec<(String, String)>>) {
+        // Bound values are the game's to compute: in the designer an
+        // attribute shows its design-time value (`d:text="Sample"`), else
+        // none — as if unset (a text box shows its placeholder).
+        let design: Vec<(String, String)> =
+            n.attrs.iter().filter_map(|(k, v)| Some((k.strip_prefix("d:")?.to_string(), v.clone()))).collect();
+        n.attrs.retain(|k, v| !k.starts_with("d:") && !(v.trim_start().starts_with("{x:Bind") || v.trim_start().starts_with("{Binding")));
+        n.attrs.extend(design);
+        for v in n.attrs.values_mut() {
+            if let Some(name) = v.strip_prefix('@')
+                && !name.contains('.')
+                && !name.starts_with('@')
+                && let Some(r) = values.get(name)
+            {
+                *v = r.clone();
+            }
+        }
+        if let Some(name) = n.attrs.remove("style")
+            && let Some(attrs) = styles.get(name.trim().trim_start_matches('@'))
+        {
+            for (k, v) in attrs {
+                n.attrs.entry(k.clone()).or_insert_with(|| v.clone());
+            }
+        }
+        if let Some(name) = n.attrs.get("x:Name").cloned() {
+            n.attrs.entry("id".into()).or_insert(name);
+        }
+        let horizontal = n.attr("orientation").is_some_and(|o| o.trim() == "horizontal");
+        n.kind = match n.kind.as_str() {
+            "ToggleButton" => "Button",
+            "ListView" => "ScrollView",
+            "ItemsControl" if horizontal => "Row",
+            "ItemsControl" | "ContentPresenter" => "Column",
+            k => k,
+        }
+        .to_string();
+        for c in &mut n.children {
+            walk(c, values, styles);
+        }
+    }
+    walk(root, &values, &styles);
+}
+
 /// `<Screen theme>`'s defaults on every node that doesn't set the attribute
 /// itself — as `yog build` applies them.
 pub fn apply_theme(root: &mut YuiNode) {
@@ -199,6 +299,8 @@ pub fn widget(node: &YuiNode, in_canvas: bool, scroll: &HashMap<String, f32>) ->
         "Slot" => widget::slot(a("index").and_then(|i| i.trim().parse().ok()).unwrap_or(0)),
         "PlayerInventory" => widget::player_inventory(),
         "Image" => super::images::widget(node),
+        // Drawn by the mod's code in game: an empty box here.
+        "Surface" => widget::surface(a("source").unwrap_or_default()),
         "TextBox" => widget::text_box(text(a("text"))),
         _ => widget::spacer(),
     };
@@ -374,4 +476,47 @@ pub fn screen(
         .w(Units::Px(screen_w))
         .h(Units::Px(screen_h))
         .child(content)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn node(kind: &str, attrs: &[(&str, &str)], children: Vec<YuiNode>) -> YuiNode {
+        YuiNode {
+            uid: kind.into(),
+            kind: kind.into(),
+            attrs: attrs.iter().map(|(k, v)| (k.to_string(), v.to_string())).collect(),
+            children,
+        }
+    }
+
+    #[test]
+    fn styles_resources_and_kit_elements_apply_as_yog_build_does() {
+        let mut root = node(
+            "Screen",
+            &[],
+            vec![
+                node(
+                    "Screen.Resources",
+                    &[],
+                    vec![
+                        node("Color", &[("x:Key", "Accent"), ("value", "#FF112233")], vec![]),
+                        node("Style", &[("x:Key", "Base"), ("target", "Button"), ("h", "16")], vec![]),
+                        node("Style", &[("x:Key", "Filter"), ("based_on", "@Base"), ("w", "58"), ("color", "@Accent")], vec![]),
+                    ],
+                ),
+                node("ToggleButton", &[("style", "@Filter"), ("w", "64"), ("text", "{x:Bind label()}"), ("d:text", "Yog")], vec![]),
+                node("TextBox", &[("text", "{x:Bind search, Mode=TwoWay}")], vec![]),
+            ],
+        );
+        apply_resources(&mut root);
+        let b = &root.children[1];
+        assert_eq!(b.kind, "Button");
+        assert_eq!(b.attr("w"), Some("64"), "its own attribute wins");
+        assert_eq!(b.attr("h"), Some("16"), "from the base style");
+        assert_eq!(b.attr("color"), Some("#FF112233"));
+        assert_eq!(b.attr("text"), Some("Yog"), "the design-time value");
+        assert_eq!(root.children[2].attr("text"), None, "a bound value shows nothing");
+    }
 }
