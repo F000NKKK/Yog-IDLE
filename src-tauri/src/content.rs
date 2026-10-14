@@ -24,7 +24,7 @@ fn yres_image(root: &Path, reference: &str) -> Option<PathBuf> {
             continue;
         }
         let text = std::fs::read_to_string(&file).ok()?;
-        let doc: Map<String, Value> = serde_json::from_str(&text).ok()?;
+        let doc = crate::data::read_object(&text)?;
         let entry = doc.get(name)?;
         if entry.get("type").and_then(Value::as_str) != Some("image") {
             return None;
@@ -275,7 +275,7 @@ pub fn strings(file: &Path) -> Vec<String> {
         let Ok(text) = std::fs::read_to_string(&p) else {
             continue;
         };
-        let Ok(doc) = serde_json::from_str::<Map<String, Value>>(&text) else {
+        let Some(doc) = crate::data::read_object(&text) else {
             continue;
         };
         for (name, e) in &doc {
@@ -305,7 +305,7 @@ pub fn textures(file: &Path) -> Vec<TextureChoice> {
             let Ok(text) = std::fs::read_to_string(&p) else {
                 continue;
             };
-            let Ok(doc) = serde_json::from_str::<Map<String, Value>>(&text) else {
+            let Some(doc) = crate::data::read_object(&text) else {
                 continue;
             };
             for (name, e) in &doc {

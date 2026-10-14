@@ -11,6 +11,7 @@ use substrate_platform::{
 use tauri::{AppHandle, Emitter, Manager, State};
 
 mod content;
+mod data;
 mod designer;
 mod environment;
 mod events;

@@ -3927,6 +3927,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d78c8dee4c7bf0e14673097256fed6142ce9d3b85a408189d07482442145823b"
 dependencies = [
  "proc-macro2",
+ "quote",
  "unicode-ident",
 ]
 
@@ -5700,6 +5701,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "yog-data"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8997fedc8fe4bcca6fc639435ce7d75369903596323537bfda3edbdfd41c5e59"
+dependencies = [
+ "yog-data-derive",
+]
+
+[[package]]
+name = "yog-data-derive"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dc3870c6ba3f596b08049760b864af7a4745fb02cf0d027ef7b9c93d47c61a4f"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 3.0.9",
+]
+
+[[package]]
 name = "yog-debugger"
 version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5760,6 +5781,7 @@ dependencies = [
  "toml_edit 0.25.13+spec-1.1.0",
  "yog-abi",
  "yog-book",
+ "yog-data",
  "yog-debugger",
  "yog-gfx",
  "yog-hot-reload",

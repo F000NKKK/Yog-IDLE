@@ -30,14 +30,18 @@ describe("yres", () => {
   });
 
   it.each([
-    ["", 1, "expected `{`"],
-    ['{\n  "a": "x\n"}', 2, "unterminated string"],
-    ['{\n  "a": nope\n}', 2, "must be a string, a number or true/false"],
+    ["", 1, "expected a value, found the end of the file"],
+    ["[]", 1, "expected `{`"],
+    ['{\n  "a": "x\n"}', 2, "line break in a string"],
+    ['{\n  "a": nope\n}', 2, "expected a value"],
+    ['{\n  "a": []\n}', 2, "must be a string, a number or true/false"],
     ['{\n  "a": { "colour": "x" }\n}', 2, "unknown field `colour`"],
     ['{\n  "a": { "type": "image" }\n}', 2, "missing `value`"],
     ['{\n  "a": { "type": "font", "value": "x" }\n}', 2, "unknown type `font`"],
     ['{ "a": "x" "b": "y" }', 1, "expected `,` or `}`"],
     ['{ "a": "x" } extra', 1, "unexpected text"],
+    ['{\n  "a": "@Strings.x"\n}', 2, "expected plain text"],
+    ['{\n  "a": "@nope"\n}', 2, "a reference is"],
     ['{ "a": "x",', 1, "found the end of the file"],
   ])("reports %j at line %i", (text, line, error) => {
     const r = parseYres(text);
@@ -46,6 +50,15 @@ describe("yres", () => {
       expect(r.line).toBe(line);
       expect(r.error).toContain(error);
     }
+  });
+
+  it("reads comments, trailing commas, unquoted keys and `@@`", () => {
+    const e = entries('{\n  // note\n  title: "@@me", /* x */\n  "n": 1,\n}');
+    expect(e.map((x) => [x.name, x.value, x.line])).toEqual([
+      ["title", "@me", 3],
+      ["n", 1, 4],
+    ]);
+    expect(serializeYres(e)).toBe('{\n  "title": "@@me",\n  "n": { "type": "number", "value": 1 }\n}\n');
   });
 
   it("writes what it reads", () => {

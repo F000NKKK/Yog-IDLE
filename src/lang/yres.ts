@@ -1,10 +1,12 @@
 /**
- * `.yres` resource files (see docs/yres.md): one JSON object of entries in
- * file order, each either a text or `{ "type": ..., "value": ..., ... }`.
- * Parsed by hand rather than with `JSON.parse`, which would reorder
- * integer-like names and silently merge duplicates — the editor shows both
- * as they are in the file, and reports errors with their line.
+ * `.yres` resource files (see docs/yres.md): one Yog Data object of entries
+ * in file order, each either a text or `{ "type": ..., "value": ..., ... }`.
+ * Read with `parseData`, which keeps integer-like names in place and
+ * duplicates as they are — the editor shows both, and reports errors with
+ * their line.
  */
+
+import { classify, DataSyntaxError, escapeAt, parseData, type DataNode } from "../data/yogData";
 
 export const RESOURCE_TYPES = ["string", "image", "file", "sound", "color", "number", "bool"] as const;
 export type ResourceType = (typeof RESOURCE_TYPES)[number];
@@ -44,104 +46,61 @@ class ParseError extends Error {
   }
 }
 
+/** A plain text: `@@` unescaped, any other `@…` an error (as in `yog build`). */
+function plainText(node: DataNode & { t: "str" }, what: string): string {
+  let typed;
+  try {
+    typed = classify(node.v);
+  } catch (e) {
+    throw new ParseError(`${what}: ${(e as Error).message}`, node.line);
+  }
+  if (typed.t !== "str") throw new ParseError(`${what}: expected plain text, found a reference (write \`@@\` for a literal \`@\`)`, node.line);
+  return typed.v;
+}
+
+/** A string, number or `true`/`false`. */
+function scalar(node: DataNode, what: string): string | number | boolean {
+  if (node.t === "str") return plainText(node, what);
+  if (node.t === "num" || node.t === "bool") return node.v;
+  throw new ParseError(`${what} must be a string, a number or true/false`, node.line);
+}
+
 /** Parses `.yres` text, duplicate names kept (the editor flags them; `yog build` rejects them). */
 export function parseYres(text: string): YresParse {
-  let i = text.charCodeAt(0) === 0xfeff ? 1 : 0;
-  let line = 1;
-  const fail = (message: string, at = line): never => {
-    throw new ParseError(i >= text.length ? `${message}, found the end of the file` : message, at);
-  };
-  const ws = () => {
-    for (; i < text.length; i++) {
-      const c = text[i];
-      if (c === "\n") line++;
-      else if (c !== " " && c !== "\t" && c !== "\r") break;
-    }
-  };
-  const eat = (c: string) => {
-    if (text[i] !== c) return false;
-    i++;
-    return true;
-  };
-  const string = (): string => {
-    if (text[i] !== '"') fail("expected a string");
-    const start = i++;
-    while (i < text.length && text[i] !== '"') {
-      if (text[i] === "\n") fail("unterminated string (use \\n for a line break)");
-      i += text[i] === "\\" ? 2 : 1;
-    }
-    if (i >= text.length) fail("unterminated string");
-    i++;
-    try {
-      return JSON.parse(text.slice(start, i)) as string;
-    } catch {
-      return fail("invalid string escape");
-    }
-  };
-  /** A string, number or `true`/`false`. */
-  const scalar = (what: string): string | number | boolean => {
-    if (text[i] === '"') return string();
-    const m = /^(true|false|-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?)/.exec(text.slice(i, i + 64));
-    if (!m) return fail(`${what} must be a string, a number or true/false`);
-    i += m[0].length;
-    return m[0] === "true" ? true : m[0] === "false" ? false : Number(m[0]);
-  };
-  const entryObject = (name: string, keyLine: number): YresEntry => {
-    eat("{");
-    const fields: Record<string, string | number | boolean> = {};
-    ws();
-    if (!eat("}")) {
-      for (;;) {
-        ws();
-        const field = string();
-        ws();
-        if (!eat(":")) fail("expected `:`");
-        ws();
-        if (!(FIELDS as readonly string[]).includes(field))
-          fail(`"${name}": unknown field \`${field}\` (expected ${FIELDS.map((f) => `\`${f}\``).join(", ")})`);
-        const v = field === "value" ? scalar(`"${name}": \`value\``) : text[i] === '"' ? string() : fail(`"${name}": \`${field}\` must be a string`);
-        fields[field] = v;
-        ws();
-        if (eat(",")) continue;
-        if (eat("}")) break;
-        fail("expected `,` or `}`");
-      }
-    }
-    if (fields.value === undefined) fail(`"${name}": missing \`value\``, keyLine);
-    const type = (fields.type ?? defaultType(fields.value)) as string;
-    if (!(RESOURCE_TYPES as readonly string[]).includes(type))
-      fail(`"${name}": unknown type \`${type}\` (expected ${RESOURCE_TYPES.join(", ")})`, keyLine);
-    const entry: YresEntry = { name, type: type as ResourceType, value: fields.value, line: keyLine };
-    for (const f of ["comment", "key", "texture", "event", "subtitle"] as const) if (typeof fields[f] === "string") entry[f] = fields[f] as string;
-    return entry;
-  };
-
   try {
-    ws();
-    if (!eat("{")) fail("expected `{` — a .yres file is one JSON object of resources");
-    const entries: YresEntry[] = [];
-    ws();
-    if (!eat("}")) {
-      for (;;) {
-        ws();
-        const keyLine = line;
-        const name = string();
-        ws();
-        if (!eat(":")) fail("expected `:` after the name");
-        ws();
-        if (text[i] === "{") entries.push(entryObject(name, keyLine));
-        else {
-          const value = scalar(`"${name}"`);
-          entries.push({ name, type: defaultType(value), value, line: keyLine });
-        }
-        ws();
-        if (eat(",")) continue;
-        if (eat("}")) break;
-        fail("expected `,` or `}`");
-      }
+    let root: DataNode;
+    try {
+      root = parseData(text);
+    } catch (e) {
+      if (e instanceof DataSyntaxError) throw new ParseError(e.message, e.line);
+      throw e;
     }
-    ws();
-    if (i < text.length) fail("unexpected text after the closing `}`");
+    if (root.t !== "map") throw new ParseError("expected `{` — a .yres file is one JSON object of resources", root.line);
+    const entries: YresEntry[] = [];
+    for (const { key: name, keyLine, value } of root.entries) {
+      if (name.startsWith("$")) continue;
+      if (value.t !== "map") {
+        const v = scalar(value, `"${name}"`);
+        entries.push({ name, type: defaultType(v), value: v, line: keyLine });
+        continue;
+      }
+      const fields: Record<string, string | number | boolean> = {};
+      for (const f of value.entries) {
+        if (f.key.startsWith("$") || f.key.startsWith("_")) continue;
+        if (!(FIELDS as readonly string[]).includes(f.key))
+          throw new ParseError(`"${name}": unknown field \`${f.key}\` (expected ${FIELDS.map((x) => `\`${x}\``).join(", ")})`, f.keyLine);
+        if (f.key === "value") fields.value = scalar(f.value, `"${name}": \`value\``);
+        else if (f.value.t === "str") fields[f.key] = plainText(f.value, `"${name}": \`${f.key}\``);
+        else throw new ParseError(`"${name}": \`${f.key}\` must be a string`, f.value.line);
+      }
+      if (fields.value === undefined) throw new ParseError(`"${name}": missing \`value\``, keyLine);
+      const type = (fields.type ?? defaultType(fields.value)) as string;
+      if (!(RESOURCE_TYPES as readonly string[]).includes(type))
+        throw new ParseError(`"${name}": unknown type \`${type}\` (expected ${RESOURCE_TYPES.join(", ")})`, keyLine);
+      const entry: YresEntry = { name, type: type as ResourceType, value: fields.value, line: keyLine };
+      for (const f of ["comment", "key", "texture", "event", "subtitle"] as const) if (typeof fields[f] === "string") entry[f] = fields[f] as string;
+      entries.push(entry);
+    }
     return { ok: true, entries };
   } catch (e) {
     if (e instanceof ParseError) return { ok: false, error: e.message, line: e.line };
@@ -161,15 +120,17 @@ function needsObject(e: YresEntry): boolean {
 /** `.yres` text for `entries`: 2-space indent, file order, one entry per line, a bare string for a plain text. */
 export function serializeYres(entries: YresEntry[]): string {
   if (entries.length === 0) return "{\n}\n";
+  /** A value as written: a leading `@` doubled, so text never reads as a reference. */
+  const lit = (v: string | number | boolean) => JSON.stringify(typeof v === "string" ? escapeAt(v) : v);
   const lines = entries.map((e) => {
     const name = JSON.stringify(e.name);
-    if (!needsObject(e)) return `  ${name}: ${JSON.stringify(e.value)}`;
+    if (!needsObject(e)) return `  ${name}: ${lit(e.value)}`;
     const parts: string[] = [];
     for (const f of FIELDS) {
       if (f === "type") {
         if (e.type !== "string") parts.push(`"type": ${JSON.stringify(e.type)}`);
-      } else if (f === "value") parts.push(`"value": ${JSON.stringify(e.value)}`);
-      else if (e[f]) parts.push(`${JSON.stringify(f)}: ${JSON.stringify(e[f])}`);
+      } else if (f === "value") parts.push(`"value": ${lit(e.value)}`);
+      else if (e[f]) parts.push(`${JSON.stringify(f)}: ${lit(e[f])}`);
     }
     return `  ${name}: { ${parts.join(", ")} }`;
   });

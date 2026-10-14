@@ -43,8 +43,13 @@ file is an error; so is `Strings.en_us.yres` (the neutral file *is* en_us).
 
 ## Format
 
-One JSON object (UTF-8, 2-space indented by the editor); entry names map
-to values, in the order shown in the editor:
+One Yog Data object (UTF-8, 2-space indented by the editor) — JSON, plus
+`//` and `/* */` comments, trailing commas and unquoted names, like every
+Yog format. Entry names map to values, in the order shown in the editor. A
+text starting with `@` is written `@@` (`"@@home"` is the text `@home`): a
+single `@` starts a reference everywhere in Yog Data, and a text entry
+can't be one. Saving from the grid view rewrites the file, so comments
+survive only edits in the code view.
 
 ```json
 {
