@@ -96,7 +96,7 @@ fn content_file(root: &Path, id: &str, kinds: &[&str]) -> Option<(PathBuf, Value
     }
     for kind in kinds {
         for file in find(&root.join("content"), kind) {
-            let Ok(doc) = std::fs::read_to_string(&file).map_err(|_| ()).and_then(|t| serde_json::from_str::<Value>(&t).map_err(|_| ())) else {
+            let Some(doc) = std::fs::read_to_string(&file).ok().and_then(|t| crate::data::read_object(&t)).map(Value::Object) else {
                 continue;
             };
             let fid = doc.get("id").and_then(Value::as_str).map(str::to_string)
@@ -142,7 +142,7 @@ pub fn content_icon(root: &Path, id: &str) -> Option<Vec<u8>> {
     let files = [find(&root.join("content"), "yitem"), find(&root.join("content"), "yblock")].concat();
     for file in files {
         let Ok(text) = std::fs::read_to_string(&file) else { continue };
-        let Ok(doc) = serde_json::from_str::<Value>(&text) else { continue };
+        let Some(doc) = crate::data::read_object(&text).map(Value::Object) else { continue };
         let fid = doc.get("id").and_then(Value::as_str).map(str::to_string)
             .or_else(|| file.file_stem().map(|s| s.to_string_lossy().into_owned()))?;
         let fid = fid.split_once(':').map_or(fid.as_str(), |(_, p)| p).to_string();

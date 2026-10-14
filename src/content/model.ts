@@ -2,6 +2,8 @@
 // editor sees it: types, Minecraft's constraints, the templates' geometry,
 // face UVs, display defaults, and the file's text form.
 
+import { DataSyntaxError, parseDataValue } from "../data/yogData";
+
 export type Dir = "down" | "up" | "north" | "south" | "west" | "east";
 export const DIRS: Dir[] = ["down", "up", "north", "south", "west", "east"];
 export type Vec3 = [number, number, number];
@@ -57,7 +59,9 @@ export interface BlockProps {
   resistance?: number;
   sound?: string;
   light?: number;
-  tool?: string;
+  /** `pickaxe`… or a mod's tool tag (`@tag:block:mymod:mineable/hammer`); one or a list. */
+  tool?: string | string[];
+  /** `iron`… or a mod's tier tag (`@tag:block:mymod:needs_mythril_tool`). */
   tool_level?: string;
   requires_tool?: boolean;
   collision?: boolean;
@@ -100,6 +104,7 @@ export type Kind = "block" | "item";
 export const kindOf = (path: string): Kind | null => (/\.yblock$/i.test(path) ? "block" : /\.yitem$/i.test(path) ? "item" : null);
 
 export const SOUNDS = ["stone", "wood", "grass", "gravel", "sand", "snow", "metal", "glass", "wool", "nether_brick"];
+/** The game's tools and tiers by short name; a mod's are `@tag:block:…` tags. */
 export const TOOLS = ["pickaxe", "axe", "shovel", "hoe"];
 export const TOOL_LEVELS = ["stone", "iron", "diamond"];
 export const RENDER_LAYERS = ["solid", "cutout", "cutout_mipped", "translucent"];
@@ -250,42 +255,15 @@ export function defaultDisplay(kind: "block" | "generated" | "handheld"): Partia
 
 export type Parsed = { ok: true; file: ContentFile } | { ok: false; error: string };
 
-/** JSON with `//` comments and trailing commas tolerated (as `yog` reads it). */
+/** Yog Data text (comments, trailing commas, unquoted keys — as `yog` reads it). */
 export function parseContent(text: string): Parsed {
   try {
-    const cleaned = stripJsonComments(text);
-    const value = JSON.parse(cleaned) as unknown;
-    if (!value || typeof value !== "object" || Array.isArray(value)) return { ok: false, error: "The file must be one JSON object." };
+    const value = parseDataValue(text);
+    if (!value || typeof value !== "object" || Array.isArray(value)) return { ok: false, error: "The file must be one object." };
     return { ok: true, file: value as ContentFile };
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    return { ok: false, error: e instanceof DataSyntaxError ? `${e.line}:${e.col}: ${e.message}` : e instanceof Error ? e.message : String(e) };
   }
-}
-
-function stripJsonComments(text: string): string {
-  const parts: string[] = [];
-  let from = 0; // start of the text not yet copied into `parts`
-  let comma = -1; // index in `parts` of a comma that only whitespace and comments follow so far
-  for (let i = 0; i < text.length; i++) {
-    const c = text[i];
-    if (c === '"') {
-      for (i++; i < text.length && text[i] !== '"'; i++) if (text[i] === "\\") i++;
-      comma = -1;
-    } else if (c === "/" && text[i + 1] === "/") {
-      parts.push(text.slice(from, i), "\n");
-      while (i < text.length && text[i] !== "\n") i++;
-      from = i + 1;
-    } else if (c === ",") {
-      parts.push(text.slice(from, i));
-      comma = parts.push(",") - 1;
-      from = i + 1;
-    } else if (c === "}" || c === "]") {
-      if (comma >= 0) parts[comma] = "";
-      comma = -1;
-    } else if (c !== " " && c !== "\n" && c !== "\r" && c !== "\t") comma = -1;
-  }
-  parts.push(text.slice(from));
-  return parts.join("");
 }
 
 const round = (n: number) => Math.round(n * 10000) / 10000;

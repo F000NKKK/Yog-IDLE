@@ -944,14 +944,29 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
           edit(d.block);
           if (prune(d.block as Record<string, unknown>)) delete d.block;
         });
-      const drops = typeof b.drops === "object" ? (b.drops.item ?? "") : (b.drops ?? "");
+      const drops = typeof b.drops === "object" ? (b.drops.item ?? "").replace(/^@item:/, "") : (b.drops ?? "");
+      const tools = Array.isArray(b.tool) ? b.tool.join(", ") : b.tool;
       out.push(
         num("hardness", t("Hardness"), c, b.hardness, (v) => setB((x) => void (x.hardness = v)), { min: -1, description: t("Mining time factor (stone 1.5, -1 unbreakable).") }),
         num("resistance", t("Blast Resistance"), c, b.resistance, (v) => setB((x) => void (x.resistance = v)), { min: 0 }),
         choice("sound", t("Sound"), c, b.sound, SOUNDS, (v) => setB((x) => void (x.sound = v))),
         num("light", t("Light Level"), c, b.light, (v) => setB((x) => void (x.light = v)), { min: 0, max: 15, int: true }),
-        choice("tool", t("Tool"), c, b.tool, TOOLS, (v) => setB((x) => void (x.tool = v))),
-        choice("tool_level", t("Tool Level"), c, b.tool_level, TOOL_LEVELS, (v) => setB((x) => void (x.tool_level = v))),
+        text(
+          "tool",
+          t("Tool"),
+          c,
+          tools,
+          (v) =>
+            setB((x) => {
+              const list = (v ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+              x.tool = list.length === 0 ? undefined : list.length === 1 ? list[0] : list;
+            }),
+          { suggestions: TOOLS, description: t("pickaxe, axe, shovel, hoe — or a mod's tool tag, @tag:block:mymod:mineable/hammer; several separated by commas.") }
+        ),
+        text("tool_level", t("Tool Level"), c, b.tool_level, (v) => setB((x) => void (x.tool_level = v || undefined)), {
+          suggestions: TOOL_LEVELS,
+          description: t("stone, iron, diamond — or a mod's tier tag, @tag:block:mymod:needs_mythril_tool."),
+        }),
         flag("requires_tool", t("Requires Tool"), c, b.requires_tool, (v) => setB((x) => void (x.requires_tool = v)), false, { description: t("Drops nothing unless mined with the right tool.") }),
         flag("collision", t("Collision"), c, b.collision, (v) => setB((x) => void (x.collision = v)), true),
         num("slipperiness", t("Slipperiness"), c, b.slipperiness, (v) => setB((x) => void (x.slipperiness = v)), { min: 0, max: 1, description: t("0.6 normal, 0.98 ice.") }),
@@ -990,7 +1005,7 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
           (v) =>
             setB((x) => {
               if (v === undefined || v === "self" || v === "none") x.drops = v as "self" | "none" | undefined;
-              else x.drops = { ...(typeof x.drops === "object" ? x.drops : {}), item: v };
+              else x.drops = { ...(typeof x.drops === "object" ? x.drops : {}), item: v.startsWith("@") ? v : `@item:${v}` };
             }),
           { suggestions: ["self", "none"], description: t("self (default), none, or an item id.") }
         ),
