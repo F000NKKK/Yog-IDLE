@@ -64,7 +64,11 @@ registerTranslations(
     "Cook time (ticks)": "Время плавки (тики)",
     Result: "Результат",
     "Ingredient {n}": "Ингредиент {n}",
-    "Right-click a cell to empty it.": "Правый клик по ячейке очищает её.",
+    "Edit kind…": "Изменить тип…",
+  "New kind…": "Новый тип…",
+  "Create": "Создать",
+  "No layout: give the kind's .ydef a `layout` to draw it as books do.": "Нет раскладки: добавьте в .ydef типа `layout`, чтобы он рисовался как в книгах.",
+  "Right-click a cell to empty it.": "Правый клик по ячейке очищает её.",
     // Menus
     File: "Файл",
     Edit: "Правка",
