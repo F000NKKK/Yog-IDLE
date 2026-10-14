@@ -1604,6 +1604,7 @@ pub mod bench {
 
     pub use crate::designer::{EventArgs, RenderArgs, event, mod_root, render, reset};
     pub use crate::designer::{book, custom, images};
+    pub use crate::recipe_kinds;
     pub use crate::search::OpenDocument;
     pub use crate::symbols::{extract_symbols, fuzzy_match};
 
