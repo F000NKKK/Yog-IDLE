@@ -49,6 +49,8 @@ yog-abi = "0.28.5"
 yog-book = "0.63.4"
 # Yog Data: the text syntax of every Yog format.
 yog-data = "0.3"
+# The source formats' schemas, for generated editors.
+yog-formats = "0.1"
 # SVG images and TrueType fonts, drawn the way the game draws them.
 resvg = { version = "0.48", default-features = false }
 fontdue = "0.9"

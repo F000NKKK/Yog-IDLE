@@ -7,6 +7,8 @@ import { isLangFile, LangFileEditor } from "./LangFileEditor";
 import { BOOK_SOURCE_VIEW, BookEditor } from "./BookEditor";
 import { RECIPE_SOURCE_VIEW, RecipeEditor } from "./RecipeEditor";
 import { YRES_SOURCE_VIEW, YresEditor } from "./YresEditor";
+import { DataEditor } from "./DataEditor";
+import type { EditorProps } from "substrate-platform-ui";
 
 // Yog-specific editors, on top of the platform's built-in ones — imported
 // once for its side effect, before any file opens.
@@ -146,3 +148,32 @@ registerEditorProvider({
   priority: 0,
   kind: "text",
 });
+
+// Formats without a designer of their own — `.ydef` definitions, `.ylayout`
+// recipe layouts: a property grid generated from the build's schema, the
+// code a click away.
+for (const [format, name] of [
+  ["ydef", "Definition"],
+  ["ylayout", "Recipe Layout"],
+] as const) {
+  const sourceView = `yog.${format}.source`;
+  registerEditorProvider({
+    id: `yog.${format}`,
+    label: "Properties",
+    name: `${name} Editor`,
+    icon: "table",
+    extensions: [format],
+    component: (props: EditorProps) => <DataEditor {...props} format={format} sourceView={sourceView} />,
+    priority: 20,
+    kind: "designer",
+  });
+  registerEditorProvider({
+    id: sourceView,
+    label: "Code",
+    name: `${name} Source Editor`,
+    extensions: [format],
+    component: JsonEditor,
+    priority: 0,
+    kind: "text",
+  });
+}

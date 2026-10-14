@@ -1,0 +1,1008 @@
+{
+  "root": {
+    "kind": "def",
+    "name": "BlockFile"
+  },
+  "defs": {
+    "BlockFile": {
+      "kind": "struct",
+      "doc": "A `.yblock` — the block and its item form.",
+      "fields": [
+        {
+          "name": "format",
+          "shape": {
+            "kind": "optional",
+            "of": {
+              "kind": "int",
+              "min": 0,
+              "max": 4294967295
+            }
+          },
+          "required": false
+        },
+        {
+          "name": "id",
+          "shape": {
+            "kind": "optional",
+            "of": {
+              "kind": "string"
+            }
+          },
+          "required": false
+        },
+        {
+          "name": "name",
+          "shape": {
+            "kind": "optional",
+            "of": {
+              "kind": "text"
+            }
+          },
+          "required": false
+        },
+        {
+          "name": "tooltip",
+          "shape": {
+            "kind": "optional",
+            "of": {
+              "kind": "text"
+            }
+          },
+          "required": false
+        },
+        {
+          "name": "register",
+          "shape": {
+            "kind": "optional",
+            "of": {
+              "kind": "def",
+              "name": "Register"
+            }
+          },
+          "required": false
+        },
+        {
+          "name": "model",
+          "shape": {
+            "kind": "def",
+            "name": "Model"
+          },
+          "required": true
+        },
+        {
+          "name": "item_model",
+          "doc": "The item form's model; the block's by default.",
+          "shape": {
+            "kind": "optional",
+            "of": {
+              "kind": "def",
+              "name": "Model"
+            }
+          },
+          "required": false
+        },
+        {
+          "name": "block",
+          "shape": {
+            "kind": "optional",
+            "of": {
+              "kind": "def",
+              "name": "BlockProps"
+            }
+          },
+          "required": false
+        },
+        {
+          "name": "states",
+          "shape": {
+            "kind": "optional",
+            "of": {
+              "kind": "def",
+              "name": "States"
+            }
+          },
+          "required": false
+        }
+      ]
+    },
+    "Register": {
+      "kind": "enum",
+      "doc": "Registered by `yog_api::content!()` (`auto`), or by the mod's code.",
+      "variants": [
+        {
+          "name": "auto"
+        },
+        {
+          "name": "manual"
+        }
+      ]
+    },
+    "Model": {
+      "kind": "struct",
+      "doc": "A model: a template (`cube_all`, `generated`, …) or a model id as `parent`, its textures, or its own elements.",
+      "fields": [
+        {
+          "name": "parent",
+          "shape": {
+            "kind": "optional",
+            "of": {
+              "kind": "string"
+            }
+          },
+          "required": false
+        },
+        {
+          "name": "textures",
+          "doc": "Slot → texture.",
+          "shape": {
+            "kind": "map",
+            "of": {
+              "kind": "image"
+            }
+          },
+          "required": false
+        },
+        {
+          "name": "elements",
+          "shape": {
+            "kind": "optional",
+            "of": {
+              "kind": "list",
+              "of": {
+                "kind": "def",
+                "name": "Element"
+              }
+            }
+          },
+          "required": false
+        },
+        {
+          "name": "display",
+          "shape": {
+            "kind": "optional",
+            "of": {
+              "kind": "def",
+              "name": "Display"
+            }
+          },
+          "required": false
+        },
+        {
+          "name": "ambient_occlusion",
+          "shape": {
+            "kind": "optional",
+            "of": {
+              "kind": "bool"
+            }
+          },
+          "required": false
+        },
+        {
+          "name": "gui_light",
+          "shape": {
+            "kind": "optional",
+            "of": {
+              "kind": "def",
+              "name": "GuiLight"
+            }
+          },
+          "required": false
+        }
+      ]
+    },
+    "Element": {
+      "kind": "struct",
+      "doc": "A box of a model.",
+      "fields": [
+        {
+          "name": "name",
+          "shape": {
+            "kind": "optional",
+            "of": {
+              "kind": "string"
+            }
+          },
+          "required": false
+        },
+        {
+          "name": "from",
+          "shape": {
+            "kind": "list",
+            "of": {
+              "kind": "float"
+            }
+          },
+          "required": true,
+          "range": [
+            -16.0,
+            32.0
+          ]
+        },
+        {
+          "name": "to",
+          "shape": {
+            "kind": "list",
+            "of": {
+              "kind": "float"
+            }
+          },
+          "required": true,
+          "range": [
+            -16.0,
+            32.0
+          ]
+        },
+        {
+          "name": "rotation",
+          "shape": {
+            "kind": "optional",
+            "of": {
+              "kind": "def",
+              "name": "ElementRotation"
+            }
+          },
+          "required": false
+        },
+        {
+          "name": "shade",
+          "shape": {
+            "kind": "optional",
+            "of": {
+              "kind": "bool"
+            }
+          },
+          "required": false
+        },
+        {
+          "name": "faces",
+          "shape": {
+            "kind": "optional",
+            "of": {
+              "kind": "def",
+              "name": "Faces"
+            }
+          },
+          "required": false
+        }
+      ]
+    },
+    "ElementRotation": {
+      "kind": "struct",
+      "doc": "An element's rotation about one axis.",
+      "fields": [
+        {
+          "name": "origin",
+          "doc": "The point it turns about; the block's middle by default.",
+          "shape": {
+            "kind": "optional",
+            "of": {
+              "kind": "list",
+              "of": {
+                "kind": "float"
+              }
+            }
+          },
+          "required": false,
+          "range": [
+            -16.0,
+            32.0
+          ]
+        },
+        {
+          "name": "axis",
+          "shape": {
+            "kind": "def",
+            "name": "Axis"
+          },
+          "required": true
+        },
+        {
+          "name": "angle",
+          "doc": "-45, -22.5, 0, 22.5 or 45 degrees.",
+          "shape": {
+            "kind": "float"
+          },
+          "required": true,
+          "range": [
+            -45.0,
+            45.0
+          ]
+        },
+        {
+          "name": "rescale",
+          "shape": {
+            "kind": "bool"
+          },
+          "required": false
+        }
+      ]
+    },
+    "Axis": {
+      "kind": "enum",
+      "variants": [
+        {
+          "name": "x"
+        },
+        {
+          "name": "y"
+        },
+        {
+          "name": "z"
+        }
+      ]
+    },
+    "Faces": {
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "down",
+          "shape": {
+            "kind": "optional",
+            "of": {
+              "kind": "def",
+              "name": "Face"
+            }
+          },
+          "required": false
+        },
+        {
+          "name": "up",
+          "shape": {
+            "kind": "optional",
+            "of": {
+              "kind": "def",
+              "name": "Face"
+            }
+          },
+          "required": false
+        },
+        {
+          "name": "north",
+          "shape": {
+            "kind": "optional",
+            "of": {
+              "kind": "def",
+              "name": "Face"
+            }
+          },
+          "required": false
+        },
+        {
+          "name": "south",
+          "shape": {
+            "kind": "optional",
+            "of": {
+              "kind": "def",
+              "name": "Face"
+            }
+          },
+          "required": false
+        },
+        {
+          "name": "west",
+          "shape": {
+            "kind": "optional",
+            "of": {
+              "kind": "def",
+              "name": "Face"
+            }
+          },
+          "required": false
+        },
+        {
+          "name": "east",
+          "shape": {
+            "kind": "optional",
+            "of": {
+              "kind": "def",
+              "name": "Face"
+            }
+          },
+          "required": false
+        }
+      ]
+    },
+    "Face": {
+      "kind": "struct",
+      "doc": "One face of an element.",
+      "fields": [
+        {
+          "name": "texture",
+          "doc": "`#slot` — a slot of the model's textures.",
+          "shape": {
+            "kind": "string"
+          },
+          "required": true
+        },
+        {
+          "name": "uv",
+          "shape": {
+            "kind": "optional",
+            "of": {
+              "kind": "list",
+              "of": {
+                "kind": "float"
+              }
+            }
+          },
+          "required": false,
+          "range": [
+            0.0,
+            16.0
+          ]
+        },
+        {
+          "name": "rotation",
+          "doc": "0, 90, 180 or 270.",
+          "shape": {
+            "kind": "optional",
+            "of": {
+              "kind": "int",
+              "min": 0,
+              "max": 4294967295
+            }
+          },
+          "required": false
+        },
+        {
+          "name": "cullface",
+          "doc": "Not drawn when this side touches a full block.",
+          "shape": {
+            "kind": "optional",
+            "of": {
+              "kind": "def",
+              "name": "Direction"
+            }
+          },
+          "required": false
+        },
+        {
+          "name": "tint",
+          "doc": "The tint index (-1: none).",
+          "shape": {
+            "kind": "optional",
+            "of": {
+              "kind": "int",
+              "min": -9223372036854775808,
+              "max": 9223372036854775807
+            }
+          },
+          "required": false,
+          "range": [
+            -1.0,
+            255.0
+          ]
+        }
+      ]
+    },
+    "Direction": {
+      "kind": "enum",
+      "variants": [
+        {
+          "name": "down"
+        },
+        {
+          "name": "up"
+        },
+        {
+          "name": "north"
+        },
+        {
+          "name": "south"
+        },
+        {
+          "name": "west"
+        },
+        {
+          "name": "east"
+        }
+      ]
+    },
+    "Display": {
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "thirdperson_righthand",
+          "shape": {
+            "kind": "optional",
+            "of": {
+              "kind": "def",
+              "name": "Transform"
+            }
+          },
+          "required": false
+        },
+        {
+          "name": "thirdperson_lefthand",
+          "shape": {
+            "kind": "optional",
+            "of": {
+              "kind": "def",
+              "name": "Transform"
+            }
+          },
+          "required": false
+        },
+        {
+          "name": "firstperson_righthand",
+          "shape": {
+            "kind": "optional",
+            "of": {
+              "kind": "def",
+              "name": "Transform"
+            }
+          },
+          "required": false
+        },
+        {
+          "name": "firstperson_lefthand",
+          "shape": {
+            "kind": "optional",
+            "of": {
+              "kind": "def",
+              "name": "Transform"
+            }
+          },
+          "required": false
+        },
+        {
+          "name": "gui",
+          "shape": {
+            "kind": "optional",
+            "of": {
+              "kind": "def",
+              "name": "Transform"
+            }
+          },
+          "required": false
+        },
+        {
+          "name": "head",
+          "shape": {
+            "kind": "optional",
+            "of": {
+              "kind": "def",
+              "name": "Transform"
+            }
+          },
+          "required": false
+        },
+        {
+          "name": "ground",
+          "shape": {
+            "kind": "optional",
+            "of": {
+              "kind": "def",
+              "name": "Transform"
+            }
+          },
+          "required": false
+        },
+        {
+          "name": "fixed",
+          "shape": {
+            "kind": "optional",
+            "of": {
+              "kind": "def",
+              "name": "Transform"
+            }
+          },
+          "required": false
+        }
+      ]
+    },
+    "Transform": {
+      "kind": "struct",
+      "doc": "How an item model sits in one place.",
+      "fields": [
+        {
+          "name": "rotation",
+          "shape": {
+            "kind": "optional",
+            "of": {
+              "kind": "list",
+              "of": {
+                "kind": "float"
+              }
+            }
+          },
+          "required": false,
+          "range": [
+            -360.0,
+            360.0
+          ]
+        },
+        {
+          "name": "translation",
+          "shape": {
+            "kind": "optional",
+            "of": {
+              "kind": "list",
+              "of": {
+                "kind": "float"
+              }
+            }
+          },
+          "required": false,
+          "range": [
+            -80.0,
+            80.0
+          ]
+        },
+        {
+          "name": "scale",
+          "shape": {
+            "kind": "optional",
+            "of": {
+              "kind": "list",
+              "of": {
+                "kind": "float"
+              }
+            }
+          },
+          "required": false,
+          "range": [
+            -4.0,
+            4.0
+          ]
+        }
+      ]
+    },
+    "GuiLight": {
+      "kind": "enum",
+      "variants": [
+        {
+          "name": "front"
+        },
+        {
+          "name": "side"
+        }
+      ]
+    },
+    "BlockProps": {
+      "kind": "struct",
+      "doc": "A block's properties.",
+      "fields": [
+        {
+          "name": "hardness",
+          "doc": "Seconds-ish to mine it (-1: unbreakable).",
+          "shape": {
+            "kind": "optional",
+            "of": {
+              "kind": "float"
+            }
+          },
+          "required": false,
+          "range": [
+            -1.0,
+            1000000.0
+          ]
+        },
+        {
+          "name": "resistance",
+          "doc": "Against explosions.",
+          "shape": {
+            "kind": "optional",
+            "of": {
+              "kind": "float"
+            }
+          },
+          "required": false,
+          "range": [
+            0.0,
+            10000000.0
+          ]
+        },
+        {
+          "name": "sound",
+          "shape": {
+            "kind": "optional",
+            "of": {
+              "kind": "def",
+              "name": "Sound"
+            }
+          },
+          "required": false
+        },
+        {
+          "name": "light",
+          "doc": "Light it gives off, 0–15.",
+          "shape": {
+            "kind": "optional",
+            "of": {
+              "kind": "int",
+              "min": 0,
+              "max": 255
+            }
+          },
+          "required": false,
+          "range": [
+            0.0,
+            15.0
+          ]
+        },
+        {
+          "name": "tool",
+          "doc": "The tools that mine it fast: `pickaxe`, `axe`, `shovel`, `hoe`, or a mod's tool tag (`@tag:block:mymod:mineable/hammer`); one or a list.",
+          "shape": {
+            "kind": "list",
+            "of": {
+              "kind": "tag",
+              "of": [
+                "block"
+              ]
+            }
+          },
+          "required": false
+        },
+        {
+          "name": "tool_level",
+          "doc": "The tool level it needs: `stone`, `iron`, `diamond`, `netherite`, or any level of the tool ladder (`@level:mymod:mythril`, a `.ydef`).",
+          "shape": {
+            "kind": "optional",
+            "of": {
+              "kind": "ref",
+              "of": [
+                "level"
+              ]
+            }
+          },
+          "required": false
+        },
+        {
+          "name": "requires_tool",
+          "doc": "Drops nothing without the tool.",
+          "shape": {
+            "kind": "bool"
+          },
+          "required": false
+        },
+        {
+          "name": "collision",
+          "doc": "Entities bump into it (`false`: walk through).",
+          "shape": {
+            "kind": "optional",
+            "of": {
+              "kind": "bool"
+            }
+          },
+          "required": false
+        },
+        {
+          "name": "slipperiness",
+          "shape": {
+            "kind": "optional",
+            "of": {
+              "kind": "float"
+            }
+          },
+          "required": false,
+          "range": [
+            0.0,
+            1.0
+          ]
+        },
+        {
+          "name": "shape",
+          "shape": {
+            "kind": "optional",
+            "of": {
+              "kind": "any"
+            }
+          },
+          "required": false
+        },
+        {
+          "name": "render_layer",
+          "shape": {
+            "kind": "optional",
+            "of": {
+              "kind": "def",
+              "name": "RenderLayer"
+            }
+          },
+          "required": false
+        },
+        {
+          "name": "drops",
+          "shape": {
+            "kind": "optional",
+            "of": {
+              "kind": "any"
+            }
+          },
+          "required": false
+        },
+        {
+          "name": "connect_groups",
+          "doc": "Blocks it connects to (`states.connect`): these groups' members.",
+          "shape": {
+            "kind": "list",
+            "of": {
+              "kind": "string"
+            }
+          },
+          "required": false
+        },
+        {
+          "name": "inventory",
+          "doc": "The inventory screen it opens: a `.yui` `<Screen id>` with `<Slot>`s.",
+          "shape": {
+            "kind": "optional",
+            "of": {
+              "kind": "string"
+            }
+          },
+          "required": false
+        },
+        {
+          "name": "redstone",
+          "doc": "Gives off redstone power, set by the mod per position.",
+          "shape": {
+            "kind": "bool"
+          },
+          "required": false
+        }
+      ]
+    },
+    "Sound": {
+      "kind": "enum",
+      "doc": "The sound groups the loaders map.",
+      "variants": [
+        {
+          "name": "stone"
+        },
+        {
+          "name": "wood"
+        },
+        {
+          "name": "grass"
+        },
+        {
+          "name": "gravel"
+        },
+        {
+          "name": "sand"
+        },
+        {
+          "name": "snow"
+        },
+        {
+          "name": "metal"
+        },
+        {
+          "name": "glass"
+        },
+        {
+          "name": "wool"
+        },
+        {
+          "name": "nether_brick"
+        }
+      ]
+    },
+    "RenderLayer": {
+      "kind": "enum",
+      "variants": [
+        {
+          "name": "solid"
+        },
+        {
+          "name": "cutout"
+        },
+        {
+          "name": "cutout_mipped"
+        },
+        {
+          "name": "translucent"
+        }
+      ]
+    },
+    "States": {
+      "kind": "struct",
+      "fields": [
+        {
+          "name": "rotations",
+          "shape": {
+            "kind": "optional",
+            "of": {
+              "kind": "list",
+              "of": {
+                "kind": "def",
+                "name": "Rotation"
+              }
+            }
+          },
+          "required": false
+        },
+        {
+          "name": "connect",
+          "shape": {
+            "kind": "optional",
+            "of": {
+              "kind": "def",
+              "name": "Connect"
+            }
+          },
+          "required": false
+        }
+      ]
+    },
+    "Rotation": {
+      "kind": "struct",
+      "doc": "One way the block stands.",
+      "fields": [
+        {
+          "name": "x",
+          "doc": "0, 90, 180 or 270.",
+          "shape": {
+            "kind": "optional",
+            "of": {
+              "kind": "int",
+              "min": 0,
+              "max": 4294967295
+            }
+          },
+          "required": false
+        },
+        {
+          "name": "y",
+          "doc": "0, 90, 180 or 270.",
+          "shape": {
+            "kind": "optional",
+            "of": {
+              "kind": "int",
+              "min": 0,
+              "max": 4294967295
+            }
+          },
+          "required": false
+        },
+        {
+          "name": "weight",
+          "shape": {
+            "kind": "optional",
+            "of": {
+              "kind": "float"
+            }
+          },
+          "required": false,
+          "range": [
+            1.0,
+            1000000.0
+          ]
+        },
+        {
+          "name": "uvlock",
+          "shape": {
+            "kind": "bool"
+          },
+          "required": false
+        }
+      ]
+    },
+    "Connect": {
+      "kind": "struct",
+      "doc": "Arms towards neighbours that connect (see `block.connect_groups`).",
+      "fields": [
+        {
+          "name": "arm",
+          "doc": "The model of the arm towards north.",
+          "shape": {
+            "kind": "def",
+            "name": "Model"
+          },
+          "required": true
+        },
+        {
+          "name": "uvlock",
+          "shape": {
+            "kind": "bool"
+          },
+          "required": false
+        }
+      ]
+    }
+  }
+}
+

@@ -5735,6 +5735,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "yog-formats"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "766c6c6b0e105634ed71eebbcc53afad0091017466633a560f94144ffc0709cd"
+dependencies = [
+ "yog-data",
+]
+
+[[package]]
 name = "yog-gfx"
 version = "0.25.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5784,6 +5793,7 @@ dependencies = [
  "yog-book",
  "yog-data",
  "yog-debugger",
+ "yog-formats",
  "yog-gfx",
  "yog-hot-reload",
  "yog-symbols",

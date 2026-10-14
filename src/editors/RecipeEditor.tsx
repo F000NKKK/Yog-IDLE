@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import { Button, useT, type EditorProps } from "substrate-platform-ui";
-import { useOpenFiles } from "../OpenFilesContext";
+import { useT, type EditorProps } from "substrate-platform-ui";
+import { DataEditor } from "./DataEditor";
 import { imagePreview, imageSources, imageSourcesVersion, subscribeImageSources } from "../designer/imageSources";
 import { cellCount, emptyRecipe, parseRecipe, serializeRecipe, type Recipe, type RecipeType } from "./recipeModel";
 import "./RecipeEditor.css";
@@ -26,11 +26,6 @@ export function RecipeEditor({ path, content, onChange, readOnly }: EditorProps)
   const foreign = parsed === null && content.trim() !== "";
   const recipe = parsed ?? emptyRecipe();
   const [target, setTarget] = useState<Target>(0);
-  const { tabs, setView } = useOpenFiles();
-  const viewCode = () => {
-    const tab = tabs.find((x) => x.path === path);
-    if (tab) void setView(tab.id, RECIPE_SOURCE_VIEW);
-  };
   const [draft, setDraft] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -97,12 +92,8 @@ export function RecipeEditor({ path, content, onChange, readOnly }: EditorProps)
   };
 
   if (foreign) {
-    return (
-      <div className="recipe-editor recipe-foreign">
-        <p>{t("This recipe's kind isn't laid out here (or the file has a mistake) — edit it as code.")}</p>
-        <Button onClick={viewCode}>{t("View Code")}</Button>
-      </div>
-    );
+    // A kind the crafting table doesn't lay out: its fields, from the schema.
+    return <DataEditor path={path} content={content} onChange={onChange} readOnly={readOnly} format="yrecipe" sourceView={RECIPE_SOURCE_VIEW} />;
   }
 
   const n = cellCount(recipe.type);

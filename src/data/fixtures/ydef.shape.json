@@ -1,0 +1,65 @@
+{
+  "root": {
+    "kind": "def",
+    "name": "Def"
+  },
+  "defs": {
+    "Def": {
+      "kind": "enum",
+      "doc": "A `.ydef`: an entry of some kind of definition, named by reference (`@<kind>:<id>`) everywhere else. Kinds: `ladder` (an ordered scale) and `level` (a step on one).",
+      "tag": "kind",
+      "variants": [
+        {
+          "name": "ladder",
+          "doc": "An ordered scale — tool tiers (`minecraft:tool`, built in), a mod's voltages, rarities, magic circles…",
+          "fields": [
+            {
+              "name": "id",
+              "shape": {
+                "kind": "string"
+              },
+              "required": true
+            }
+          ]
+        },
+        {
+          "name": "level",
+          "doc": "A step on a ladder, just above another (the bottom if none).",
+          "fields": [
+            {
+              "name": "id",
+              "shape": {
+                "kind": "string"
+              },
+              "required": true
+            },
+            {
+              "name": "ladder",
+              "shape": {
+                "kind": "ref",
+                "of": [
+                  "ladder"
+                ]
+              },
+              "required": true
+            },
+            {
+              "name": "above",
+              "shape": {
+                "kind": "optional",
+                "of": {
+                  "kind": "ref",
+                  "of": [
+                    "level"
+                  ]
+                }
+              },
+              "required": false
+            }
+          ]
+        }
+      ]
+    }
+  }
+}
+

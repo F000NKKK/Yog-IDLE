@@ -1,0 +1,22 @@
+.data-editor {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.data-editor > :first-child {
+  flex: 1;
+  min-height: 0;
+}
+
+.data-editor-actions {
+  display: flex;
+  justify-content: flex-end;
+  padding: 6px 8px;
+}
+
+.data-editor-broken {
+  padding: 16px;
+  gap: 8px;
+}
