@@ -113,7 +113,8 @@ export const PAGE_TYPES: { type: string; label: string; fields: Field[] }[] = [
 
 export const BOOK_FIELDS: Field[] = [
   { key: "name", label: "Name", kind: "text" },
-  { key: "author", label: "Author", kind: "text" },
+  { key: "subtitle", label: "Subtitle", kind: "text" },
+  { key: "version", label: "Edition", kind: "number" },
   { key: "landing_text", label: "Landing text", kind: "multiline" },
   { key: "nameplate_color", label: "Nameplate color", kind: "text" },
   { key: "accent", label: "Accent color", kind: "text" },
