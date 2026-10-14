@@ -220,6 +220,10 @@ mod tests {
         assert_eq!(l.spots.iter().filter(|s| matches!(s, Spot::Slot { .. })).count(), 3);
         assert!(l.spots.iter().any(|s| matches!(s, Spot::Text { text, .. } if text == "{time} ticks")));
         assert!(l.file.ends_with("crusher_layout.yui"));
+        // What the recipe editor reads (recipeModel.ts `RecipeKind`).
+        let json = serde_json::to_value(&l.spots).unwrap();
+        let types: Vec<&str> = json.as_array().unwrap().iter().map(|s| s["type"].as_str().unwrap()).collect();
+        assert_eq!(types, ["slot", "slot", "slot", "result", "text"]);
         let _ = std::fs::remove_dir_all(&dir);
     }
 }

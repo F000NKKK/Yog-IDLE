@@ -5,6 +5,7 @@ import { DataEditor } from "./DataEditor";
 import { parseDataValue } from "../data/yogData";
 import { imagePreview, imageSources, imageSourcesVersion, subscribeImageSources } from "../designer/imageSources";
 import { openFile } from "../fileOpenBus";
+import { useFsChanged } from "../fsWatch";
 import {
   cellCount,
   customFrom,
@@ -30,23 +31,27 @@ const TYPES: RecipeType[] = ["shaped", "shapeless", "smelting"];
  */
 type Target = string;
 
-/** The mod's kinds of recipe (`null` until known), asked again whenever the window comes back (a `.ydef` may have changed). */
-function useRecipeKinds(path: string): RecipeKind[] | null {
+/**
+ * The mod's kinds of recipe (`null` until known) and a way to ask again —
+ * asked again whenever a `.ydef` or `.yui` changes on disk.
+ */
+function useRecipeKinds(path: string): [RecipeKind[] | null, () => void] {
   const [kinds, setKinds] = useState<RecipeKind[] | null>(null);
+  const [asked, setAsked] = useState(0);
+  const reload = useCallback(() => setAsked((n) => n + 1), []);
   useEffect(() => {
     let live = true;
-    const load = () =>
-      void invoke<RecipeKind[]>("recipe_kinds", { path })
-        .then((k) => live && setKinds(k))
-        .catch(() => live && setKinds([]));
-    load();
-    window.addEventListener("focus", load);
+    void invoke<RecipeKind[]>("recipe_kinds", { path })
+      .then((k) => live && setKinds(k))
+      .catch(() => live && setKinds([]));
     return () => {
       live = false;
-      window.removeEventListener("focus", load);
     };
-  }, [path]);
-  return kinds;
+  }, [path, asked]);
+  useFsChanged((paths) => {
+    if (paths.some((p) => p.endsWith(".ydef") || p.endsWith(".yui"))) reload();
+  });
+  return [kinds, reload];
 }
 
 /**
@@ -59,7 +64,7 @@ function useRecipeKinds(path: string): RecipeKind[] | null {
 export function RecipeEditor({ path, content, onChange, readOnly }: EditorProps) {
   const t = useT();
   useSyncExternalStore(subscribeImageSources, imageSourcesVersion);
-  const known = useRecipeKinds(path);
+  const [known, reloadKinds] = useRecipeKinds(path);
   const kinds = known ?? [];
   const game = useMemo(() => parseRecipe(content), [content]);
   const custom = useMemo(() => parseCustomRecipe(content), [content]);
@@ -194,6 +199,7 @@ export function RecipeEditor({ path, content, onChange, readOnly }: EditorProps)
       const file = await invoke<string>("recipe_kind_create", { path, name });
       setNewKind(null);
       setError(null);
+      reloadKinds();
       void openFile({ path: file });
     } catch (e) {
       setError(String(e));
@@ -240,8 +246,18 @@ export function RecipeEditor({ path, content, onChange, readOnly }: EditorProps)
               if (e.key === "Escape") setNewKind(null);
             }}
           />
-          <button type="button" className="recipe-type" onClick={() => void createKind(newKind)}>
+          <button type="button" className="recipe-type" disabled={!newKind.trim()} onClick={() => void createKind(newKind)}>
             {t("Create")}
+          </button>
+          <button
+            type="button"
+            className="recipe-type"
+            onClick={() => {
+              setNewKind(null);
+              setError(null);
+            }}
+          >
+            {t("Cancel")}
           </button>
         </span>
       )}
@@ -295,9 +311,9 @@ export function RecipeEditor({ path, content, onChange, readOnly }: EditorProps)
             {layout.image && <img className="recipe-layout-image" src={layout.image} alt="" />}
             {layout.spots.map((s, i) => {
               const pos = { left: s.at[0] * k, top: s.at[1] * k };
-              if (s.type === "Slot") return cell(`s:${s.slot}:${s.index}`, custom.slots[s.slot]?.[s.index], "recipe-spot", pos);
-              if (s.type === "Result") return cell("result", custom.result || null, "recipe-spot", pos);
-              if (s.type === "Count")
+              if (s.type === "slot") return cell(`s:${s.slot}:${s.index}`, custom.slots[s.slot]?.[s.index], "recipe-spot", pos);
+              if (s.type === "result") return cell("result", custom.result || null, "recipe-spot", pos);
+              if (s.type === "count")
                 return custom.count > 1 ? (
                   <span key={`c${i}`} className="recipe-layout-text" style={pos}>
                     {custom.count}

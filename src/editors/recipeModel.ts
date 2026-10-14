@@ -171,10 +171,10 @@ export interface RecipeKind {
     image: string | null;
     scale: number;
     spots: (
-      | { type: "Slot"; slot: string; index: number; at: [number, number] }
-      | { type: "Result"; at: [number, number] }
-      | { type: "Count"; at: [number, number] }
-      | { type: "Text"; text: string; at: [number, number] }
+      | { type: "slot"; slot: string; index: number; at: [number, number] }
+      | { type: "result"; at: [number, number] }
+      | { type: "count"; at: [number, number] }
+      | { type: "text"; text: string; at: [number, number] }
     )[];
   } | null;
 }
