@@ -144,6 +144,7 @@
 
 .recipe-layout-text {
   position: absolute;
+  font-family: "Minecraft", "Monocraft", var(--sp-font-mono);
   color: #3f3f3f;
   white-space: nowrap;
   pointer-events: none;

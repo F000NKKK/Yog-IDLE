@@ -58,18 +58,18 @@ function useRecipeKinds(path: string): [Kinds | null, () => void] {
   return [kinds, reload];
 }
 
-/** The width of `ref`'s element, kept current. */
-function useWidth(ref: React.RefObject<HTMLElement | null>): number {
-  const [w, setW] = useState(0);
+/** The size of `el` (mounted later than the editor: a callback ref's), kept current. */
+function useSize(el: HTMLElement | null): [number, number] {
+  const [size, setSize] = useState<[number, number]>([0, 0]);
   useLayoutEffect(() => {
-    const el = ref.current;
     if (!el) return;
-    const ro = new ResizeObserver(() => setW(el.clientWidth));
+    const measure = () => setSize([el.clientWidth, el.clientHeight]);
+    const ro = new ResizeObserver(measure);
     ro.observe(el);
-    setW(el.clientWidth);
+    measure();
     return () => ro.disconnect();
-  }, [ref]);
-  return w;
+  }, [el]);
+  return size;
 }
 
 /**
@@ -95,8 +95,8 @@ export function RecipeEditor({ path, content, onChange, readOnly }: EditorProps)
   const [newKind, setNewKind] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const stageRef = useRef<HTMLDivElement>(null);
-  const stageWidth = useWidth(stageRef);
+  const [stageEl, setStageEl] = useState<HTMLDivElement | null>(null);
+  const [stageW, stageH] = useSize(stageEl);
 
   const valueAt = (at: Target): string => {
     if (at === "result") return (custom ?? recipe).result;
@@ -158,7 +158,8 @@ export function RecipeEditor({ path, content, onChange, readOnly }: EditorProps)
       imageSources(path)
         .filter((c) => c.group === "item" || c.group === "block")
         .map((c) => c.source.replace(/^(item|block):/, ""))
-        .map((id) => (id.includes(":") ? id : `minecraft:${id}`)),
+        .map((id) => (id.includes(":") ? id : `minecraft:${id}`))
+        .filter((id, i, all) => all.indexOf(id) === i),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [path, imageSourcesVersion()]
   );
@@ -300,8 +301,11 @@ export function RecipeEditor({ path, content, onChange, readOnly }: EditorProps)
   };
 
   const layout = kind?.layout;
-  // As big as fits the stage, in whole steps (pixel art stays crisp).
-  const k = layout ? Math.max(2, Math.min(6, Math.floor((stageWidth - 48) / layout.size[0]))) : 3;
+  // As big as fits the stage (its padding and the panel's border aside), in
+  // whole steps so the pixel art stays crisp.
+  const k = layout
+    ? Math.max(2, Math.min(6, Math.floor(Math.min((stageW - 64) / (layout.size[0] + 8), (stageH - 64) / (layout.size[1] + 8)))))
+    : 3;
   const count = custom ? custom.count : recipe.count;
   const stage = layout ? (
     <div className="recipe-panel" style={{ width: layout.size[0] * k, height: layout.size[1] * k, padding: 4 * k }}>
@@ -362,7 +366,7 @@ export function RecipeEditor({ path, content, onChange, readOnly }: EditorProps)
     <div className="recipe-editor">
       {toolbar}
       <div className="recipe-body">
-        <div className="recipe-stage" ref={stageRef}>
+        <div className="recipe-stage" ref={setStageEl}>
           {stage}
           {!layout && !kind?.slots.length && <p className="recipe-hint">{t("No layout: give the kind a .yui layout (Edit layout… after New kind…) to draw it as books do.")}</p>}
         </div>
