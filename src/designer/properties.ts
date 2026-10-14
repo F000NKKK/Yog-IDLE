@@ -7,7 +7,7 @@ import { CONTAINER_KINDS, cssColor, KIND_INFO, KINDS, parseColor, parseNumber, t
 import { findComponent, type ComponentInfo, type ComponentsSnapshot } from "./components";
 import { AXES, formatLength, gridDefs, parseLength, shiftCells, withGridDefs, type Axis } from "./grid";
 import { editDefinitions } from "./GridAdorner";
-import { designText } from "../lang/designResources";
+import { colorRefs, designColor, designText, extractColor } from "../lang/designResources";
 
 type AttrKind = "text" | "number" | "units" | "color" | "bool" | "enum" | "padding" | "uv" | "image" | "tracks" | "index" | "span";
 
@@ -162,9 +162,12 @@ function specsFor(kind: string, components: ComponentsSnapshot | null): AttrSpec
 }
 
 /** Rejects a value the generator wouldn't accept (`yog ui gen` checks the same). */
-function check(kind: AttrKind, value: string): string | null {
+function check(kind: AttrKind, value: string, attr = ""): string | null {
   const v = value.trim();
   if (v === "" || /^\{x:Bind[\s}]/.test(v)) return null;
+  // A resource (`@Colors.accent`), and a background image (`sprite:panel`).
+  if (kind === "color" && /^@[A-Za-z_][\w.]*$/.test(v)) return null;
+  if (kind === "color" && /(^|:)bg$/.test(attr) && /^[a-z0-9_.-]+:\S+$/.test(v)) return null;
   switch (kind) {
     case "number":
       return parseNumber(v) === null ? t("Expected a number.") : null;
@@ -254,7 +257,7 @@ export function widgetProperties(
     } else {
       row.kind = "string";
       row.suggestions = spec.category === "Events" && SPECS.includes(spec) && events && nodes.length === 1 && !raw ? [events.suggest(nodes[0], spec.attr)] : spec.suggestions;
-      row.validate = (value) => check(spec.kind, String(value));
+      row.validate = (value) => check(spec.kind, String(value), spec.attr);
       if (spec.kind === "image") {
         if (yuiPath) {
           row.suggestions = imageSources(yuiPath).map((c) => c.source);
@@ -264,14 +267,28 @@ export function widgetProperties(
         if (alias) row.description = `${row.description}\n\n${t("This is a raw resource path; use {alias} instead.", { alias })}`;
       }
       if (spec.kind === "color") {
-        const color = parseColor(shown);
+        const color = parseColor(designColor(shown));
         if (color !== null) row.swatch = cssColor(color);
+        row.suggestions = colorRefs();
+        // A literal color → a new entry of resources/Colors.yres, referenced instead.
+        const root = yuiPath ? modRootOf(yuiPath) : null;
+        if (root && parseColor(shown) !== null && !shown.startsWith("@") && raw !== undefined) {
+          const hint = `${nodes[0].attrs.id ?? nodes[0].kind}_${spec.attr.replace(":", "_")}`;
+          row.edit = () => void extractColor(root, hint, shown).then((ref) => apply(spec.attr, ref));
+          row.description = `${row.description}\n\n${t("… moves the color into resources/Colors.yres and refers to it.")}`;
+        }
       }
     }
     if (same && raw === undefined && spec.fallback !== undefined && spec.kind !== "bool") row.displayValue = `${spec.fallback} ${t("(default)")}`;
     rows.push(row);
   }
   return rows;
+}
+
+/** The mod a file in it belongs to: the folder above its `src/` (or `resources/`). */
+function modRootOf(path: string): string | null {
+  const m = /^(.*?)[/\\](?:src|resources)[/\\]/.exec(path);
+  return m ? m[1] : null;
 }
 
 /** What Properties needs to edit grids: whether the selection is in one, and a way to rewrite the selected nodes. */

@@ -9,6 +9,7 @@ import { contextKey, registerTranslations } from "substrate-platform-ui";
 registerTranslations(
   { id: "ru", name: "Русский" },
   {
+    "… moves the color into resources/Colors.yres and refers to it.": "… переносит цвет в resources/Colors.yres и ссылается на него.",
     // Recipe editor
     Recipe: "Рецепт",
     "This isn't a recipe (a JSON object) — fix it in the Code view.": "Это не рецепт (нужен JSON-объект) — исправьте его в представлении кода.",

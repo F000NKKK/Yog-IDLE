@@ -8,7 +8,7 @@
 import { useEffect, useSyncExternalStore } from "react";
 import { resolvedLocale, type DirEntry } from "substrate-platform-ui";
 import type { YuiNode } from "../designer/yui";
-import { parseYres, splitYresPath, translationKey, type YresEntry } from "./yres";
+import { parseYres, serializeYres, splitYresPath, translationKey, type YresEntry } from "./yres";
 import { files, readModId } from "../files";
 
 interface ResourceSet {
@@ -166,6 +166,47 @@ export function designImage(value: string): string {
   return `${loaded.modId}:${texture}`;
 }
 
+/** `@Colors.x` → its `#AARRGGBB`/`#RRGGBB` value; anything else as written. */
+export function designColor(value: string): string {
+  if (!value.startsWith("@") || value.startsWith("@@")) return value;
+  const found = lookup(value.slice(1));
+  return found?.entry.type === "color" && typeof found.entry.value === "string" ? found.entry.value : value;
+}
+
+/** Every color resource of the mod as `@Set.name` — what a color property offers. */
+export function colorRefs(): string[] {
+  if (!loaded) return [];
+  const out: string[] = [];
+  for (const [set, rs] of loaded.sets) for (const e of rs.neutral) if (e.type === "color") out.push(`@${set}.${e.name}`);
+  return out.sort();
+}
+
+/** Attributes holding colors (plain or state-prefixed, `hover:bg`). */
+const COLOR_ATTR = /^(?:[a-z]+:)?(?:bg|color|focus_color|tint)$/;
+
+/**
+ * Adds `value` to the mod's `resources/Colors.yres` (made if missing) as a
+ * new color named after `hint` (`widget_bg`, `widget_bg_2`, ...); returns
+ * the reference to use instead, `@Colors.<name>`.
+ */
+export async function extractColor(root: string, hint: string, value: string): Promise<string> {
+  const path = `${root}/resources/Colors.yres`;
+  let entries: YresEntry[] = [];
+  try {
+    const parsed = parseYres(await files.read(path));
+    if (parsed.ok) entries = parsed.entries.map(({ line: _, ...e }) => e as YresEntry);
+  } catch {
+    await files.createFile(path);
+  }
+  const base = hint.toLowerCase().replace(/[^a-z0-9_]+/g, "_").replace(/^_+|_+$/g, "") || "color";
+  let name = base;
+  for (let n = 2; entries.some((e) => e.name === name); n++) name = `${base}_${n}`;
+  entries.push({ name, type: "color", value });
+  await files.write(path, serializeYres(entries));
+  invalidateDesignResources();
+  return `@Colors.${name}`;
+}
+
 /** `root` with its `@` references resolved — what the designer hands to the renderer (which has no resources). */
 export function withDesignResources(root: YuiNode): YuiNode {
   if (!loaded) return root;
@@ -179,6 +220,9 @@ export function withDesignResources(root: YuiNode): YuiNode {
       attrs = { ...attrs, [name]: shown.startsWith("@") ? `@${shown}` : shown };
     }
     if (attrs.source?.startsWith("@")) attrs = { ...attrs, source: designImage(attrs.source) };
+    for (const [name, v] of Object.entries(attrs)) {
+      if (COLOR_ATTR.test(name) && v.startsWith("@") && !v.startsWith("@@")) attrs = { ...attrs, [name]: designColor(v) };
+    }
     const children = node.children.map(resolve);
     const same = attrs === node.attrs && children.every((c, i) => c === node.children[i]);
     return same ? node : { ...node, attrs, children };
