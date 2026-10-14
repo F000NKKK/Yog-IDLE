@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseRecipe, serializeRecipe } from "./recipeModel";
+import { customFrom, parseCustomRecipe, parseRecipe, serializeCustomRecipe, serializeRecipe, type RecipeKind } from "./recipeModel";
 
 describe("recipeModel", () => {
   it("reads a shaped pattern into the grid and writes it back trimmed", () => {
@@ -53,5 +53,35 @@ describe("recipeModel", () => {
     const j = JSON.parse(serializeRecipe(r));
     expect(j.key).toEqual({ I: ["@item:minecraft:iron_ingot", "@tag:item:c:iron_ingots"], S: "@item:minecraft:stick" });
     expect(j.result).toBe("@item:mymod:pick");
+  });
+});
+
+describe("recipes of the mod's own kinds", () => {
+  const kind: RecipeKind = {
+    id: "mymod:crusher",
+    file: "",
+    slots: [{ name: "input", max: 1, required: true }, { name: "extra", max: 2, required: false }],
+    values: [{ name: "time", kind: "number" }],
+    layout: null,
+  };
+
+  it("reads and writes slots, values, result and count", () => {
+    const text = `{ type: "mymod:crusher", slots: { extra: ["@tag:item:c:dusts"], input: [["@item:minecraft:coal", "@item:minecraft:charcoal"]] },
+      values: { time: 200 }, result: "@item:minecraft:gravel", count: 2, id: "x" }`;
+    const r = parseCustomRecipe(text)!;
+    expect(r.slots.input).toEqual(["minecraft:coal | minecraft:charcoal"]);
+    expect(r.slots.extra).toEqual(["#c:dusts"]);
+    expect(r.values.time).toBe(200);
+    const back = JSON.parse(serializeCustomRecipe(r, kind));
+    expect(Object.keys(back.slots)).toEqual(["input", "extra"]);
+    expect(back.slots.input).toEqual([["@item:minecraft:coal", "@item:minecraft:charcoal"]]);
+    expect(back).toMatchObject({ type: "mymod:crusher", values: { time: 200 }, result: "@item:minecraft:gravel", count: 2, id: "x" });
+    expect(parseRecipe(text)).toBeNull();
+    expect(parseCustomRecipe(`{ type: "shaped" }`)).toBeNull();
+  });
+
+  it("starts a recipe of a kind from another's result", () => {
+    const r = customFrom(kind, { result: "minecraft:stone", count: 3 });
+    expect(r).toMatchObject({ type: "mymod:crusher", values: { time: 0 }, result: "minecraft:stone", count: 3 });
   });
 });

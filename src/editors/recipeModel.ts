@@ -155,3 +155,96 @@ export function serializeRecipe(r: Recipe): string {
 export function cellCount(type: RecipeType): number {
   return type === "smelting" ? 1 : GRID;
 }
+
+// ── The mod's own kinds (`.ydef` `recipe_kind`) ─────────────────────────────
+
+/** `recipe_kinds::Kind` — a kind the mod declares. */
+export interface RecipeKind {
+  id: string;
+  file: string;
+  slots: { name: string; max: number; required: boolean }[];
+  values: { name: string; kind: "number" | "text" | "bool" }[];
+  layout: {
+    size: [number, number];
+    image: string | null;
+    scale: number;
+    spots: (
+      | { type: "Slot"; slot: string; index: number; at: [number, number] }
+      | { type: "Result"; at: [number, number] }
+      | { type: "Count"; at: [number, number] }
+      | { type: "Text"; text: string; at: [number, number] }
+    )[];
+  } | null;
+}
+
+/** A recipe of a mod's kind: `{ type: "mymod:crusher", slots: { input: […] }, values: { time: 200 }, result, count }`. */
+export interface CustomRecipe {
+  type: string;
+  /** Per slot its cells (as the grid's: ids, `#tag`, alternatives joined by ` | `). */
+  slots: Record<string, (string | null)[]>;
+  values: Record<string, number | string | boolean>;
+  result: string;
+  count: number;
+  extra: Record<string, unknown>;
+}
+
+const CUSTOM_KNOWN = new Set(["type", "slots", "values", "result", "count"]);
+
+/** Whether `type` is a mod's kind (`ns:kind`), not one of the game's. */
+export function isCustomType(type: unknown): type is string {
+  return typeof type === "string" && type.includes(":") && !type.startsWith("minecraft:");
+}
+
+/** The recipe of a mod's kind in `text`, else `null`. */
+export function parseCustomRecipe(text: string): CustomRecipe | null {
+  let j: unknown;
+  try {
+    j = parseDataValue(text);
+  } catch {
+    return null;
+  }
+  if (!j || typeof j !== "object" || Array.isArray(j)) return null;
+  const o = j as Record<string, unknown>;
+  if (!isCustomType(o.type)) return null;
+  const slots: CustomRecipe["slots"] = {};
+  if (o.slots && typeof o.slots === "object" && !Array.isArray(o.slots)) {
+    for (const [name, v] of Object.entries(o.slots as Record<string, unknown>)) {
+      slots[name] = (Array.isArray(v) ? v : [v]).map(cellOf);
+    }
+  }
+  const values: CustomRecipe["values"] = {};
+  if (o.values && typeof o.values === "object" && !Array.isArray(o.values)) {
+    for (const [name, v] of Object.entries(o.values as Record<string, unknown>)) {
+      if (typeof v === "number" || typeof v === "string" || typeof v === "boolean") values[name] = v;
+    }
+  }
+  const extra: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(o)) if (!CUSTOM_KNOWN.has(k)) extra[k] = v;
+  return { type: o.type, slots, values, result: fromRef(str(o.result) ?? ""), count: Math.max(1, Math.min(64, Math.round(num(o.count, 1)))), extra };
+}
+
+/** The `.yrecipe` text of a recipe of a mod's kind; `kind` orders its slots and values as declared. */
+export function serializeCustomRecipe(r: CustomRecipe, kind?: RecipeKind): string {
+  const out: Record<string, unknown> = { ...r.extra, type: r.type };
+  const slotNames = kind ? kind.slots.map((s) => s.name) : Object.keys(r.slots);
+  const slots: Record<string, unknown> = {};
+  for (const name of slotNames) {
+    const cells = (r.slots[name] ?? []).filter((c): c is string => !!c);
+    if (cells.length) slots[name] = cells.map(ingredientOf);
+  }
+  if (Object.keys(slots).length) out.slots = slots;
+  const valueNames = kind ? kind.values.map((v) => v.name) : Object.keys(r.values);
+  const values: Record<string, unknown> = {};
+  for (const name of valueNames) if (r.values[name] !== undefined) values[name] = r.values[name];
+  if (Object.keys(values).length) out.values = values;
+  out.result = r.result ? toRef(r.result) : "";
+  if (r.count !== 1) out.count = r.count;
+  return JSON.stringify(out, null, 2) + "\n";
+}
+
+/** A recipe of `kind` keeping `from`'s result and count (switching kinds). */
+export function customFrom(kind: RecipeKind, from: { result: string; count: number }): CustomRecipe {
+  const values: CustomRecipe["values"] = {};
+  for (const v of kind.values) values[v.name] = v.kind === "number" ? 0 : v.kind === "bool" ? false : "";
+  return { type: kind.id, slots: {}, values, result: from.result, count: from.count, extra: {} };
+}
