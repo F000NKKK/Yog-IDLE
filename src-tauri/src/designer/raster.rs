@@ -392,15 +392,8 @@ impl<'r> Canvas<'r> {
                 super::blocks3d::draw(self, list, [*x, *y, *w, *h], *yaw, *pitch)
             }
             DrawOp::Item { id, x, y, size } => {
-                // A block item as the game shows it in a slot: the block
-                // in 3D (turned 225°, tilted 30°).
-                if super::blocks3d::is_block(self.res, id) {
-                    let list = format!("0 0 0 {id}");
-                    super::blocks3d::draw(self, &list, [*x, *y, *size, *size], 225.0, 30.0);
-                    return;
-                }
-                // Other items: their flat texture (mod items: from their
-                // `content/` file).
+                // As the game shows it in a slot (blocks and heads in 3D;
+                // mod items: from their `content/` file).
                 let source = format!("item:{id}");
                 super::images::draw(self, &source, [*x, *y, *size, *size], [0.0; 4], 0xFFFF_FFFF);
             }

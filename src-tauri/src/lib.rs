@@ -734,7 +734,7 @@ async fn yui_image_preview(
 async fn book_designer_render(args: designer::book::BookArgs) -> designer::book::BookRendered {
     tauri::async_runtime::spawn_blocking(move || designer::book::render(&args))
         .await
-        .unwrap_or_else(|e| designer::book::BookRendered { image: None, scale: 1, shown: None, action: None, animated: false, error: Some(e.to_string()) })
+        .unwrap_or_else(|e| designer::book::BookRendered { image: None, scale: 1, shown: None, action: None, animated: false, locales: Vec::new(), error: Some(e.to_string()) })
 }
 
 /// Forgets a closed `.ybook`'s reader.

@@ -46,6 +46,8 @@ interface Rendered {
   shown: [string, number] | null;
   action: string | null;
   animated: boolean;
+  /** The languages the mod's texts are in (besides the neutral one). */
+  locales: string[];
   error: string | null;
 }
 
@@ -63,6 +65,8 @@ export function BookEditor({ path, content, onChange, readOnly }: EditorProps) {
   const parsed = useMemo(() => parseBook(content), [content]);
   const [sel, setSel] = useState<Selection>({ kind: "book" });
   const [rendered, setRendered] = useState<Rendered | null>(null);
+  /** The language the book is read in ("": its neutral texts). */
+  const [locale, setLocale] = useState("");
   const seq = useRef(0);
 
   const update = useCallback(
@@ -80,7 +84,7 @@ export function BookEditor({ path, content, onChange, readOnly }: EditorProps) {
     (action: Action | null) => {
       const n = ++seq.current;
       invoke<Rendered>("book_designer_render", {
-        args: { path, text: content, screenW: SCREEN_W, screenH: SCREEN_H, scale: SCALE, action },
+        args: { path, text: content, screenW: SCREEN_W, screenH: SCREEN_H, scale: SCALE, action, locale },
       })
         .then((r) => {
           if (n !== seq.current) return;
@@ -97,9 +101,9 @@ export function BookEditor({ path, content, onChange, readOnly }: EditorProps) {
             }
           }
         })
-        .catch((e) => n === seq.current && setRendered({ image: null, scale: SCALE, shown: null, action: null, animated: false, error: String(e) }));
+        .catch((e) => n === seq.current && setRendered({ image: null, scale: SCALE, shown: null, action: null, animated: false, locales: [], error: String(e) }));
     },
-    [path, content, parsed]
+    [path, content, parsed, locale]
   );
 
   // Redraw on every edit (a moment after the last keystroke).
@@ -107,7 +111,7 @@ export function BookEditor({ path, content, onChange, readOnly }: EditorProps) {
     const id = setTimeout(() => draw(null), 120);
     return () => clearTimeout(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [content]);
+  }, [content, locale]);
   useEffect(() => () => void invoke("book_designer_close", { path }).catch(() => {}), [path]);
 
   // A page that moves (an entity, a structure, an ingredient's
@@ -121,14 +125,14 @@ export function BookEditor({ path, content, onChange, readOnly }: EditorProps) {
       busy = true;
       const n = ++seq.current;
       invoke<Rendered>("book_designer_render", {
-        args: { path, text: content, screenW: SCREEN_W, screenH: SCREEN_H, scale: SCALE, action: null },
+        args: { path, text: content, screenW: SCREEN_W, screenH: SCREEN_H, scale: SCALE, action: null, locale },
       })
         .then((r) => n === seq.current && setRendered(r))
         .catch(() => {})
         .finally(() => (busy = false));
     }, 120);
     return () => clearInterval(id);
-  }, [animated, path, content]);
+  }, [animated, path, content, locale]);
 
   /** Selecting in the outline turns the book there. */
   const select = (s: Selection) => {
@@ -138,16 +142,6 @@ export function BookEditor({ path, content, onChange, readOnly }: EditorProps) {
     else if (s.kind === "entry") draw({ kind: "show", entry: parsed.entries[s.index].id, page: 0 });
     else if (s.kind === "book") draw({ kind: "home" });
   };
-
-  // Dev builds: tests (book-harness.html + Playwright) select a page by number.
-  useEffect(() => {
-    if (!import.meta.env.DEV) return;
-    const w = window as unknown as { __yogBookSelect?: (entry: number, page: number) => void };
-    w.__yogBookSelect = (entry, page) => select({ kind: "page", entry, page });
-    return () => {
-      delete w.__yogBookSelect;
-    };
-  });
 
   const onPreviewClick = (e: React.MouseEvent<HTMLImageElement>) => {
     const img = e.currentTarget;
@@ -360,6 +354,17 @@ export function BookEditor({ path, content, onChange, readOnly }: EditorProps) {
             <option key={p.type} value={p.type}>{t(p.label)}</option>
           ))}
         </select>
+        <label className="book-toolbar-locale">
+          {t("Language")}
+          <select value={locale} onChange={(e) => setLocale(e.target.value)}>
+            <option value="">{t("Neutral")}</option>
+            {(rendered?.locales ?? []).map((l) => (
+              <option key={l} value={l}>
+                {l}
+              </option>
+            ))}
+          </select>
+        </label>
         <span className="book-toolbar-gap" />
         <button type="button" disabled={readOnly || sel.kind === "book"} onClick={() => move(-1)} title={t("Move up")}>↑</button>
         <button type="button" disabled={readOnly || sel.kind === "book"} onClick={() => move(1)} title={t("Move down")}>↓</button>

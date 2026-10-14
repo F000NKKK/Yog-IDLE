@@ -139,6 +139,12 @@ fn has_atlas() -> bool {
 /// The texture an item/block icon is drawn with (the designer doesn't run
 /// the 3D item renderer: block items show a face of the block).
 fn item_texture(id: &str, block: bool) -> Option<Arc<Image>> {
+    // Its item model's layers, when it has some.
+    if !block
+        && let Some(super::item_models::Look::Flat(img)) = with_doc(|d| d.and_then(|d| super::item_models::look(&d.res, id)))
+    {
+        return Some(img);
+    }
     let (ns, name) = split_id(id);
     let item = format!("{ns}:textures/item/{name}.png");
     let blocks =
@@ -165,6 +171,22 @@ fn content_icon(id: &str) -> Option<Arc<Image>> {
     let img = crate::content::content_icon(&root, id).and_then(|b| super::assets::decode_png(&b)).map(Arc::new);
     cache.lock().ok()?.insert(key, img.clone());
     img
+}
+
+/// A block item as the game shows it in a slot (the block in 3D, turned
+/// 225°, tilted 30°), or a head (its mob's, a little smaller). `false`:
+/// a flat item.
+fn item_3d(c: &mut Canvas, id: &str, [x, y, w, h]: [f32; 4]) -> bool {
+    if super::blocks3d::is_block(c.resources(), id) {
+        super::blocks3d::draw(c, &format!("0 0 0 {id}"), [x, y, w, h], 225.0, 30.0);
+        return true;
+    }
+    if let Some(super::item_models::Look::Head(faces)) = super::item_models::look(c.resources(), id) {
+        let m = w.min(h) * 0.1;
+        super::blocks3d::draw_cube(c, faces, [x + m, y + m, w - 2.0 * m, h - 2.0 * m], 225.0, 30.0);
+        return true;
+    }
+    false
 }
 
 /// Natural size of `source` in GUI pixels (`image_size`); `None` when it
@@ -372,6 +394,7 @@ pub fn draw(c: &mut Canvas, source: &str, dest: [f32; 4], region: [f32; 4], t: u
     }
     let first_frame = |img: &Image| [0.0, 0.0, img.w as f32, img.w.min(img.h) as f32];
     match ImageSource::parse(source) {
+        Some(ImageSource::Item(id)) if item_3d(c, &id, dest) => {}
         Some(ImageSource::Item(id)) => match item_texture(&id, false) {
             Some(img) => blit_px(c, &img, dest, first_frame(&img), 0xFFFF_FFFF),
             None => missing(c, dest),

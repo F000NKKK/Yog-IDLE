@@ -109,9 +109,10 @@ fn content_file(root: &Path, id: &str, kinds: &[&str]) -> Option<(PathBuf, Value
     None
 }
 
-/// A mod block's face textures from its `.yblock` model: (top, side,
-/// bottom) png bytes. `None`: not a block of the mod.
-pub fn content_block_faces(root: &Path, id: &str) -> Option<[Option<Vec<u8>>; 3]> {
+/// The textures of the mod's block `id` (its `.yblock` model's), per face:
+/// up, down, north, south, west, east — as png bytes. `None`: not a block
+/// of the mod.
+pub fn content_block_faces(root: &Path, id: &str) -> Option<[Option<Vec<u8>>; 6]> {
     let (file, doc) = content_file(root, id, &["yblock"])?;
     let textures = doc.pointer("/model/textures").and_then(Value::as_object)?;
     let pick = |keys: &[&str]| {
@@ -122,8 +123,11 @@ pub fn content_block_faces(root: &Path, id: &str) -> Option<[Option<Vec<u8>>; 3]
     };
     Some([
         pick(&["up", "top", "end", "all", "texture"]),
-        pick(&["north", "side", "front", "all", "texture"]),
         pick(&["down", "bottom", "end", "all", "texture"]),
+        pick(&["north", "front", "side", "all", "texture"]),
+        pick(&["south", "side", "all", "texture"]),
+        pick(&["west", "side", "all", "texture"]),
+        pick(&["east", "side", "all", "texture"]),
     ])
 }
 

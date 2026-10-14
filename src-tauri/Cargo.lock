@@ -5688,9 +5688,9 @@ checksum = "3cf21e657649ad77c8c509e7e5365d7730ebc9968e7f434e52d75a5510eef111"
 
 [[package]]
 name = "yog-book"
-version = "0.62.4"
+version = "0.62.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "895d442c379bf0a0a3aace484f05aa7653ac2899399b6a724d28b5b111f40cae"
+checksum = "f47f7ddd423cb52007b9b1d4d4f6efacc971d09eeca0c390120cb7d7e359f066"
 dependencies = [
  "serde",
  "serde_json",

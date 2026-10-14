@@ -12,8 +12,8 @@ use serde_json::Value;
 use super::assets::{Image, Resources, decode_png, split_id};
 use super::raster::Canvas;
 
-/// A face's textures: top, sides, bottom.
-type Faces = [Option<Arc<Image>>; 3];
+/// A cube's textures per face: up, down, north, south, west, east.
+pub type Faces = [Option<Arc<Image>>; 6];
 
 /// The texture variables of a block model, its parents' included.
 fn model_textures(res: &Resources, model: &str, depth: usize) -> HashMap<String, String> {
@@ -94,8 +94,11 @@ fn faces(res: &Resources, id: &str, cache: &mut HashMap<String, Faces>) -> Faces
     };
     let f: Faces = [
         load(pick(&["up", "top", "end", "all", "texture", "particle"])),
-        load(pick(&["north", "side", "front", "all", "texture", "particle"])),
         load(pick(&["down", "bottom", "end", "all", "texture", "particle"])),
+        load(pick(&["north", "front", "side", "all", "texture", "particle"])),
+        load(pick(&["south", "side", "all", "texture", "particle"])),
+        load(pick(&["west", "side", "all", "texture", "particle"])),
+        load(pick(&["east", "side", "all", "texture", "particle"])),
     ];
     cache.insert(id.to_string(), f.clone());
     f
@@ -114,14 +117,30 @@ fn parse(list: &str) -> Vec<([i32; 3], String)> {
         .collect()
 }
 
-pub fn draw(c: &mut Canvas, list: &str, [x, y, w, h]: [f32; 4], yaw: f32, pitch: f32) {
-    let blocks = parse(list);
+pub fn draw(c: &mut Canvas, list: &str, rect: [f32; 4], yaw: f32, pitch: f32) {
+    let mut cache = HashMap::new();
+    draw_with(c, &parse(list), rect, yaw, pitch, |res, id| faces(res, id, &mut cache));
+}
+
+/// One cube with its own `faces` (a mob's head, say), as [`draw`] draws a block.
+pub fn draw_cube(c: &mut Canvas, faces: Faces, rect: [f32; 4], yaw: f32, pitch: f32) {
+    draw_with(c, &[([0, 0, 0], String::new())], rect, yaw, pitch, |_, _| faces.clone());
+}
+
+fn draw_with(
+    c: &mut Canvas,
+    blocks: &[([i32; 3], String)],
+    [x, y, w, h]: [f32; 4],
+    yaw: f32,
+    pitch: f32,
+    mut faces_of: impl FnMut(&Resources, &str) -> Faces,
+) {
     if blocks.is_empty() || w <= 0.0 || h <= 0.0 {
         return;
     }
     let mut lo = [i32::MAX; 3];
     let mut hi = [i32::MIN; 3];
-    for (p, _) in &blocks {
+    for (p, _) in blocks {
         for i in 0..3 {
             lo[i] = lo[i].min(p[i]);
             hi[i] = hi[i].max(p[i]);
@@ -145,20 +164,19 @@ pub fn draw(c: &mut Canvas, list: &str, [x, y, w, h]: [f32; 4], yaw: f32, pitch:
     let screen = |v: [f32; 3]| [x + w / 2.0 + v[0] * s, y + h / 2.0 - v[1] * s];
     let occupied: HashSet<[i32; 3]> = blocks.iter().map(|(p, _)| *p).collect();
 
-    // Every face that can be seen: (depth, block, corner, edge a, edge b, texture slot, shade).
-    let mut cache = HashMap::new();
+    // Every face that can be seen: (depth, texture, corner, edge a, edge b, shade).
     let mut quads = Vec::new();
     // (normal, corner offset, a, b, slot, shade) per face of a unit cube.
     const FACES: [([i32; 3], [f32; 3], [f32; 3], [f32; 3], usize, f32); 6] = [
         ([0, 1, 0], [0.0, 1.0, 0.0], [1.0, 0.0, 0.0], [0.0, 0.0, 1.0], 0, 1.0),
-        ([0, -1, 0], [0.0, 0.0, 1.0], [1.0, 0.0, 0.0], [0.0, 0.0, -1.0], 2, 0.5),
-        ([0, 0, -1], [1.0, 1.0, 0.0], [-1.0, 0.0, 0.0], [0.0, -1.0, 0.0], 1, 0.8),
-        ([0, 0, 1], [0.0, 1.0, 1.0], [1.0, 0.0, 0.0], [0.0, -1.0, 0.0], 1, 0.8),
-        ([-1, 0, 0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0], [0.0, -1.0, 0.0], 1, 0.6),
-        ([1, 0, 0], [1.0, 1.0, 1.0], [0.0, 0.0, -1.0], [0.0, -1.0, 0.0], 1, 0.6),
+        ([0, -1, 0], [0.0, 0.0, 1.0], [1.0, 0.0, 0.0], [0.0, 0.0, -1.0], 1, 0.5),
+        ([0, 0, -1], [1.0, 1.0, 0.0], [-1.0, 0.0, 0.0], [0.0, -1.0, 0.0], 2, 0.8),
+        ([0, 0, 1], [0.0, 1.0, 1.0], [1.0, 0.0, 0.0], [0.0, -1.0, 0.0], 3, 0.8),
+        ([-1, 0, 0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0], [0.0, -1.0, 0.0], 4, 0.6),
+        ([1, 0, 0], [1.0, 1.0, 1.0], [0.0, 0.0, -1.0], [0.0, -1.0, 0.0], 5, 0.6),
     ];
-    for (p, id) in &blocks {
-        let f = faces(c.resources(), id, &mut cache);
+    for (p, id) in blocks {
+        let f = faces_of(c.resources(), id);
         for (n, corner, a, b, slot, shade) in FACES {
             if occupied.contains(&[p[0] + n[0], p[1] + n[1], p[2] + n[2]]) {
                 continue;

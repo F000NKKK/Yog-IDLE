@@ -28,6 +28,13 @@
   cursor: pointer;
 }
 
+.book-toolbar-locale {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-space-xs);
+  margin-left: var(--sp-space-md);
+}
+
 .book-toolbar-gap {
   flex: 1;
 }

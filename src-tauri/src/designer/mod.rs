@@ -6,6 +6,7 @@
 
 pub mod assets;
 pub mod blocks3d;
+pub mod item_models;
 pub mod book;
 pub mod codebehind;
 pub mod components;

@@ -41,6 +41,8 @@ registerTranslations(
     "Landing text": "Текст на титуле",
     "Nameplate color": "Цвет плашки",
     "Accent color": "Цвет акцента",
+    Language: "Язык",
+    Neutral: "Нейтральный",
     "Book texture": "Текстура книги",
     Multiblock: "Мультиструктура",
     Pattern: "Паттерн",
