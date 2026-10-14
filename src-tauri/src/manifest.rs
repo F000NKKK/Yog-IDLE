@@ -49,7 +49,7 @@ mod tests {
     #[test]
     fn mod_fields_ignore_comments_and_other_sections() {
         let text =
-            "[mod]\nid = \"ruby\"  # the namespace\n\n[run.forge-1.21.1]\nname = \"Forge\"\n";
+            "[mod]\nid = \"ruby\"  # the namespace\n\n[run.\"forge-1.21.1\"]\nname = \"Forge\"\n";
         assert_eq!(mod_field(text, "id").as_deref(), Some("ruby"));
         assert_eq!(mod_field(text, "name"), None);
         assert_eq!(mod_field("[package]\nid = \"old\"\n", "id"), None);

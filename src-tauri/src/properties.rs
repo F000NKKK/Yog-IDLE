@@ -188,18 +188,7 @@ pub fn read_manifest(project_root: &Path) -> Result<ManifestOut, String> {
     Ok(summarize(&doc))
 }
 
-/// `yog-cli` reads `yog.toml` line by line and takes values verbatim
-/// between the quotes — no escapes, no multi-line strings — so a value
-/// must survive that, not just be valid TOML.
-pub(crate) fn check_plain(value: &str) -> Result<(), String> {
-    if value.contains(['"', '\\', '\n', '\r']) {
-        return Err("Can't contain quotes, backslashes or line breaks (yog reads yog.toml values verbatim).".into());
-    }
-    Ok(())
-}
-
 fn check_field(key: &str, value: &str) -> Result<(), String> {
-    check_plain(value)?;
     match key {
         "id" if value.is_empty() => Err("A mod needs an id.".into()),
         "id" if !value
@@ -259,12 +248,6 @@ pub fn set_manifest_field(
                 .map(|a| a.trim().to_string())
                 .filter(|a| !a.is_empty())
                 .collect();
-            for author in &list {
-                check_plain(author)?;
-                if author.contains(',') {
-                    return Err("An author's name can't contain a comma.".into());
-                }
-            }
             Some(Value::Array(list.into_iter().collect()))
         }
         (key, FieldValue::Text(text)) if TEXT_FIELDS.contains(&key) => {
@@ -349,9 +332,8 @@ mod tests {
     #[test]
     fn rejects_what_yog_cli_cannot_read() {
         let dir = project("reject");
-        assert!(
-            set_manifest_field(&dir, "description", FieldValue::Text("say \"hi\"".into())).is_err()
-        );
+        // yog.toml is real TOML to yog-cli: quotes are just text.
+        assert!(set_manifest_field(&dir, "description", FieldValue::Text("say \"hi\"".into())).is_ok());
         assert!(set_manifest_field(&dir, "version", FieldValue::Text("1.0".into())).is_err());
         assert!(set_manifest_field(&dir, "id", FieldValue::Text("Bad Id".into())).is_err());
         assert!(set_manifest_field(&dir, "dependencies", FieldValue::Text("x".into())).is_err());

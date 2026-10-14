@@ -19,7 +19,7 @@ import { errorText, projectApi, type RunPreset, type RunTarget } from "./api";
 import { checkPlain } from "./ApplicationPages";
 import type { PageProps } from "./ProjectPropertiesWindow";
 
-const ID_PATTERN = /^[A-Za-z0-9_-]+$/;
+const ID_PATTERN = /^[A-Za-z0-9_.-]+$/;
 
 /**
  * Debug: the `[run.<id>]` targets the Run toolbar offers — each builds the
@@ -49,7 +49,7 @@ export function DebugPage({ root, props, apply }: PageProps) {
       title: t("New Run Target"),
       label: t("Id (what yog run takes)"),
       confirmLabel: t("Add"),
-      validate: (v) => (!v.trim() ? "" : ID_PATTERN.test(v.trim()) ? (targets.some((r) => r.id === v.trim()) ? t("[run.{id}] already exists.", { id: v.trim() }) : null) : t("Use letters, digits, '-' and '_' only.")),
+      validate: (v) => (!v.trim() ? "" : ID_PATTERN.test(v.trim()) ? (targets.some((r) => r.id === v.trim()) ? t("[run.{id}] already exists.", { id: v.trim() }) : null) : t("Use letters, digits, '-', '_' and '.' only.")),
     });
     if (id === null) return;
     await addTarget({ id: id.trim(), name: id.trim(), exportDir: "", command: "", args: [], cwd: "", env: [] });

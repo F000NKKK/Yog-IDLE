@@ -732,6 +732,7 @@ registerTranslations("ru", {
   "New Run Target": "Новая цель запуска",
   "Id (what yog run takes)": "Идентификатор (аргумент yog run)",
   "[run.{id}] already exists.": "[run.{id}] уже существует.",
+  "Use letters, digits, '-', '_' and '.' only.": "Только буквы, цифры, «-», «_» и «.».",
   "Remove Run Target": "Удаление цели запуска",
   "Remove [run.{id}] from yog.toml?": "Удалить [run.{id}] из yog.toml?",
   "No run targets yet — add one for the loader and Minecraft version to test in.": "Целей запуска пока нет — добавьте цель для загрузчика и версии Minecraft, в которых нужно проверять мод.",

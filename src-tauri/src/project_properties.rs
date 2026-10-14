@@ -6,18 +6,15 @@
 //! (`.yog-idle/settings.json`, the `YOG_TARGETS` a Build uses) and a
 //! crates.io search for the Dependencies page.
 //!
-//! Every value must also survive `yog-cli`'s line-based reader: no quotes,
-//! backslashes or line breaks, arrays on one line and no commas inside an
-//! array item (it splits on them). `[run.forge-1.21.1]` is a dotted header
-//! to TOML (run → forge-1 → 21 → 1) but one name to yog-cli; ids are
-//! walked and written the dotted way, which prints the same header back.
+//! A run target's id is one TOML key, `[run."forge-1.21.1"]`, as yog-cli
+//! reads it.
 
 use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 use toml_edit::{Array, DocumentMut, InlineTable, Item, Table, Value};
 
-use crate::properties::{self, FieldValue, check_plain};
+use crate::properties::{self, FieldValue};
 
 #[derive(Serialize, Deserialize, Clone, Debug, Default, PartialEq)]
 #[serde(rename_all = "camelCase", default)]
@@ -126,19 +123,13 @@ fn dependencies_in(table: Option<&Item>) -> Vec<Dependency> {
         .collect()
 }
 
-/// Every table under `[run]` with values of its own, by dotted id.
-fn collect_run_targets(table: &Table, prefix: &str, out: &mut Vec<RunTarget>) {
-    let has_values = table.iter().any(|(_, item)| item.is_value());
-    if has_values && !prefix.is_empty() {
-        let text = |key: &str| {
-            table
-                .get(key)
-                .and_then(Item::as_str)
-                .unwrap_or("")
-                .to_string()
-        };
+/// Every `[run."<id>"]` table.
+fn collect_run_targets(run: &Table, out: &mut Vec<RunTarget>) {
+    for (id, item) in run.iter() {
+        let Some(table) = item.as_table() else { continue };
+        let text = |key: &str| table.get(key).and_then(Item::as_str).unwrap_or("").to_string();
         out.push(RunTarget {
-            id: prefix.to_string(),
+            id: id.to_string(),
             name: text("name"),
             export_dir: text("export_dir"),
             command: text("command"),
@@ -147,22 +138,12 @@ fn collect_run_targets(table: &Table, prefix: &str, out: &mut Vec<RunTarget>) {
             env: str_list(table.get("env")),
         });
     }
-    for (key, item) in table.iter() {
-        if let Some(child) = item.as_table() {
-            let id = if prefix.is_empty() {
-                key.to_string()
-            } else {
-                format!("{prefix}.{key}")
-            };
-            collect_run_targets(child, &id, out);
-        }
-    }
 }
 
 fn props_of(doc: &DocumentMut, root: &Path) -> ProjectProps {
     let mut run_targets = Vec::new();
     if let Some(run) = doc.get("run").and_then(Item::as_table) {
-        collect_run_targets(run, "", &mut run_targets);
+        collect_run_targets(run, &mut run_targets);
     }
     let deps = doc.get("dependencies");
     ProjectProps {
@@ -248,7 +229,6 @@ fn table_mut<'a>(doc: &'a mut DocumentMut, key: &str) -> Result<&'a mut Table, S
 
 /// `[dev] yog_api_path` — a local yog-api crate; empty removes it.
 pub fn set_yog_api_path(root: &Path, value: &str) -> Result<ProjectProps, String> {
-    check_plain(value)?;
     edit(root, |doc| {
         let value = text_value(value);
         if value.is_none() && doc.get("dev").is_none() {
@@ -265,7 +245,6 @@ pub fn set_yog_api_path(root: &Path, value: &str) -> Result<ProjectProps, String
 
 /// The yog-api version pin in `[dependencies]`; empty: latest from crates.io.
 pub fn set_yog_api_version(root: &Path, value: &str) -> Result<ProjectProps, String> {
-    check_plain(value)?;
     edit(root, |doc| {
         let deps = table_mut(doc, "dependencies")?;
         let key = YOG_API_KEYS
@@ -291,26 +270,12 @@ fn check_name(name: &str, what: &str) -> Result<(), String> {
     Ok(())
 }
 
-/// An array item `yog-cli` can read back: plain, and no commas (it splits on them).
-fn check_item(item: &str) -> Result<(), String> {
-    check_plain(item)?;
-    if item.contains(',') {
-        return Err(format!(
-            "\"{item}\": list items can't contain commas (yog splits on them)."
-        ));
-    }
-    Ok(())
-}
-
 fn validate_dependency(dep: &Dependency) -> Result<(), String> {
     check_name(&dep.name, "dependency")?;
-    for text in [&dep.version, &dep.path, &dep.git] {
-        check_plain(text)?;
-    }
     if dep.version.trim().is_empty() && dep.path.trim().is_empty() && dep.git.trim().is_empty() {
         return Err("Give a version (e.g. \"1.0\" or \"*\"), a path or a git URL.".into());
     }
-    dep.features.iter().try_for_each(|f| check_item(f))
+    Ok(())
 }
 
 fn dependency_value(dep: &Dependency, existing: Option<&Item>) -> Value {
@@ -406,30 +371,20 @@ pub fn remove_dependency(root: &Path, mods: bool, name: &str) -> Result<ProjectP
     })
 }
 
-fn run_id_segments(id: &str) -> Result<Vec<&str>, String> {
-    let segments: Vec<&str> = id.split('.').collect();
-    if id.is_empty() || segments.iter().any(|s| s.is_empty()) {
+/// A run target's id: one TOML key (`[run."fabric-1.21.1"]`), dots allowed.
+fn check_run_id(id: &str) -> Result<(), String> {
+    if id.is_empty() {
         return Err("A run target needs an id, like fabric-1.21.1.".into());
     }
-    for s in &segments {
-        check_name(s, "run target")?;
+    if !id.chars().all(|c| c.is_ascii_alphanumeric() || matches!(c, '-' | '_' | '.')) {
+        return Err("Use letters, digits, '-', '_' and '.' only.".into());
     }
-    Ok(segments)
+    Ok(())
 }
 
 fn validate_run_target(target: &RunTarget) -> Result<(), String> {
-    run_id_segments(&target.id)?;
-    for text in [
-        &target.name,
-        &target.export_dir,
-        &target.command,
-        &target.cwd,
-    ] {
-        check_plain(text)?;
-    }
-    target.args.iter().try_for_each(|a| check_item(a))?;
+    check_run_id(&target.id)?;
     for entry in &target.env {
-        check_item(entry)?;
         match entry.split_once('=') {
             Some((key, _)) if !key.trim().is_empty() => {}
             _ => return Err(format!("\"{entry}\" isn't KEY=VALUE.")),
@@ -438,60 +393,21 @@ fn validate_run_target(target: &RunTarget) -> Result<(), String> {
     Ok(())
 }
 
-/// The `[run.<id>]` table, created (with implicit parents) when missing.
+/// The `[run."<id>"]` table, created when missing.
 fn run_table<'a>(doc: &'a mut DocumentMut, id: &str) -> Result<&'a mut Table, String> {
-    let segments = run_id_segments(id)?;
-    let mut table = table_mut(doc, "run")?;
-    table.set_implicit(true);
-    for (i, segment) in segments.iter().enumerate() {
-        if table.get(segment).is_none() {
-            let mut child = Table::new();
-            child.set_implicit(i + 1 < segments.len());
-            table.insert(segment, Item::Table(child));
-        }
-        table = table[segment]
-            .as_table_mut()
-            .ok_or_else(|| format!("run.{id} isn't a table"))?;
+    check_run_id(id)?;
+    let run = table_mut(doc, "run")?;
+    run.set_implicit(true);
+    if run.get(id).is_none() {
+        run.insert(id, Item::Table(Table::new()));
     }
-    Ok(table)
+    run[id].as_table_mut().ok_or_else(|| format!("run.\"{id}\" isn't a table"))
 }
 
-/// Removes `[run.<id>]` (its values; sub-targets stay) and returns the old
-/// table, pruning parents left empty.
+/// Removes `[run."<id>"]` and returns it, dropping `[run]` when it's left empty.
 fn take_run_table(doc: &mut DocumentMut, id: &str) -> Option<Table> {
-    let segments = run_id_segments(id).ok()?;
-    fn take(table: &mut Table, segments: &[&str]) -> Option<Table> {
-        let (first, rest) = segments.split_first()?;
-        if rest.is_empty() {
-            let child = table.get_mut(first)?.as_table_mut()?;
-            let has_children = child.iter().any(|(_, i)| i.is_table());
-            if has_children {
-                // Only this target's own values go; nested targets stay.
-                let mut own = Table::new();
-                let keys: Vec<String> = child
-                    .iter()
-                    .filter(|(_, i)| i.is_value())
-                    .map(|(k, _)| k.to_string())
-                    .collect();
-                for key in keys {
-                    if let Some(item) = child.remove(&key) {
-                        own.insert(&key, item);
-                    }
-                }
-                child.set_implicit(true);
-                return Some(own);
-            }
-            return table.remove(first).and_then(|i| i.into_table().ok());
-        }
-        let child = table.get_mut(first)?.as_table_mut()?;
-        let taken = take(child, rest);
-        if child.is_empty() {
-            table.remove(first);
-        }
-        taken
-    }
     let run = doc.get_mut("run")?.as_table_mut()?;
-    let taken = take(run, &segments);
+    let taken = run.remove(id).and_then(|i| i.into_table().ok());
     if run.is_empty() {
         doc.remove("run");
     }
@@ -511,7 +427,7 @@ pub fn set_run_target(
         let exists = |doc: &DocumentMut, id: &str| {
             let mut targets = Vec::new();
             if let Some(run) = doc.get("run").and_then(Item::as_table) {
-                collect_run_targets(run, "", &mut targets);
+                collect_run_targets(run, &mut targets);
             }
             targets.iter().any(|t| t.id == id)
         };
@@ -729,7 +645,7 @@ serde      = \"*\"
 uuid = { version = \"1\", features = [\"v4\"] }
 
 ## `yog run <name>`
-[run.forge-1.21.1]
+[run.\"forge-1.21.1\"]
 name       = \"Forge 1.21.1\"
 export_dir = \"../loader/forge/run/yog-mods\"
 command    = \"./gradlew\"
@@ -784,7 +700,7 @@ env        = [\"JAVA_HOME=/usr/lib/jvm/java-21\"]
         set_run_target(&dir, None, &new).unwrap();
         let out = text(&dir);
         assert!(
-            out.ends_with("\n[run.fabric-1.20.1]\nname    = \"Fabric 1.20.1\"\ncommand = \"./gradlew\"\nargs    = [\"runClient\"]\n"),
+            out.ends_with("\n[run.\"fabric-1.20.1\"]\nname    = \"Fabric 1.20.1\"\ncommand = \"./gradlew\"\nargs    = [\"runClient\"]\n"),
             "{out}"
         );
         assert!(set_run_target(&dir, None, &new).is_err(), "duplicate id");
@@ -797,10 +713,10 @@ env        = [\"JAVA_HOME=/usr/lib/jvm/java-21\"]
         set_run_target(&dir, Some("forge-1.21.1"), &renamed).unwrap();
         let out = text(&dir);
         assert!(
-            out.contains("## `yog run <name>`\n[run.forge-1.21]\nname "),
+            out.contains("## `yog run <name>`\n[run.\"forge-1.21\"]\nname "),
             "{out}"
         );
-        assert!(!out.contains("[run.forge-1.21.1]"));
+        assert!(!out.contains("forge-1.21.1"));
 
         remove_run_target(&dir, "forge-1.21").unwrap();
         remove_run_target(&dir, "fabric-1.20.1").unwrap();
@@ -810,14 +726,23 @@ env        = [\"JAVA_HOME=/usr/lib/jvm/java-21\"]
     }
 
     #[test]
-    fn rejects_what_yog_cannot_read() {
-        let dir = project("reject");
-        let bad_arg = RunTarget {
+    fn values_are_real_toml() {
+        let dir = project("toml");
+        let quoted = RunTarget {
             id: "x".into(),
+            command: "say \"hi\"".into(),
             args: vec!["a,b".into()],
             ..Default::default()
         };
-        assert!(set_run_target(&dir, None, &bad_arg).is_err());
+        set_run_target(&dir, None, &quoted).unwrap();
+        let back = read(&dir).unwrap().run_targets.into_iter().find(|t| t.id == "x").unwrap();
+        assert_eq!((back.command.as_str(), back.args), ("say \"hi\"", vec!["a,b".to_string()]));
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn rejects_what_yog_cannot_read() {
+        let dir = project("reject");
         let bad_env = RunTarget {
             id: "x".into(),
             env: vec!["NOVALUE".into()],
@@ -825,16 +750,11 @@ env        = [\"JAVA_HOME=/usr/lib/jvm/java-21\"]
         };
         assert!(set_run_target(&dir, None, &bad_env).is_err());
         let bad_id = RunTarget {
-            id: "a..b".into(),
+            id: "a b".into(),
             ..Default::default()
         };
         assert!(set_run_target(&dir, None, &bad_id).is_err());
-        let quoted = RunTarget {
-            id: "x".into(),
-            command: "say \"hi\"".into(),
-            ..Default::default()
-        };
-        assert!(set_run_target(&dir, None, &quoted).is_err());
+
         let no_version = Dependency {
             name: "rand".into(),
             default_features: true,
