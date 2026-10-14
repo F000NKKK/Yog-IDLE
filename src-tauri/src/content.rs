@@ -131,6 +131,20 @@ pub fn content_block_faces(root: &Path, id: &str) -> Option<[Option<Vec<u8>>; 6]
     ])
 }
 
+/// The model of the mod's block `id` as its `.yblock` gives it: its
+/// `elements` and its textures by variable (png bytes). `None`: not a
+/// block of the mod, or its model has no elements of its own.
+pub fn content_block_model(root: &Path, id: &str) -> Option<(Vec<Value>, std::collections::HashMap<String, Vec<u8>>)> {
+    let (file, doc) = content_file(root, id, &["yblock"])?;
+    let elements = doc.pointer("/model/elements").and_then(Value::as_array)?.clone();
+    let textures = doc
+        .pointer("/model/textures")
+        .and_then(Value::as_object)
+        .map(|t| t.iter().filter_map(|(k, v)| Some((k.clone(), texture_bytes(&file, v.as_str()?).ok()?))).collect())
+        .unwrap_or_default();
+    Some((elements, textures))
+}
+
 /// The icon of the mod's item or block `id` as its `content/` file draws
 /// it: the model's `layer0` (else its first texture), as png bytes.
 pub fn content_icon(root: &Path, id: &str) -> Option<Vec<u8>> {
