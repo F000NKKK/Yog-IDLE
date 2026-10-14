@@ -1129,78 +1129,33 @@ struct ModRunTarget {
     description: Option<String>,
 }
 
-/// Reads `yog.toml`'s `[run.<name>]` sections — plain named script-invocation
+/// Reads `yog.toml`'s `[run."<name>"]` sections — plain named script-invocation
 /// configs (like VS Code's `tasks.json`), not loader/Minecraft-version
 /// settings. `yog run <name>` (yog-cli's own command) does the actual
-/// build+export+launch; this only lists what's available.
-// Deliberately NOT the `toml` crate here: `[run.forge-1.21.1]` is not valid
-// nested-table TOML in the strict sense (a spec-compliant parser splits on
-// every dot, turning "forge-1.21.1" into three levels of nested tables) —
-// but `yog-cli`'s own hand-rolled parser treats everything after "run." as
-// one literal name, and that's the name `yog run <name>` actually expects.
-// Parsing this the strict way would silently disagree with what yog-cli
-// itself does with the same file.
+/// build+export+launch; this only lists what's available. Read as TOML:
+/// a name with dots is quoted (`[run."forge-1.21.1"]`), and yog-cli
+/// rejects it unquoted.
 fn parse_mod_run_targets(contents: &str) -> Vec<ModRunTarget> {
-    /// `[run.<name>]` while it's being read: name, `name =`, `command =`, `args =`.
-    type PendingTarget = (String, Option<String>, Option<String>, Vec<String>);
-
-    let mut targets: Vec<ModRunTarget> = Vec::new();
-    let mut current: Option<PendingTarget> = None;
-
-    fn flush(current: Option<PendingTarget>, targets: &mut Vec<ModRunTarget>) {
-        if let Some((name, display_name, command, args)) = current {
-            let description = command.map(|c| {
-                if args.is_empty() {
-                    c
-                } else {
-                    format!("{c} {}", args.join(" "))
-                }
-            });
-            targets.push(ModRunTarget {
-                name,
-                display_name,
-                description,
-            });
-        }
-    }
-
-    for raw in contents.lines() {
-        let line = raw.trim();
-        if line.starts_with('#') {
-            continue;
-        }
-        if line.starts_with('[') && line.ends_with(']') {
-            flush(current.take(), &mut targets);
-            let section = &line[1..line.len() - 1];
-            current = section
-                .strip_prefix("run.")
-                .map(|name| (name.to_string(), None, None, Vec::new()));
-            continue;
-        }
-        let Some((_, display_name, command, args)) = current.as_mut() else {
-            continue;
-        };
-        let Some((key, raw)) = line.split_once('=') else {
-            continue;
-        };
-        let Some(value) = manifest::line_value(raw) else {
-            continue;
-        };
-        let text = |v: &toml::Value| v.as_str().map(str::to_string);
-        match key.trim() {
-            "name" => *display_name = text(&value),
-            "command" => *command = text(&value),
-            "args" => {
-                *args = value
-                    .as_array()
-                    .map(|a| a.iter().filter_map(text).collect())
-                    .unwrap_or_default()
-            }
-            _ => {}
-        }
-    }
-    flush(current, &mut targets);
-
+    let Ok(doc) = contents.parse::<toml_edit::DocumentMut>() else {
+        return Vec::new();
+    };
+    let Some(run) = doc.get("run").and_then(toml_edit::Item::as_table_like) else {
+        return Vec::new();
+    };
+    let mut targets: Vec<ModRunTarget> = run
+        .iter()
+        .filter_map(|(name, item)| {
+            let table = item.as_table_like()?;
+            let text = |key: &str| table.get(key).and_then(toml_edit::Item::as_str).map(str::to_string);
+            let args: Vec<String> = table
+                .get("args")
+                .and_then(toml_edit::Item::as_array)
+                .map(|a| a.iter().filter_map(|v| v.as_str().map(str::to_string)).collect())
+                .unwrap_or_default();
+            let description = text("command").map(|c| if args.is_empty() { c } else { format!("{c} {}", args.join(" ")) });
+            Some(ModRunTarget { name: name.to_string(), display_name: text("name"), description })
+        })
+        .collect();
     targets.sort_by(|a, b| a.name.cmp(&b.name));
     targets
 }
@@ -1829,11 +1784,12 @@ mod tests {
 
     #[test]
     fn run_targets_read_toml_values() {
-        let text = "[mod]\nname = \"Ruby\"\n\n[run.b]\ncommand = \"cargo\" # build\nargs = [\"run\", \"--features=a,b\"]\n\n[run.a]\nname = \"Client\"\n";
+        let text = "[mod]\nname = \"Ruby\"\n\n[run.\"b.1\"]\ncommand = \"cargo\" # build\nargs = [\"run\", \"--features=a,b\"]\n\n[run.a]\nname = \"Client\"\n";
         let targets = parse_mod_run_targets(text);
         assert_eq!(targets.len(), 2);
         assert_eq!(targets[0].name, "a");
         assert_eq!(targets[0].display_name.as_deref(), Some("Client"));
+        assert_eq!(targets[1].name, "b.1", "the name, not its quotes");
         assert_eq!(targets[1].display_name, None);
         assert_eq!(
             targets[1].description.as_deref(),

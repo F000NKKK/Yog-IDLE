@@ -35,13 +35,6 @@ pub fn read_mod_field(root: &Path, key: &str) -> Option<String> {
     mod_field(&std::fs::read_to_string(path(root)).ok()?, key)
 }
 
-/// One `key = <value>` line's value as TOML (comments and quoting handled) —
-/// for the sections that are read line by line, like yog-cli does.
-pub fn line_value(raw: &str) -> Option<toml::Value> {
-    let mut table: toml::Table = format!("v = {raw}").parse().ok()?;
-    table.remove("v")
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -54,13 +47,5 @@ mod tests {
         assert_eq!(mod_field(text, "name"), None);
         assert_eq!(mod_field("[package]\nid = \"old\"\n", "id"), None);
         assert_eq!(mod_field("not toml", "id"), None);
-    }
-
-    #[test]
-    fn line_values_parse_as_toml() {
-        assert_eq!(line_value("\"x\" # c").unwrap().as_str(), Some("x"));
-        let args = line_value("[\"a\", \"b\"]").unwrap();
-        assert_eq!(args.as_array().unwrap().len(), 2);
-        assert!(line_value("\"unterminated").is_none());
     }
 }
