@@ -4,6 +4,7 @@ import { ScreenDesigner } from "../designer/ScreenDesigner";
 import { YuiSourceEditor, YuiSplitEditor } from "../designer/YuiSplitEditor";
 import { CONTENT_SOURCE_VIEW, ContentEditor } from "./ContentEditor";
 import { isLangFile, LangFileEditor } from "./LangFileEditor";
+import { RECIPE_SOURCE_VIEW, RecipeEditor } from "./RecipeEditor";
 import { YRES_SOURCE_VIEW, YresEditor } from "./YresEditor";
 
 // Yog-specific editors, on top of the platform's built-in ones — imported
@@ -96,6 +97,28 @@ registerEditorProvider({
   label: "Code",
   name: "Block/Item Source Editor",
   extensions: ["yblock", "yitem"],
+  component: JsonEditor,
+  priority: 0,
+  kind: "text",
+});
+
+// `.yrecipe` recipes: a crafting table by default, the JSON a click away.
+registerEditorProvider({
+  id: "yog.recipe",
+  label: "Recipe",
+  name: "Recipe Editor",
+  icon: "table",
+  extensions: ["yrecipe"],
+  component: RecipeEditor,
+  priority: 20,
+  kind: "designer",
+});
+
+registerEditorProvider({
+  id: RECIPE_SOURCE_VIEW,
+  label: "Code",
+  name: "Recipe Source Editor",
+  extensions: ["yrecipe"],
   component: JsonEditor,
   priority: 0,
   kind: "text",

@@ -225,3 +225,26 @@ New files: **Add › New Item › Block / Item / Block with Item**.
   black) until the loader maps it.
 - Two mods' tags with the same name in one merged pack can collide.
 - Animated textures are previewed on their first frame only.
+
+## Recipes (`.yrecipe`)
+
+One recipe per file, anywhere under `content/` (`content/recipes/` by
+convention). Its id is `<mod id>:<file name>` unless the file says `"id"`.
+IDLE opens it as a crafting table (the JSON is a click away).
+
+```jsonc
+// shaped: a pattern of key characters (space = empty), 1–3 rows of 1–3
+{ "type": "shaped", "pattern": ["ISI", " S "], "key": { "I": "minecraft:iron_ingot", "S": "minecraft:stick" },
+  "result": "mymod:hammer", "count": 1 }
+
+// shapeless: 1–9 ingredients in any arrangement
+{ "type": "shapeless", "ingredients": ["minecraft:paper", "#c:dusts"], "result": "mymod:note", "count": 2 }
+
+// smelting: one ingredient; experience (default 0.1), cook_time in ticks (default 200)
+{ "type": "smelting", "ingredient": "#c:ores", "result": "mymod:ingot", "experience": 0.7 }
+```
+
+Items are written with their namespace (`minecraft:paper`); an ingredient
+may be an item tag (`#c:dusts`), the result can't. `yog build` checks that
+the mod's own items and blocks a recipe names exist, and registers every
+recipe — no code needed.

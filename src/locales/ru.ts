@@ -9,6 +9,18 @@ import { contextKey, registerTranslations } from "substrate-platform-ui";
 registerTranslations(
   { id: "ru", name: "Русский" },
   {
+    // Recipe editor
+    Recipe: "Рецепт",
+    "This isn't a recipe (a JSON object) — fix it in the Code view.": "Это не рецепт (нужен JSON-объект) — исправьте его в представлении кода.",
+    Empty: "Пусто",
+    Shaped: "С формой",
+    Shapeless: "Без формы",
+    Smelting: "Плавка",
+    Experience: "Опыт",
+    "Cook time (ticks)": "Время плавки (тики)",
+    Result: "Результат",
+    "Ingredient {n}": "Ингредиент {n}",
+    "Right-click a cell to empty it.": "Правый клик по ячейке очищает её.",
     // Menus
     File: "Файл",
     Edit: "Правка",
@@ -1206,6 +1218,7 @@ registerTranslations("ru", {
   "A block (.yblock): its properties, 3D model, block states and item form in one file, opened in the 3D model editor; yog build turns it into Minecraft's models, blockstates, loot table and tags, and registers it. Goes into content/.": "Блок (.yblock): свойства, 3D-модель, состояния и форма предмета в одном файле; открывается в 3D-редакторе моделей, yog build превращает его в модели, blockstates, таблицу добычи и теги Minecraft и регистрирует. Помещается в content/.",
   "An item (.yitem): its properties and model (a sprite or 3D), opened in the 3D model editor; yog build registers it. Goes into content/.": "Предмет (.yitem): свойства и модель (спрайт или 3D); открывается в 3D-редакторе моделей, yog build регистрирует его. Помещается в content/.",
   "Block with Item": "Блок с предметом",
+  "A recipe (.yrecipe): shaped or shapeless crafting, or smelting, edited as a crafting table; yog build registers it. Goes into content/recipes/.": "Рецепт (.yrecipe): крафт с формой или без, либо плавка; редактируется как верстак, yog build его регистрирует. Помещается в content/recipes/.",
   "A block (.yblock) whose item has its own sprite (item_model) instead of the block's 3D model in hand. Goes into content/.": "Блок (.yblock), у предмета которого свой спрайт (item_model) вместо 3D-модели блока в руке. Помещается в content/.",
   "down": "низ",
   "up": "верх",

@@ -118,6 +118,16 @@ const ITEM_TEMPLATES: ItemTemplate[] = [
     files: (stem) => [[`${stem}.yitem`, newItemFile(titleOf(stem))]],
   },
   {
+    id: "yog-recipe",
+    category: "Yog",
+    name: "Recipe",
+    description: "A recipe (.yrecipe): shaped or shapeless crafting, or smelting, edited as a crafting table; yog build registers it. Goes into content/recipes/.",
+    extension: ".yrecipe",
+    baseName: "recipe",
+    rootFolder: "content",
+    files: (stem) => [[`${stem}.yrecipe`, `{\n  "type": "shaped",\n  "pattern": [],\n  "key": {},\n  "result": ""\n}\n`]],
+  },
+  {
     id: "yog-block-item",
     category: "Yog",
     name: "Block with Item",

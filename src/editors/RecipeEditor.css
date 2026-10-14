@@ -1,0 +1,117 @@
+.recipe-editor {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-space-md);
+  height: 100%;
+  padding: var(--sp-space-md);
+  overflow: auto;
+  background: var(--sp-surface-0);
+}
+
+.recipe-error {
+  color: var(--sp-text-muted);
+}
+
+.recipe-toolbar {
+  display: flex;
+  gap: var(--sp-space-2xs);
+}
+
+.recipe-type {
+  padding: 2px 10px;
+  border: 1px solid var(--sp-border);
+  border-radius: 3px;
+  background: var(--sp-surface-1);
+  color: inherit;
+  cursor: pointer;
+}
+
+.recipe-type.active {
+  border-color: var(--sp-accent);
+  background: var(--sp-surface-2);
+}
+
+.recipe-table {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-space-lg);
+}
+
+/* A crafting table: 3×3 slots in Minecraft's slot grey. */
+.recipe-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 40px);
+  gap: 2px;
+}
+
+.recipe-grid.single {
+  grid-template-columns: 40px;
+}
+
+.recipe-cell {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid;
+  border-color: #373737 #ffffff #ffffff #373737;
+  background: #8b8b8b;
+  cursor: pointer;
+}
+
+.recipe-cell.selected {
+  outline: 2px solid var(--sp-accent);
+  outline-offset: 1px;
+}
+
+.recipe-cell img {
+  width: 32px;
+  height: 32px;
+  image-rendering: pixelated;
+}
+
+.recipe-cell-text {
+  font-size: 9px;
+  color: #ffffff;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 36px;
+}
+
+.recipe-arrow {
+  font-size: 24px;
+  color: var(--sp-text-muted);
+}
+
+.recipe-result {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-space-xs);
+}
+
+.recipe-result input,
+.recipe-furnace input {
+  width: 64px;
+  margin-left: var(--sp-space-xs);
+}
+
+.recipe-furnace {
+  display: flex;
+  gap: var(--sp-space-lg);
+}
+
+.recipe-picker {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-space-sm);
+}
+
+.recipe-picker input {
+  width: 280px;
+}
+
+.recipe-hint {
+  color: var(--sp-text-muted);
+}
