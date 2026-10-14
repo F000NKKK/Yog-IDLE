@@ -287,7 +287,9 @@ pub fn event(args: &EventArgs) -> EventResult {
     let mod_root = mod_root(Path::new(&args.path));
     // Laid out like `render` does: images size by the same mod's resources.
     images::set_document(mod_root.as_deref());
-    let prepared = custom::prepare(&args.root, mod_root.as_deref(), sw, sh);
+    let mut themed = args.root.clone();
+    markup::apply_theme(&mut themed);
+    let prepared = custom::prepare(&themed, mod_root.as_deref(), sw, sh);
     let root = &prepared.root;
     let laid = lay_out(root, sw, sh, &scroll);
     let mut out = EventResult::default();
