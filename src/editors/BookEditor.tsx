@@ -8,11 +8,13 @@ import {
   CATEGORY_FIELDS,
   ENTRY_FIELDS,
   PAGE_TYPES,
+  categoryRef,
   entriesOf,
   freshId,
   moved,
   newPage,
   pageFields,
+  refId,
   parseBook,
   serializeBook,
   withField,
@@ -164,15 +166,15 @@ export function BookEditor({ path, content, onChange, readOnly }: EditorProps) {
   };
   const categoryOfSelection = (): string | undefined => {
     if (sel.kind === "category") return book.categories[sel.index]?.id;
-    if (sel.kind === "entry") return book.entries[sel.index]?.category;
-    if (sel.kind === "page") return book.entries[sel.entry]?.category;
+    if (sel.kind === "entry") return refId(book.entries[sel.index]?.category ?? "");
+    if (sel.kind === "page") return refId(book.entries[sel.entry]?.category ?? "");
     return book.categories[0]?.id;
   };
   const addEntry = () => {
     const category = categoryOfSelection();
     if (!category) return;
     const id = freshId(`${ns(book.id)}:entry`, book.entries.map((e) => e.id));
-    update((b) => ({ ...b, entries: [...b.entries, { id, name: t("New entry"), category, pages: [newPage("text")] }] }));
+    update((b) => ({ ...b, entries: [...b.entries, { id, name: t("New entry"), category: categoryRef(category), pages: [newPage("text")] }] }));
     select({ kind: "entry", index: book.entries.length });
   };
   const entryOfSelection = (): number | undefined => (sel.kind === "entry" ? sel.index : sel.kind === "page" ? sel.entry : undefined);
@@ -192,7 +194,7 @@ export function BookEditor({ path, content, onChange, readOnly }: EditorProps) {
   const remove = () => {
     if (sel.kind === "category") {
       const id = book.categories[sel.index].id;
-      update((b) => ({ ...b, categories: b.categories.filter((_, i) => i !== sel.index), entries: b.entries.filter((e) => e.category !== id) }));
+      update((b) => ({ ...b, categories: b.categories.filter((_, i) => i !== sel.index), entries: b.entries.filter((e) => refId(e.category) !== id) }));
       setSel({ kind: "book" });
     } else if (sel.kind === "entry") {
       update((b) => ({ ...b, entries: b.entries.filter((_, i) => i !== sel.index) }));
@@ -270,8 +272,9 @@ export function BookEditor({ path, content, onChange, readOnly }: EditorProps) {
   const field = (f: Field) => {
     const v = target.obj[f.key];
     const set = (value: Json | undefined) => target.set(withField(target.obj, f.key, value));
-    const icon = (f.kind === "item" || f.kind === "entity") && typeof v === "string" && v && !v.startsWith("@")
-      ? imagePreview(path, f.kind === "item" ? (v.endsWith(".png") ? v : `item:${v}`) : `item:${v}_spawn_egg`)
+    const id = typeof v === "string" ? refId(v) : "";
+    const icon = (f.kind === "item" || f.kind === "entity") && id && !id.startsWith("@")
+      ? imagePreview(path, f.kind === "item" ? (id.endsWith(".png") ? id : `item:${id}`) : `item:${id}_spawn_egg`)
       : null;
     let input;
     switch (f.kind) {
@@ -325,7 +328,8 @@ export function BookEditor({ path, content, onChange, readOnly }: EditorProps) {
 
   const is = (s: Selection) => JSON.stringify(s) === JSON.stringify(sel);
   const row = (s: Selection, label: string, depth: number, iconSource?: string) => {
-    const icon = iconSource && !iconSource.startsWith("@") ? imagePreview(path, iconSource.endsWith(".png") ? iconSource : `item:${iconSource}`) : null;
+    const iconId = iconSource ? refId(iconSource) : "";
+    const icon = iconId && !iconId.startsWith("@") ? imagePreview(path, iconId.endsWith(".png") ? iconId : `item:${iconId}`) : null;
     return (
       <button key={JSON.stringify(s)} type="button" className={`book-row${is(s) ? " selected" : ""}`} style={{ paddingLeft: 6 + depth * 14 }} onClick={() => select(s)}>
         {icon ? <img src={icon} alt="" /> : <span className="book-row-dot" />}

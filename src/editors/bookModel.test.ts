@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { entriesOf, freshId, moved, newPage, parseBook, serializeBook, withField } from "./bookModel";
+import { entriesOf, freshId, moved, newPage, parseBook, serializeBook, withField, refId } from "./bookModel";
 
 describe("bookModel", () => {
   it("parses a book and keeps unknown fields", () => {
@@ -16,7 +16,9 @@ describe("bookModel", () => {
     expect(moved([1, 2, 3], 0, 1)).toEqual([2, 1, 3]);
     expect(moved([1, 2, 3], 2, 1)).toEqual([1, 2, 3]);
     expect(withField({ a: 1, b: "x" }, "b", "")).toEqual({ a: 1 });
-    expect(newPage("entity")).toEqual({ type: "entity", entity: "minecraft:pig" });
+    expect(newPage("entity")).toEqual({ type: "entity", entity: "@entity:minecraft:pig" });
+    expect(refId("@block:minecraft:furnace[facing=north]")).toBe("minecraft:furnace");
+    expect(refId("minecraft:textures/x.png")).toBe("minecraft:textures/x.png");
   });
 
   it("lists a category's entries by their order", () => {

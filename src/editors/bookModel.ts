@@ -1,7 +1,8 @@
 // `.ybook` ⇄ what the book designer edits: the book (yog-book's `Book` as
 // JSON), its categories, entries and their pages. Fields the designer
-// doesn't know stay as they are; texts may be `@Set.key`, `@item:id` or
-// `@block:id` references (docs/books.md).
+// doesn't know stay as they are. What a book names it names by reference
+// (`@item:minecraft:stick`, `@category:mymod:basics`…); texts may be
+// `@Set.key`, `@item:id` (a name) too (docs/books.md).
 
 export type Json = null | boolean | number | string | Json[] | { [k: string]: Json };
 export type Obj = { [k: string]: Json };
@@ -38,7 +39,16 @@ export interface Field {
 
 /** Every page type, with its fields. */
 export const PAGE_TYPES: { type: string; label: string; fields: Field[] }[] = [
-  { type: "text", label: "Text", fields: [{ key: "title", label: "Title", kind: "text" }, { key: "text", label: "Text", kind: "multiline" }] },
+  {
+    type: "text",
+    label: "Text",
+    fields: [
+      { key: "title", label: "Title", kind: "text" },
+      { key: "text", label: "Text", kind: "multiline" },
+      { key: "font", label: "Font", kind: "font" },
+      { key: "font_size", label: "Size", kind: "number" },
+    ],
+  },
   {
     type: "spotlight",
     label: "Spotlight",
@@ -48,8 +58,7 @@ export const PAGE_TYPES: { type: string; label: string; fields: Field[] }[] = [
       { key: "text", label: "Text", kind: "multiline" },
     ],
   },
-  { type: "crafting", label: "Crafting", fields: [{ key: "recipe", label: "Recipe", kind: "text" }, { key: "text", label: "Text", kind: "multiline" }] },
-  { type: "smelting", label: "Smelting", fields: [{ key: "recipe", label: "Recipe", kind: "text" }, { key: "text", label: "Text", kind: "multiline" }] },
+  { type: "recipe", label: "Recipe", fields: [{ key: "recipe", label: "Recipe", kind: "text" }, { key: "text", label: "Text", kind: "multiline" }] },
   {
     type: "image",
     label: "Image",
@@ -57,7 +66,6 @@ export const PAGE_TYPES: { type: string; label: string; fields: Field[] }[] = [
       { key: "texture", label: "Image", kind: "image" },
       { key: "title", label: "Title", kind: "text" },
       { key: "text", label: "Text", kind: "multiline" },
-      { key: "border", label: "Border", kind: "bool" },
     ],
   },
   {
@@ -67,25 +75,6 @@ export const PAGE_TYPES: { type: string; label: string; fields: Field[] }[] = [
       { key: "entity", label: "Entity", kind: "entity" },
       { key: "name", label: "Name", kind: "text" },
       { key: "text", label: "Text", kind: "multiline" },
-    ],
-  },
-  {
-    type: "svg",
-    label: "SVG",
-    fields: [
-      { key: "data", label: "SVG", kind: "multiline" },
-      { key: "title", label: "Title", kind: "text" },
-      { key: "text", label: "Text", kind: "multiline" },
-    ],
-  },
-  {
-    type: "custom_text",
-    label: "Text in a font",
-    fields: [
-      { key: "text", label: "Text", kind: "multiline" },
-      { key: "font_id", label: "Font", kind: "font" },
-      { key: "size_px", label: "Size", kind: "number" },
-      { key: "color", label: "Color", kind: "color" },
     ],
   },
   {
@@ -147,22 +136,17 @@ export function newPage(type: string): Page {
     case "text":
       return { type, text: "" };
     case "spotlight":
-      return { type, item: "minecraft:book" };
-    case "crafting":
-    case "smelting":
-      return { type, recipe: "" };
+      return { type, item: "@item:minecraft:book" };
+    case "recipe":
+      return { type, recipe: "@recipe:" };
     case "image":
       return { type, texture: "" };
     case "entity":
-      return { type, entity: "minecraft:pig" };
-    case "svg":
-      return { type, data: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"></svg>' };
-    case "custom_text":
-      return { type, text: "", font_id: "minecraft:default", size_px: 9, color: 0xff000000 };
+      return { type, entity: "@entity:minecraft:pig" };
     case "relations":
       return { type, entries: [] };
     case "multiblock":
-      return { type, pattern: [["S"]], mapping: { S: "minecraft:stone" } };
+      return { type, pattern: [["S"]], mapping: { S: "@block:minecraft:stone" } };
     case "pattern":
       return { type, op_id: "", text: "", patterns: [{ startdir: "EAST", signature: "qaq" }] };
     default:
@@ -227,11 +211,22 @@ export function withField(o: Obj, key: string, value: Json | undefined): Obj {
   return out;
 }
 
+/** `@item:minecraft:stick` → `minecraft:stick`; anything else as it is. */
+export function refId(v: string): string {
+  const m = /^@(?:item|block|entity|recipe|entry|category):(.+)$/.exec(v.trim());
+  return m ? m[1].split("[")[0] : v;
+}
+
+/** The reference an entry names its category `id` by. */
+export function categoryRef(id: string): string {
+  return `@category:${id}`;
+}
+
 /** The entries of category `id`, in the order the book lists them. */
 export function entriesOf(b: Book, category: string): { entry: Entry; index: number }[] {
   return b.entries
     .map((entry, index) => ({ entry, index }))
-    .filter((e) => e.entry.category === category)
+    .filter((e) => refId(e.entry.category) === category)
     .sort((a, b) => num(a.entry.priority) - num(b.entry.priority));
 }
 

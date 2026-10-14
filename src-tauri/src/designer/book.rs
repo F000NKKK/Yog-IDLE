@@ -12,6 +12,7 @@ use std::sync::{LazyLock, Mutex};
 use base64::Engine as _;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use yog_book::refs::RefKind;
 use yog_book::{Book, BookRenderer};
 
 use super::assets::Resources;
@@ -231,27 +232,43 @@ fn humanize(id: &str) -> String {
         .join(" ")
 }
 
-/// Replaces references the way `yog build` does — but with the texts
-/// themselves, as the player reads them.
-fn resolve(v: Value, texts: &Texts, missing: &mut Vec<String>) -> Value {
-    match v {
-        Value::String(s) => match s.strip_prefix('@') {
-            Some(rest) if rest.starts_with('@') => Value::String(rest.to_string()),
-            Some(rest) => {
-                if let Some(id) = rest.strip_prefix("item:").or_else(|| rest.strip_prefix("block:")) {
-                    Value::String(item_name(&texts.lang, id).unwrap_or_else(|| humanize(id)))
-                } else if let Some(t) = texts.refs.get(rest) {
-                    Value::String(t.clone())
-                } else {
-                    missing.push(s.clone());
-                    Value::String(s)
+/// The book as a player reads it: references (`@item:…` in id fields, see
+/// `yog_book::refs`) as plain ids, texts as their words (`@Book.title`)
+/// and names (`@item:…`). Whether they exist is `yog check`'s to say; the
+/// designer draws what it can.
+struct Reader<'a> {
+    texts: &'a Texts,
+    missing: Vec<String>,
+}
+
+impl yog_book::refs::Resolver for Reader<'_> {
+    fn reference(&mut self, _kind: RefKind, id: &str, _path: &str) -> Result<String, String> {
+        Ok(id.to_string())
+    }
+
+    fn text(&mut self, text: &str, _path: &str) -> Option<String> {
+        let rest = text.strip_prefix('@')?;
+        if let Some(lit) = rest.strip_prefix('@') {
+            return Some(format!("@{lit}"));
+        }
+        if let Some((kind, id)) = yog_book::refs::parse(text) {
+            let id = yog_book::refs::bare(id);
+            let name = match kind {
+                RefKind::Entity => {
+                    let (ns, p) = id.split_once(':').unwrap_or(("minecraft", id));
+                    self.texts.lang.get(&format!("entity.{ns}.{p}")).cloned()
                 }
+                _ => item_name(&self.texts.lang, id),
+            };
+            return Some(name.unwrap_or_else(|| humanize(id)));
+        }
+        match self.texts.refs.get(rest) {
+            Some(t) => Some(t.clone()),
+            None => {
+                self.missing.push(text.to_string());
+                None
             }
-            None => Value::String(s),
-        },
-        Value::Array(a) => Value::Array(a.into_iter().map(|v| resolve(v, texts, missing)).collect()),
-        Value::Object(o) => Value::Object(o.into_iter().map(|(k, v)| (k, resolve(v, texts, missing))).collect()),
-        other => other,
+        }
     }
 }
 
@@ -260,8 +277,11 @@ pub fn parse(text: &str, mod_root: Option<&Path>, locale: Option<&str>) -> Resul
     let value: Value = serde_json::from_str(text).map_err(|e| format!("not JSON: {e}"))?;
     let res = Resources::for_mod(mod_root);
     let texts = texts(mod_root, &res, locale);
-    let mut missing = Vec::new();
-    let mut value = resolve(value, &texts, &mut missing);
+    let mut value = value;
+    let mut reader = Reader { texts: &texts, missing: Vec::new() };
+    // (Wrong references are `yog check`'s to report.)
+    let _ = yog_book::refs::resolve(&mut value, &mut reader);
+    let missing = reader.missing;
     if let Some(o) = value.as_object_mut() {
         // The reader shows texts, not keys.
         o.insert("i18n".into(), false.into());
@@ -359,14 +379,20 @@ mod tests {
         let mut texts = Texts { refs: HashMap::new(), lang: HashMap::new() };
         texts.refs.insert("Book.title".to_string(), "Guide".to_string());
         texts.lang.insert("item.mymod.sapphire".to_string(), "Сапфир".to_string());
-        let mut missing = Vec::new();
-        let v = serde_json::json!({ "name": "@Book.title", "a": "@item:mymod:ruby_block", "s": "@item:mymod:sapphire", "b": "@@x", "c": "@Book.nope" });
-        let v = resolve(v, &texts, &mut missing);
+        let mut v = serde_json::json!({
+            "name": "@Book.title", "subtitle": "@item:mymod:ruby_block", "landing_text": "@@x",
+            "categories": [{ "id": "c", "name": "@item:mymod:sapphire", "icon": "@item:mymod:sapphire" }],
+            "entries": [{ "id": "e", "name": "@Book.nope", "category": "@category:c", "pages": [] }]
+        });
+        let mut r = Reader { texts: &texts, missing: Vec::new() };
+        let _ = yog_book::refs::resolve(&mut v, &mut r);
         assert_eq!(v["name"], "Guide");
-        assert_eq!(v["a"], "Ruby Block", "no translation: made from the id");
-        assert_eq!(v["s"], "Сапфир");
-        assert_eq!(v["b"], "@x");
-        assert_eq!(missing, ["@Book.nope"]);
+        assert_eq!(v["subtitle"], "Ruby Block", "no translation: made from the id");
+        assert_eq!(v["categories"][0]["name"], "Сапфир", "a name in a text");
+        assert_eq!(v["categories"][0]["icon"], "mymod:sapphire", "an id in an id field");
+        assert_eq!(v["entries"][0]["category"], "c");
+        assert_eq!(v["landing_text"], "@x");
+        assert_eq!(r.missing, ["@Book.nope"]);
     }
 
     #[test]
