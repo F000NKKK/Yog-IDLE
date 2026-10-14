@@ -38,6 +38,25 @@ language without translating it twice:
 | `@block:stone` | that block's name |
 | `@@text` | `@text`, literally |
 
+## Text
+
+Texts are Yog text — the format of `.yres` and screens:
+
+| Write | Shows |
+|---|---|
+| `{b\|bold}`, `{i\|…}`, `{u\|…}`, `{s\|…}` | bold, italic, underlined, struck out |
+| `{#8d6acc\|…}` | that color; words combine: `{b #8d6acc\|…}`; spans nest |
+| `{accent\|term}` | the book's `accent` color |
+| `{link=mymod:ruby\|text}` | a link to an entry |
+| `{{`, `}}` | `{`, `}` |
+
+## The book's look
+
+`book_texture` is the book's sheet (Patchouli's layout, e.g.
+`mymod:textures/gui/book.png`; Yog's own by default), `nameplate_color`
+the title's color, `accent` the color of `{accent|…}`, `landing_text`
+the text on the first page.
+
 ## Pages
 
 | `type` | Shows |
@@ -46,7 +65,9 @@ language without translating it twice:
 | `spotlight` | the item `item`, its `title` (or name) and `text` |
 | `crafting` / `smelting` | the recipe `recipe` and `text` |
 | `image` | the image `texture` (a Yog image source, `.svg` too) |
-| `entity` | the living entity `entity` (`minecraft:zombie`), turned toward the reader |
+| `entity` | the living entity `entity` (`minecraft:zombie`), turning slowly |
+| `multiblock` | the structure `pattern` (layers top to bottom, rows of letters) with `mapping` (letter → block), turning slowly; `name`, `text` |
+| `pattern` | a spell pattern: `name` (or `op_id`), the `patterns` drawn on a hexagonal grid (`{ "startdir": "NORTH_EAST", "signature": "qaq" }`, optional grid offset `q`, `r`), `input` → `output`, `text` |
 | `svg` | the SVG document `data` |
 | `custom_text` | `text` in the font `font_id` (a resource-pack font — `assets/<ns>/font/<name>.json`, e.g. a `ttf` provider), `size_px` high, `color` |
 | `relations` | links to the entries `entries` |

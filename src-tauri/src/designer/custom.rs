@@ -809,6 +809,10 @@ pub fn splice(ops: &mut Vec<DrawOp>, prepared: &Prepared, rects: &HashMap<String
 fn translate(op: DrawOp, dx: f32, dy: f32) -> DrawOp {
     match op {
         DrawOp::Svg { data, x, y, w, h } => DrawOp::Svg { data, x: x + dx, y: y + dy, w, h },
+        DrawOp::TextScaled { text, font, x, y, scale, color, shadow } => {
+            DrawOp::TextScaled { text, font, x: x + dx, y: y + dy, scale, color, shadow }
+        }
+        DrawOp::Blocks { list, x, y, w, h, yaw, pitch } => DrawOp::Blocks { list, x: x + dx, y: y + dy, w, h, yaw, pitch },
         DrawOp::Entity { entity, x, y, w, h } => DrawOp::Entity { entity, x: x + dx, y: y + dy, w, h },
         DrawOp::Rect {
             x1,

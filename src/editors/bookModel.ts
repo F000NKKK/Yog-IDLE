@@ -88,6 +88,25 @@ export const PAGE_TYPES: { type: string; label: string; fields: Field[] }[] = [
       { key: "color", label: "Color", kind: "color" },
     ],
   },
+  {
+    type: "multiblock",
+    label: "Multiblock",
+    fields: [
+      { key: "name", label: "Name", kind: "text" },
+      { key: "text", label: "Text", kind: "multiline" },
+    ],
+  },
+  {
+    type: "pattern",
+    label: "Pattern",
+    fields: [
+      { key: "op_id", label: "Action", kind: "text" },
+      { key: "name", label: "Name", kind: "text" },
+      { key: "input", label: "Takes", kind: "text" },
+      { key: "output", label: "Gives", kind: "text" },
+      { key: "text", label: "Text", kind: "multiline" },
+    ],
+  },
   { type: "relations", label: "Related entries", fields: [{ key: "entries", label: "Entries", kind: "list" }, { key: "text", label: "Text", kind: "multiline" }] },
   { type: "empty", label: "Empty", fields: [] },
 ];
@@ -97,6 +116,8 @@ export const BOOK_FIELDS: Field[] = [
   { key: "author", label: "Author", kind: "text" },
   { key: "landing_text", label: "Landing text", kind: "multiline" },
   { key: "nameplate_color", label: "Nameplate color", kind: "text" },
+  { key: "accent", label: "Accent color", kind: "text" },
+  { key: "book_texture", label: "Book texture", kind: "text" },
 ];
 
 export const CATEGORY_FIELDS: Field[] = [
@@ -139,6 +160,10 @@ export function newPage(type: string): Page {
       return { type, text: "", font_id: "minecraft:default", size_px: 9, color: 0xff000000 };
     case "relations":
       return { type, entries: [] };
+    case "multiblock":
+      return { type, pattern: [["S"]], mapping: { S: "minecraft:stone" } };
+    case "pattern":
+      return { type, op_id: "", text: "", patterns: [{ startdir: "EAST", signature: "qaq" }] };
     default:
       return { type };
   }

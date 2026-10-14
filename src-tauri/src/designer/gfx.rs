@@ -114,6 +114,16 @@ unsafe extern "C" fn image(
         tint,
     });
 }
+#[allow(clippy::too_many_arguments)]
+unsafe extern "C" fn text_scaled(text: YogStr, font: YogStr, x: f32, y: f32, scale: f32, color: u32, shadow: bool) {
+    let (text, font) = unsafe { (string(text), string(font)) };
+    let font = if font.is_empty() { "minecraft:default".to_string() } else { font };
+    push(DrawOp::TextScaled { text, font, x, y, scale, color, shadow });
+}
+unsafe extern "C" fn blocks(list: YogStr, x: f32, y: f32, w: f32, h: f32, yaw: f32, pitch: f32) {
+    let list = unsafe { string(list) };
+    push(DrawOp::Blocks { list, x, y, w, h, yaw, pitch });
+}
 unsafe extern "C" fn svg(data: YogStr, x: f32, y: f32, w: f32, h: f32) {
     let data = unsafe { string(data) };
     push(DrawOp::Svg { data, x, y, w, h });
@@ -226,6 +236,8 @@ pub fn api(screen_w: i32, screen_h: i32, scale: f32) -> YogGfxApi {
         image_size,
         draw2d_svg: svg,
         draw2d_entity: entity,
+        draw2d_text_scaled: text_scaled,
+        draw2d_blocks: blocks,
     }
 }
 

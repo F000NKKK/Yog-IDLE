@@ -45,6 +45,7 @@ interface Rendered {
   scale: number;
   shown: [string, number] | null;
   action: string | null;
+  animated: boolean;
   error: string | null;
 }
 
@@ -96,7 +97,7 @@ export function BookEditor({ path, content, onChange, readOnly }: EditorProps) {
             }
           }
         })
-        .catch((e) => n === seq.current && setRendered({ image: null, scale: SCALE, shown: null, action: null, error: String(e) }));
+        .catch((e) => n === seq.current && setRendered({ image: null, scale: SCALE, shown: null, action: null, animated: false, error: String(e) }));
     },
     [path, content, parsed]
   );
@@ -109,6 +110,26 @@ export function BookEditor({ path, content, onChange, readOnly }: EditorProps) {
   }, [content]);
   useEffect(() => () => void invoke("book_designer_close", { path }).catch(() => {}), [path]);
 
+  // A page that moves (an entity, a structure, an ingredient's
+  // alternatives) is drawn again and again, as the game does.
+  const animated = rendered?.animated ?? false;
+  useEffect(() => {
+    if (!animated) return;
+    let busy = false;
+    const id = setInterval(() => {
+      if (busy) return;
+      busy = true;
+      const n = ++seq.current;
+      invoke<Rendered>("book_designer_render", {
+        args: { path, text: content, screenW: SCREEN_W, screenH: SCREEN_H, scale: SCALE, action: null },
+      })
+        .then((r) => n === seq.current && setRendered(r))
+        .catch(() => {})
+        .finally(() => (busy = false));
+    }, 120);
+    return () => clearInterval(id);
+  }, [animated, path, content]);
+
   /** Selecting in the outline turns the book there. */
   const select = (s: Selection) => {
     setSel(s);
@@ -117,6 +138,16 @@ export function BookEditor({ path, content, onChange, readOnly }: EditorProps) {
     else if (s.kind === "entry") draw({ kind: "show", entry: parsed.entries[s.index].id, page: 0 });
     else if (s.kind === "book") draw({ kind: "home" });
   };
+
+  // Dev builds: tests (book-harness.html + Playwright) select a page by number.
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    const w = window as unknown as { __yogBookSelect?: (entry: number, page: number) => void };
+    w.__yogBookSelect = (entry, page) => select({ kind: "page", entry, page });
+    return () => {
+      delete w.__yogBookSelect;
+    };
+  });
 
   const onPreviewClick = (e: React.MouseEvent<HTMLImageElement>) => {
     const img = e.currentTarget;

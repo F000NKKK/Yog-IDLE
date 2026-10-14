@@ -41,11 +41,32 @@ pub enum DrawOp {
         color: u32,
         shadow: bool,
     },
+    /// `draw2d_text_scaled`: text `scale` times its size.
+    TextScaled {
+        text: String,
+        font: String,
+        x: f32,
+        y: f32,
+        scale: f32,
+        color: u32,
+        shadow: bool,
+    },
     Item {
         id: String,
         x: f32,
         y: f32,
         size: f32,
+    },
+    /// `draw2d_blocks`: blocks in 3D (`x y z state` lines) as big as fits
+    /// in `x, y, w, h`, turned `yaw`, tilted `pitch` (degrees).
+    Blocks {
+        list: String,
+        x: f32,
+        y: f32,
+        w: f32,
+        h: f32,
+        yaw: f32,
+        pitch: f32,
     },
     /// `draw2d_image`: a Yog image source into `x, y, w, h`; `region` `u v w h` (see [`images`](super::images)).
     Image {
@@ -174,6 +195,43 @@ impl<'r> Canvas<'r> {
         &mut self.rgba[i..i + 4]
     }
 
+    /// `img` mapped onto the parallelogram `o`, `o + a`, `o + a + b`, `o + b`
+    /// (GUI pixels; `a` runs along the image's x, `b` along its y), times
+    /// `shade`.
+    pub(super) fn quad(&mut self, img: &Image, o: [f32; 2], a: [f32; 2], b: [f32; 2], shade: f32) {
+        let det = a[0] * b[1] - a[1] * b[0];
+        if det.abs() < 1e-6 {
+            return;
+        }
+        let xs = [o[0], o[0] + a[0], o[0] + b[0], o[0] + a[0] + b[0]];
+        let ys = [o[1], o[1] + a[1], o[1] + b[1], o[1] + a[1] + b[1]];
+        let min = |v: [f32; 4]| v.iter().copied().fold(f32::MAX, f32::min);
+        let max = |v: [f32; 4]| v.iter().copied().fold(f32::MIN, f32::max);
+        let (xa, xb) = self.span(min(xs), max(xs) + 1.0 / self.scale, false);
+        let (ya, yb) = self.span(min(ys), max(ys) + 1.0 / self.scale, true);
+        for py in ya..yb {
+            let gy = (py as f32 + 0.5) / self.scale - o[1];
+            for px in xa..xb {
+                let gx = (px as f32 + 0.5) / self.scale - o[0];
+                let u = (gx * b[1] - gy * b[0]) / det;
+                let v = (a[0] * gy - a[1] * gx) / det;
+                if !(0.0..1.0).contains(&u) || !(0.0..1.0).contains(&v) {
+                    continue;
+                }
+                let t = img.pixel((u * img.w as f32) as u32, (v * img.w.min(img.h) as f32) as u32);
+                if t[3] == 0 {
+                    continue;
+                }
+                let c = [t[0] as f32 / 255.0 * shade, t[1] as f32 / 255.0 * shade, t[2] as f32 / 255.0 * shade, t[3] as f32 / 255.0];
+                blend(self.px(px, py), c);
+            }
+        }
+    }
+
+    pub(super) fn resources(&self) -> &Resources {
+        self.res
+    }
+
     pub fn fill(&mut self, x1: f32, y1: f32, x2: f32, y2: f32, top: u32, bottom: u32) {
         let (x1, x2) = (
             (x1 as i32).min(x2 as i32) as f32,
@@ -231,7 +289,7 @@ impl<'r> Canvas<'r> {
         }
     }
 
-    fn glyph(&mut self, g: &Glyph, x: f32, y: f32, color: u32) {
+    fn glyph(&mut self, g: &Glyph, x: f32, y: f32, k: f32, color: u32) {
         let Some(b) = &g.bitmap else { return };
         let img = Image {
             w: b.w,
@@ -241,9 +299,9 @@ impl<'r> Canvas<'r> {
         self.blit(
             &img,
             x,
-            y + b.top,
-            b.w as f32 / b.oversample,
-            b.h as f32 / b.oversample,
+            y + b.top * k,
+            b.w as f32 / b.oversample * k,
+            b.h as f32 / b.oversample * k,
             [0.0, 0.0, 1.0, 1.0],
             argb(color),
         );
@@ -251,8 +309,14 @@ impl<'r> Canvas<'r> {
 
     /// `Font.drawInBatch`: the shadow pass (offset, color / 4), then the text.
     pub fn text(&mut self, text: &str, font: &str, x: f32, y: f32, color: u32, shadow: bool) {
+        self.text_scaled(text, font, (x as i32) as f32, (y as i32) as f32, 1.0, color, shadow);
+    }
+
+    /// [`Self::text`] `k` times its size (the host scales the pose: no
+    /// rounding to whole pixels).
+    #[allow(clippy::too_many_arguments)]
+    pub fn text_scaled(&mut self, text: &str, font: &str, x: f32, y: f32, k: f32, color: u32, shadow: bool) {
         let font = self.font(font);
-        let (x, y) = ((x as i32) as f32, (y as i32) as f32);
         let chars = styled(text, text_color(color));
         let passes: &[bool] = if shadow { &[true, false] } else { &[false] };
         for &is_shadow in passes {
@@ -264,12 +328,12 @@ impl<'r> Canvas<'r> {
                 } else {
                     s.color
                 };
-                let off = if is_shadow { g.shadow_offset } else { 0.0 };
-                self.glyph(&g, pen + off, y + off, c);
-                let mut adv = g.advance;
+                let off = if is_shadow { g.shadow_offset * k } else { 0.0 };
+                self.glyph(&g, pen + off, y + off, k, c);
+                let mut adv = g.advance * k;
                 if s.bold {
-                    self.glyph(&g, pen + off + g.bold_offset, y + off, c);
-                    adv += g.bold_offset;
+                    self.glyph(&g, pen + off + g.bold_offset * k, y + off, k, c);
+                    adv += g.bold_offset * k;
                 }
                 if s.underline {
                     self.fill(
@@ -321,9 +385,21 @@ impl<'r> Canvas<'r> {
                 color,
                 shadow,
             } => self.text(text, font, *x, *y, *color, *shadow),
+            DrawOp::TextScaled { text, font, x, y, scale, color, shadow } => {
+                self.text_scaled(text, font, *x, *y, *scale, *color, *shadow)
+            }
+            DrawOp::Blocks { list, x, y, w, h, yaw, pitch } => {
+                super::blocks3d::draw(self, list, [*x, *y, *w, *h], *yaw, *pitch)
+            }
             DrawOp::Item { id, x, y, size } => {
-                // The 3D item renderer isn't reproduced: the item's flat
-                // texture (block items: the block's; mod items: from their
+                // A block item as the game shows it in a slot: the block
+                // in 3D (turned 225°, tilted 30°).
+                if super::blocks3d::is_block(self.res, id) {
+                    let list = format!("0 0 0 {id}");
+                    super::blocks3d::draw(self, &list, [*x, *y, *size, *size], 225.0, 30.0);
+                    return;
+                }
+                // Other items: their flat texture (mod items: from their
                 // `content/` file).
                 let source = format!("item:{id}");
                 super::images::draw(self, &source, [*x, *y, *size, *size], [0.0; 4], 0xFFFF_FFFF);

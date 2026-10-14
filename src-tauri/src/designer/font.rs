@@ -549,37 +549,41 @@ const CODES: [u32; 16] = [
 /// `text` split into characters with the style `§` codes give them —
 /// `StringDecomposer.iterateFormatted`.
 pub fn styled(text: &str, color: u32) -> Vec<Styled> {
-    let base = Styled {
-        ch: ' ',
-        color,
-        bold: false,
-        underline: false,
-        strike: false,
-    };
-    let mut cur = base;
+    // Yog rich text spans first (`{b|…}`, `{#rrggbb|…}`), then the game's
+    // own `§` codes inside each run.
     let mut out = Vec::new();
-    let mut it = text.chars();
-    while let Some(c) = it.next() {
-        if c == '§' {
-            let Some(code) = it.next() else { break };
-            let code = code.to_ascii_lowercase();
-            if let Some(i) = code.to_digit(16) {
-                cur = Styled {
-                    color: (color & 0xFF00_0000) | CODES[i as usize],
-                    ..base
-                };
-            } else {
-                match code {
-                    'l' => cur.bold = true,
-                    'n' => cur.underline = true,
-                    'm' => cur.strike = true,
-                    'r' => cur = base,
-                    _ => {} // italic / obfuscated: drawn plain
+    for (run, st) in yog_ui::rich::runs(text) {
+        let base = Styled {
+            ch: ' ',
+            color: st.color.map_or(color, |rgb| (color & 0xFF00_0000) | rgb),
+            bold: st.bold,
+            underline: st.underline,
+            strike: st.strike,
+        };
+        let mut cur = base;
+        let mut it = run.chars();
+        while let Some(c) = it.next() {
+            if c == '§' {
+                let Some(code) = it.next() else { break };
+                let code = code.to_ascii_lowercase();
+                if let Some(i) = code.to_digit(16) {
+                    cur = Styled {
+                        color: (color & 0xFF00_0000) | CODES[i as usize],
+                        ..base
+                    };
+                } else {
+                    match code {
+                        'l' => cur.bold = true,
+                        'n' => cur.underline = true,
+                        'm' => cur.strike = true,
+                        'r' => cur = base,
+                        _ => {} // italic / obfuscated: drawn plain
+                    }
                 }
+                continue;
             }
-            continue;
+            out.push(Styled { ch: c, ..cur });
         }
-        out.push(Styled { ch: c, ..cur });
     }
     out
 }
@@ -593,6 +597,13 @@ mod tests {
         let v = lenient_json(br#"{"a": [1, 2,], "s": "x,]",}"#).unwrap();
         assert_eq!(v["a"][1], 2);
         assert_eq!(v["s"], "x,]");
+    }
+
+    #[test]
+    fn styled_text_follows_rich_spans() {
+        let s = styled("a{b #102030|b}c", 0xFF_FFFFFF);
+        assert_eq!(s.iter().map(|c| c.ch).collect::<String>(), "abc");
+        assert!(s[1].bold && s[1].color == 0xFF_102030 && !s[2].bold);
     }
 
     #[test]

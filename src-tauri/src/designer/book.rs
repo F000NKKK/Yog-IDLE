@@ -53,6 +53,8 @@ pub struct BookRendered {
     pub shown: Option<(String, usize)>,
     /// What a click did (`"next_page"`, `"entry:2"`, …).
     pub action: Option<String>,
+    /// The page moves by itself (an entity, a structure): draw it again.
+    pub animated: bool,
     pub error: Option<String>,
 }
 
@@ -97,6 +99,37 @@ fn texts(mod_root: &Path) -> HashMap<String, String> {
             if let Some(t) = text {
                 out.insert(format!("{set}.{k}"), t);
             }
+        }
+    }
+    out
+}
+
+/// The mod's recipes, as the game gets them: `content/**/*.yrecipe` in
+/// Yog's recipe format — (id, JSON).
+fn recipes(mod_root: &Path) -> Vec<(String, String)> {
+    let mod_id = crate::manifest::read_mod_field(mod_root, "id").unwrap_or_default();
+    let mut out = Vec::new();
+    let mut stack = vec![mod_root.join("content")];
+    while let Some(dir) = stack.pop() {
+        for e in std::fs::read_dir(&dir).into_iter().flatten().flatten() {
+            let p = e.path();
+            if p.is_dir() {
+                stack.push(p);
+                continue;
+            }
+            if p.extension().is_none_or(|x| x != "yrecipe") {
+                continue;
+            }
+            let Some(v) = std::fs::read_to_string(&p).ok().and_then(|t| serde_json::from_str::<Value>(&t).ok()) else {
+                continue;
+            };
+            let stem = p.file_stem().map(|s| s.to_string_lossy().into_owned()).unwrap_or_default();
+            let id = match v.get("id").and_then(Value::as_str) {
+                Some(id) if id.contains(':') => id.to_string(),
+                Some(id) => format!("{mod_id}:{id}"),
+                None => format!("{mod_id}:{stem}"),
+            };
+            out.push((id, v.to_string()));
         }
     }
     out
@@ -159,7 +192,7 @@ pub fn parse(text: &str, mod_root: Option<&Path>) -> Result<Book, String> {
 pub fn render(args: &BookArgs) -> BookRendered {
     let (sw, sh) = (args.screen_w.clamp(1, 4096), args.screen_h.clamp(1, 4096));
     let root = mod_root(Path::new(&args.path));
-    let fail = |error: String| BookRendered { image: None, scale: args.scale, shown: None, action: None, error: Some(error) };
+    let fail = |error: String| BookRendered { image: None, scale: args.scale, shown: None, action: None, animated: false, error: Some(error) };
     let book = match parse(&args.text, root.as_deref()) {
         Ok(b) => b,
         Err(e) => return fail(e),
@@ -167,9 +200,13 @@ pub fn render(args: &BookArgs) -> BookRendered {
     let json = serde_json::to_string(&book).unwrap_or_default();
 
     let mut sessions = SESSIONS.lock().unwrap_or_else(|e| e.into_inner());
-    let session = sessions
-        .entry(args.path.clone())
-        .or_insert_with(|| Session { renderer: BookRenderer::new(book.clone()), json: json.clone() });
+    let session = sessions.entry(args.path.clone()).or_insert_with(|| {
+        let mut renderer = BookRenderer::new(book.clone());
+        for (id, recipe) in root.as_deref().map(recipes).unwrap_or_default() {
+            renderer.add_recipe(id, &recipe);
+        }
+        Session { renderer, json: json.clone() }
+    });
     if session.json != json {
         session.renderer.set_book(book);
         session.json = json;
@@ -202,6 +239,7 @@ pub fn render(args: &BookArgs) -> BookRendered {
             scale,
             shown: r.shown(),
             action,
+            animated: r.animated(),
             error: None,
         },
         Err(e) => fail(e),

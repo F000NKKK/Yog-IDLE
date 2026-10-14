@@ -86,6 +86,47 @@ fn texture_bytes(file: &Path, texture: &str) -> Result<Vec<u8>, String> {
         .ok_or_else(|| format!("texture {ns}:{path} not found (mod assets/, resources/ or the Minecraft client jar)"))
 }
 
+/// The mod's `content/` file defining item or block `id` (`kind`:
+/// `yitem` or `yblock`), parsed.
+fn content_file(root: &Path, id: &str, kinds: &[&str]) -> Option<(PathBuf, Value)> {
+    let ns = mod_id(root)?;
+    let (want_ns, want) = split_id(id);
+    if want_ns != ns {
+        return None;
+    }
+    for kind in kinds {
+        for file in find(&root.join("content"), kind) {
+            let Ok(doc) = std::fs::read_to_string(&file).map_err(|_| ()).and_then(|t| serde_json::from_str::<Value>(&t).map_err(|_| ())) else {
+                continue;
+            };
+            let fid = doc.get("id").and_then(Value::as_str).map(str::to_string)
+                .or_else(|| file.file_stem().map(|s| s.to_string_lossy().into_owned()))?;
+            if fid.split_once(':').map_or(fid.as_str(), |(_, p)| p) == want {
+                return Some((file, doc));
+            }
+        }
+    }
+    None
+}
+
+/// A mod block's face textures from its `.yblock` model: (top, side,
+/// bottom) png bytes. `None`: not a block of the mod.
+pub fn content_block_faces(root: &Path, id: &str) -> Option<[Option<Vec<u8>>; 3]> {
+    let (file, doc) = content_file(root, id, &["yblock"])?;
+    let textures = doc.pointer("/model/textures").and_then(Value::as_object)?;
+    let pick = |keys: &[&str]| {
+        keys.iter()
+            .find_map(|k| textures.get(*k).and_then(Value::as_str))
+            .or_else(|| textures.values().find_map(Value::as_str))
+            .and_then(|t| texture_bytes(&file, t).ok())
+    };
+    Some([
+        pick(&["up", "top", "end", "all", "texture"]),
+        pick(&["north", "side", "front", "all", "texture"]),
+        pick(&["down", "bottom", "end", "all", "texture"]),
+    ])
+}
+
 /// The icon of the mod's item or block `id` as its `content/` file draws
 /// it: the model's `layer0` (else its first texture), as png bytes.
 pub fn content_icon(root: &Path, id: &str) -> Option<Vec<u8>> {
