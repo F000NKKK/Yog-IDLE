@@ -151,10 +151,6 @@ export function serializeRecipe(r: Recipe): string {
   return JSON.stringify(out, null, 2) + "\n";
 }
 
-/** How many cells the recipe's type uses. */
-export function cellCount(type: RecipeType): number {
-  return type === "smelting" ? 1 : GRID;
-}
 
 // ── The mod's own kinds (`.ydef` `recipe_kind`) ─────────────────────────────
 

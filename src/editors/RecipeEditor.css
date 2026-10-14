@@ -1,150 +1,94 @@
+/* The recipe editor: a toolbar, the recipe on a GUI panel (the stage), the inspector. */
 .recipe-editor {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-space-md);
   height: 100%;
-  padding: var(--sp-space-md);
-  overflow: auto;
+  min-height: 0;
   background: var(--sp-surface-0);
 }
 
 .recipe-error {
+  padding: var(--sp-space-md);
   color: var(--sp-text-muted);
 }
 
-.recipe-toolbar {
+.recipe-bar {
   display: flex;
+  align-items: center;
   gap: var(--sp-space-2xs);
-}
-
-.recipe-type {
-  padding: 2px 10px;
-  border: 1px solid var(--sp-border);
-  border-radius: 3px;
+  padding: var(--sp-space-xs) var(--sp-space-sm);
+  border-bottom: 1px solid var(--sp-border);
   background: var(--sp-surface-1);
-  color: inherit;
-  cursor: pointer;
 }
 
-.recipe-type.active {
-  border-color: var(--sp-accent);
-  background: var(--sp-surface-2);
+.recipe-bar .sp-form-select {
+  min-width: 180px;
 }
 
-.recipe-table {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-space-lg);
-}
-
-/* A crafting table: 3×3 slots in Minecraft's slot grey. */
-.recipe-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 40px);
-  gap: 2px;
-}
-
-.recipe-grid.single {
-  grid-template-columns: 40px;
-}
-
-.recipe-cell {
-  width: 40px;
-  height: 40px;
-  padding: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 2px solid;
-  border-color: #373737 #ffffff #ffffff #373737;
-  background: #8b8b8b;
-  cursor: pointer;
-}
-
-.recipe-cell.selected {
-  outline: 2px solid var(--sp-accent);
-  outline-offset: 1px;
-}
-
-.recipe-cell img {
-  width: 32px;
-  height: 32px;
-  image-rendering: pixelated;
-}
-
-.recipe-cell-text {
-  font-size: 9px;
-  color: #ffffff;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 36px;
-}
-
-.recipe-arrow {
-  font-size: 24px;
-  color: var(--sp-text-muted);
-}
-
-.recipe-result {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-space-xs);
-}
-
-.recipe-result input,
-.recipe-furnace input {
-  width: 64px;
-  margin-left: var(--sp-space-xs);
-}
-
-.recipe-furnace {
-  display: flex;
-  gap: var(--sp-space-lg);
-}
-
-.recipe-picker {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-space-sm);
-}
-
-.recipe-picker input {
-  width: 280px;
-}
-
-.recipe-hint {
-  color: var(--sp-text-muted);
-}
-
-.recipe-toolbar {
-  flex-wrap: wrap;
-  align-items: center;
-}
-
-.recipe-toolbar-sep {
+.recipe-bar-sep {
   width: 1px;
-  align-self: stretch;
-  margin: 0 var(--sp-space-xs);
+  height: 18px;
+  margin: 0 var(--sp-space-2xs);
   background: var(--sp-border);
 }
 
-.recipe-type-link {
-  border-style: dashed;
+.recipe-bar-error {
+  margin-left: var(--sp-space-sm);
+  color: var(--sp-danger, #e66);
 }
 
 .recipe-newkind {
   display: inline-flex;
+  align-items: center;
   gap: var(--sp-space-2xs);
 }
 
 .recipe-newkind input {
-  width: 120px;
+  width: 140px;
 }
 
-/* A mod's kind drawn by its layout: the picture, the cells over it. */
-.recipe-layout {
+.recipe-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+/* The stage: the recipe centred, as big as fits. */
+.recipe-stage {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-space-md);
+  padding: var(--sp-space-lg);
+  overflow: auto;
+}
+
+/* A GUI panel, as the game draws its windows: light grey, bevelled. */
+.recipe-panel {
   position: relative;
+  box-sizing: content-box;
   flex: none;
+  background: #c6c6c6;
+  border: 2px solid;
+  border-color: #ffffff #555555 #555555 #ffffff;
+  outline: 2px solid #000000;
+  border-radius: 2px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+}
+
+.recipe-panel-inner {
+  position: relative;
+}
+
+.recipe-panel-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px;
+  color: #3f3f3f;
 }
 
 .recipe-layout-image {
@@ -153,12 +97,12 @@
   width: 100%;
   height: 100%;
   image-rendering: pixelated;
+  pointer-events: none;
 }
 
+/* A place on the layout: transparent over its frame, the item inside. */
 .recipe-spot {
   position: absolute;
-  width: 48px;
-  height: 48px;
   padding: 0;
   display: flex;
   align-items: center;
@@ -168,32 +112,42 @@
   cursor: pointer;
 }
 
+.recipe-panel-rows .recipe-spot {
+  border: 2px solid;
+  border-color: #373737 #ffffff #ffffff #373737;
+  background: #8b8b8b;
+}
+
 .recipe-spot:hover {
-  background: rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.35);
 }
 
 .recipe-spot.selected {
   outline: 2px solid var(--sp-accent);
+  outline-offset: 1px;
+  z-index: 1;
 }
 
 .recipe-spot img {
-  width: 48px;
-  height: 48px;
+  width: 100%;
+  height: 100%;
   image-rendering: pixelated;
+}
+
+.recipe-cell-text {
+  font-size: 9px;
+  color: #ffffff;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
 }
 
 .recipe-layout-text {
   position: absolute;
-  font-size: 18px;
   color: #3f3f3f;
   white-space: nowrap;
   pointer-events: none;
-}
-
-.recipe-slots {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-space-xs);
+  line-height: 1;
 }
 
 .recipe-slot-row {
@@ -203,5 +157,51 @@
 }
 
 .recipe-slot-name {
-  width: 120px;
+  width: 96px;
+}
+
+/* The inspector: what the selected place holds, the result, the values. */
+.recipe-inspector {
+  width: 300px;
+  flex: none;
+  overflow: auto;
+  padding: var(--sp-space-sm);
+  border-left: 1px solid var(--sp-border);
+  background: var(--sp-surface-1);
+}
+
+.recipe-picked {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-space-sm);
+}
+
+.recipe-picked-icon {
+  width: 36px;
+  height: 36px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid;
+  border-color: #373737 #ffffff #ffffff #373737;
+  background: #8b8b8b;
+}
+
+.recipe-picked-icon img {
+  width: 32px;
+  height: 32px;
+  image-rendering: pixelated;
+}
+
+.recipe-input {
+  flex: 1;
+  min-width: 0;
+  width: 100%;
+}
+
+.recipe-hint {
+  margin: var(--sp-space-xs) 0 0;
+  color: var(--sp-text-muted);
+  font-size: 11px;
 }
