@@ -1,5 +1,6 @@
 //! Minecraft's text renderer, reproduced from its font definitions: the
-//! `font/*.json` provider lists (`reference`, `space`, `bitmap`, `unihex`)
+//! `font/*.json` provider lists (`reference`, `space`, `bitmap`, `unihex`,
+//! `ttf`)
 //! resolved through [`Resources`], glyph metrics computed the way the game
 //! computes them (bitmap advance = trimmed width × scale + 1, unifont
 //! advance = width / 2 + 1, ...), and `§` formatting codes. Text drawn
@@ -47,10 +48,21 @@ struct UnihexProvider {
     overrides: Vec<(u32, u32, i32, i32)>,
 }
 
+/// A TrueType font (`"type": "ttf"`): glyphs rasterized at `size` ×
+/// `oversample` pixels, drawn `size` GUI pixels high.
+struct TtfProvider {
+    font: fontdue::Font,
+    size: f32,
+    oversample: f32,
+    shift: (f32, f32),
+    skip: Vec<char>,
+}
+
 enum Provider {
     Space(HashMap<char, f32>),
     Bitmap(BitmapProvider),
     Unihex(Arc<UnihexProvider>),
+    Ttf(Arc<TtfProvider>),
 }
 
 pub struct Font {
@@ -249,9 +261,67 @@ fn load_providers(res: &Resources, id: &str, depth: usize, out: &mut Vec<Provide
                         out.push(Provider::Unihex(u));
                     }
                 }
-                _ => {} // ttf, legacy_unicode: not reproduced — the next provider (or the missing glyph) answers
+                Some("ttf") => {
+                    if let Some(t) = ttf(res, p) {
+                        out.push(Provider::Ttf(Arc::new(t)));
+                    }
+                }
+                _ => {} // legacy_unicode: not reproduced — the next provider (or the missing glyph) answers
             }
         }
+    }
+}
+
+fn ttf(res: &Resources, p: &Value) -> Option<TtfProvider> {
+    let file = p.get("file")?.as_str()?;
+    let (ns, path) = split_id(file);
+    let bytes = res.read(ns, &format!("font/{path}"))?;
+    let size = p.get("size").and_then(Value::as_f64).unwrap_or(11.0) as f32;
+    let oversample = p.get("oversample").and_then(Value::as_f64).unwrap_or(1.0).max(0.1) as f32;
+    let font = fontdue::Font::from_bytes(bytes, fontdue::FontSettings { scale: size * oversample, ..Default::default() }).ok()?;
+    let shift = p
+        .get("shift")
+        .and_then(Value::as_array)
+        .map(|a| (a.first().and_then(Value::as_f64).unwrap_or(0.0) as f32, a.get(1).and_then(Value::as_f64).unwrap_or(0.0) as f32))
+        .unwrap_or((0.0, 0.0));
+    let skip = match p.get("skip") {
+        Some(Value::String(s)) => s.chars().collect(),
+        Some(Value::Array(a)) => a.iter().filter_map(Value::as_str).flat_map(str::chars).collect(),
+        _ => Vec::new(),
+    };
+    Some(TtfProvider { font, size, oversample, shift, skip })
+}
+
+impl TtfProvider {
+    fn glyph(&self, ch: char) -> Option<Glyph> {
+        if self.skip.contains(&ch) || self.font.lookup_glyph_index(ch) == 0 {
+            return None;
+        }
+        let px = self.size * self.oversample;
+        let (m, coverage) = self.font.rasterize(ch, px);
+        let advance = m.advance_width / self.oversample;
+        if m.width == 0 || m.height == 0 {
+            return Some(Glyph { advance, shadow_offset: 1.0, bold_offset: 1.0, bitmap: None });
+        }
+        // Left bearing as blank columns, so the bitmap starts at the pen.
+        let pad = (m.xmin.max(0) as f32 + self.shift.0 * self.oversample).round().max(0.0) as usize;
+        let w = m.width + pad;
+        let mut rgba = vec![0u8; w * m.height * 4];
+        for y in 0..m.height {
+            for x in 0..m.width {
+                let a = coverage[y * m.width + x];
+                let i = (y * w + x + pad) * 4;
+                rgba[i..i + 4].copy_from_slice(&[255, 255, 255, a]);
+            }
+        }
+        // The baseline sits where the default font's does (7 px down).
+        let top = 7.0 - (m.ymin as f32 + m.height as f32) / self.oversample + self.shift.1;
+        Some(Glyph {
+            advance,
+            shadow_offset: 1.0,
+            bold_offset: 1.0,
+            bitmap: Some(GlyphBitmap { w: w as u32, h: m.height as u32, rgba, oversample: self.oversample, top }),
+        })
     }
 }
 
@@ -434,6 +504,7 @@ impl Font {
                     }),
                     Provider::Bitmap(b) => b.glyph(ch),
                     Provider::Unihex(u) => u.glyph(ch),
+                    Provider::Ttf(t) => t.glyph(ch),
                 })
                 .unwrap_or_else(missing_glyph),
         );

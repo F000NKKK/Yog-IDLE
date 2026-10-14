@@ -108,7 +108,27 @@ pub fn widget(node: &YuiNode) -> Widget {
 }
 
 fn texture(id: &str) -> Option<Arc<Image>> {
+    if let Some(sheet) = book_sheet(id) {
+        return Some(sheet);
+    }
     with_doc(|d| d.and_then(|d| d.res.texture(id)))
+}
+
+/// The book's sprite sheets — shipped in the loader's jars, embedded in
+/// yog-book (see `yog_book::BOOK_SHEET`).
+fn book_sheet(id: &str) -> Option<Arc<Image>> {
+    static SHEETS: std::sync::OnceLock<[Option<Arc<Image>>; 2]> = std::sync::OnceLock::new();
+    let [book, crafting] = SHEETS.get_or_init(|| {
+        [
+            super::assets::decode_png(yog_book::BOOK_PNG).map(Arc::new),
+            super::assets::decode_png(yog_book::CRAFTING_PNG).map(Arc::new),
+        ]
+    });
+    match id {
+        "yog:textures/gui/book/book.png" => book.clone(),
+        "yog:textures/gui/book/crafting.png" => crafting.clone(),
+        _ => None,
+    }
 }
 
 /// The game files have the 1.20.2+ GUI sprite atlas.
@@ -138,6 +158,7 @@ pub fn source_size(source: &str) -> Option<(f32, f32)> {
     match ImageSource::parse(source)? {
         ImageSource::Item(_) | ImageSource::Block(_) => Some((16.0, 16.0)),
         ImageSource::Sprite(name) => find_sprite(&name).map(|s| s.size(has_atlas())),
+        ImageSource::Texture(id) if id.ends_with(".svg") => svg_document(&id).and_then(|d| svg_size(&d)),
         ImageSource::Texture(id) => texture(&id).map(|i| (i.w as f32, i.h as f32)),
         ImageSource::ModPath(_) => None,
     }
@@ -263,10 +284,75 @@ fn missing(c: &mut Canvas, dest: [f32; 4]) {
     );
 }
 
+/// Physical pixels an SVG is rasterized at per GUI pixel.
+const SVG_OVERSAMPLE: f32 = 4.0;
+
+/// An SVG document as straight-alpha RGBA, `w`×`h` — as the runtime
+/// rasterizes it in game.
+fn svg_image(data: &str, w: u32, h: u32) -> Option<Image> {
+    let tree = resvg::usvg::Tree::from_str(data, &resvg::usvg::Options::default()).ok()?;
+    let mut pixmap = resvg::tiny_skia::Pixmap::new(w, h)?;
+    let size = tree.size();
+    let t = resvg::tiny_skia::Transform::from_scale(w as f32 / size.width(), h as f32 / size.height());
+    resvg::render(&tree, t, &mut pixmap.as_mut());
+    let mut rgba = pixmap.take();
+    for p in rgba.as_chunks_mut::<4>().0 {
+        let a = p[3] as u32;
+        if a > 0 && a < 255 {
+            for c in &mut p[..3] {
+                *c = ((*c as u32 * 255 + a / 2) / a).min(255) as u8;
+            }
+        }
+    }
+    Some(Image { w, h, rgba })
+}
+
+/// The document of an `.svg` texture id (`ns:textures/x.svg`) of the mod.
+fn svg_document(id: &str) -> Option<String> {
+    let (ns, path) = split_id(id);
+    let bytes = with_doc(|d| d.and_then(|d| d.res.read(ns, path)))?;
+    String::from_utf8(bytes).ok()
+}
+
+fn svg_size(data: &str) -> Option<(f32, f32)> {
+    let tree = resvg::usvg::Tree::from_str(data, &resvg::usvg::Options::default()).ok()?;
+    Some((tree.size().width(), tree.size().height()))
+}
+
+/// `draw2d_svg`: `data` into `dest`.
+pub fn draw_svg(c: &mut Canvas, data: &str, dest: [f32; 4], t: u32) {
+    if dest[2] <= 0.0 || dest[3] <= 0.0 {
+        return;
+    }
+    let side = |v: f32| ((v * SVG_OVERSAMPLE).ceil() as u32).clamp(1, 2048);
+    match svg_image(data, side(dest[2]), side(dest[3])) {
+        Some(img) => blit_px(c, &img, dest, [0.0, 0.0, img.w as f32, img.h as f32], t),
+        None => missing(c, dest),
+    }
+}
+
+/// `draw2d_entity`: the designer has no entity models — the entity's spawn
+/// egg, in the middle of its box.
+pub fn draw_entity(c: &mut Canvas, entity: &str, [x, y, w, h]: [f32; 4]) {
+    let (ns, path) = split_id(entity);
+    let side = w.min(h).min(32.0);
+    let dest = [x + (w - side) / 2.0, y + (h - side) / 2.0, side, side];
+    draw(c, &format!("item:{ns}:{path}_spawn_egg"), dest, [0.0; 4], 0xFFFF_FFFF);
+}
+
 /// `draw2d_image`: `source` into `dest` (`x y w h`, already fitted by
 /// yog-ui); `region` `u v w h` in image pixels (`w <= 0`: whole image).
 pub fn draw(c: &mut Canvas, source: &str, dest: [f32; 4], region: [f32; 4], t: u32) {
     if dest[2] <= 0.0 || dest[3] <= 0.0 {
+        return;
+    }
+    if let Some(ImageSource::Texture(id)) = ImageSource::parse(source)
+        && id.ends_with(".svg")
+    {
+        match svg_document(&id) {
+            Some(doc) => draw_svg(c, &doc, dest, t),
+            None => missing(c, dest),
+        }
         return;
     }
     let first_frame = |img: &Image| [0.0, 0.0, img.w as f32, img.w.min(img.h) as f32];

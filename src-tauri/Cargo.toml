@@ -44,8 +44,12 @@ proc-macro2 = { version = "1.0.107", features = ["span-locations"] }
 # in game — through a recording `YogGfxApi` (yog-abi/yog-gfx), and reads
 # Minecraft's font/textures from the local client jar (zip, png).
 yog-ui = "0.40.6"
-yog-gfx = "0.25.1"
-yog-abi = "0.28"
+yog-gfx = "0.25.2"
+yog-abi = "0.28.4"
+yog-book = "0.61"
+# SVG images and TrueType fonts, drawn the way the game draws them.
+resvg = { version = "0.48", default-features = false }
+fontdue = "0.9"
 png = "0.18"
 zip = { version = "9", default-features = false, features = ["deflate"] }
 base64 = "0.23"

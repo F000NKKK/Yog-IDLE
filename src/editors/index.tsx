@@ -4,6 +4,7 @@ import { ScreenDesigner } from "../designer/ScreenDesigner";
 import { YuiSourceEditor, YuiSplitEditor } from "../designer/YuiSplitEditor";
 import { CONTENT_SOURCE_VIEW, ContentEditor } from "./ContentEditor";
 import { isLangFile, LangFileEditor } from "./LangFileEditor";
+import { BOOK_SOURCE_VIEW, BookEditor } from "./BookEditor";
 import { RECIPE_SOURCE_VIEW, RecipeEditor } from "./RecipeEditor";
 import { YRES_SOURCE_VIEW, YresEditor } from "./YresEditor";
 
@@ -119,6 +120,28 @@ registerEditorProvider({
   label: "Code",
   name: "Recipe Source Editor",
   extensions: ["yrecipe"],
+  component: JsonEditor,
+  priority: 0,
+  kind: "text",
+});
+
+// `.ybook` guide books: the book itself, live, by default; the JSON a click away.
+registerEditorProvider({
+  id: "yog.book",
+  label: "Book",
+  name: "Book Designer",
+  icon: "yogBook",
+  extensions: ["ybook"],
+  component: BookEditor,
+  priority: 20,
+  kind: "designer",
+});
+
+registerEditorProvider({
+  id: BOOK_SOURCE_VIEW,
+  label: "Code",
+  name: "Book Source Editor",
+  extensions: ["ybook"],
   component: JsonEditor,
   priority: 0,
   kind: "text",

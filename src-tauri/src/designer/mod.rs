@@ -5,6 +5,7 @@
 //! (`click:X:Y`, `scroll:DY`, scrollbar drags); and code-behind handlers.
 
 pub mod assets;
+pub mod book;
 pub mod codebehind;
 pub mod components;
 pub mod custom;

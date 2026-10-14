@@ -114,6 +114,14 @@ unsafe extern "C" fn image(
         tint,
     });
 }
+unsafe extern "C" fn svg(data: YogStr, x: f32, y: f32, w: f32, h: f32) {
+    let data = unsafe { string(data) };
+    push(DrawOp::Svg { data, x, y, w, h });
+}
+unsafe extern "C" fn entity(entity: YogStr, x: f32, y: f32, w: f32, h: f32, _yaw: f32, _pitch: f32) {
+    let entity = unsafe { string(entity) };
+    push(DrawOp::Entity { entity, x, y, w, h });
+}
 unsafe extern "C" fn image_size(source: YogStr, w: *mut f32, h: *mut f32) -> bool {
     let source = unsafe { string(source) };
     match super::images::source_size(&source) {
@@ -216,6 +224,8 @@ pub fn api(screen_w: i32, screen_h: i32, scale: f32) -> YogGfxApi {
         text_width,
         draw2d_image: image,
         image_size,
+        draw2d_svg: svg,
+        draw2d_entity: entity,
     }
 }
 

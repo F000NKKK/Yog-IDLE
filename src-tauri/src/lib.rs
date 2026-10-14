@@ -728,6 +728,21 @@ async fn yui_image_preview(
     .map_err(|e| e.to_string())
 }
 
+/// Draws a `.ybook` the way the game does (yog-book's own renderer),
+/// after what the reader did (see `designer::book`).
+#[tauri::command]
+async fn book_designer_render(args: designer::book::BookArgs) -> designer::book::BookRendered {
+    tauri::async_runtime::spawn_blocking(move || designer::book::render(&args))
+        .await
+        .unwrap_or_else(|e| designer::book::BookRendered { image: None, scale: 1, shown: None, action: None, error: Some(e.to_string()) })
+}
+
+/// Forgets a closed `.ybook`'s reader.
+#[tauri::command]
+fn book_designer_close(path: String) {
+    designer::book::close(&path);
+}
+
 /// Leaves the preview: scroll positions back to the top.
 #[tauri::command]
 fn yui_designer_reset(path: String) {
@@ -1660,6 +1675,8 @@ pub fn run() {
         content_parent_model,
         content_import,
         yui_designer_render,
+        book_designer_render,
+        book_designer_close,
         yui_designer_components,
         yui_designer_event,
         yui_image_sources,

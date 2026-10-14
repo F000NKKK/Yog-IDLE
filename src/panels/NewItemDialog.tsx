@@ -128,6 +128,21 @@ const ITEM_TEMPLATES: ItemTemplate[] = [
     files: (stem) => [[`${stem}.yrecipe`, `{\n  "type": "shaped",\n  "pattern": [],\n  "key": {},\n  "result": ""\n}\n`]],
   },
   {
+    id: "yog-book",
+    category: "Yog",
+    name: "Book",
+    description: "A guide book (.ybook): categories, entries and pages, edited in a live book designer; yog build registers it. Its id is the item that opens it. Goes into content/.",
+    extension: ".ybook",
+    baseName: "guide",
+    rootFolder: "content",
+    files: (stem) => [
+      [
+        `${stem}.ybook`,
+        `{\n  "id": "${stem}",\n  "name": "${titleOf(stem)}",\n  "categories": [{ "id": "basics", "name": "Basics" }],\n  "entries": [\n    {\n      "id": "welcome",\n      "name": "Welcome",\n      "category": "basics",\n      "pages": [{ "type": "text", "text": "" }]\n    }\n  ]\n}\n`,
+      ],
+    ],
+  },
+  {
     id: "yog-block-item",
     category: "Yog",
     name: "Block with Item",

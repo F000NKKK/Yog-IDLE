@@ -57,6 +57,23 @@ pub enum DrawOp {
         region: [f32; 4],
         tint: u32,
     },
+    /// `draw2d_svg`: an SVG document into `x, y, w, h`.
+    Svg {
+        data: String,
+        x: f32,
+        y: f32,
+        w: f32,
+        h: f32,
+    },
+    /// `draw2d_entity`: a living entity standing in `x, y, w, h` — drawn
+    /// here as its spawn egg (the designer has no entity models).
+    Entity {
+        entity: String,
+        x: f32,
+        y: f32,
+        w: f32,
+        h: f32,
+    },
     Scissor {
         x: i32,
         y: i32,
@@ -325,6 +342,8 @@ impl<'r> Canvas<'r> {
                 region,
                 tint,
             } => super::images::draw(self, source, [*x, *y, *w, *h], *region, *tint),
+            DrawOp::Svg { data, x, y, w, h } => super::images::draw_svg(self, data, [*x, *y, *w, *h], 0xFFFF_FFFF),
+            DrawOp::Entity { entity, x, y, w, h } => super::images::draw_entity(self, entity, [*x, *y, *w, *h]),
             DrawOp::Scissor { x, y, w, h } => self.clip = Some((*x, *y, *w, *h)),
             DrawOp::ClearScissor => self.clip = None,
         }

@@ -60,8 +60,17 @@ const IconPaintMirror = createIcon(
   </>
 );
 
+/** An open book (`.ybook`). */
+const IconYogBook = createIcon(
+  <>
+    <path d="M12 6c-2-1.5-5-2-8-1.5v13c3-.5 6 0 8 1.5 2-1.5 5-2 8-1.5v-13c-3-.5-6 0-8 1.5z" />
+    <path d="M12 6v13" />
+  </>
+);
+
 registerIcons({
   yogBlock: IconYogBlock,
+  yogBook: IconYogBook,
   yogItem: IconYogItem,
   paintPencil: IconPaintPencil,
   paintEraser: IconPaintEraser,

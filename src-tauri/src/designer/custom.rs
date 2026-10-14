@@ -808,6 +808,8 @@ pub fn splice(ops: &mut Vec<DrawOp>, prepared: &Prepared, rects: &HashMap<String
 
 fn translate(op: DrawOp, dx: f32, dy: f32) -> DrawOp {
     match op {
+        DrawOp::Svg { data, x, y, w, h } => DrawOp::Svg { data, x: x + dx, y: y + dy, w, h },
+        DrawOp::Entity { entity, x, y, w, h } => DrawOp::Entity { entity, x: x + dx, y: y + dy, w, h },
         DrawOp::Rect {
             x1,
             y1,
