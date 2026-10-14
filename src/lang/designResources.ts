@@ -212,7 +212,8 @@ export function withDesignResources(root: YuiNode): YuiNode {
   if (!loaded) return root;
   const resolve = (node: YuiNode): YuiNode => {
     let attrs = node.attrs;
-    for (const name of ["text", "placeholder"]) {
+    // (`d:` design-time values too: shown in place of a bound one.)
+    for (const name of ["text", "placeholder", "d:text", "d:placeholder"]) {
       const v = attrs[name];
       if (v === undefined || !v.startsWith("@") || v.startsWith("@@")) continue;
       const shown = designText(v);
@@ -220,6 +221,7 @@ export function withDesignResources(root: YuiNode): YuiNode {
       attrs = { ...attrs, [name]: shown.startsWith("@") ? `@${shown}` : shown };
     }
     if (attrs.source?.startsWith("@")) attrs = { ...attrs, source: designImage(attrs.source) };
+    if (attrs["d:source"]?.startsWith("@")) attrs = { ...attrs, "d:source": designImage(attrs["d:source"]) };
     for (const [name, v] of Object.entries(attrs)) {
       if (COLOR_ATTR.test(name) && v.startsWith("@") && !v.startsWith("@@")) attrs = { ...attrs, [name]: designColor(v) };
     }
