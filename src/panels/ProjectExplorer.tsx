@@ -8,6 +8,8 @@ import {
   Icon,
   Toolbar,
   confirmDialog,
+  editorProvidersFor,
+  generalEditorProviders,
   matchesShortcut,
   nestFiles,
   openTerminalIn,
@@ -398,16 +400,10 @@ function ProjectExplorerTree({ project }: { project: ProjectInfo }) {
         label: t("Open With"),
         submenu: openWithItems(node.id, current, (view) => openFile({ path: node.id, name: node.name, view })),
       });
-      // A screen and its code-behind: View Code (F7) / View Designer (Shift+F7).
-      const pair = codeBehindPair(node.id);
-      const siblings = findNode(tree.nodes, parentOf(node.id))?.children ?? [];
-      if (pair && siblings.some((n) => n.id === pair.screen) && siblings.some((n) => n.id === pair.code)) {
-        const isScreen = node.id === pair.screen;
-        items.push(
-          isScreen
-            ? { label: t("View Code"), shortcut: "F7", onSelect: () => openFile({ path: pair.code, name: baseName(pair.code) }) }
-            : { label: t("View Designer"), shortcut: "Shift+F7", onSelect: () => openFile({ path: pair.screen, name: baseName(pair.screen) }) }
-        );
+      // View Code (F7) / View Designer (Shift+F7): a screen's code-behind, else the file's own code or designer view.
+      items.push({ label: t("View Code"), shortcut: "F7", onSelect: () => viewCode(node) });
+      if (codeBehindPair(node.id) || designerView(node.id)) {
+        items.push({ label: t("View Designer"), shortcut: "Shift+F7", onSelect: () => viewDesigner(node) });
       }
     }
     if (isRoot && project.kind === "yog-mod") {
@@ -455,6 +451,42 @@ function ProjectExplorerTree({ project }: { project: ProjectInfo }) {
     return items;
   }
 
+  /** A screen and its code-behind both in the tree. */
+  function pairOf(node: FileTreeNode) {
+    const pair = codeBehindPair(node.id);
+    const siblings = findNode(tree.nodes, parentOf(node.id))?.children ?? [];
+    return pair && siblings.some((n) => n.id === pair.screen) && siblings.some((n) => n.id === pair.code) ? pair : null;
+  }
+
+  /** The file's designer view (`.yui`, `.yblock`…), if it has one. */
+  function designerView(path: string) {
+    return editorProvidersFor(path).find((p) => p.kind === "designer");
+  }
+
+  /** F7, as in Visual Studio: a screen's code-behind, else the file in a code editor. */
+  function viewCode(node: FileTreeNode) {
+    if (node.kind !== "file") return;
+    const pair = pairOf(node);
+    if (pair && node.id === pair.screen) {
+      openFile({ path: pair.code, name: baseName(pair.code) });
+      return;
+    }
+    const code = editorProvidersFor(node.id).find((p) => p.kind === "text") ?? generalEditorProviders().find((p) => p.kind === "text");
+    openFile({ path: node.id, name: node.name, view: code?.id });
+  }
+
+  /** Shift+F7: a code-behind's screen, else the file's designer. */
+  function viewDesigner(node: FileTreeNode) {
+    if (node.kind !== "file") return;
+    const pair = pairOf(node);
+    if (pair && node.id === pair.code) {
+      openFile({ path: pair.screen, name: baseName(pair.screen) });
+      return;
+    }
+    const designer = designerView(node.id);
+    if (designer) openFile({ path: node.id, name: node.name, view: designer.id });
+  }
+
   /** The node keyboard commands act on — the last selected one. */
   function focusedNode(): FileTreeNode | null {
     const id = [...selectedIds].pop();
@@ -473,6 +505,8 @@ function ProjectExplorerTree({ project }: { project: ProjectInfo }) {
       ["Ctrl+Shift+A", () => setNewItem({ folder: folderOf(node), full: false })],
       ["Shift+Alt+A", () => void addExisting(folderOf(node))],
       ["Alt+Enter", () => showProperties(node)],
+      ["F7", () => viewCode(node)],
+      ["Shift+F7", () => viewDesigner(node)],
     ];
     const hit = commands.find(([keys]) => matchesShortcut(e.nativeEvent, keys));
     if (!hit) return;
