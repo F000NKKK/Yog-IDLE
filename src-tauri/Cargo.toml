@@ -46,9 +46,9 @@ proc-macro2 = { version = "1.0.107", features = ["span-locations"] }
 yog-ui = "0.40.14"
 yog-gfx = "0.25.3"
 yog-abi = "0.28.5"
-yog-book = "0.63.2"
+yog-book = "0.63.3"
 # Yog Data: the text syntax of every Yog format.
-yog-data = "0.2.1"
+yog-data = "0.2.2"
 # SVG images and TrueType fonts, drawn the way the game draws them.
 resvg = { version = "0.48", default-features = false }
 fontdue = "0.9"

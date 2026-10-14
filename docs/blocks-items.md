@@ -264,3 +264,33 @@ own, Minecraft's on every version Yog supports, other mods' ids declared
 in `yog.toml` — and registers every recipe, no code needed. IDLE lays out
 shaped, shapeless and smelting recipes as a crafting table; other kinds
 open as code.
+
+### Recipe layouts (`.ylayout`)
+
+How a book shows a kind of recipe is data too. The game's kinds have
+built-in layouts (Patchouli's crafting grid, furnace and smithing strips);
+a mod lays out its own kind in `content/<kind>.ylayout` — a book page
+showing a recipe of a kind with no layout is a build error:
+
+```jsonc
+// content/infusion.ylayout
+{
+  kinds: ["mymod:infusion"],
+  size: [96, 60],                        // GUI pixels
+  parts: [
+    { type: "image", source: "mymod:gui/altar", uv: [0, 0, 96, 60] },  // optional picture
+    { type: "slots", slot: "ring", at: [[22, 4], [42, 22], [22, 40], [2, 22]], frame: true },
+    { type: "slots", slot: "core", at: [[22, 22]], frame: true },
+    { type: "item", item: "@item:minecraft:beacon", at: [56, 4] },     // the station
+    { type: "result", at: [76, 22], frame: true },
+    { type: "count", at: [78, 40] },                                    // when more than one
+    { type: "text", text: "{time} ticks", at: [52, 44] },               // the recipe's values
+  ],
+}
+```
+
+A slot's ingredients fill its places in order; the game's kinds name
+theirs `grid` (crafting), `input` (cooking, stonecutting) and
+`template`/`base`/`addition` (smithing), and a mod's layout for one of
+them replaces the built-in one. `{name}` in a text is the recipe's value:
+`time`, `experience`, or a mod kind's `values`.

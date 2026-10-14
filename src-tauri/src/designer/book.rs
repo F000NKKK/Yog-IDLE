@@ -219,6 +219,26 @@ fn recipes(mod_root: &Path) -> Vec<(String, String)> {
     out
 }
 
+/// The mod's recipe layouts (`content/**/*.ylayout`) — the build adds
+/// them to its books; the preview does the same (broken ones left out).
+fn layouts(mod_root: &Path) -> Vec<yog_book::layout::RecipeLayout> {
+    let mut out = Vec::new();
+    let mut stack = vec![mod_root.join("content")];
+    while let Some(dir) = stack.pop() {
+        for e in std::fs::read_dir(&dir).into_iter().flatten().flatten() {
+            let p = e.path();
+            if p.is_dir() {
+                stack.push(p);
+            } else if p.extension().is_some_and(|x| x == "ylayout")
+                && let Some(l) = std::fs::read_to_string(&p).ok().and_then(|t| yog_data::from_text(&t).ok())
+            {
+                out.push(l.value);
+            }
+        }
+    }
+    out
+}
+
 /// `minecraft:amethyst_dust` → `Amethyst Dust`.
 fn humanize(id: &str) -> String {
     let path = id.rsplit([':', '/']).next().unwrap_or(id);
@@ -390,6 +410,7 @@ pub fn parse(text: &str, mod_root: Option<&Path>, locale: Option<&str>) -> Resul
     let mut book = book.ok_or_else(|| first.clone().unwrap_or_else(|| "not a book".into()))?;
     // The reader shows texts, not keys.
     book.i18n = false;
+    book.layouts = mod_root.map(layouts).unwrap_or_default();
     let first = first.or_else(|| reader.missing.first().map(|m| format!("{m}: no such text in resources/*.yres")));
     if let Ok(mut lang) = LANG.lock() {
         *lang = texts.lang;
