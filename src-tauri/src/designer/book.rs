@@ -255,6 +255,7 @@ impl yog_data::Resolve for Reader<'_> {
                 };
                 name.unwrap_or_else(|| humanize(id))
             }
+            yog_data::Text::Lang(k) => self.texts.lang.get(k).cloned().unwrap_or_else(|| k.clone()),
             yog_data::Text::Res(r) => {
                 let key = format!("{}.{}", r.set, r.key);
                 self.texts.refs.get(&key).cloned().unwrap_or_else(|| {

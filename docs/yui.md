@@ -274,8 +274,9 @@ attributes are errors, reported with their line by `yog ui gen`/`yog build`.
 
 **Resources and translations.** A `text` or `placeholder` starting with
 `@` is looked up when the tree is built, in the player's language:
-`text="@Strings.screen.title"` is a text of `resources/Strings.yres`, any
-other `@some.key` a translation key as is, and `@@` starts a literal `@`
+`text="@Strings.screen.title"` is a text of `resources/Strings.yres`,
+`@lang:gui.done` any translation key, `@item:minecraft:stick` (`@block:`,
+`@entity:`) that content's name, and `@@` starts a literal `@`
 (`text="@@home"` shows `@home`). An Image's `source="@Icons.logo"` is an
 image of `resources/Icons.yres`. See [`.yres` resource files](yres.md); the
 designer shows the texts in the IDE's language.

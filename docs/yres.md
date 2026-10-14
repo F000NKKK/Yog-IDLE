@@ -242,13 +242,17 @@ A `text` or `placeholder` attribute starting with `@` is a resource:
 
 ```xml
 <Label text="@Strings.screen.title" />    <!-- a .yres text -->
-<Label text="@minecraft.gui.done" />      <!-- any translation key -->
+<Label text="@lang:gui.done" />           <!-- any translation key -->
+<Label text="@item:minecraft:stick" />    <!-- an item's (block's, entity's) name -->
 <Label text="@@home" />                   <!-- the literal text "@home" -->
 <Image source="@Icons.logo" />            <!-- a .yres image -->
 ```
 
 `@<Set>.<name>` is an entry of `resources/<Set>.yres` (its `key`, or its
-image source); anything else after `@` is a translation key as is. The
+image source); `@lang:` takes any translation key exactly as the lang files
+have it, the game's or a mod's; `@item:`/`@block:`/`@entity:` show that
+content's name. Any other `@…` is an error (`@gui.done` says to write
+`@lang:gui.done`) — the same grammar as every Yog format. The
 designer shows the text in the IDE's language (falling back to the neutral
 file), the build looks it up in the player's.
 

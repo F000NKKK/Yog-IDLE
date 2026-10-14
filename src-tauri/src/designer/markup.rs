@@ -153,12 +153,13 @@ fn padding(v: &str) -> Option<[f32; 4]> {
     }
 }
 
-/// What a text attribute shows: `@key` is a translation key (shown as the
-/// key — the designer has no game language), `@@x` the literal `@x`.
+/// What a text attribute shows: `@lang:key` is a translation key (shown as
+/// the key — the designer has no game language), `@@x` the literal `@x`.
 pub fn text(value: Option<&str>) -> String {
     let v = value.unwrap_or_default();
     match v.strip_prefix('@') {
         Some(rest) if rest.starts_with('@') => rest.to_string(),
+        Some(rest) if rest.starts_with("lang:") => rest["lang:".len()..].to_string(),
         _ => v.to_string(),
     }
 }

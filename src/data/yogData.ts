@@ -215,7 +215,8 @@ export type Typed =
   | { t: "ref"; kind: string; id: string }
   | { t: "tag"; kind: string; id: string }
   | { t: "res"; set: string; key: string }
-  | { t: "image"; source: string };
+  | { t: "image"; source: string }
+  | { t: "lang"; key: string };
 
 const KIND = /^[a-z][a-z0-9_]*$/;
 const IDENT = /^[A-Za-z_][A-Za-z0-9_]*$/;
@@ -231,7 +232,7 @@ export function resourceId(id: string): string | null {
   return `${ns}:${path}${suffix}`;
 }
 
-/** `s` as a typed value (`@item:minecraft:stick`, `@tag:…`, `@Set.key`, `@image:…`) or plain text; `@@` escapes. Throws on a malformed `@…`. */
+/** `s` as a typed value (`@item:minecraft:stick`, `@tag:…`, `@Set.key`, `@image:…`, `@lang:…`) or plain text; `@@` escapes. Throws on a malformed `@…`. */
 export function classify(s: string): Typed {
   if (!s.startsWith("@")) return { t: "str", v: s };
   const rest = s.slice(1);
@@ -246,6 +247,10 @@ export function classify(s: string): Typed {
     return { t: "res", set: head, key: tail };
   }
   if (!KIND.test(head)) throw new Error(`\`${s}\`: \`${head}\` isn't a kind of content (lower case: \`item\`, \`block\`, \`tag\`, ...)`);
+  if (head === "lang") {
+    if (!/^[A-Za-z0-9_.:/-]+$/.test(tail)) throw new Error(`\`${s}\`: \`@lang:\` takes a translation key as the lang files have it (\`@lang:gui.done\`)`);
+    return { t: "lang", key: tail };
+  }
   if (head === "image") {
     if (!tail) throw new Error(`\`${s}\`: no image source after \`@image:\``);
     return { t: "image", source: tail };

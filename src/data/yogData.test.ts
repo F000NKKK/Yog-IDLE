@@ -43,7 +43,8 @@ describe("yog data text", () => {
     expect(classify("@tag:item:minecraft:planks")).toEqual({ t: "tag", kind: "item", id: "minecraft:planks" });
     expect(classify("@Strings.screen.title")).toEqual({ t: "res", set: "Strings", key: "screen.title" });
     expect(classify("@image:sprite:button")).toEqual({ t: "image", source: "sprite:button" });
-    for (const bad of ["@", "@stick", "@Item:stick", "@item:Stick", "@item:", "@tag:item", "@strings.title", "@Strings.", "@block:furnace[facing=north", "@image:"]) {
+    expect(classify("@lang:gui.done")).toEqual({ t: "lang", key: "gui.done" });
+    for (const bad of ["@", "@stick", "@Item:stick", "@item:Stick", "@item:", "@tag:item", "@strings.title", "@Strings.", "@block:furnace[facing=north", "@image:", "@lang:", "@lang:a b", "@gui.done"]) {
       expect(() => classify(bad), bad).toThrow();
     }
     expect(resourceId("Gm:x")).toBeNull();

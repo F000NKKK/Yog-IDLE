@@ -5,6 +5,7 @@
  * and `texture="@Icons.logo"` the image's source, as `yog build` would
  * resolve them (see docs/yres.md).
  */
+import { classify, type Typed } from "../data/yogData";
 import { useEffect, useSyncExternalStore } from "react";
 import { resolvedLocale, type DirEntry } from "substrate-platform-ui";
 import type { YuiNode } from "../designer/yui";
@@ -145,11 +146,31 @@ function resolveText(ref: string): string | undefined {
   return String(found.entry.value);
 }
 
-/** What a text attribute shows in the designer: `@ref` resolved (the key itself if unknown), `@@x` as `@x`. */
+/**
+ * What a text attribute shows in the designer: `@Set.name` its text,
+ * `@lang:key` the mod's text with that key (else the key), `@item:id` the
+ * id, `@@x` as `@x`.
+ */
 export function designText(value: string): string {
   if (!value.startsWith("@")) return value;
-  if (value.startsWith("@@")) return value.slice(1);
-  return resolveText(value.slice(1)) ?? value.slice(1);
+  let typed: Typed;
+  try {
+    typed = classify(value);
+  } catch {
+    return value.slice(1);
+  }
+  switch (typed.t) {
+    case "str":
+      return typed.v;
+    case "lang":
+      return resolveText(typed.key) ?? typed.key;
+    case "res":
+      return resolveText(`${typed.set}.${typed.key}`) ?? `${typed.set}.${typed.key}`;
+    case "ref":
+      return typed.id;
+    default:
+      return value;
+  }
 }
 
 /** An image attribute: `@Icons.logo` → `<mod id>:<texture>` (as `yog build` bundles it), else as written. */
