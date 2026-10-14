@@ -189,7 +189,7 @@ fn translate(key: &str) -> Option<String> {
 
 /// The mod's recipes, as the game gets them: `content/**/*.yrecipe` in
 /// Yog's recipe format — (id, JSON).
-fn recipes(mod_root: &Path) -> Vec<(String, String)> {
+fn recipes(mod_root: &Path) -> Vec<(String, yog_data::Value)> {
     let mod_id = crate::manifest::read_mod_field(mod_root, "id").unwrap_or_default();
     let mut out = Vec::new();
     let mut stack = vec![mod_root.join("content")];
@@ -213,15 +213,18 @@ fn recipes(mod_root: &Path) -> Vec<(String, String)> {
                 Some(id) => format!("{mod_id}:{id}"),
                 None => format!("{mod_id}:{stem}"),
             };
-            out.push((id, v.to_string()));
+            out.push((id, crate::data::from_json(&v)));
         }
     }
     out
 }
 
-/// The mod's recipe layouts (`content/**/*.ylayout`) — the build adds
-/// them to its books; the preview does the same (broken ones left out).
+/// The mod's recipe layouts (`content/**/*.ydef`: a `recipe_layout`, a
+/// `recipe_kind`'s `layout`) — the build adds them to its books; the
+/// preview does the same (broken ones left out).
 fn layouts(mod_root: &Path) -> Vec<yog_book::layout::RecipeLayout> {
+    use yog_formats::def::Def;
+    let mod_id = crate::manifest::read_mod_field(mod_root, "id").unwrap_or_default();
     let mut out = Vec::new();
     let mut stack = vec![mod_root.join("content")];
     while let Some(dir) = stack.pop() {
@@ -229,10 +232,19 @@ fn layouts(mod_root: &Path) -> Vec<yog_book::layout::RecipeLayout> {
             let p = e.path();
             if p.is_dir() {
                 stack.push(p);
-            } else if p.extension().is_some_and(|x| x == "ylayout")
-                && let Some(l) = std::fs::read_to_string(&p).ok().and_then(|t| yog_data::from_text(&t).ok())
+            } else if p.extension().is_some_and(|x| x == "ydef")
+                && let Some(def) = std::fs::read_to_string(&p).ok().and_then(|t| yog_data::from_text::<Def>(&t).ok())
             {
-                out.push(l.value);
+                match def.value {
+                    Def::RecipeLayout(l) => out.push(l),
+                    Def::RecipeKind(k) => {
+                        let id = if k.id.contains(':') { k.id } else { format!("{}:{}", mod_id, k.id) };
+                        if let Some(l) = k.layout {
+                            out.push(yog_book::layout::RecipeLayout { kinds: vec![id], size: l.size, parts: l.parts });
+                        }
+                    }
+                    _ => {}
+                }
             }
         }
     }

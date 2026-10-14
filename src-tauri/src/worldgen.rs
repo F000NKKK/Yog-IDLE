@@ -3,7 +3,6 @@
 //! and drawn from above and in a slice.
 
 use base64::Engine;
-use yog_data_next as yog_data;
 use yog_worldgen::{Generator, Terrain, preview};
 
 #[derive(serde::Serialize)]

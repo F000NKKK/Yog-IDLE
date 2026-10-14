@@ -18,6 +18,24 @@ pub fn to_json(v: &yog_data::Value) -> Value {
     }
 }
 
+/// `v` as Yog Data (plain values: no references or other typed strings).
+pub fn from_json(v: &Value) -> yog_data::Value {
+    match v {
+        Value::Null => yog_data::Value::Null,
+        Value::Bool(b) => yog_data::Value::Bool(*b),
+        Value::Number(n) => n.as_i64().map_or_else(|| yog_data::Value::Float(n.as_f64().unwrap_or(0.0)), yog_data::Value::Int),
+        Value::String(s) => yog_data::Value::Str(s.clone()),
+        Value::Array(items) => yog_data::Value::List(items.iter().map(from_json).collect()),
+        Value::Object(m) => {
+            let mut out = yog_data::Map::new();
+            for (k, v) in m {
+                out.insert(k.as_str(), from_json(v));
+            }
+            yog_data::Value::Map(out)
+        }
+    }
+}
+
 /// A Yog Data file that's one object, `None` if it isn't.
 pub fn read_object(text: &str) -> Option<Map<String, Value>> {
     match to_json(&yog_data::text::parse_value(text).ok()?) {

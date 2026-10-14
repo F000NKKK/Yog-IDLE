@@ -5683,65 +5683,33 @@ dependencies = [
 
 [[package]]
 name = "yog-abi"
-version = "0.28.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3cf21e657649ad77c8c509e7e5365d7730ebc9968e7f434e52d75a5510eef111"
-
-[[package]]
-name = "yog-abi"
-version = "0.29.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "07ceaadd6538bd44c2944bcb0e8bd7f65a1a930d7f8f8992b41e225c096b77fc"
+version = "0.29.3"
 
 [[package]]
 name = "yog-book"
-version = "0.63.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "38945b19ff493aee2b5a2d9d6319f6fde6074d80b9d8a97dc2f3123379c3810d"
+version = "0.64.0"
 dependencies = [
  "serde",
  "serde_json",
- "yog-data 0.3.1",
+ "yog-data",
  "yog-gfx",
- "yog-registry 0.29.0",
+ "yog-registry",
  "yog-ui",
 ]
 
 [[package]]
 name = "yog-data"
-version = "0.3.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "82a6eb4d9b5d74d47534a3bdf6dfd8f73ddb11f7a8f95153093054bf81a98dab"
-dependencies = [
- "yog-data-derive 0.3.0",
-]
-
-[[package]]
-name = "yog-data"
 version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0f29f93b7f3cc0580e59c6d3c91df4860797999d0b69ada98ace1d3ba53e2dcf"
 dependencies = [
  "bumpalo",
- "yog-data-derive 0.4.1",
-]
-
-[[package]]
-name = "yog-data-derive"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3da258279e51bdd8798b30cb02b7e54bfcd79a3a29d70e9688345ba0e2739e4e"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 3.0.9",
+ "serde",
+ "serde_json",
+ "yog-data-derive",
 ]
 
 [[package]]
 name = "yog-data-derive"
 version = "0.4.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e5742176d14fbceda50df19f9e1645d6c1bab641f9491e18e81b5cf3c925f6d7"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -5763,21 +5731,19 @@ dependencies = [
 
 [[package]]
 name = "yog-formats"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "30da260ec467e52c671a8dddca571eacc2a9025a59ab9f1f15c54fdd329c6905"
+version = "0.4.0"
 dependencies = [
- "yog-data 0.3.1",
- "yog-registry 0.30.1",
+ "yog-book",
+ "yog-data",
+ "yog-registry",
+ "yog-worldgen",
 ]
 
 [[package]]
 name = "yog-gfx"
-version = "0.25.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e2c1e594b600df0a8f9e7f63390d22b0084ca8edf5503a220f0fe7e75c33eaf3"
+version = "0.26.0"
 dependencies = [
- "yog-abi 0.28.5",
+ "yog-abi",
 ]
 
 [[package]]
@@ -5817,10 +5783,9 @@ dependencies = [
  "tauri-plugin-window-state",
  "toml 1.1.3+spec-1.1.0",
  "toml_edit 0.25.13+spec-1.1.0",
- "yog-abi 0.28.5",
+ "yog-abi",
  "yog-book",
- "yog-data 0.3.1",
- "yog-data 0.4.0",
+ "yog-data",
  "yog-debugger",
  "yog-formats",
  "yog-gfx",
@@ -5833,22 +5798,11 @@ dependencies = [
 
 [[package]]
 name = "yog-registry"
-version = "0.29.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9a4e613e4479c6db673adf8e8f1c8ea1ecd5f195e7e26ff087013d12ab04d758"
+version = "0.32.0"
 dependencies = [
  "serde",
- "yog-abi 0.28.5",
-]
-
-[[package]]
-name = "yog-registry"
-version = "0.30.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e7ba121af49b1ea53bd5408aa44f55386a3959e56d71981b6725873ff94d4716"
-dependencies = [
- "yog-abi 0.29.0",
- "yog-data 0.3.1",
+ "yog-abi",
+ "yog-data",
 ]
 
 [[package]]
@@ -5864,21 +5818,17 @@ dependencies = [
 
 [[package]]
 name = "yog-ui"
-version = "0.40.14"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1a4a459cc4f8472beef324ea894055502148cb762d2c6a2acb698500d35f1f7b"
+version = "0.41.1"
 dependencies = [
- "yog-abi 0.28.5",
+ "yog-abi",
  "yog-gfx",
 ]
 
 [[package]]
 name = "yog-worldgen"
 version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "614b4365d08812504cb75e8d38b93c1bed8141f73f12c6acc0f35406c517b6be"
 dependencies = [
- "yog-data 0.4.0",
+ "yog-data",
 ]
 
 [[package]]
@@ -6117,3 +6067,7 @@ dependencies = [
  "syn 2.0.119",
  "winnow 1.0.4",
 ]
+
+[[patch.unused]]
+name = "yog_pipes_exports"
+version = "0.6.0"

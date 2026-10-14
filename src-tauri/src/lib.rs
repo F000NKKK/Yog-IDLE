@@ -103,13 +103,12 @@ impl From<substrate_platform::DirEntryInfo> for DirEntryOut {
 
 /// What a Yog format looks like (`yog_data::Shape::describe`) — the editors'
 /// property grids are generated from it: `yblock`, `yitem`, `yrecipe`,
-/// `ydef`, `yres`, `yog.toml`, `ybook`, `ylayout`.
+/// `ydef`, `yres`, `yog.toml`, `ybook`.
 #[tauri::command]
 fn format_shape(format: String) -> Result<serde_json::Value, String> {
     use yog_data::Schema;
     let shape = match format.trim_start_matches('.') {
         "ybook" => yog_book::Book::shape(),
-        "ylayout" => yog_book::layout::RecipeLayout::shape(),
         other => yog_formats::shape(other).ok_or_else(|| format!("no format `{other}`"))?,
     };
     Ok(data::to_json(&shape.describe()))
