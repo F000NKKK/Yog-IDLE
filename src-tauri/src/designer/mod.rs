@@ -65,12 +65,15 @@ pub struct Rendered {
     pub real_font: bool,
 }
 
-/// The mod a `.yui` belongs to: the folder holding the `src/` it's in.
-pub(crate) fn mod_root(yui: &Path) -> Option<PathBuf> {
-    yui.ancestors()
-        .find(|p| p.file_name().is_some_and(|n| n == "src"))
-        .and_then(|p| p.parent())
-        .map(Path::to_path_buf)
+/// The mod a file belongs to: the folder with its `yog.toml` (else the
+/// folder holding the `src/` it's in).
+pub(crate) fn mod_root(file: &Path) -> Option<PathBuf> {
+    file.ancestors().skip(1).find(|p| p.join("yog.toml").is_file()).map(Path::to_path_buf).or_else(|| {
+        file.ancestors()
+            .find(|p| p.file_name().is_some_and(|n| n == "src"))
+            .and_then(|p| p.parent())
+            .map(Path::to_path_buf)
+    })
 }
 
 /// Built and laid out like the generated `root_with`.

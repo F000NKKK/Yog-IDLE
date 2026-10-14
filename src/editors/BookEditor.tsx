@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore
 import { invoke } from "@tauri-apps/api/core";
 import { useT, type EditorProps } from "substrate-platform-ui";
 import { imagePreview, imageSourcesVersion, subscribeImageSources } from "../designer/imageSources";
+import { designText, useDesignResources } from "../lang/designResources";
 import {
   BOOK_FIELDS,
   CATEGORY_FIELDS,
@@ -56,6 +57,8 @@ interface Rendered {
 export function BookEditor({ path, content, onChange, readOnly }: EditorProps) {
   const t = useT();
   useSyncExternalStore(subscribeImageSources, imageSourcesVersion);
+  // `@Book.title` texts shown from the mod's .yres files, as the book shows them.
+  useDesignResources(modRootOf(path));
   const parsed = useMemo(() => parseBook(content), [content]);
   const [sel, setSel] = useState<Selection>({ kind: "book" });
   const [rendered, setRendered] = useState<Rendered | null>(null);
@@ -301,13 +304,13 @@ export function BookEditor({ path, content, onChange, readOnly }: EditorProps) {
     return (
       <button key={JSON.stringify(s)} type="button" className={`book-row${is(s) ? " selected" : ""}`} style={{ paddingLeft: 6 + depth * 14 }} onClick={() => select(s)}>
         {icon ? <img src={icon} alt="" /> : <span className="book-row-dot" />}
-        <span className="book-row-label">{label || t("(unnamed)")}</span>
+        <span className="book-row-label">{shownText(label) || t("(unnamed)")}</span>
       </button>
     );
   };
   const pageLabel = (p: Page, n: number) => {
     const kind = t(PAGE_TYPES.find((x) => x.type === p.type)?.label ?? p.type);
-    const what = str(p.title ?? p.name ?? p.text ?? p.item ?? p.entity ?? "").split("\n")[0];
+    const what = shownText(str(p.title ?? p.name ?? p.text ?? p.item ?? p.entity ?? "")).split("\n")[0];
     return `${n + 1}. ${kind}${what ? ` — ${what}` : ""}`;
   };
 
@@ -393,6 +396,22 @@ export function BookEditor({ path, content, onChange, readOnly }: EditorProps) {
       </div>
     </div>
   );
+}
+
+/** The mod a content file belongs to: the folder holding its `content/`. */
+function modRootOf(path: string): string | null {
+  const m = /^(.*)[\\/]content[\\/]/.exec(path);
+  return m ? m[1] : null;
+}
+
+/** A text as the book shows it: `@Set.key` from the .yres files, `@item:`/`@block:` as a name. */
+function shownText(v: string): string {
+  const id = /^@(?:item|block):(.+)$/.exec(v)?.[1];
+  if (id) {
+    const path = id.split(":").pop() ?? id;
+    return path.split("/").pop()!.split("_").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+  }
+  return designText(v);
 }
 
 /** What a page keeps when its type changes: its texts. */

@@ -8,7 +8,7 @@
 //! [`preview`]).
 
 use std::cell::RefCell;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use yog_gfx::image::{
@@ -149,7 +149,22 @@ fn item_texture(id: &str, block: bool) -> Option<Arc<Image>> {
     } else {
         order.insert(0, &item);
     }
-    order.into_iter().find_map(|t| texture(t))
+    order.into_iter().find_map(|t| texture(t)).or_else(|| content_icon(id))
+}
+
+/// A mod item's icon from its `content/` file (cached per id).
+fn content_icon(id: &str) -> Option<Arc<Image>> {
+    type Cache = std::sync::Mutex<std::collections::HashMap<(PathBuf, String), Option<Arc<Image>>>>;
+    static CACHE: std::sync::OnceLock<Cache> = std::sync::OnceLock::new();
+    let root = with_doc(|d| d.and_then(|d| d.res.mod_root.clone()))?;
+    let key = (root.clone(), id.to_string());
+    let cache = CACHE.get_or_init(Default::default);
+    if let Some(hit) = cache.lock().ok()?.get(&key) {
+        return hit.clone();
+    }
+    let img = crate::content::content_icon(&root, id).and_then(|b| super::assets::decode_png(&b)).map(Arc::new);
+    cache.lock().ok()?.insert(key, img.clone());
+    img
 }
 
 /// Natural size of `source` in GUI pixels (`image_size`); `None` when it

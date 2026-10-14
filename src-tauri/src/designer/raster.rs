@@ -322,16 +322,11 @@ impl<'r> Canvas<'r> {
                 shadow,
             } => self.text(text, font, *x, *y, *color, *shadow),
             DrawOp::Item { id, x, y, size } => {
-                // The 3D item renderer isn't reproduced: the item's flat texture (block items: the block's).
-                let (ns, name) = super::assets::split_id(id);
-                let img = self
-                    .res
-                    .texture(&format!("{ns}:textures/item/{name}.png"))
-                    .or_else(|| self.res.texture(&format!("{ns}:textures/block/{name}.png")))
-                    .unwrap_or_else(|| Arc::new(Image::missing()));
-                let frame = img.w.min(img.h) as f32;
-                let v1 = frame / img.h as f32;
-                self.blit(&img, *x, *y, *size, *size, [0.0, 0.0, 1.0, v1], [1.0; 4]);
+                // The 3D item renderer isn't reproduced: the item's flat
+                // texture (block items: the block's; mod items: from their
+                // `content/` file).
+                let source = format!("item:{id}");
+                super::images::draw(self, &source, [*x, *y, *size, *size], [0.0; 4], 0xFFFF_FFFF);
             }
             DrawOp::Image {
                 source,

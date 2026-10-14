@@ -86,6 +86,35 @@ fn texture_bytes(file: &Path, texture: &str) -> Result<Vec<u8>, String> {
         .ok_or_else(|| format!("texture {ns}:{path} not found (mod assets/, resources/ or the Minecraft client jar)"))
 }
 
+/// The icon of the mod's item or block `id` as its `content/` file draws
+/// it: the model's `layer0` (else its first texture), as png bytes.
+pub fn content_icon(root: &Path, id: &str) -> Option<Vec<u8>> {
+    let ns = mod_id(root)?;
+    let (want_ns, want) = split_id(id);
+    if want_ns != ns {
+        return None;
+    }
+    let files = [find(&root.join("content"), "yitem"), find(&root.join("content"), "yblock")].concat();
+    for file in files {
+        let Ok(text) = std::fs::read_to_string(&file) else { continue };
+        let Ok(doc) = serde_json::from_str::<Value>(&text) else { continue };
+        let fid = doc.get("id").and_then(Value::as_str).map(str::to_string)
+            .or_else(|| file.file_stem().map(|s| s.to_string_lossy().into_owned()))?;
+        let fid = fid.split_once(':').map_or(fid.as_str(), |(_, p)| p).to_string();
+        if fid != want {
+            continue;
+        }
+        let textures = doc.pointer("/model/textures").and_then(Value::as_object)?;
+        let tex = textures
+            .get("layer0")
+            .or_else(|| ["all", "side", "top", "texture"].iter().find_map(|k| textures.get(*k)))
+            .or_else(|| textures.values().next())?
+            .as_str()?;
+        return texture_bytes(&file, tex).ok();
+    }
+    None
+}
+
 #[derive(Serialize)]
 pub struct Texture {
     /// `data:image/png;base64,...`
