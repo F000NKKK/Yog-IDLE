@@ -687,7 +687,7 @@ registerTranslations("ru", {
   "Open yog.toml in the editor": "Открыть yog.toml в редакторе",
   "View Code": "Просмотреть код",
   "pickaxe, axe, shovel, hoe — or a mod's tool tag, @tag:block:mymod:mineable/hammer; several separated by commas.": "pickaxe, axe, shovel, hoe — или тег инструмента мода, @tag:block:mymod:mineable/hammer; несколько — через запятую.",
-  "stone, iron, diamond — or a mod's tier tag, @tag:block:mymod:needs_mythril_tool.": "stone, iron, diamond — или тег уровня мода, @tag:block:mymod:needs_mythril_tool.",
+  "wood, stone, iron, diamond, netherite — or a level of the tool ladder, @level:mymod:mythril (a .ydef).": "wood, stone, iron, diamond, netherite — или уровень лестницы инструментов, @level:mymod:mythril (.ydef).",
   "This recipe's kind isn't laid out here (or the file has a mistake) — edit it as code.": "Этот вид рецепта здесь не раскладывается (или в файле ошибка) — правьте его как код.",
   "View Designer": "Открыть конструктор",
   "Couldn't read yog.toml: {error}": "Не удалось прочитать yog.toml: {error}",

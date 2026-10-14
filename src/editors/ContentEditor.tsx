@@ -965,7 +965,7 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
         ),
         text("tool_level", t("Tool Level"), c, b.tool_level, (v) => setB((x) => void (x.tool_level = v || undefined)), {
           suggestions: TOOL_LEVELS,
-          description: t("stone, iron, diamond — or a mod's tier tag, @tag:block:mymod:needs_mythril_tool."),
+          description: t("wood, stone, iron, diamond, netherite — or a level of the tool ladder, @level:mymod:mythril (a .ydef)."),
         }),
         flag("requires_tool", t("Requires Tool"), c, b.requires_tool, (v) => setB((x) => void (x.requires_tool = v)), false, { description: t("Drops nothing unless mined with the right tool.") }),
         flag("collision", t("Collision"), c, b.collision, (v) => setB((x) => void (x.collision = v)), true),

@@ -61,7 +61,7 @@ export interface BlockProps {
   light?: number;
   /** `pickaxe`… or a mod's tool tag (`@tag:block:mymod:mineable/hammer`); one or a list. */
   tool?: string | string[];
-  /** `iron`… or a mod's tier tag (`@tag:block:mymod:needs_mythril_tool`). */
+  /** `iron`… or a level of the tool ladder (`@level:mymod:mythril`, a `.ydef`). */
   tool_level?: string;
   requires_tool?: boolean;
   collision?: boolean;
@@ -106,7 +106,7 @@ export const kindOf = (path: string): Kind | null => (/\.yblock$/i.test(path) ? 
 export const SOUNDS = ["stone", "wood", "grass", "gravel", "sand", "snow", "metal", "glass", "wool", "nether_brick"];
 /** The game's tools and tiers by short name; a mod's are `@tag:block:…` tags. */
 export const TOOLS = ["pickaxe", "axe", "shovel", "hoe"];
-export const TOOL_LEVELS = ["stone", "iron", "diamond"];
+export const TOOL_LEVELS = ["wood", "stone", "iron", "diamond", "netherite"];
 export const RENDER_LAYERS = ["solid", "cutout", "cutout_mipped", "translucent"];
 /** Element rotation angles Minecraft allows. */
 export const ANGLES = [-45, -22.5, 0, 22.5, 45];

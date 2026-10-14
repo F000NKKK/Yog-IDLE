@@ -226,6 +226,37 @@ New files: **Add › New Item › Block / Item / Block with Item**.
 - Two mods' tags with the same name in one merged pack can collide.
 - Animated textures are previewed on their first frame only.
 
+## Definitions (`.ydef`)
+
+Things other files refer to that are neither blocks nor items are
+definitions: one per file, `kind` saying what it is, named elsewhere by
+reference (`@<kind>:<id>`). Nothing is a closed list — the game's values
+are built-in definitions of the same kinds.
+
+- `ladder` — an ordered scale: tool levels (`minecraft:tool`, built in:
+  `wood`, `stone`, `iron`, `diamond`, `netherite`), a mod's voltages,
+  rarities, magic circles.
+- `level` — a step on a ladder, `above` another (the bottom if none).
+
+```jsonc
+// content/mythril.ydef — a level above diamond: a diamond pickaxe can't mine it
+{ kind: "level", id: "mythril", ladder: "@ladder:minecraft:tool", above: "@level:minecraft:diamond" }
+
+// a mod's own ladder, which its code reads
+{ kind: "ladder", id: "voltage" }
+{ kind: "level", id: "lv", ladder: "@ladder:mymod:voltage" }
+{ kind: "level", id: "mv", ladder: "@ladder:mymod:voltage", above: "@level:mymod:lv" }
+```
+
+A block's `tool_level` is a level of the tool ladder (`iron`, or
+`@level:mymod:mythril`); `yog build` writes what each Minecraft version
+understands — the game's `needs_*_tool` tags, and above diamond 1.21's
+`incorrect_for_*_tool`, Fabric 1.20's `needs_tool_level_N`, Forge's
+`needs_netherite_tool` (in `when/<loader>/<version>/` overlays of the
+`.yog`, which each host applies). Its `tool` is `pickaxe`, `axe`,
+`shovel`, `hoe` or a mod's tool tag (`@tag:block:mymod:mineable/hammer`),
+one or a list.
+
 ## Recipes (`.yrecipe`)
 
 One recipe per file, anywhere under `content/` (`content/recipes/` by
