@@ -116,12 +116,25 @@ fn format_shape(format: String) -> Result<serde_json::Value, String> {
     Ok(data::to_json(&shape.describe()))
 }
 
-/// The kinds of recipe the mod of `path` declares (`.ydef` `recipe_kind`).
+/// The kinds of recipe the recipe editor offers for `path`: the game's it
+/// lays out, and the mod's own (`.ydef` `recipe_kind`).
 #[tauri::command]
-async fn recipe_kinds(path: String) -> Vec<recipe_kinds::Kind> {
-    tauri::async_runtime::spawn_blocking(move || designer::mod_root(Path::new(&path)).map(|r| recipe_kinds::kinds(&r)).unwrap_or_default())
-        .await
-        .unwrap_or_default()
+async fn recipe_kinds(path: String) -> RecipeKinds {
+    tauri::async_runtime::spawn_blocking(move || {
+        let root = designer::mod_root(Path::new(&path));
+        RecipeKinds {
+            game: root.as_deref().map(recipe_kinds::game_kinds).unwrap_or_default(),
+            own: root.as_deref().map(recipe_kinds::kinds).unwrap_or_default(),
+        }
+    })
+    .await
+    .unwrap_or(RecipeKinds { game: Vec::new(), own: Vec::new() })
+}
+
+#[derive(Serialize)]
+struct RecipeKinds {
+    game: Vec<recipe_kinds::Kind>,
+    own: Vec<recipe_kinds::Kind>,
 }
 
 /// Makes a new kind of recipe in the mod of `path` — `content/<name>.ydef`

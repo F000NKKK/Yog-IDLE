@@ -78,6 +78,27 @@ fn ydefs(dir: &Path, out: &mut Vec<PathBuf>) {
     }
 }
 
+/// The game's kinds the recipe editor lays out — as books show them (their
+/// built-in layouts, or the mod's own `recipe_layout` for them): the
+/// crafting grid's 9 places (`grid`), a furnace's input.
+pub fn game_kinds(root: &Path) -> Vec<Kind> {
+    let layouts = crate::mod_ui::recipe_layouts(root);
+    let own: Vec<yog_book::layout::RecipeLayout> = layouts.iter().map(|(_, l)| l.clone()).collect();
+    [("shaped", "grid", 9), ("shapeless", "grid", 9), ("smelting", "input", 1)]
+        .into_iter()
+        .map(|(id, slot, max)| {
+            let file = layouts.iter().find(|(_, l)| l.kinds.iter().any(|k| k == id)).map(|(f, _)| f.clone()).unwrap_or_default();
+            Kind {
+                id: id.to_string(),
+                file: String::new(),
+                slots: vec![Slot { name: slot.to_string(), max, required: true }],
+                values: Vec::new(),
+                layout: yog_book::layout::find(&own, id).map(|l| layout(root, &file, l.size, &l.parts)),
+            }
+        })
+        .collect()
+}
+
 /// The kinds the mod at `root` declares, by id.
 pub fn kinds(root: &Path) -> Vec<Kind> {
     let ns = crate::manifest::read_mod_field(root, "id").unwrap_or_default();
@@ -178,13 +199,9 @@ pub fn template(id: &str) -> String {
 /// A new kind's layout (`src/ui/<id>_layout.yui`), for the screen designer:
 /// the template's slots framed, the result, its time.
 pub fn layout_template(id: &str) -> String {
-    let name: String = id.split('_').map(|w| {
-        let mut c = w.chars();
-        c.next().map(|f| f.to_uppercase().collect::<String>() + c.as_str()).unwrap_or_default()
-    }).collect();
     format!(
         r#"<!-- How recipes of {id} are shown: in books and in the recipe editor. -->
-<Component name="{name}Layout" recipe_layout="{id}" width="100" height="40">
+<Component recipe_layout="{id}" width="100" height="40">
     <RecipeSlot slot="input" x="4" y="12" frame="true" d:item="minecraft:iron_ore"/>
     <RecipeSlot slot="extra" x="30" y="4" frame="true"/>
     <RecipeSlot slot="extra" x="30" y="22" frame="true"/>
@@ -220,6 +237,10 @@ mod tests {
         assert_eq!(l.spots.iter().filter(|s| matches!(s, Spot::Slot { .. })).count(), 3);
         assert!(l.spots.iter().any(|s| matches!(s, Spot::Text { text, .. } if text == "{time} ticks")));
         assert!(l.file.ends_with("crusher_layout.yui"));
+        let game = game_kinds(&dir);
+        assert_eq!(game.iter().map(|k| k.id.as_str()).collect::<Vec<_>>(), ["shaped", "shapeless", "smelting"]);
+        let shaped = game[0].layout.as_ref().unwrap();
+        assert_eq!(shaped.spots.iter().filter(|s| matches!(s, Spot::Slot { slot, .. } if slot == "grid")).count(), 9, "the crafting table's own picture");
         // What the recipe editor reads (recipeModel.ts `RecipeKind`).
         let json = serde_json::to_value(&l.spots).unwrap();
         let types: Vec<&str> = json.as_array().unwrap().iter().map(|s| s["type"].as_str().unwrap()).collect();
