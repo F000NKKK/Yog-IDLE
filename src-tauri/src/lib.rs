@@ -19,6 +19,7 @@ mod git;
 mod manifest;
 mod project_properties;
 mod properties;
+mod recipe_kinds;
 mod search;
 mod symbols;
 mod worldgen;
@@ -112,6 +113,31 @@ fn format_shape(format: String) -> Result<serde_json::Value, String> {
         other => yog_formats::shape(other).ok_or_else(|| format!("no format `{other}`"))?,
     };
     Ok(data::to_json(&shape.describe()))
+}
+
+/// The kinds of recipe the mod of `path` declares (`.ydef` `recipe_kind`).
+#[tauri::command]
+async fn recipe_kinds(path: String) -> Vec<recipe_kinds::Kind> {
+    tauri::async_runtime::spawn_blocking(move || designer::mod_root(Path::new(&path)).map(|r| recipe_kinds::kinds(&r)).unwrap_or_default())
+        .await
+        .unwrap_or_default()
+}
+
+/// Makes `content/<name>.ydef` in the mod of `path`: a new kind of recipe to fill in; its path.
+#[tauri::command]
+fn recipe_kind_create(path: String, name: String) -> Result<String, String> {
+    let root = designer::mod_root(Path::new(&path)).ok_or("not inside a mod")?;
+    let name = name.trim();
+    if name.is_empty() || !name.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '_') {
+        return Err("a kind's name: a-z, 0-9 and _".into());
+    }
+    let file = root.join("content").join(format!("{name}.ydef"));
+    if file.exists() {
+        return Err(format!("{} exists", file.display()));
+    }
+    std::fs::create_dir_all(root.join("content")).map_err(|e| e.to_string())?;
+    std::fs::write(&file, recipe_kinds::template(name)).map_err(|e| e.to_string())?;
+    Ok(file.to_string_lossy().into_owned())
 }
 
 /// The terrain of a `.ydef` dimension, from above and in a slice.
@@ -1654,6 +1680,8 @@ pub fn run() {
     let builder = builder.invoke_handler(tauri::generate_handler![
         format_shape,
         worldgen_preview,
+        recipe_kinds,
+        recipe_kind_create,
         fs_watch,
         yui_codegen,
         content_texture,
