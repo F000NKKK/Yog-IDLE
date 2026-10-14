@@ -38,7 +38,7 @@
 React), построенное на [Substrate Platform](https://github.com/F000NKKK/Substrate-Platform) —
 универсальном ядре IDE с док-оболочкой, редакторами и виджетами.
 
-<p align="center"><img src="docs/images/overview.png" alt="Yog-IDLE с открытым Yog-Modlist: mod_list.yui в дизайнере экранов, обозреватель проекта, свойства и вывод" width="900"></p>
+<p align="center"><img src="docs/images/overview-ru.png" alt="Yog-IDLE с открытым Yog-Modlist: mod_list.yui в дизайнере экранов, выделено поле поиска, обозреватель проекта и свойства" width="900"></p>
 
 ### 🎯 Почему Yog-IDLE?
 
@@ -79,7 +79,7 @@ React), построенное на [Substrate Platform](https://github.com/F000
   подсказку
 - **Ctrl+колесо** (или щипок) масштабирует вокруг курсора, до 800%
 
-<p align="center"><img src="docs/images/screen-designer.png" alt="Дизайнер экранов: mod_list.yui в режиме «Дизайн + XAML», выделен внешний Grid, слева панель элементов, справа свойства" width="900"></p>
+<p align="center"><img src="docs/images/screen-designer-ru.png" alt="Дизайнер экранов: mod_list.yui в режиме «Дизайн + XAML», выделен внешний Grid, слева панель элементов, справа свойства" width="900"></p>
 
 ### 📕 Дизайнер книг (`.ybook`)
 - Книгу-руководство рисует сам yog-book — тот же рендерер, что в игре, — шрифтом

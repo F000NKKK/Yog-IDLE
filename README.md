@@ -38,7 +38,7 @@ It is a [Tauri](https://tauri.app/) app (Rust backend, React frontend) built
 on [Substrate Platform](https://github.com/F000NKKK/Substrate-Platform), a
 generic IDE core with a docking shell, editors and widgets.
 
-<p align="center"><img src="docs/images/overview.png" alt="Yog-IDLE with Yog-Modlist open: mod_list.yui in the screen designer, Project Explorer, Properties and Output" width="900"></p>
+<p align="center"><img src="docs/images/overview.png" alt="Yog-IDLE with Yog-Modlist open: mod_list.yui in the screen designer with the search box selected, Project Explorer and Properties" width="900"></p>
 
 ### 🎯 Why Yog-IDLE?
 
