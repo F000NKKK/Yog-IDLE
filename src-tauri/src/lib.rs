@@ -20,7 +20,7 @@ mod manifest;
 mod mod_ui;
 mod project_properties;
 mod properties;
-mod recipe_kinds;
+pub mod recipe_kinds;
 mod search;
 mod symbols;
 mod worldgen;
