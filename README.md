@@ -69,8 +69,31 @@ generic IDE core with a docking shell, editors and widgets.
 - **Preview mode**: hover and click buttons, scroll lists and type into text
   boxes as in game. Events are logged instead of run
 - Double-click a control to jump to its handler in the code-behind
+- **Drawn as the game builds it**: `<Screen.Resources>` styles (with
+  `based_on`) and values, the screen's theme, yog-kit's `ToggleButton`,
+  `ListView` and `ItemsControl`; a bound value shows its design-time `d:`
+  value (`d:text="Sample"`) or nothing, so a text box shows its placeholder
+- **Ctrl+wheel** (or a pinch) zooms around the cursor, up to 800%
 
 <p align="center"><img src="docs/images/screen-designer.png" alt="Screen designer: mod_list.yui in Design + XAML split with the outer Grid selected, Toolbox and Properties docked" width="900"></p>
+
+### 📕 Book designer (`.ybook`)
+- The guide book drawn by yog-book itself — the renderer the game runs —
+  with the game's font and textures: click it like a reader (categories,
+  entries, page arrows, home) and the outline follows
+- Outline of categories, entries and pages; add, remove and reorder them;
+  a property grid for what's selected; every edit shows at once
+- **Language** switcher: read the book in each language its `.yres` texts
+  are translated into, item and entity names included
+- Crafting grids with 3D blocks, the mod's own recipes and block models,
+  entities, multiblocks and spell patterns, animated as in game
+
+<p align="center"><img src="docs/images/book-designer.png" alt="The book designer on HexMod-Yog's Hex Notebook: the outline with a pattern page selected, the book open at it, the page's properties" width="900"></p>
+
+### 🍳 Recipe editor (`.yrecipe`)
+- Yog's recipes as a crafting table (shaped, shapeless) or a furnace: drop
+  items into the slots. The other kinds (blasting, stonecutting, smithing…)
+  are edited in the JSON view (F7)
 
 ### 🧊 Block and item editor (`.yblock` / `.yitem`)
 - 3D viewport with orbit, pan, zoom, numpad views and Minecraft face shading
@@ -131,6 +154,8 @@ generic IDE core with a docking shell, editors and widgets.
 | `.yui` with `x:ViewModel` | Same, compiled to a yog-kit view | [docs/mvvm.md](docs/mvvm.md) |
 | `resources/**/*.yres` | Resource table | [docs/yres.md](docs/yres.md) |
 | `content/**/*.yblock`, `*.yitem` | 3D model editor + paint | [docs/blocks-items.md](docs/blocks-items.md) |
+| `content/**/*.ybook` | Book designer | [docs/books.md](docs/books.md) |
+| `content/**/*.yrecipe` | Recipe editor | [Yog-Mod-Loader README](https://github.com/F000NKKK/Yog-Mod-Loader#-key-features) |
 | `yog.toml` | Properties grid / text | [Yog-Mod-Loader README](https://github.com/F000NKKK/Yog-Mod-Loader#-quick-start) |
 
 Every editor keeps a text view: **F7** (or the code button) switches to the
