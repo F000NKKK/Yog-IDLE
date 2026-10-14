@@ -87,14 +87,15 @@ export const PAGE_TYPES: { type: string; label: string; fields: Field[] }[] = [
       { key: "text", label: "Text", kind: "multiline" },
     ],
   },
+  // A picture the mod's code draws (its `data` is edited in the code view).
   {
-    type: "pattern",
-    label: "Pattern",
+    type: "drawn",
+    label: "Drawn by the mod",
     fields: [
-      { key: "op_id", label: "Action", kind: "text" },
-      { key: "name", label: "Name", kind: "text" },
-      { key: "input", label: "Takes", kind: "text" },
-      { key: "output", label: "Gives", kind: "text" },
+      { key: "drawer", label: "Drawer", kind: "text" },
+      { key: "title", label: "Title", kind: "text" },
+      { key: "height", label: "Picture height", kind: "number" },
+      { key: "caption", label: "Caption", kind: "text" },
       { key: "text", label: "Text", kind: "multiline" },
     ],
   },
@@ -149,8 +150,8 @@ export function newPage(type: string): Page {
       return { type, entries: [] };
     case "multiblock":
       return { type, pattern: [["S"]], mapping: { S: "@block:minecraft:stone" } };
-    case "pattern":
-      return { type, op_id: "", text: "", patterns: [{ startdir: "EAST", signature: "qaq" }] };
+    case "drawn":
+      return { type, drawer: "", height: 64 };
     default:
       return { type };
   }
