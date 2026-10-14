@@ -1117,13 +1117,15 @@ pub fn plan(
                 args,
             }]
         }
+        // `--locked`: the versions it was tested with, not the newest that
+        // semver allows (a dependency's newer release may not fit the rest).
         "yog" => vec![Step::Run {
             program: program("cargo"),
-            args: strings(&["install", "yog-cli"]),
+            args: strings(&["install", "--locked", "yog-cli"]),
         }],
         "cargo-zigbuild" => vec![Step::Run {
             program: program("cargo"),
-            args: strings(&["install", "cargo-zigbuild"]),
+            args: strings(&["install", "--locked", "cargo-zigbuild"]),
         }],
         "zig" => vec![Step::Zig {
             dest: tools.join("zig"),

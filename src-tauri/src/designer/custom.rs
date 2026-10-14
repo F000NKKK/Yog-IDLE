@@ -523,7 +523,7 @@ fn build_lib(root: &Path) -> Result<PathBuf, String> {
         };
     }
     if stderr.contains("unknown command: designer-lib") {
-        return Err("this yog CLI can't build designer libraries — update it (Tools → Environment, or `cargo install yog-cli`)".into());
+        return Err("this yog CLI can't build designer libraries — update it (Tools → Environment, or `cargo install --locked yog-cli`)".into());
     }
     Err(build_errors(&stderr))
 }

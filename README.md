@@ -177,7 +177,7 @@ npm run tauri dev        # development build with hot module reload
 npm run tauri build      # release bundle
 ```
 
-To work on mods you also need the `yog` CLI (`cargo install yog-cli`), and for
+To work on mods you also need the `yog` CLI (`cargo install --locked yog-cli`), and for
 running the game a [Yog-Mod-Loader](https://github.com/F000NKKK/Yog-Mod-Loader)
 checkout with JDK 17/21. **Tools › Check Environment...** finds what's
 missing and **Tools › Install Components...** installs it.

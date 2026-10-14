@@ -188,7 +188,7 @@ npm run tauri dev        # сборка для разработки с горя�
 npm run tauri build      # релизная сборка
 ```
 
-Для работы с модами нужна утилита `yog` (`cargo install yog-cli`), а для
+Для работы с модами нужна утилита `yog` (`cargo install --locked yog-cli`), а для
 запуска игры — чекаут [Yog-Mod-Loader](https://github.com/F000NKKK/Yog-Mod-Loader)
 и JDK 17/21. **Tools › Check Environment...** покажет, чего не хватает, а
 **Tools › Install Components...** доустановит недостающее.
