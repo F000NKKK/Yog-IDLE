@@ -17,6 +17,7 @@ pub mod host;
 pub mod images;
 pub mod markup;
 pub mod raster;
+pub mod recipe_area;
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -199,6 +200,7 @@ pub fn render(args: &RenderArgs) -> Result<Rendered, String> {
     let mut themed = args.root.clone();
     markup::apply_resources(&mut themed);
     markup::apply_theme(&mut themed);
+    recipe_area::expand(&mut themed, root.as_deref());
     let prepared = custom::prepare(&themed, root.as_deref(), sw as f32, sh as f32);
     let laid = lay_out(&prepared.root, sw as f32, sh as f32, &scroll);
     let mut ops = gfx::record(sw as i32, sh as i32, |ctx| laid.render(ctx));
@@ -297,6 +299,7 @@ pub fn event(args: &EventArgs) -> EventResult {
     let mut themed = args.root.clone();
     markup::apply_resources(&mut themed);
     markup::apply_theme(&mut themed);
+    recipe_area::expand(&mut themed, mod_root.as_deref());
     let prepared = custom::prepare(&themed, mod_root.as_deref(), sw, sh);
     let root = &prepared.root;
     let laid = lay_out(root, sw, sh, &scroll);

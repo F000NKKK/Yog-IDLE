@@ -45,6 +45,7 @@ const GLYPHS: Record<string, string> = {
   InvSlot: "▦",
   Slot: "▢",
   PlayerInventory: "▤",
+  RecipeArea: "⊞",
   Image: "▨",
   RecipeSlot: "◇",
   RecipeResult: "⇒",

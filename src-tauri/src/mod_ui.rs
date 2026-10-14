@@ -25,7 +25,7 @@ fn trees(root: &Path) -> Vec<(PathBuf, Element)> {
     out
 }
 
-fn ns(root: &Path) -> String {
+pub fn ns(root: &Path) -> String {
     crate::manifest::read_mod_field(root, "id").unwrap_or_else(|| "minecraft".into())
 }
 

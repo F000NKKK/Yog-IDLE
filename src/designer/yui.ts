@@ -4,7 +4,7 @@
 // write back.
 
 /** Every element the format knows, in Toolbox order. */
-export const KINDS = ["Screen", "Grid", "Canvas", "Column", "Row", "ScrollView", "Label", "Button", "TextBox", "Spacer", "ItemSlot", "InvSlot", "Slot", "PlayerInventory", "Image", "RecipeSlot", "RecipeResult", "RecipeCount"] as const;
+export const KINDS = ["Screen", "Grid", "Canvas", "Column", "Row", "ScrollView", "Label", "Button", "TextBox", "Spacer", "ItemSlot", "InvSlot", "Slot", "PlayerInventory", "RecipeArea", "Image", "RecipeSlot", "RecipeResult", "RecipeCount"] as const;
 export type YuiKind = (typeof KINDS)[number];
 
 export interface YuiNode {
@@ -459,6 +459,13 @@ export const KIND_INFO: Record<YuiKind, KindInfo> = {
     group: "Minecraft",
     description: "The player's inventory on an inventory screen: 3 rows of 9 and the hotbar, real slots.",
     defaults: {},
+  },
+  RecipeArea: {
+    kind: "RecipeArea",
+    label: "Recipe Area",
+    group: "Minecraft",
+    description: "Makes the block a machine for a kind of recipe, like a crafting table: the kind's layout (its .yui recipe_layout) with its places as real slots, numbered after the screen's own, and its result an output slot.",
+    defaults: { kind: "" },
   },
   Image: {
     kind: "Image",

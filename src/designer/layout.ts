@@ -281,6 +281,7 @@ const LEAF_OF: Record<string, Leaf> = {
   InvSlot: "inv_slot",
   Slot: "inv_slot",
   PlayerInventory: "panel",
+  RecipeArea: "panel",
   Image: "image",
   Spacer: "spacer",
   RecipeSlot: "item_slot",
