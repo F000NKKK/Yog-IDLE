@@ -163,6 +163,23 @@ pub fn text(value: Option<&str>) -> String {
     }
 }
 
+/// `<Screen theme>`'s defaults on every node that doesn't set the attribute
+/// itself — as `yog build` applies them.
+pub fn apply_theme(root: &mut YuiNode) {
+    let Some(theme) = root.attr("theme").and_then(yog_ui::theme::Theme::builtin) else {
+        return;
+    };
+    fn walk(n: &mut YuiNode, theme: &yog_ui::theme::Theme) {
+        for (k, v) in theme.attrs(&n.kind) {
+            n.attrs.entry(k.clone()).or_insert_with(|| v.clone());
+        }
+        for c in &mut n.children {
+            walk(c, theme);
+        }
+    }
+    walk(root, &theme);
+}
+
 /// Builds the widget for `node`. `in_canvas`: the parent places children
 /// absolutely. `scroll`: preview scroll offsets by uid.
 pub fn widget(node: &YuiNode, in_canvas: bool, scroll: &HashMap<String, f32>) -> Widget {

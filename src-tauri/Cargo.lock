@@ -5536,9 +5536,9 @@ dependencies = [
 
 [[package]]
 name = "yog-ui"
-version = "0.40.3"
+version = "0.40.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a98547c407a801e9891d2df949a558fb75e1e89ec3b16b02e1f8c3ba6f5df527"
+checksum = "b75bac7391d860e62d814cbbfb32e533a4cae1cb13b985fa42626c27f7cbdae2"
 dependencies = [
  "yog-abi",
  "yog-gfx",

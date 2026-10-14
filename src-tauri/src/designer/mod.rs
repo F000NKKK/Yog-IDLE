@@ -190,7 +190,9 @@ pub fn render(args: &RenderArgs) -> Result<Rendered, String> {
     let root = mod_root(Path::new(&args.path));
     images::set_document(root.as_deref());
     // The mod's own components: expanded from markup, or marked spacers here drawn by the designer host below.
-    let prepared = custom::prepare(&args.root, root.as_deref(), sw as f32, sh as f32);
+    let mut themed = args.root.clone();
+    markup::apply_theme(&mut themed);
+    let prepared = custom::prepare(&themed, root.as_deref(), sw as f32, sh as f32);
     let laid = lay_out(&prepared.root, sw as f32, sh as f32, &scroll);
     let mut ops = gfx::record(sw as i32, sh as i32, |ctx| laid.render(ctx));
     let mut node_rects = rects(&prepared.root, &laid);
