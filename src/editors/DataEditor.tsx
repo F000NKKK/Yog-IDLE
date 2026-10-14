@@ -4,6 +4,7 @@ import { Button, PropertyGrid, useT, type EditorProps } from "substrate-platform
 import { DataSyntaxError, parseDataValue } from "../data/yogData";
 import { shapeProperties, type Described } from "../data/shapeGrid";
 import { useOpenFiles } from "../OpenFilesContext";
+import { TerrainPreview } from "./TerrainPreview";
 import "./DataEditor.css";
 
 const shapes = new Map<string, Promise<Described>>();
@@ -67,9 +68,14 @@ export function DataEditor({ path, content, onChange, readOnly, format, sourceVi
       </div>
     );
   }
+  // A dimension with a terrain: the ground it makes, beside its properties.
+  const terrain = format === "ydef" && parsed.value.kind === "dimension" && parsed.value.terrain !== undefined;
   return (
     <div className="data-editor">
-      <PropertyGrid objectName={path.split(/[\\/]/).pop()} objectType={format} objectKey={path} properties={properties} persistKey={`yog.data.${format}`} />
+      <div className="data-editor-body">
+        <PropertyGrid objectName={path.split(/[\\/]/).pop()} objectType={format} objectKey={path} properties={properties} persistKey={`yog.data.${format}`} />
+        {terrain && <TerrainPreview content={content} />}
+      </div>
       <div className="data-editor-actions">
         <Button onClick={viewCode}>{t("View Code")}</Button>
       </div>

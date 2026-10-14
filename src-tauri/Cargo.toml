@@ -49,6 +49,9 @@ yog-abi = "0.28.5"
 yog-book = "0.63.4"
 # Yog Data: the text syntax of every Yog format.
 yog-data = "0.3"
+# A dimension's terrain, previewed by the code the runtime generates it with.
+yog-worldgen = "0.1"
+yog-data-next = { package = "yog-data", version = "0.4" }
 # The source formats' schemas, for generated editors.
 yog-formats = "0.2"
 # SVG images and TrueType fonts, drawn the way the game draws them.

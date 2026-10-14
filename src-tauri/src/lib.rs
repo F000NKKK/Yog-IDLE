@@ -21,6 +21,7 @@ mod project_properties;
 mod properties;
 mod search;
 mod symbols;
+mod worldgen;
 mod yui;
 
 #[cfg(target_os = "linux")]
@@ -112,6 +113,12 @@ fn format_shape(format: String) -> Result<serde_json::Value, String> {
         other => yog_formats::shape(other).ok_or_else(|| format!("no format `{other}`"))?,
     };
     Ok(data::to_json(&shape.describe()))
+}
+
+/// The terrain of a `.ydef` dimension, from above and in a slice.
+#[tauri::command]
+fn worldgen_preview(text: String, size: u32) -> Result<worldgen::Preview, String> {
+    worldgen::render(&text, size)
 }
 
 #[tauri::command]
@@ -1692,6 +1699,7 @@ pub fn run() {
 
     let builder = builder.invoke_handler(tauri::generate_handler![
         format_shape,
+        worldgen_preview,
         fs_watch,
         yui_codegen,
         content_texture,
