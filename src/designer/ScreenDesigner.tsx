@@ -3,6 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import {
   ContextMenu,
   DesignSurface,
+  eventKey,
   getCurrentSelection,
   notifyDocumentCommands,
   registerDocumentCommands,
@@ -1115,7 +1116,7 @@ export function ScreenDesigner({ path, content, onChange, readOnly, contentVersi
     else if (e.key === "Enter") {
       if (box.attrs.on_submit) fired(`submit: ${box.attrs.on_submit}`);
     } else if (e.key === "Backspace") typeInto(box, (text) => [...text].slice(0, -1).join(""));
-    else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "v") {
+    else if ((e.ctrlKey || e.metaKey) && eventKey(e) === "v") {
       void navigator.clipboard?.readText().then((clip) => typeInto(box, (text) => text + clip.replace(/[\r\n]/g, "")));
     } else if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) typeInto(box, (text) => text + e.key);
     else return;
