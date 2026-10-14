@@ -293,6 +293,10 @@ pub fn widget(node: &YuiNode, in_canvas: bool, scroll: &HashMap<String, f32>) ->
         "Label" => widget::label(text(a("text"))),
         "Button" => widget::button(text(a("text"))),
         "ItemSlot" => widget::item_slot(a("item").unwrap_or_default()),
+        // A recipe layout's places (yog_book::layout): a slot showing the
+        // design-time sample (`d:item`), the count `d:text` or 2.
+        "RecipeSlot" | "RecipeResult" => widget::item_slot(a("item").unwrap_or_default()),
+        "RecipeCount" => widget::label(a("text").unwrap_or("2")),
         "InvSlot" => widget::inv_slot(
             a("item").unwrap_or_default(),
             a("count").and_then(|c| c.trim().parse().ok()).unwrap_or(1),

@@ -8,7 +8,7 @@ import { designImage, designText, useDesignResources } from "../lang/designResou
 import { useProject } from "../ProjectContext";
 import "./Toolbox.css";
 
-const GROUPS = ["Containers", "Common Controls", "Minecraft"] as const;
+const GROUPS = ["Containers", "Common Controls", "Minecraft", "Recipe Layout"] as const;
 
 /** What a Toolbox entry adds: a built-in widget kind or one of the mod's components. */
 interface Entry {
@@ -46,6 +46,9 @@ const GLYPHS: Record<string, string> = {
   Slot: "▢",
   PlayerInventory: "▤",
   Image: "▨",
+  RecipeSlot: "◇",
+  RecipeResult: "⇒",
+  RecipeCount: "#",
 };
 
 /**
@@ -70,7 +73,9 @@ export function Toolbox() {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const needle = query.trim().toLowerCase();
 
-  const groups: Group[] = GROUPS.map((group) => ({
+  // A recipe layout's own elements only while one is open (a screen has no recipe).
+  const recipeLayout = designer?.doc.root.kind === "Component" && designer.doc.root.attrs.recipe_layout !== undefined;
+  const groups: Group[] = GROUPS.filter((g) => g !== "Recipe Layout" || recipeLayout).map((group) => ({
     key: group,
     title: t(group),
     entries: KINDS.filter((k) => k !== "Screen" && KIND_INFO[k].group === group).map((k) => ({

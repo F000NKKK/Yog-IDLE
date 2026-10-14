@@ -219,6 +219,11 @@ export function RecipeEditor({ path, content, onChange, readOnly }: EditorProps)
           {t("Edit kind…")}
         </button>
       )}
+      {kind?.layout && (
+        <button type="button" className="recipe-type recipe-type-link" onClick={() => void openFile({ path: kind.layout!.file })} title={kind.layout.file}>
+          {t("Edit layout…")}
+        </button>
+      )}
       {newKind === null ? (
         <button type="button" className="recipe-type recipe-type-link" disabled={readOnly} onClick={() => setNewKind("")}>
           {t("New kind…")}
@@ -320,7 +325,7 @@ export function RecipeEditor({ path, content, onChange, readOnly }: EditorProps)
               <span className="recipe-slot-name">{t("Result")}</span>
               {cell("result", custom.result || null)}
             </div>
-            <span className="recipe-hint">{t("No layout: give the kind's .ydef a `layout` to draw it as books do.")}</span>
+            <span className="recipe-hint">{t("No layout: lay the kind out in a .yui — <Component recipe_layout=\"{kind}\" width=\"…\" height=\"…\"> — to draw it as books do.", { kind: kind.id.split(":").pop() ?? kind.id })}</span>
           </div>
         )}
         <div className="recipe-furnace">

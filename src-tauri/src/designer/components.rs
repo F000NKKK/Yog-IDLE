@@ -118,9 +118,10 @@ fn pascal(stem: &str) -> String {
         .collect()
 }
 
-/// The component a `<Component>` tree declares (`None`: not a component).
+/// The component a `<Component>` tree declares (`None`: not a component —
+/// a book's kind of page or a recipe layout isn't one to place on screens).
 pub fn definition(root: &YuiNode, file: &Path) -> Option<Def> {
-    if root.kind != "Component" {
+    if root.kind != "Component" || root.attr("book_page").is_some() || root.attr("recipe_layout").is_some() {
         return None;
     }
     let name = root
@@ -314,15 +315,14 @@ pub fn expand(def: &Def, instance: &YuiNode) -> YuiNode {
 pub fn design_root(root: &YuiNode) -> YuiNode {
     let def = definition(root, Path::new("component.yui"));
     let values = def.as_ref().map(defaults).unwrap_or_default();
+    // A recipe layout is its own size; a component's design size is a preview's.
+    let layout = root.attr("recipe_layout").is_some();
+    let size = |own: &str, design: &str, default: &'static str| {
+        root.attr(if layout { own } else { design }).unwrap_or(default).to_string()
+    };
     let mut attrs = HashMap::from([
-        (
-            "width".to_string(),
-            root.attr("design_w").unwrap_or("120").to_string(),
-        ),
-        (
-            "height".to_string(),
-            root.attr("design_h").unwrap_or("40").to_string(),
-        ),
+        ("width".to_string(), size("width", "design_w", "120")),
+        ("height".to_string(), size("height", "design_h", "40")),
         ("anchor".to_string(), "center".to_string()),
     ]);
     if let Some(bg) = root.attr("d:bg") {

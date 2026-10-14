@@ -165,7 +165,13 @@ export function designRoot(root: YuiNode): YuiNode {
   if (!isComponentDoc(root)) return root;
   const values: Record<string, string> = {};
   for (const c of root.children) if (c.kind === "Property" && c.attrs.name) values[c.attrs.name] = c.attrs.default ?? "";
-  const attrs: Record<string, string> = { width: root.attrs.design_w ?? "120", height: root.attrs.design_h ?? "40", anchor: "center" };
+  // A recipe layout is its own size; a component's design size is a preview's.
+  const layout = root.attrs.recipe_layout !== undefined;
+  const attrs: Record<string, string> = {
+    width: (layout ? root.attrs.width : root.attrs.design_w) ?? "120",
+    height: (layout ? root.attrs.height : root.attrs.design_h) ?? "40",
+    anchor: "center",
+  };
   if (root.attrs["d:bg"]) attrs.bg = root.attrs["d:bg"];
   return { uid: root.uid, kind: "Screen", attrs, children: root.children.filter((c) => !DECLARATION_KINDS.has(c.kind)).map((c) => bindValues(c, values)) };
 }

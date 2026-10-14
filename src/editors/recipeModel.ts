@@ -165,6 +165,8 @@ export interface RecipeKind {
   slots: { name: string; max: number; required: boolean }[];
   values: { name: string; kind: "number" | "text" | "bool" }[];
   layout: {
+    /** The `.yui` (`recipe_layout`) it's laid out in. */
+    file: string;
     size: [number, number];
     image: string | null;
     scale: number;

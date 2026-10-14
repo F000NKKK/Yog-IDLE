@@ -283,6 +283,9 @@ const LEAF_OF: Record<string, Leaf> = {
   PlayerInventory: "panel",
   Image: "image",
   Spacer: "spacer",
+  RecipeSlot: "item_slot",
+  RecipeResult: "item_slot",
+  RecipeCount: "label",
 };
 
 /** A flag attribute at design time: only a literal `false` is false (a `{x:Bind ...}` shows as true). */

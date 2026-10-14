@@ -219,38 +219,6 @@ fn recipes(mod_root: &Path) -> Vec<(String, yog_data::Value)> {
     out
 }
 
-/// The mod's recipe layouts (`content/**/*.ydef`: a `recipe_layout`, a
-/// `recipe_kind`'s `layout`) — the build adds them to its books; the
-/// preview does the same (broken ones left out).
-fn layouts(mod_root: &Path) -> Vec<yog_book::layout::RecipeLayout> {
-    use yog_formats::def::Def;
-    let mod_id = crate::manifest::read_mod_field(mod_root, "id").unwrap_or_default();
-    let mut out = Vec::new();
-    let mut stack = vec![mod_root.join("content")];
-    while let Some(dir) = stack.pop() {
-        for e in std::fs::read_dir(&dir).into_iter().flatten().flatten() {
-            let p = e.path();
-            if p.is_dir() {
-                stack.push(p);
-            } else if p.extension().is_some_and(|x| x == "ydef")
-                && let Some(def) = std::fs::read_to_string(&p).ok().and_then(|t| yog_data::from_text::<Def>(&t).ok())
-            {
-                match def.value {
-                    Def::RecipeLayout(l) => out.push(l),
-                    Def::RecipeKind(k) => {
-                        let id = if k.id.contains(':') { k.id } else { format!("{}:{}", mod_id, k.id) };
-                        if let Some(l) = k.layout {
-                            out.push(yog_book::layout::RecipeLayout { kinds: vec![id], size: l.size, parts: l.parts });
-                        }
-                    }
-                    _ => {}
-                }
-            }
-        }
-    }
-    out
-}
-
 /// `minecraft:amethyst_dust` → `Amethyst Dust`.
 fn humanize(id: &str) -> String {
     let path = id.rsplit([':', '/']).next().unwrap_or(id);
@@ -422,7 +390,9 @@ pub fn parse(text: &str, mod_root: Option<&Path>, locale: Option<&str>) -> Resul
     let mut book = book.ok_or_else(|| first.clone().unwrap_or_else(|| "not a book".into()))?;
     // The reader shows texts, not keys.
     book.i18n = false;
-    book.layouts = mod_root.map(layouts).unwrap_or_default();
+    // The mod's own recipe layouts and kinds of page, as the build adds them.
+    book.layouts = mod_root.map(|r| crate::mod_ui::recipe_layouts(r).into_iter().map(|(_, l)| l).collect()).unwrap_or_default();
+    book.page_types = mod_root.map(crate::mod_ui::page_types).unwrap_or_default();
     let first = first.or_else(|| reader.missing.first().map(|m| format!("{m}: no such text in resources/*.yres")));
     if let Ok(mut lang) = LANG.lock() {
         *lang = texts.lang;

@@ -4,7 +4,7 @@
 // write back.
 
 /** Every element the format knows, in Toolbox order. */
-export const KINDS = ["Screen", "Grid", "Canvas", "Column", "Row", "ScrollView", "Label", "Button", "TextBox", "Spacer", "ItemSlot", "InvSlot", "Slot", "PlayerInventory", "Image"] as const;
+export const KINDS = ["Screen", "Grid", "Canvas", "Column", "Row", "ScrollView", "Label", "Button", "TextBox", "Spacer", "ItemSlot", "InvSlot", "Slot", "PlayerInventory", "Image", "RecipeSlot", "RecipeResult", "RecipeCount"] as const;
 export type YuiKind = (typeof KINDS)[number];
 
 export interface YuiNode {
@@ -373,7 +373,7 @@ export interface KindInfo {
   kind: YuiKind;
   /** English, shown through `t`. */
   label: string;
-  group: "Containers" | "Common Controls" | "Minecraft";
+  group: "Containers" | "Common Controls" | "Minecraft" | "Recipe Layout";
   description: string;
   /** Attributes a new one starts with. */
   defaults: Record<string, string>;
@@ -466,6 +466,27 @@ export const KIND_INFO: Record<YuiKind, KindInfo> = {
     group: "Minecraft",
     description: "An image: an item or block icon, a GUI sprite or a mod texture (a Yog image source).",
     defaults: { source: "item:apple", w: "16", h: "16" },
+  },
+  RecipeSlot: {
+    kind: "RecipeSlot",
+    label: "Recipe Slot",
+    group: "Recipe Layout",
+    description: "A place for one of the recipe's ingredients: a slot of its kind (`slot`), the n-th of it (`index`), framed or not.",
+    defaults: { slot: "input", frame: "true", "d:item": "minecraft:iron_ore" },
+  },
+  RecipeResult: {
+    kind: "RecipeResult",
+    label: "Recipe Result",
+    group: "Recipe Layout",
+    description: "Where the recipe's result is shown.",
+    defaults: { frame: "true", "d:item": "minecraft:iron_ingot" },
+  },
+  RecipeCount: {
+    kind: "RecipeCount",
+    label: "Result Count",
+    group: "Recipe Layout",
+    description: "The result's count, shown when it's more than one.",
+    defaults: {},
   },
 };
 

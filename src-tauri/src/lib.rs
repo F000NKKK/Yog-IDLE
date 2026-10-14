@@ -17,6 +17,7 @@ mod environment;
 mod events;
 mod git;
 mod manifest;
+mod mod_ui;
 mod project_properties;
 mod properties;
 mod recipe_kinds;
@@ -123,7 +124,9 @@ async fn recipe_kinds(path: String) -> Vec<recipe_kinds::Kind> {
         .unwrap_or_default()
 }
 
-/// Makes `content/<name>.ydef` in the mod of `path`: a new kind of recipe to fill in; its path.
+/// Makes a new kind of recipe in the mod of `path` — `content/<name>.ydef`
+/// (its slots and values) and `src/ui/<name>_layout.yui` (how it's shown);
+/// the layout's path, to open in the designer.
 #[tauri::command]
 fn recipe_kind_create(path: String, name: String) -> Result<String, String> {
     let root = designer::mod_root(Path::new(&path)).ok_or("not inside a mod")?;
@@ -132,12 +135,17 @@ fn recipe_kind_create(path: String, name: String) -> Result<String, String> {
         return Err("a kind's name: a-z, 0-9 and _".into());
     }
     let file = root.join("content").join(format!("{name}.ydef"));
-    if file.exists() {
-        return Err(format!("{} exists", file.display()));
+    let layout = root.join("src").join("ui").join(format!("{name}_layout.yui"));
+    for f in [&file, &layout] {
+        if f.exists() {
+            return Err(format!("{} exists", f.display()));
+        }
     }
-    std::fs::create_dir_all(root.join("content")).map_err(|e| e.to_string())?;
-    std::fs::write(&file, recipe_kinds::template(name)).map_err(|e| e.to_string())?;
-    Ok(file.to_string_lossy().into_owned())
+    for (f, text) in [(&file, recipe_kinds::template(name)), (&layout, recipe_kinds::layout_template(name))] {
+        std::fs::create_dir_all(f.parent().unwrap_or(&root)).map_err(|e| e.to_string())?;
+        std::fs::write(f, text).map_err(|e| e.to_string())?;
+    }
+    Ok(layout.to_string_lossy().into_owned())
 }
 
 /// The terrain of a `.ydef` dimension, from above and in a slice.
