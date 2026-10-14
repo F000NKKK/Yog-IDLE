@@ -267,3 +267,22 @@ export function classify(s: string): Typed {
 export function escapeAt(s: string): string {
   return s.startsWith("@") ? `@${s}` : s;
 }
+
+/** `node` as a plain JS value (maps as objects; a duplicated key's last value). */
+export function toPlain(node: DataNode): unknown {
+  switch (node.t) {
+    case "null":
+      return null;
+    case "list":
+      return node.items.map(toPlain);
+    case "map":
+      return Object.fromEntries(node.entries.map((e) => [e.key, toPlain(e.value)]));
+    default:
+      return node.v;
+  }
+}
+
+/** Parses Yog Data text to a plain JS value, like `JSON.parse` for the wider syntax; throws `DataSyntaxError`. */
+export function parseDataValue(text: string): unknown {
+  return toPlain(parseData(text));
+}

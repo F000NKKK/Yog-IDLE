@@ -4,6 +4,8 @@
 // (`@item:minecraft:stick`, `@category:mymod:basics`…); texts may be
 // `@Set.key`, `@item:id` (a name) too (docs/books.md).
 
+import { parseDataValue } from "../data/yogData";
+
 export type Json = null | boolean | number | string | Json[] | { [k: string]: Json };
 export type Obj = { [k: string]: Json };
 
@@ -159,7 +161,7 @@ export function parseBook(text: string): Book | null {
   if (text.trim() === "") return emptyBook("");
   let v: unknown;
   try {
-    v = JSON.parse(text);
+    v = parseDataValue(text);
   } catch {
     return null;
   }

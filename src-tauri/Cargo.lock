@@ -5689,12 +5689,13 @@ checksum = "3cf21e657649ad77c8c509e7e5365d7730ebc9968e7f434e52d75a5510eef111"
 
 [[package]]
 name = "yog-book"
-version = "0.63.0"
+version = "0.63.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "96aae415535473c87e741116bc4139e25023d7a9f4fa3b1ecddce8f31bc3f33c"
+checksum = "71b9fc2825a4466d1419c92193d4bf6e49707523ce6d8813119793602c6f6d75"
 dependencies = [
  "serde",
  "serde_json",
+ "yog-data",
  "yog-gfx",
  "yog-registry",
  "yog-ui",
@@ -5702,18 +5703,18 @@ dependencies = [
 
 [[package]]
 name = "yog-data"
-version = "0.1.0"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8997fedc8fe4bcca6fc639435ce7d75369903596323537bfda3edbdfd41c5e59"
+checksum = "498d779be1e66b63062f0f3e992217886011477e3601818f358e13891a50c2a0"
 dependencies = [
  "yog-data-derive",
 ]
 
 [[package]]
 name = "yog-data-derive"
-version = "0.1.0"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dc3870c6ba3f596b08049760b864af7a4745fb02cf0d027ef7b9c93d47c61a4f"
+checksum = "93839f189043c4ca959dffacabf6dafaf179776465e41ade9c94b083ebb13f46"
 dependencies = [
  "proc-macro2",
  "quote",

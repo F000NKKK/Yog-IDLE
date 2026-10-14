@@ -12,7 +12,6 @@ use std::sync::{LazyLock, Mutex};
 use base64::Engine as _;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use yog_book::refs::RefKind;
 use yog_book::{Book, BookRenderer};
 
 use super::assets::Resources;
@@ -232,68 +231,168 @@ fn humanize(id: &str) -> String {
         .join(" ")
 }
 
-/// The book as a player reads it: references (`@item:…` in id fields, see
-/// `yog_book::refs`) as plain ids, texts as their words (`@Book.title`)
-/// and names (`@item:…`). Whether they exist is `yog check`'s to say; the
-/// designer draws what it can.
+/// The book as a player reads it: references (`@item:…` in id fields)
+/// as plain ids, texts as their words (`@Book.title`) and names
+/// (`@item:…`). Whether they exist is `yog check`'s to say; the designer
+/// draws what it can.
 struct Reader<'a> {
     texts: &'a Texts,
     missing: Vec<String>,
 }
 
-impl yog_book::refs::Resolver for Reader<'_> {
-    fn reference(&mut self, _kind: RefKind, id: &str, _path: &str) -> Result<String, String> {
-        Ok(id.to_string())
+impl yog_data::Resolve for Reader<'_> {
+    fn text(&mut self, t: &yog_data::Text, _: &yog_data::Path) -> Result<String, String> {
+        Ok(match t {
+            yog_data::Text::Literal(s) => s.clone(),
+            yog_data::Text::NameOf(r) => {
+                let id = yog_book::refs::bare(&r.id);
+                let name = match r.kind.as_str() {
+                    "entity" => {
+                        let (ns, p) = id.split_once(':').unwrap_or(("minecraft", id));
+                        self.texts.lang.get(&format!("entity.{ns}.{p}")).cloned()
+                    }
+                    _ => item_name(&self.texts.lang, id),
+                };
+                name.unwrap_or_else(|| humanize(id))
+            }
+            yog_data::Text::Res(r) => {
+                let key = format!("{}.{}", r.set, r.key);
+                self.texts.refs.get(&key).cloned().unwrap_or_else(|| {
+                    self.missing.push(format!("@{key}"));
+                    format!("@{key}")
+                })
+            }
+        })
     }
 
-    fn text(&mut self, text: &str, _path: &str) -> Option<String> {
-        let rest = text.strip_prefix('@')?;
-        if let Some(lit) = rest.strip_prefix('@') {
-            return Some(format!("@{lit}"));
-        }
-        if let Some((kind, id)) = yog_book::refs::parse(text) {
-            let id = yog_book::refs::bare(id);
-            let name = match kind {
-                RefKind::Entity => {
-                    let (ns, p) = id.split_once(':').unwrap_or(("minecraft", id));
-                    self.texts.lang.get(&format!("entity.{ns}.{p}")).cloned()
-                }
-                _ => item_name(&self.texts.lang, id),
-            };
-            return Some(name.unwrap_or_else(|| humanize(id)));
-        }
-        match self.texts.refs.get(rest) {
-            Some(t) => Some(t.clone()),
-            None => {
-                self.missing.push(text.to_string());
-                None
-            }
-        }
+    fn words(&mut self, r: &yog_data::Res) -> Option<String> {
+        self.texts.refs.get(&format!("{}.{}", r.set, r.key)).cloned()
     }
 }
 
-/// The `.ybook` text → the book a player would see.
-pub fn parse(text: &str, mod_root: Option<&Path>, locale: Option<&str>) -> Result<Book, String> {
-    let value: Value = serde_json::from_str(text).map_err(|e| format!("not JSON: {e}"))?;
+/// `v` without what the problem at `path` is about, so the rest can be
+/// drawn: the page it's in, else the field (or an empty one if it's missing).
+fn repair(v: &mut yog_data::Value, path: &yog_data::Path, message: &str) -> bool {
+    use yog_data::{Seg, Value};
+    let segs = path.segments();
+    // A missing field: an empty one, in the object the problem is about.
+    if let Some(field) = message.strip_prefix("missing `").and_then(|r| r.split('`').next()) {
+        let mut at = &mut *v;
+        for seg in segs {
+            at = match (seg, at) {
+                (Seg::Key(k), Value::Map(m)) => match m.get_mut(k) {
+                    Some(x) => x,
+                    None => return false,
+                },
+                (Seg::Index(n), Value::List(l)) => match l.get_mut(*n) {
+                    Some(x) => x,
+                    None => return false,
+                },
+                _ => return false,
+            };
+        }
+        if let Value::Map(m) = at
+            && m.get(field).is_none()
+        {
+            m.insert(field.to_string(), Value::from(""));
+            return true;
+        }
+    }
+    if let Some(i) = segs.iter().position(|s| matches!(s, Seg::Key(k) if k == "pages"))
+        && let Some(Seg::Index(page)) = segs.get(i + 1)
+    {
+        let mut at = &mut *v;
+        for seg in &segs[..=i] {
+            at = match (seg, at) {
+                (Seg::Key(k), Value::Map(m)) => match m.get_mut(k) {
+                    Some(x) => x,
+                    None => return false,
+                },
+                (Seg::Index(n), Value::List(l)) => match l.get_mut(*n) {
+                    Some(x) => x,
+                    None => return false,
+                },
+                _ => return false,
+            };
+        }
+        if let Value::List(pages) = at
+            && *page < pages.len()
+        {
+            pages.remove(*page);
+            return true;
+        }
+        return false;
+    }
+    let mut at = &mut *v;
+    let (last, parents) = match segs.split_last() {
+        Some(x) => x,
+        None => return false,
+    };
+    for seg in parents {
+        at = match (seg, at) {
+            (Seg::Key(k), Value::Map(m)) => match m.get_mut(k) {
+                Some(x) => x,
+                None => return false,
+            },
+            (Seg::Index(n), Value::List(l)) => match l.get_mut(*n) {
+                Some(x) => x,
+                None => return false,
+            },
+            _ => return false,
+        };
+    }
+    match (last, at) {
+        (Seg::Key(k), Value::Map(m)) => m.remove(k).is_some(),
+        (Seg::Index(n), Value::List(l)) if *n < l.len() => {
+            l.remove(*n);
+            true
+        }
+        _ => false,
+    }
+}
+
+/// The `.ybook` text → the book a player would see, and the first problem
+/// in it (what's wrong is left out of the drawing).
+pub fn parse(text: &str, mod_root: Option<&Path>, locale: Option<&str>) -> Result<(Book, Option<String>), String> {
+    let doc = yog_data::text::parse(text).map_err(|e| format!("{}: {}", e.at, e.message))?;
     let res = Resources::for_mod(mod_root);
     let texts = texts(mod_root, &res, locale);
-    let mut value = value;
+    let mut value = doc.value.clone();
+    let mut first: Option<String> = None;
     let mut reader = Reader { texts: &texts, missing: Vec::new() };
-    // (Wrong references are `yog check`'s to report.)
-    let _ = yog_book::refs::resolve(&mut value, &mut reader);
-    let missing = reader.missing;
-    if let Some(o) = value.as_object_mut() {
-        // The reader shows texts, not keys.
-        o.insert("i18n".into(), false.into());
+    let mut book = None;
+    for _ in 0..32 {
+        match yog_data::from_value_with::<Book>(&value, &mut reader) {
+            Ok(read) => {
+                book = Some(read.value);
+                break;
+            }
+            Err(problems) => {
+                if first.is_none()
+                    && let Some(p) = problems.first()
+                {
+                    let at = doc.locate(text, &p.path);
+                    first = Some(if p.path.is_root() { format!("{at}: {}", p.message) } else { format!("{at}: {}: {}", p.path, p.message) });
+                }
+                // Missing fields of the book itself are filled in first, then the rest repaired.
+                let mut changed = false;
+                for p in &problems {
+                    changed |= repair(&mut value, &p.path, &p.message);
+                }
+                if !changed {
+                    break;
+                }
+            }
+        }
     }
-    let book: Book = serde_json::from_value(value).map_err(|e| format!("not a book: {e}"))?;
+    let mut book = book.ok_or_else(|| first.clone().unwrap_or_else(|| "not a book".into()))?;
+    // The reader shows texts, not keys.
+    book.i18n = false;
+    let first = first.or_else(|| reader.missing.first().map(|m| format!("{m}: no such text in resources/*.yres")));
     if let Ok(mut lang) = LANG.lock() {
         *lang = texts.lang;
     }
-    if let Some(first) = missing.first() {
-        return Err(format!("{first}: no such text in resources/*.yres"));
-    }
-    Ok(book)
+    Ok((book, first))
 }
 
 pub fn render(args: &BookArgs) -> BookRendered {
@@ -310,7 +409,7 @@ pub fn render(args: &BookArgs) -> BookRendered {
         locales: locales.clone(),
         error: Some(error),
     };
-    let book = match parse(&args.text, root.as_deref(), locale) {
+    let (book, problem) = match parse(&args.text, root.as_deref(), locale) {
         Ok(b) => b,
         Err(e) => return fail(e),
     };
@@ -359,7 +458,7 @@ pub fn render(args: &BookArgs) -> BookRendered {
             action,
             animated: r.animated(),
             locales,
-            error: None,
+            error: problem,
         },
         Err(e) => fail(e),
     }
@@ -379,34 +478,52 @@ mod tests {
         let mut texts = Texts { refs: HashMap::new(), lang: HashMap::new() };
         texts.refs.insert("Book.title".to_string(), "Guide".to_string());
         texts.lang.insert("item.mymod.sapphire".to_string(), "Сапфир".to_string());
-        let mut v = serde_json::json!({
-            "name": "@Book.title", "subtitle": "@item:mymod:ruby_block", "landing_text": "@@x",
-            "categories": [{ "id": "c", "name": "@item:mymod:sapphire", "icon": "@item:mymod:sapphire" }],
-            "entries": [{ "id": "e", "name": "@Book.nope", "category": "@category:c", "pages": [] }]
-        });
+        let v = yog_data::text::parse_value(
+            r#"{
+            name: "@Book.title", subtitle: "@item:mymod:ruby_block", landing_text: "@@x",
+            categories: [{ id: "m:c", name: "@item:mymod:sapphire", icon: "@item:mymod:sapphire" }],
+            entries: [{ id: "m:e", name: "@Book.nope", category: "@category:m:c", pages: [] }],
+            id: "m:b",
+        }"#,
+        )
+        .unwrap();
         let mut r = Reader { texts: &texts, missing: Vec::new() };
-        let _ = yog_book::refs::resolve(&mut v, &mut r);
-        assert_eq!(v["name"], "Guide");
-        assert_eq!(v["subtitle"], "Ruby Block", "no translation: made from the id");
-        assert_eq!(v["categories"][0]["name"], "Сапфир", "a name in a text");
-        assert_eq!(v["categories"][0]["icon"], "mymod:sapphire", "an id in an id field");
-        assert_eq!(v["entries"][0]["category"], "c");
-        assert_eq!(v["landing_text"], "@x");
+        let b = yog_data::from_value_with::<Book>(&v, &mut r).unwrap_or_else(|p| panic!("{p:?}")).value;
+        assert_eq!(b.name, "Guide");
+        assert_eq!(b.subtitle.as_deref(), Some("Ruby Block"), "no translation: made from the id");
+        assert_eq!(b.categories[0].name, "Сапфир", "a name in a text");
+        assert_eq!(b.categories[0].icon.as_deref(), Some("mymod:sapphire"), "an id in an id field");
+        assert_eq!(b.entries[0].category, "m:c");
+        assert_eq!(b.landing_text, "@x");
         assert_eq!(r.missing, ["@Book.nope"]);
+    }
+
+    #[test]
+    fn draws_what_it_can_of_a_broken_book() {
+        let text = r#"{ id: "t:guide", name: "Guide",
+            categories: [{ id: "t:c", name: "C" }],
+            entries: [{ id: "t:e", category: "@category:t:c", pages: [
+                { type: "spotlight", item: "" },
+                { type: "text", text: "kept" },
+            ] }] }"#;
+        let (book, problem) = parse(text, None, None).unwrap();
+        let problem = problem.unwrap();
+        assert!(problem.starts_with("3:23: entries[0]: missing `name`"), "{problem}");
+        assert_eq!(book.entries[0].pages.len(), 1, "the broken page is left out");
     }
 
     #[test]
     fn draws_and_clicks_through_a_book() {
         let text = r#"{ "id": "t:guide", "name": "Guide",
-            "categories": [{ "id": "c", "name": "Basics" }],
-            "entries": [{ "id": "e", "name": "First", "category": "c",
+            "categories": [{ "id": "t:c", "name": "Basics" }],
+            "entries": [{ "id": "t:e", "name": "First", "category": "@category:t:c",
                 "pages": [{ "type": "text", "text": "one" }, { "type": "text", "text": "two" }] }] }"#;
         let args = |action| BookArgs { path: "/tmp/test.ybook".into(), text: text.into(), screen_w: 400, screen_h: 240, scale: 1, action, locale: None };
         let r = render(&args(None));
         assert!(r.error.is_none() && r.image.is_some(), "{:?}", r.error);
         assert_eq!(r.shown, None);
-        let r = render(&args(Some(BookAction::Show { entry: "e".into(), page: 1 })));
-        assert_eq!(r.shown, Some(("e".into(), 1)));
+        let r = render(&args(Some(BookAction::Show { entry: "t:e".into(), page: 1 })));
+        assert_eq!(r.shown, Some(("t:e".into(), 1)));
         let r = render(&args(Some(BookAction::Home)));
         assert_eq!(r.shown, None);
         close("/tmp/test.ybook");
