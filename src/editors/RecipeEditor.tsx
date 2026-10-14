@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import { useT, type EditorProps } from "substrate-platform-ui";
+import { Button, useT, type EditorProps } from "substrate-platform-ui";
+import { useOpenFiles } from "../OpenFilesContext";
 import { imagePreview, imageSources, imageSourcesVersion, subscribeImageSources } from "../designer/imageSources";
 import { cellCount, emptyRecipe, parseRecipe, serializeRecipe, type Recipe, type RecipeType } from "./recipeModel";
 import "./RecipeEditor.css";
@@ -21,8 +22,15 @@ export function RecipeEditor({ path, content, onChange, readOnly }: EditorProps)
   const t = useT();
   useSyncExternalStore(subscribeImageSources, imageSourcesVersion);
   const parsed = useMemo(() => parseRecipe(content), [content]);
+  // A kind the grid doesn't lay out (or broken text) is never overwritten from here.
+  const foreign = parsed === null && content.trim() !== "";
   const recipe = parsed ?? emptyRecipe();
   const [target, setTarget] = useState<Target>(0);
+  const { tabs, setView } = useOpenFiles();
+  const viewCode = () => {
+    const tab = tabs.find((x) => x.path === path);
+    if (tab) void setView(tab.id, RECIPE_SOURCE_VIEW);
+  };
   const [draft, setDraft] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -31,13 +39,13 @@ export function RecipeEditor({ path, content, onChange, readOnly }: EditorProps)
 
   const update = useCallback(
     (change: (r: Recipe) => void) => {
-      if (readOnly) return;
+      if (readOnly || foreign) return;
       const next: Recipe = { ...recipe, cells: [...recipe.cells], extra: { ...recipe.extra } };
       change(next);
       const text = serializeRecipe(next);
       if (text !== content) onChange(text);
     },
-    [recipe, content, onChange, readOnly]
+    [recipe, content, onChange, readOnly, foreign]
   );
 
   const commit = (value: string) => {
@@ -87,6 +95,15 @@ export function RecipeEditor({ path, content, onChange, readOnly }: EditorProps)
       </button>
     );
   };
+
+  if (foreign) {
+    return (
+      <div className="recipe-editor recipe-foreign">
+        <p>{t("This recipe's kind isn't laid out here (or the file has a mistake) — edit it as code.")}</p>
+        <Button onClick={viewCode}>{t("View Code")}</Button>
+      </div>
+    );
+  }
 
   const n = cellCount(recipe.type);
   return (
@@ -157,7 +174,7 @@ export function RecipeEditor({ path, content, onChange, readOnly }: EditorProps)
           list="recipe-items"
           value={draft}
           disabled={readOnly}
-          placeholder={target === "result" ? "minecraft:paper" : "minecraft:paper / #c:dusts"}
+          placeholder={target === "result" ? "minecraft:paper" : "minecraft:paper | #c:dusts"}
           onChange={(e) => setDraft(e.target.value)}
           onBlur={() => commit(draft)}
           onKeyDown={(e) => e.key === "Enter" && commit(draft)}

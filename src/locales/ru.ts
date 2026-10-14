@@ -686,6 +686,7 @@ registerTranslations("ru", {
   // Project Properties
   "Open yog.toml in the editor": "Открыть yog.toml в редакторе",
   "View Code": "Просмотреть код",
+  "This recipe's kind isn't laid out here (or the file has a mistake) — edit it as code.": "Этот вид рецепта здесь не раскладывается (или в файле ошибка) — правьте его как код.",
   "View Designer": "Открыть конструктор",
   "Couldn't read yog.toml: {error}": "Не удалось прочитать yog.toml: {error}",
   Application: "Приложение",

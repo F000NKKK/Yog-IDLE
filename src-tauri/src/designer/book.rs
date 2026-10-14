@@ -203,9 +203,10 @@ fn recipes(mod_root: &Path) -> Vec<(String, String)> {
             if p.extension().is_none_or(|x| x != "yrecipe") {
                 continue;
             }
-            let Some(v) = std::fs::read_to_string(&p).ok().and_then(|t| serde_json::from_str::<Value>(&t).ok()) else {
+            let Some(mut v) = std::fs::read_to_string(&p).ok().and_then(|t| crate::data::read_object(&t)).map(Value::Object) else {
                 continue;
             };
+            crate::data::runtime_ids(&mut v);
             let stem = p.file_stem().map(|s| s.to_string_lossy().into_owned()).unwrap_or_default();
             let id = match v.get("id").and_then(Value::as_str) {
                 Some(id) if id.contains(':') => id.to_string(),

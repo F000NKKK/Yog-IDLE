@@ -1,7 +1,12 @@
 // `.yrecipe` ⇄ what the recipe editor edits. A shaped recipe is a 3×3 grid
 // of cells here; its `pattern`/`key` are made from the grid on save (empty
 // edge rows and columns dropped, a letter picked per ingredient), so the
-// editor never shows them.
+// editor never shows them. Cells hold plain ids as the item picker gives
+// them (`minecraft:paper`, `#c:dusts` for a tag, alternatives joined by
+// ` | `); the file has Yog Data references (`@item:minecraft:paper`,
+// `@tag:item:c:dusts`, a list of them).
+
+import { parseDataValue } from "../data/yogData";
 
 export type RecipeType = "shaped" | "shapeless" | "smelting";
 
@@ -30,19 +35,49 @@ export function emptyRecipe(): Recipe {
 const str = (v: unknown) => (typeof v === "string" ? v : null);
 const num = (v: unknown, fallback: number) => (typeof v === "number" && Number.isFinite(v) ? v : fallback);
 
-/** The recipe in `text`, or `null` when it isn't a JSON object. */
+/** A reference as the editor shows it: `@item:x` → `x`, `@tag:item:x` → `#x`. */
+export function fromRef(s: string): string {
+  if (s.startsWith("@tag:item:")) return `#${s.slice("@tag:item:".length)}`;
+  if (s.startsWith("@item:")) return s.slice("@item:".length);
+  if (s.startsWith("@block:")) return s.slice("@block:".length);
+  return s;
+}
+
+/** An id as the file writes it: `x` → `@item:x`, `#x` → `@tag:item:x`. */
+export function toRef(s: string): string {
+  if (s.startsWith("#")) return `@tag:item:${s.slice(1)}`;
+  return s.startsWith("@") ? s : `@item:${s}`;
+}
+
+/** An ingredient (a reference or a list of them) as a cell: ids joined by ` | `. */
+function cellOf(v: unknown): string | null {
+  const list = (Array.isArray(v) ? v : [v]).map(str).filter((s): s is string => !!s);
+  return list.length ? list.map(fromRef).join(" | ") : null;
+}
+
+/** A cell as an ingredient: one reference, or a list of them. */
+function ingredientOf(cell: string): string | string[] {
+  const alts = cell.split("|").map((s) => s.trim()).filter(Boolean).map(toRef);
+  return alts.length === 1 ? alts[0] : alts;
+}
+
+/** The recipe types the editor lays out; other kinds are edited as code. */
+export const EDITED_TYPES: readonly string[] = ["shaped", "shapeless", "smelting"];
+
+/** The recipe in `text`, or `null` when it isn't one the editor lays out (not an object, another kind). */
 export function parseRecipe(text: string): Recipe | null {
   let j: unknown;
   try {
-    j = JSON.parse(text);
+    j = parseDataValue(text);
   } catch {
     return null;
   }
   if (!j || typeof j !== "object" || Array.isArray(j)) return null;
   const o = j as Record<string, unknown>;
+  if (o.type !== undefined && !EDITED_TYPES.includes(String(o.type))) return null;
   const r = emptyRecipe();
   r.type = o.type === "shapeless" || o.type === "smelting" ? o.type : "shaped";
-  r.result = str(o.result) ?? "";
+  r.result = fromRef(str(o.result) ?? "");
   r.count = Math.max(1, Math.min(64, Math.round(num(o.count, 1))));
   r.experience = num(o.experience, DEFAULT_EXPERIENCE);
   r.cookTime = Math.round(num(o.cook_time, DEFAULT_COOK_TIME));
@@ -52,21 +87,21 @@ export function parseRecipe(text: string): Recipe | null {
     const key = o.key && typeof o.key === "object" ? (o.key as Record<string, unknown>) : {};
     pattern.slice(0, 3).forEach((row, y) =>
       [...row].slice(0, 3).forEach((c, x) => {
-        r.cells[y * 3 + x] = c === " " ? null : (str(key[c]) ?? null);
+        r.cells[y * 3 + x] = c === " " ? null : cellOf(key[c]);
       })
     );
   } else if (r.type === "shapeless") {
-    const list = Array.isArray(o.ingredients) ? o.ingredients.map(str).filter((s): s is string => !!s) : [];
+    const list = Array.isArray(o.ingredients) ? o.ingredients.map(cellOf).filter((s): s is string => !!s) : [];
     list.slice(0, GRID).forEach((s, i) => (r.cells[i] = s));
   } else {
-    r.cells[0] = str(o.ingredient);
+    r.cells[0] = cellOf(o.ingredient);
   }
   return r;
 }
 
 /** A letter for `item`: its name's first letter when free, else the next free A–Z. */
 function letterFor(item: string, used: Set<string>): string {
-  const name = item.replace(/^#/, "").split(":").pop() ?? "";
+  const name = item.replace(/^#/, "").split("|")[0].trim().split(":").pop() ?? "";
   const first = name.charAt(0).toUpperCase();
   if (/[A-Z]/.test(first) && !used.has(first)) return first;
   for (let c = 65; c <= 90; c++) {
@@ -76,7 +111,7 @@ function letterFor(item: string, used: Set<string>): string {
   return "#";
 }
 
-/** The `.yrecipe` JSON of `r`. */
+/** The `.yrecipe` text of `r`. */
 export function serializeRecipe(r: Recipe): string {
   const out: Record<string, unknown> = { ...r.extra, type: r.type };
   if (r.type === "shaped") {
@@ -101,13 +136,13 @@ export function serializeRecipe(r: Recipe): string {
         .join("")
     );
     out.pattern = pattern;
-    out.key = Object.fromEntries([...letters].map(([item, l]) => [l, item]));
+    out.key = Object.fromEntries([...letters].map(([item, l]) => [l, ingredientOf(item)]));
   } else if (r.type === "shapeless") {
-    out.ingredients = r.cells.filter((c): c is string => !!c);
+    out.ingredients = r.cells.filter((c): c is string => !!c).map(ingredientOf);
   } else {
-    out.ingredient = r.cells[0] ?? "";
+    out.ingredient = r.cells[0] ? ingredientOf(r.cells[0]) : "";
   }
-  out.result = r.result;
+  out.result = r.result ? toRef(r.result) : "";
   if (r.count !== 1) out.count = r.count;
   if (r.type === "smelting") {
     if (r.experience !== DEFAULT_EXPERIENCE) out.experience = r.experience;

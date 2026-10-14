@@ -25,3 +25,19 @@ pub fn read_object(text: &str) -> Option<Map<String, Value>> {
         _ => None,
     }
 }
+
+/// `v` with its references as the runtime writes ids: `@item:x` → `x`,
+/// `@tag:item:x` → `#x` (what yog-book's renderer and the hosts read).
+pub fn runtime_ids(v: &mut Value) {
+    match v {
+        Value::String(s) if s.starts_with('@') => match yog_data::typed::classify(s) {
+            Ok(yog_data::Value::Ref(r)) => *s = r.id,
+            Ok(yog_data::Value::Tag(r)) => *s = format!("#{}", r.id),
+            Ok(yog_data::Value::Str(plain)) => *s = plain,
+            _ => {}
+        },
+        Value::Array(items) => items.iter_mut().for_each(runtime_ids),
+        Value::Object(m) => m.values_mut().for_each(runtime_ids),
+        _ => {}
+    }
+}

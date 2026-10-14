@@ -11,7 +11,7 @@ describe("recipeModel", () => {
     const moved = { ...r, cells: [null, null, null, null, ...r.cells.slice(0, 2), null, ...r.cells.slice(4, 5), null] };
     const j = JSON.parse(serializeRecipe(moved));
     expect(j.pattern).toEqual(["IS", "S "]);
-    expect(j.key).toEqual({ I: "minecraft:iron_ingot", S: "minecraft:stick" });
+    expect(j.key).toEqual({ I: "@item:minecraft:iron_ingot", S: "@item:minecraft:stick" });
     expect(j.id).toBe("mymod:x");
     expect(j.count).toBeUndefined();
   });
@@ -27,16 +27,31 @@ describe("recipeModel", () => {
   it("shapeless and smelting", () => {
     const s = parseRecipe(JSON.stringify({ type: "shapeless", ingredients: ["minecraft:paper", "#c:dusts"], result: "a:b", count: 2 }))!;
     expect(s.cells.slice(0, 3)).toEqual(["minecraft:paper", "#c:dusts", null]);
-    expect(JSON.parse(serializeRecipe(s))).toMatchObject({ ingredients: ["minecraft:paper", "#c:dusts"], count: 2 });
+    expect(JSON.parse(serializeRecipe(s))).toMatchObject({ ingredients: ["@item:minecraft:paper", "@tag:item:c:dusts"], count: 2 });
     const f = parseRecipe(JSON.stringify({ type: "smelting", ingredient: "minecraft:sand", result: "minecraft:glass", cook_time: 100 }))!;
     expect(f.cells[0]).toBe("minecraft:sand");
     const j = JSON.parse(serializeRecipe(f));
-    expect(j).toMatchObject({ ingredient: "minecraft:sand", cook_time: 100 });
+    expect(j).toMatchObject({ ingredient: "@item:minecraft:sand", cook_time: 100 });
     expect(j.experience).toBeUndefined();
   });
 
   it("isn't a recipe", () => {
     expect(parseRecipe("[1]")).toBeNull();
     expect(parseRecipe("{")).toBeNull();
+    expect(parseRecipe('{ type: "smithing" }'), "another kind: edited as code, never overwritten").toBeNull();
+  });
+
+  it("reads and writes Yog Data references, alternatives kept", () => {
+    const r = parseRecipe(`{
+      // a comment
+      type: "shaped", pattern: ["CI"],
+      key: { C: ["@item:minecraft:iron_ingot", "@tag:item:c:iron_ingots"], I: "@item:minecraft:stick" },
+      result: "@item:mymod:pick",
+    }`)!;
+    expect(r.cells.slice(0, 2)).toEqual(["minecraft:iron_ingot | #c:iron_ingots", "minecraft:stick"]);
+    expect(r.result).toBe("mymod:pick");
+    const j = JSON.parse(serializeRecipe(r));
+    expect(j.key).toEqual({ I: ["@item:minecraft:iron_ingot", "@tag:item:c:iron_ingots"], S: "@item:minecraft:stick" });
+    expect(j.result).toBe("@item:mymod:pick");
   });
 });

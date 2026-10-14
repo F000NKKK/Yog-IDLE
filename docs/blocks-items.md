@@ -234,17 +234,33 @@ IDLE opens it as a crafting table (the JSON is a click away).
 
 ```jsonc
 // shaped: a pattern of key characters (space = empty), 1–3 rows of 1–3
-{ "type": "shaped", "pattern": ["ISI", " S "], "key": { "I": "minecraft:iron_ingot", "S": "minecraft:stick" },
-  "result": "mymod:hammer", "count": 1 }
+{ type: "shaped", pattern: ["ISI", " S "],
+  key: { I: "@item:minecraft:iron_ingot", S: "@item:minecraft:stick" },
+  result: "@item:mymod:hammer" }
 
-// shapeless: 1–9 ingredients in any arrangement
-{ "type": "shapeless", "ingredients": ["minecraft:paper", "#c:dusts"], "result": "mymod:note", "count": 2 }
+// shapeless: 1–9 ingredients in any arrangement; an ingredient may be a
+// list — any of them does
+{ type: "shapeless", ingredients: ["@item:minecraft:paper", ["@tag:item:c:dusts", "@item:minecraft:sugar"]],
+  result: "@item:mymod:note", count: 2 }
 
-// smelting: one ingredient; experience (default 0.1), cook_time in ticks (default 200)
-{ "type": "smelting", "ingredient": "#c:ores", "result": "mymod:ingot", "experience": 0.7 }
+// smelting (blasting, smoking, campfire_cooking): one ingredient;
+// experience (default 0.1), cook_time in ticks (the station's default)
+{ type: "smelting", ingredient: "@tag:item:c:ores", result: "@item:mymod:ingot", experience: 0.7 }
+
+// stonecutting: one ingredient; smithing: template, base, addition
+{ type: "smithing", template: "@item:minecraft:netherite_upgrade_smithing_template",
+  base: "@item:mymod:ruby_sword", addition: "@item:minecraft:netherite_ingot", result: "@item:mymod:dark_sword" }
+
+// the mod's own kind, for its machines and books: named slots and values
+{ type: "mymod:infusion", slots: { core: ["@item:minecraft:diamond"], ring: ["@tag:item:c:dusts"] },
+  values: { time: 200 }, result: "@item:minecraft:emerald" }
 ```
 
-Items are written with their namespace (`minecraft:paper`); an ingredient
-may be an item tag (`#c:dusts`), the result can't. `yog build` checks that
-the mod's own items and blocks a recipe names exist, and registers every
-recipe — no code needed.
+A recipe is Yog Data (comments, trailing commas, unquoted names are
+fine). Items are references — `@item:minecraft:paper`, a tag
+`@tag:item:c:dusts` — so a bare `minecraft:paper` is an error that says
+how to write it. `yog build` checks every item a recipe names — the mod's
+own, Minecraft's on every version Yog supports, other mods' ids declared
+in `yog.toml` — and registers every recipe, no code needed. IDLE lays out
+shaped, shapeless and smelting recipes as a crafting table; other kinds
+open as code.
