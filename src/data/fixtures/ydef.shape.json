@@ -6,7 +6,7 @@
   "defs": {
     "Def": {
       "kind": "enum",
-      "doc": "A `.ydef`: an entry of some kind of definition, named by reference (`@<kind>:<id>`) everywhere else. Kinds: `ladder` (an ordered scale) and `level` (a step on one).",
+      "doc": "A `.ydef`: an entry of some kind of definition, named by reference (`@<kind>:<id>`) everywhere else. Kinds: `ladder` (an ordered scale), `level` (a step on one) and `sound_group` (what a block sounds like).",
       "tag": "kind",
       "variants": [
         {
@@ -55,6 +55,77 @@
                 }
               },
               "required": false
+            }
+          ]
+        },
+        {
+          "name": "sound_group",
+          "doc": "What blocks naming it (`sound: \"@sound_group:mymod:crystal\"`) sound like: five sound events and a volume and pitch. The game's groups are built-in ones (`stone`, `amethyst`…).",
+          "fields": [
+            {
+              "name": "id",
+              "shape": {
+                "kind": "string"
+              },
+              "required": true
+            },
+            {
+              "name": "break",
+              "doc": "Sound event ids (`minecraft:block.stone.break`, `mymod:crystal.break`).",
+              "shape": {
+                "kind": "string"
+              },
+              "required": true
+            },
+            {
+              "name": "step",
+              "shape": {
+                "kind": "string"
+              },
+              "required": true
+            },
+            {
+              "name": "place",
+              "shape": {
+                "kind": "string"
+              },
+              "required": true
+            },
+            {
+              "name": "hit",
+              "shape": {
+                "kind": "string"
+              },
+              "required": true
+            },
+            {
+              "name": "fall",
+              "shape": {
+                "kind": "string"
+              },
+              "required": true
+            },
+            {
+              "name": "volume",
+              "shape": {
+                "kind": "float"
+              },
+              "required": false,
+              "range": [
+                0.0,
+                10.0
+              ]
+            },
+            {
+              "name": "pitch",
+              "shape": {
+                "kind": "float"
+              },
+              "required": false,
+              "range": [
+                0.0,
+                10.0
+              ]
             }
           ]
         }

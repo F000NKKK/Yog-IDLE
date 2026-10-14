@@ -289,6 +289,34 @@ pub fn strings(file: &Path) -> Vec<String> {
     out
 }
 
+/// What a block's `sound` offers: the game's sound groups by short name,
+/// then the mod's own (`.ydef` `kind: "sound_group"`) as `@sound_group:` refs.
+pub fn sound_groups(file: &Path) -> Vec<String> {
+    let mut out: Vec<String> = yog_formats::def::SoundGroup::built_ins()
+        .iter()
+        .map(|g| g.id.trim_start_matches("minecraft:").to_string())
+        .collect();
+    let Some(root) = mod_root(file) else {
+        return out;
+    };
+    let ns = mod_id(&root).unwrap_or_else(|| "minecraft".into());
+    let mut own = Vec::new();
+    for p in find(&root.join("content"), "ydef") {
+        let Some(doc) = std::fs::read_to_string(&p).ok().and_then(|t| crate::data::read_object(&t)) else {
+            continue;
+        };
+        if doc.get("kind").and_then(Value::as_str) != Some("sound_group") {
+            continue;
+        }
+        if let Some(id) = doc.get("id").and_then(Value::as_str) {
+            own.push(format!("@sound_group:{}", if id.contains(':') { id.to_string() } else { format!("{ns}:{id}") }));
+        }
+    }
+    own.sort();
+    out.extend(own);
+    out
+}
+
 /// Everything the texture picker offers.
 pub fn textures(file: &Path) -> Vec<TextureChoice> {
     let mut out = Vec::new();
@@ -469,6 +497,21 @@ mod tests {
         png.extend(16u32.to_be_bytes());
         png.extend(64u32.to_be_bytes());
         assert_eq!(image_size(&png), Some((16, 64)));
+    }
+
+    #[test]
+    fn sound_groups_are_the_games_then_the_mods() {
+        let dir = std::env::temp_dir().join(format!("idle-sounds-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(dir.join("content")).unwrap();
+        std::fs::write(dir.join("yog.toml"), "[mod]\nid = \"mymod\"\n").unwrap();
+        std::fs::write(dir.join("content/crystal.ydef"), r#"{ kind: "sound_group", id: "crystal" }"#).unwrap();
+        std::fs::write(dir.join("content/mythril.ydef"), r#"{ kind: "level", id: "mythril" }"#).unwrap();
+        let all = sound_groups(&dir.join("content/ore.yblock"));
+        assert!(all.contains(&"stone".to_string()) && all.contains(&"amethyst".to_string()));
+        assert_eq!(all.last().map(String::as_str), Some("@sound_group:mymod:crystal"));
+        assert!(!all.iter().any(|s| s.contains("mythril")));
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]

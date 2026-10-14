@@ -30,7 +30,6 @@ import {
   parseContent,
   RENDER_LAYERS,
   serializeContent,
-  SOUNDS,
   templateElements,
   templateOf,
   TEMPLATES,
@@ -224,7 +223,7 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
   const [viewRequest, setViewRequest] = useState<{ view: ViewName; key: number } | null>(null);
   const [images, setImages] = useState<Record<string, LoadedTexture | undefined>>({});
   const [parents, setParents] = useState<Record<string, ParentModel | null>>({});
-  const [choices, setChoices] = useState<{ textures: string[]; strings: string[] }>({ textures: [], strings: [] });
+  const [choices, setChoices] = useState<{ textures: string[]; strings: string[]; sounds: string[] }>({ textures: [], strings: [], sounds: [] });
   const rootRef = useRef<HTMLDivElement>(null);
 
   // Paint mode: the textures' pixels, decoded from disk (`decoded`), painted
@@ -333,7 +332,8 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
     void Promise.all([
       invoke<{ value: string }[]>("content_textures", { path }).catch(() => []),
       invoke<string[]>("content_strings", { path }).catch(() => []),
-    ]).then(([tex, strings]) => live && setChoices({ textures: tex.map((c) => c.value), strings }));
+      invoke<string[]>("content_sound_groups", { path }).catch(() => []),
+    ]).then(([tex, strings, sounds]) => live && setChoices({ textures: tex.map((c) => c.value), strings, sounds }));
     return () => {
       live = false;
     };
@@ -949,7 +949,10 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
       out.push(
         num("hardness", t("Hardness"), c, b.hardness, (v) => setB((x) => void (x.hardness = v)), { min: -1, description: t("Mining time factor (stone 1.5, -1 unbreakable).") }),
         num("resistance", t("Blast Resistance"), c, b.resistance, (v) => setB((x) => void (x.resistance = v)), { min: 0 }),
-        choice("sound", t("Sound"), c, b.sound, SOUNDS, (v) => setB((x) => void (x.sound = v))),
+        text("sound", t("Sound"), c, b.sound, (v) => setB((x) => void (x.sound = v || undefined)), {
+          suggestions: choices.sounds,
+          description: t("One of the game's sound groups (stone, wood, metal, amethyst…) — or the mod's own, @sound_group:mymod:crystal (a .ydef)."),
+        }),
         num("light", t("Light Level"), c, b.light, (v) => setB((x) => void (x.light = v)), { min: 0, max: 15, int: true }),
         text(
           "tool",

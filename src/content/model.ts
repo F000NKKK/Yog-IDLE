@@ -103,7 +103,6 @@ export interface ContentFile {
 export type Kind = "block" | "item";
 export const kindOf = (path: string): Kind | null => (/\.yblock$/i.test(path) ? "block" : /\.yitem$/i.test(path) ? "item" : null);
 
-export const SOUNDS = ["stone", "wood", "grass", "gravel", "sand", "snow", "metal", "glass", "wool", "nether_brick"];
 /** The game's tools and tiers by short name; a mod's are `@tag:block:…` tags. */
 export const TOOLS = ["pickaxe", "axe", "shovel", "hoe"];
 export const TOOL_LEVELS = ["wood", "stone", "iron", "diamond", "netherite"];

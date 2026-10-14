@@ -671,6 +671,15 @@ async fn content_strings(state: State<'_, AppState>, path: String) -> Result<Vec
         .map_err(|e| e.to_string())
 }
 
+/// The sound groups a block of the mod at `path` can name.
+#[tauri::command]
+async fn content_sound_groups(state: State<'_, AppState>, path: String) -> Result<Vec<String>, String> {
+    validate_within_roots(&state, Path::new(&path))?;
+    tauri::async_runtime::spawn_blocking(move || content::sound_groups(Path::new(&path)))
+        .await
+        .map_err(|e| e.to_string())
+}
+
 /// A model by id with its parents flattened, for previewing a raw parent.
 #[tauri::command]
 async fn content_parent_model(
@@ -1689,6 +1698,7 @@ pub fn run() {
         content_textures,
         content_save_texture,
         content_strings,
+        content_sound_groups,
         content_parent_model,
         content_import,
         yui_designer_render,

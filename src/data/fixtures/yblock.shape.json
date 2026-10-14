@@ -695,11 +695,14 @@
         },
         {
           "name": "sound",
+          "doc": "How it sounds: one of the game's sound groups (`stone`, `wood`, `metal`, `amethyst`, `copper`…) or a mod's (`@sound_group:mymod:crystal`, a `.ydef`).",
           "shape": {
             "kind": "optional",
             "of": {
-              "kind": "def",
-              "name": "Sound"
+              "kind": "ref",
+              "of": [
+                "sound_group"
+              ]
             }
           },
           "required": false
@@ -842,42 +845,6 @@
             "kind": "bool"
           },
           "required": false
-        }
-      ]
-    },
-    "Sound": {
-      "kind": "enum",
-      "doc": "The sound groups the loaders map.",
-      "variants": [
-        {
-          "name": "stone"
-        },
-        {
-          "name": "wood"
-        },
-        {
-          "name": "grass"
-        },
-        {
-          "name": "gravel"
-        },
-        {
-          "name": "sand"
-        },
-        {
-          "name": "snow"
-        },
-        {
-          "name": "metal"
-        },
-        {
-          "name": "glass"
-        },
-        {
-          "name": "wool"
-        },
-        {
-          "name": "nether_brick"
         }
       ]
     },
