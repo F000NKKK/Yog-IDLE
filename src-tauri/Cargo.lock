@@ -5733,7 +5733,6 @@ dependencies = [
 name = "yog-formats"
 version = "0.4.0"
 dependencies = [
- "yog-book",
  "yog-data",
  "yog-registry",
  "yog-worldgen",
