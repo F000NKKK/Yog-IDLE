@@ -116,7 +116,7 @@ function cssColor(color: string): string {
  * has one, straight to disk otherwise. Every edit rewrites the file
  * formatted: 2-space indent, entry order and comments kept.
  */
-export function YresEditor({ path, content, onChange, readOnly, contentVersion }: EditorProps) {
+export function YresEditor({ path, content, onChange, readOnly }: EditorProps) {
   const t = useT();
   const locale = useLocale();
   const { tabs, updateContent, setView } = useOpenFiles();
