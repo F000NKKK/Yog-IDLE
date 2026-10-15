@@ -65,17 +65,6 @@ import { designText, useDesignResources, withDesignResources } from "../lang/des
 import "./ScreenDesigner.css";
 import { BookPagePreview, isBookPage } from "./BookPagePreview";
 
-/** What Properties shows for the designer's selection (`setSelection` kind `"yui.widget"`). */
-export interface YuiSelectionData {
-  path: string;
-  objectName: string;
-  objectType: string;
-  /** A component instance's description (its `.yui`'s `description`). */
-  objectDescription?: string;
-  objectKey: string;
-  properties: PropertyDescriptor[];
-}
-
 /**
  * The XAML pane of the split view, as the designer sees it (`YuiSplitEditor`):
  * there the text is the document — the designer's edits are written into it
@@ -852,16 +841,16 @@ function CanvasDesigner({ path, content, onChange, readOnly, contentVersion, lin
   // Image sources and previews load in the background: re-publish when they arrive.
   useSyncExternalStore(subscribeImageSources, imageSourcesVersion);
 
-  const publish = () => {
+  /** The selected widgets' rows — the designer's property context (what Properties shows while it's active). */
+  const propertySet = (): PropertySet | null => {
     const s = sessionRef.current;
-    if (!s) return;
+    if (!s) return null;
     const uids = s.selection.length ? s.selection : [s.doc.root.uid];
     const nodes = uids.map((uid) => findNode(s.doc.root, uid)).filter((n): n is YuiNode => !!n);
     const first = nodes[0];
-    if (!first) return;
+    if (!first) return null;
     const instanceOf = nodes.length === 1 ? findComponent(components, first.kind) : null;
-    const data: YuiSelectionData = {
-      path,
+    return {
       objectName: nodes.length > 1 ? tn(nodes.length, "{count} widget", "{count} widgets", { count: nodes.length }) : (first.attrs.id ?? first.attrs.name ?? ""),
       objectType:
         nodes.length > 1

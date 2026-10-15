@@ -47,6 +47,8 @@ registerTranslations(
     "Drawing…": "Рисую…",
     "Click the book like a reader would — entries, page arrows, home.": "Кликайте по книге, как читатель: записи, стрелки страниц, домой.",
     "Texts may refer to resources: @Strings.key, @item:mymod:ruby, @block:stone.": "Тексты могут ссылаться на ресурсы: @Strings.key, @item:mymod:ruby, @block:stone.",
+    "One per line.": "По одному в строке.",
+    "Not a colour: #AARRGGBB.": "Не цвет: #AARRGGBB.",
     Type: "Тип",
     Spotlight: "Предмет",
     Crafting: "Крафт",

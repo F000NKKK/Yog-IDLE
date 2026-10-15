@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { useT, type EditorProps } from "substrate-platform-ui";
+import { Inspector, useT, type EditorProps, type PropertyDescriptor, type PropertyValue } from "substrate-platform-ui";
 import { imagePreview, imageSourcesVersion, subscribeImageSources } from "../designer/imageSources";
 import { designText, useDesignResources } from "../lang/designResources";
 import {
@@ -269,60 +269,66 @@ export function BookEditor({ path, content, onChange, readOnly }: EditorProps) {
     }
   })();
 
-  const field = (f: Field) => {
+  /** A field as an inspector row: how the book's value is edited and written back. */
+  const property = (f: Field): PropertyDescriptor => {
     const v = target.obj[f.key];
     const set = (value: Json | undefined) => target.set(withField(target.obj, f.key, value));
     const id = typeof v === "string" ? refId(v) : "";
-    const icon = (f.kind === "item" || f.kind === "entity") && id && !id.startsWith("@")
-      ? imagePreview(path, f.kind === "item" ? (id.endsWith(".png") ? id : `item:${id}`) : `item:${id}_spawn_egg`)
-      : null;
-    let input;
+    const image =
+      (f.kind === "item" || f.kind === "entity") && id && !id.startsWith("@")
+        ? imagePreview(path, f.kind === "item" ? (id.endsWith(".png") ? id : `item:${id}`) : `item:${id}_spawn_egg`) ?? undefined
+        : undefined;
+    const base = { id: f.key, name: t(f.label), readOnly };
     switch (f.kind) {
       case "multiline":
-        input = <textarea rows={f.key === "data" ? 8 : 4} value={str(v)} disabled={readOnly} onChange={(e) => set(e.target.value)} />;
-        break;
-      case "number":
-        input = <input type="number" value={typeof v === "number" ? v : ""} disabled={readOnly} onChange={(e) => set(e.target.value === "" ? undefined : Number(e.target.value))} />;
-        break;
-      case "bool":
-        input = <input type="checkbox" checked={v === true} disabled={readOnly} onChange={(e) => set(e.target.checked ? true : undefined)} />;
-        break;
-      case "color":
-        input = (
-          <input
-            type="text"
-            value={typeof v === "number" ? `#${(v >>> 0).toString(16).toUpperCase().padStart(8, "0")}` : ""}
-            disabled={readOnly}
-            onChange={(e) => {
-              const n = parseInt(e.target.value.replace(/^#|^0x/i, ""), 16);
-              if (!Number.isNaN(n)) set(n >>> 0);
-            }}
-          />
-        );
-        break;
+        return { ...base, kind: "text", value: str(v), onCommit: (x) => set(String(x)) };
       case "list":
-        input = (
-          <textarea
-            rows={3}
-            value={Array.isArray(v) ? v.map(str).join("\n") : ""}
-            disabled={readOnly}
-            onChange={(e) => set(e.target.value.split("\n").map((s) => s.trim()).filter(Boolean))}
-          />
-        );
-        break;
+        return {
+          ...base,
+          kind: "text",
+          description: t("One per line."),
+          value: Array.isArray(v) ? v.map(str).join("\n") : "",
+          onCommit: (x) => set(String(x).split("\n").map((l) => l.trim()).filter(Boolean)),
+        };
+      case "number":
+        return { ...base, kind: "number", value: typeof v === "number" ? v : null, onCommit: (x) => set(Number(x)) };
+      case "bool":
+        return { ...base, value: v === true, onCommit: (x) => set(x === true ? true : undefined) };
+      case "color": {
+        const hex = typeof v === "number" ? `#${(v >>> 0).toString(16).toUpperCase().padStart(8, "0")}` : "";
+        return {
+          ...base,
+          value: hex,
+          // ARGB → the swatch's #RRGGBBAA.
+          swatch: hex ? `#${hex.slice(3)}${hex.slice(1, 3)}` : undefined,
+          validate: (x) => (Number.isNaN(parseInt(String(x).replace(/^#|^0x/i, ""), 16)) ? t("Not a colour: #AARRGGBB.") : null),
+          onCommit: (x) => set(parseInt(String(x).replace(/^#|^0x/i, ""), 16) >>> 0),
+        };
+      }
       default:
-        input = <input type="text" value={str(v)} disabled={readOnly} onChange={(e) => set(e.target.value)} />;
+        return { ...base, value: str(v), image, onCommit: (x) => set(String(x) || undefined) };
     }
-    return (
-      <label key={f.key} className={`book-field book-field-${f.kind}`}>
-        <span>{t(f.label)}</span>
-        <div className="book-field-input">
-          {icon && <img src={icon} alt="" />}
-          {input}
-        </div>
-      </label>
-    );
   };
+
+  const properties: PropertyDescriptor[] = [
+    ...(sel.kind === "page"
+      ? [
+          {
+            id: "type",
+            name: t("Type"),
+            readOnly,
+            value: str(target.obj.type),
+            options: PAGE_TYPES.map((p) => p.type),
+            optionLabel: (type: string) => t(PAGE_TYPES.find((p) => p.type === type)?.label ?? type),
+            onCommit: (x: PropertyValue) => target.set({ ...newPage(String(x)), ...keep(target.obj, String(x)) }),
+          } satisfies PropertyDescriptor,
+        ]
+      : []),
+    ...(sel.kind === "category" || sel.kind === "entry"
+      ? [{ id: "id", name: t("Id"), readOnly, value: str(target.obj.id), onCommit: (x: PropertyValue) => target.set({ ...target.obj, id: String(x) }) }]
+      : []),
+    ...target.fields.map(property),
+  ];
 
   // ── Outline ───────────────────────────────────────────────────────────────
 
@@ -406,33 +412,13 @@ export function BookEditor({ path, content, onChange, readOnly }: EditorProps) {
           {rendered?.image && rendered.error && <div className="book-preview-error">{rendered.error}</div>}
           <div className="book-preview-hint">{t("Click the book like a reader would — entries, page arrows, home.")}</div>
         </div>
-        <div className="book-properties">
-          <div className="book-properties-title">{target.title}</div>
-          {sel.kind === "page" && (
-            <label className="book-field">
-              <span>{t("Type")}</span>
-              <select
-                value={str(target.obj.type)}
-                disabled={readOnly}
-                onChange={(e) => target.set({ ...newPage(e.target.value), ...keep(target.obj, e.target.value) })}
-              >
-                {PAGE_TYPES.map((p) => (
-                  <option key={p.type} value={p.type}>{t(p.label)}</option>
-                ))}
-              </select>
-            </label>
-          )}
-          {sel.kind !== "book" && sel.kind !== "page" && (
-            <label className="book-field">
-              <span>{t("Id")}</span>
-              <input type="text" value={str(target.obj.id)} disabled={readOnly} onChange={(e) => target.set({ ...target.obj, id: e.target.value })} />
-            </label>
-          )}
-          {target.fields.map(field)}
-          <div className="book-properties-hint">
-            {t("Texts may refer to resources: @Strings.key, @item:mymod:ruby, @block:stone.")}
-          </div>
-        </div>
+        <Inspector
+          objectName={target.title}
+          objectKey={JSON.stringify(sel)}
+          properties={properties}
+          persistKey="yog.book.inspector"
+          hint={t("Texts may refer to resources: @Strings.key, @item:mymod:ruby, @block:stone.")}
+        />
       </div>
     </div>
   );
