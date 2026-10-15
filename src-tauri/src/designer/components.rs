@@ -47,7 +47,7 @@ pub const INNER: char = '/';
 // ── Parsing ────────────────────────────────────────────────────────────────────
 
 fn element(e: &BytesStart, uid: String) -> Result<YuiNode, String> {
-    let kind = String::from_utf8_lossy(e.name().as_ref()).into_owned();
+    let kind = e.name().into_inner().to_string();
     let mut attrs = HashMap::new();
     for a in e.attributes() {
         let a = a.map_err(|e| e.to_string())?;
@@ -55,7 +55,7 @@ fn element(e: &BytesStart, uid: String) -> Result<YuiNode, String> {
             .normalized_value(XmlVersion::Implicit1_0)
             .map_err(|e| e.to_string())?;
         attrs.insert(
-            String::from_utf8_lossy(a.key.as_ref()).into_owned(),
+            a.key.into_inner().to_string(),
             value.into_owned(),
         );
     }
