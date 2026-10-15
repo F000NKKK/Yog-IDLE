@@ -703,6 +703,26 @@ async fn content_save_texture(
     .map_err(|e| e.to_string())?
 }
 
+/// Writes a texture's animation as its `.png.mcmeta` (`None` removes it) —
+/// beside the png `content_save_texture` writes, never outside the mod.
+#[tauri::command]
+async fn content_save_texture_animation(
+    state: State<'_, AppState>,
+    path: String,
+    texture: String,
+    animation: Option<content::Animation>,
+) -> Result<String, String> {
+    validate_within_roots(&state, Path::new(&path))?;
+    if let Some(target) = content::texture_target(Path::new(&path), &texture) {
+        validate_within_roots(&state, &target)?;
+    }
+    tauri::async_runtime::spawn_blocking(move || {
+        content::write_animation(Path::new(&path), &texture, animation.as_ref()).map(|p| p.to_string_lossy().into_owned())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
 /// The texture picker's choices for a content file.
 #[tauri::command]
 async fn content_textures(
@@ -1780,6 +1800,7 @@ pub fn run() {
         content_texture,
         content_textures,
         content_save_texture,
+        content_save_texture_animation,
         content_strings,
         content_sound_groups,
         content_parent_model,

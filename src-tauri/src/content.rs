@@ -55,12 +55,20 @@ fn find(dir: &Path, ext: &str) -> Vec<PathBuf> {
 /// The png bytes of a texture as a content file names it: `@Set.name`,
 /// `path.png` (in `resources/`), or a texture id (`ns:block/x`).
 fn texture_bytes(file: &Path, texture: &str) -> Result<Vec<u8>, String> {
+    texture_file(file, texture, "png")
+}
+
+/// A file of texture `texture` — its `png`, or the `png.mcmeta` beside it —
+/// from wherever the texture is: a `.yres` image, `resources/`, the mod's
+/// assets or the Minecraft client jar.
+fn texture_file(file: &Path, texture: &str, ext: &str) -> Result<Vec<u8>, String> {
     let root = mod_root(file);
     if let Some(r) = texture.strip_prefix('@') {
         let root = root.as_deref().ok_or("not in a mod")?;
         let png =
             yres_image(root, r).ok_or_else(|| format!("no image {texture} in resources/*.yres"))?;
-        return std::fs::read(&png).map_err(|e| format!("{}: {e}", png.display()));
+        let p = png.with_extension(ext);
+        return std::fs::read(&p).map_err(|e| format!("{}: {e}", p.display()));
     }
     if let Some(stem) = texture.strip_suffix(".png") {
         let root = root.as_deref().ok_or("not in a mod")?;
@@ -70,20 +78,20 @@ fn texture_bytes(file: &Path, texture: &str) -> Result<Vec<u8>, String> {
         if rel.split('/').any(|p| p == "..") {
             return Err("a path inside resources/".into());
         }
-        let p = root.join("resources").join(format!("{rel}.png"));
-        return std::fs::read(&p).map_err(|_| format!("resources/{rel}.png doesn't exist"));
+        let p = root.join("resources").join(format!("{rel}.{ext}"));
+        return std::fs::read(&p).map_err(|_| format!("resources/{rel}.{ext} doesn't exist"));
     }
     let (ns, path) = split_id(texture);
     // A texture `yog build` bundles from `resources/` (`mymod:block/x` = `resources/block/x.png`).
     if let Some(root) = &root
         && mod_id(root).as_deref() == Some(ns)
-        && let Ok(b) = std::fs::read(root.join("resources").join(format!("{path}.png")))
+        && let Ok(b) = std::fs::read(root.join("resources").join(format!("{path}.{ext}")))
     {
         return Ok(b);
     }
     Resources::for_mod(root.as_deref())
-        .read(ns, &format!("textures/{path}.png"))
-        .ok_or_else(|| format!("texture {ns}:{path} not found (mod assets/, resources/ or the Minecraft client jar)"))
+        .read(ns, &format!("textures/{path}.{ext}"))
+        .ok_or_else(|| format!("texture {ns}:{path}.{ext} not found (mod assets/, resources/ or the Minecraft client jar)"))
 }
 
 /// The mod's `content/` file defining item or block `id` (`kind`:
@@ -178,11 +186,109 @@ pub fn content_icon(root: &Path, id: &str) -> Option<Vec<u8>> {
 pub struct Texture {
     /// `data:image/png;base64,...`
     pub url: String,
-    /// `.mcmeta` animation: frames are stacked, each `width` tall.
-    pub animated: bool,
+    /// Its `.png.mcmeta` animation, if it has one.
+    pub animation: Option<Animation>,
     /// The texture is the mod's own file — the editor can paint it in place
     /// (otherwise painting copies it into the mod first).
     pub writable: bool,
+}
+
+/// A texture's animation (`.png.mcmeta`), as the game plays it: frames
+/// `frame_width`×`frame_height` laid row by row over the image, shown in
+/// `frames` order, each for its `time` in ticks.
+#[derive(Serialize, serde::Deserialize, Clone, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct Animation {
+    pub frame_width: u32,
+    pub frame_height: u32,
+    pub frames: Vec<AnimationFrame>,
+    /// Blends each frame into the next (the game's `interpolate`).
+    pub interpolate: bool,
+}
+
+#[derive(Serialize, serde::Deserialize, Clone, Debug, PartialEq)]
+pub struct AnimationFrame {
+    pub index: u32,
+    /// Ticks (1/20 s).
+    pub time: u32,
+}
+
+impl Animation {
+    /// The animation of a `size` image from its `.mcmeta` text; `None` when it has none.
+    pub fn read(meta: &str, (w, h): (u32, u32)) -> Option<Animation> {
+        let doc: Value = serde_json::from_str(meta).ok()?;
+        let a = doc.get("animation")?;
+        let num = |k: &str| a.get(k).and_then(Value::as_u64).map(|n| n as u32);
+        // The game's default frame: square, the image's smaller side.
+        let side = w.min(h);
+        let fw = num("width").unwrap_or(side).max(1);
+        let fh = num("height").unwrap_or(side).max(1);
+        let count = (w / fw) * (h / fh);
+        if count == 0 {
+            return None;
+        }
+        let frametime = num("frametime").unwrap_or(1).max(1);
+        let frames = match a.get("frames").and_then(Value::as_array) {
+            Some(list) => list
+                .iter()
+                .filter_map(|f| match f {
+                    Value::Number(n) => Some(AnimationFrame { index: n.as_u64()? as u32, time: frametime }),
+                    Value::Object(o) => Some(AnimationFrame {
+                        index: o.get("index")?.as_u64()? as u32,
+                        time: o.get("time").and_then(Value::as_u64).map_or(frametime, |t| (t as u32).max(1)),
+                    }),
+                    _ => None,
+                })
+                .filter(|f| f.index < count)
+                .collect(),
+            None => (0..count).map(|index| AnimationFrame { index, time: frametime }).collect(),
+        };
+        Some(Animation {
+            frame_width: fw,
+            frame_height: fh,
+            frames,
+            interpolate: a.get("interpolate").and_then(Value::as_bool).unwrap_or(false),
+        })
+    }
+
+    /// The `.mcmeta` text for it — every frame listed with its time.
+    pub fn write(&self, (w, h): (u32, u32)) -> String {
+        let mut a = serde_json::Map::new();
+        if self.interpolate {
+            a.insert("interpolate".into(), Value::Bool(true));
+        }
+        let side = w.min(h);
+        if self.frame_width != side {
+            a.insert("width".into(), self.frame_width.into());
+        }
+        if self.frame_height != side {
+            a.insert("height".into(), self.frame_height.into());
+        }
+        let frames = self.frames.iter().map(|f| serde_json::json!({ "index": f.index, "time": f.time })).collect();
+        a.insert("frames".into(), Value::Array(frames));
+        let mut text = serde_json::to_string_pretty(&serde_json::json!({ "animation": a })).unwrap_or_default();
+        text.push('\n');
+        text
+    }
+}
+
+/// Writes `animation` as texture `texture`'s `.png.mcmeta` (beside the png
+/// `texture_target` names), or removes it for `None`.
+pub fn write_animation(file: &Path, texture: &str, animation: Option<&Animation>) -> Result<PathBuf, String> {
+    let png = texture_target(file, texture).ok_or_else(|| format!("{texture} isn't a texture of this mod"))?;
+    let meta = png.with_extension("png.mcmeta");
+    match animation {
+        Some(a) => {
+            let size = std::fs::read(&png).ok().and_then(|b| image_size(&b)).ok_or_else(|| format!("{} isn't a png", png.display()))?;
+            std::fs::write(&meta, a.write(size)).map_err(|e| format!("{}: {e}", meta.display()))?;
+        }
+        None => {
+            if meta.exists() {
+                std::fs::remove_file(&meta).map_err(|e| format!("{}: {e}", meta.display()))?;
+            }
+        }
+    }
+    Ok(meta)
 }
 
 /// A body model's texture (`.ymodel`): a path under the mod's `textures/`
@@ -200,13 +306,16 @@ pub fn body_texture(file: &Path, texture: &str) -> Result<Texture, String> {
 
 pub fn texture(file: &Path, texture: &str) -> Result<Texture, String> {
     let bytes = texture_bytes(file, texture)?;
-    let animated = image_size(&bytes).is_some_and(|(w, h)| h > w && h % w == 0);
+    let animation = image_size(&bytes).and_then(|size| {
+        let meta = texture_file(file, texture, "png.mcmeta").ok()?;
+        Animation::read(&String::from_utf8_lossy(&meta), size)
+    });
     Ok(Texture {
         url: format!(
             "data:image/png;base64,{}",
             base64::engine::general_purpose::STANDARD.encode(&bytes)
         ),
-        animated,
+        animation,
         writable: texture_target(file, texture).is_some(),
     })
 }
@@ -514,6 +623,25 @@ pub fn import(
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn animation_reads_the_games_mcmeta() {
+        let meta = r#"{"animation":{"frametime":3,"frames":[0,{"index":2,"time":10},7]}}"#;
+        let a = Animation::read(meta, (16, 64)).unwrap();
+        assert_eq!((a.frame_width, a.frame_height), (16, 16));
+        // Frame 7 is past the four the image holds.
+        assert_eq!(a.frames, vec![AnimationFrame { index: 0, time: 3 }, AnimationFrame { index: 2, time: 10 }]);
+        assert!(!a.interpolate);
+        let all = Animation::read(r#"{"animation":{}}"#, (16, 48)).unwrap();
+        assert_eq!(all.frames.iter().map(|f| f.index).collect::<Vec<_>>(), vec![0, 1, 2]);
+        assert!(Animation::read("{}", (16, 16)).is_none());
+    }
+
+    #[test]
+    fn animation_round_trips() {
+        let a = Animation { frame_width: 16, frame_height: 16, frames: vec![AnimationFrame { index: 1, time: 4 }, AnimationFrame { index: 0, time: 1 }], interpolate: true };
+        assert_eq!(Animation::read(&a.write((16, 32)), (16, 32)), Some(a));
+    }
+
     use super::*;
 
     #[test]

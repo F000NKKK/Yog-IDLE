@@ -110,14 +110,16 @@ function nestParent(name: string, siblings: Set<string>): string | null {
  * Adds each screen's generated code (`.yog-build/generated/<path>.g.rs`, not
  * in the tree's folders) under its `.yui`, and each resource set's
  * (`.yog-build/generated/resources/<Set>.g.rs`) under its neutral `.yres`,
- * greyed — like Visual Studio showing `MainWindow.g.cs` under a XAML window
+ * greyed, when the build has made it — like Visual Studio showing `MainWindow.g.cs` under a XAML window
  * and `Resources.Designer.cs` under a `.resx`. Opens read-only.
  */
-function withGeneratedCode(nodes: FileTreeNode[], root: string): FileTreeNode[] {
+function withGeneratedCode(nodes: FileTreeNode[], root: string, exists: ReadonlySet<string>): FileTreeNode[] {
   return nodes.map((node) => {
-    if (node.kind === "folder") return node.children ? { ...node, children: withGeneratedCode(node.children, root) } : node;
+    if (node.kind === "folder") return node.children ? { ...node, children: withGeneratedCode(node.children, root, exists) } : node;
     const generated = generatedCodePath(root, node.id);
-    if (!generated) return node;
+    // Only code the build made: a component's goes to components.g.rs, a
+    // screen not built yet has none.
+    if (!generated || !exists.has(generated)) return node;
     const child: FileTreeNode = { id: generated, name: fileNameOf(generated), kind: "file", generated: true };
     return { ...node, nested: [...(node.nested ?? []), child] };
   });
@@ -146,6 +148,47 @@ function codeBehindPair(path: string): { screen: string; code: string } | null {
 const copyText = (text: string) =>
   navigator.clipboard.writeText(text).catch((err) => reportError(t("Couldn't copy to the clipboard: {error}", { error: String(err) })));
 
+/** The generated files (`generatedCodePath`) of the tree's screens and resource sets that exist — re-checked as files change and when the window comes back. */
+function useGeneratedCode(project: ProjectInfo, nodes: FileTreeNode[]): ReadonlySet<string> {
+  const [exists, setExists] = useState<ReadonlySet<string>>(new Set());
+  const [checks, setChecks] = useState(0);
+  const candidates = useMemo(() => {
+    if (project.kind !== "yog-mod") return [];
+    const out: string[] = [];
+    const walk = (list: FileTreeNode[]) => {
+      for (const n of list) {
+        if (n.kind === "folder") walk(n.children ?? []);
+        else {
+          const g = generatedCodePath(project.root, n.id);
+          if (g) out.push(g);
+        }
+      }
+    };
+    walk(nodes);
+    return out;
+  }, [project.kind, project.root, nodes]);
+  const key = candidates.join("\n");
+  useEffect(() => {
+    let live = true;
+    void Promise.all(candidates.map((p) => files.info(p).then((i) => (i.kind === "file" ? p : null), () => null))).then((found) => {
+      if (!live) return;
+      const next = new Set(found.filter((p): p is string => !!p));
+      setExists((cur) => (cur.size === next.size && [...next].every((p) => cur.has(p)) ? cur : next));
+    });
+    return () => {
+      live = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key, checks]);
+  useFsChanged(() => setChecks((n) => n + 1));
+  useEffect(() => {
+    const again = () => setChecks((n) => n + 1);
+    window.addEventListener("focus", again);
+    return () => window.removeEventListener("focus", again);
+  }, []);
+  return exists;
+}
+
 function ProjectExplorerTree({ project }: { project: ProjectInfo }) {
   // Expanded folders are remembered per project (see `WorkspaceProvider`).
   useT();
@@ -162,10 +205,11 @@ function ProjectExplorerTree({ project }: { project: ProjectInfo }) {
   const backgroundMenu = useContextMenu<FileTreeNode>();
   const treeRef = useRef(tree);
   treeRef.current = tree;
+  const generated = useGeneratedCode(project, tree.nodes);
   const shownNodes = useMemo(() => {
     const nested = withResourceIcons(nestFiles(tree.nodes, nestParent), joinPath(project.root, "resources"));
-    return project.kind === "yog-mod" ? withGeneratedCode(nested, project.root) : nested;
-  }, [tree.nodes, project.kind, project.root]);
+    return project.kind === "yog-mod" ? withGeneratedCode(nested, project.root, generated) : nested;
+  }, [tree.nodes, project.kind, project.root, generated]);
 
   // Properties' "File Name" renames through here while the path is in the
   // tree, so the tree re-lists its folder.
