@@ -7,7 +7,7 @@ import {
   IconButton,
   notify,
   notifyDocumentCommands,
-  Inspector,
+  usePropertyContext,
   promptDialog,
   registerDocumentCommands,
   SelectField,
@@ -1393,6 +1393,45 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
     </>
   );
 
+  // What Properties shows while this editor is active: the selected
+  // element (or the file's own fields), the face's UV under them.
+  const uvRow: PropertyDescriptor | null =
+    !paintOn && faceData && face && selEl
+      ? {
+          id: "uv",
+          category: t("UV"),
+          name: t("UV"),
+          value: null,
+          render: () => (
+            <div className="content-uv-pane">
+                <div className="content-pane-header">
+                  <span>
+                    {t("UV")}: {t(face)}
+                  </span>
+                  <span className="content-spacer" />
+                  <Button variant="ghost" disabled={readOnly || !faceData.uv} onClick={() => editElements((els) => void delete els[sel!].faces[face]!.uv)}>
+                    {t("Auto UV")}
+                  </Button>
+                </div>
+                <UvEditor
+                  image={faceTexture ? shownImages[faceTexture] : undefined}
+                  uv={faceData.uv ?? autoUv(face, selEl.from, selEl.to)}
+                  others={otherUvs}
+                  readOnly={readOnly}
+                  onCommit={(uv) => editElements((els) => void (els[sel!].faces[face]!.uv = uv))}
+                />
+              </div>
+          ),
+        }
+      : null;
+  usePropertyContext(path, {
+    order: "sorted",
+    objectName: selEl ? (selEl.name ?? `${t("Element")} ${(sel ?? 0) + 1}`) : (file.name ?? path.split(/[\\/]/).pop()),
+    objectType: selEl ? t("Element") : kind === "block" ? t("Block") : t("Item"),
+    objectKey: `${effectiveKey}:${sel ?? "-"}:${face ?? "-"}`,
+    properties: uvRow ? [...properties, uvRow] : properties,
+  });
+
   return (
     <div className="content-editor" ref={rootRef}>
       <div className="content-toolbar">
@@ -1504,36 +1543,6 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
             viewRequest={viewRequest}
           />
         </div>
-        <Inspector
-          order="sorted"
-          objectName={selEl ? (selEl.name ?? `${t("Element")} ${(sel ?? 0) + 1}`) : (file.name ?? path.split(/[\\/]/).pop())}
-          objectType={selEl ? t("Element") : kind === "block" ? t("Block") : t("Item")}
-          objectKey={`${effectiveKey}:${sel ?? "-"}:${face ?? "-"}`}
-          properties={properties}
-          persistKey="yog.content.properties"
-          footer={
-            !paintOn && faceData && face && selEl ? (
-              <div className="content-uv-pane">
-                <div className="content-pane-header">
-                  <span>
-                    {t("UV")}: {t(face)}
-                  </span>
-                  <span className="content-spacer" />
-                  <Button variant="ghost" disabled={readOnly || !faceData.uv} onClick={() => editElements((els) => void delete els[sel!].faces[face]!.uv)}>
-                    {t("Auto UV")}
-                  </Button>
-                </div>
-                <UvEditor
-                  image={faceTexture ? shownImages[faceTexture] : undefined}
-                  uv={faceData.uv ?? autoUv(face, selEl.from, selEl.to)}
-                  others={otherUvs}
-                  readOnly={readOnly}
-                  onCommit={(uv) => editElements((els) => void (els[sel!].faces[face]!.uv = uv))}
-                />
-              </div>
-            ) : undefined
-          }
-        />
       </div>
     </div>
   );
