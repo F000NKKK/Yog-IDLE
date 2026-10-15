@@ -333,6 +333,7 @@ export function BookEditor({ path, content, onChange, readOnly }: EditorProps) {
           {
             id: "type",
             name: t("Type"),
+            category: t("Content"),
             readOnly,
             value: str(target.obj.type),
             options: PAGE_TYPES.map((p) => p.type),
@@ -342,7 +343,7 @@ export function BookEditor({ path, content, onChange, readOnly }: EditorProps) {
         ]
       : []),
     ...(sel.kind === "category" || sel.kind === "entry"
-      ? [{ id: "id", name: t("Id"), readOnly, value: str(target.obj.id), onCommit: (x: PropertyValue) => target.set({ ...target.obj, id: String(x) }) }]
+      ? [{ id: "id", name: t("Id"), category: t("Content"), readOnly, value: str(target.obj.id), onCommit: (x: PropertyValue) => target.set({ ...target.obj, id: String(x) }) }]
       : []),
     ...target.fields.map(property),
   ];
