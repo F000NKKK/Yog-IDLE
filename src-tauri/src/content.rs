@@ -185,6 +185,19 @@ pub struct Texture {
     pub writable: bool,
 }
 
+/// A body model's texture (`.ymodel`): a path under the mod's `textures/`
+/// (`entity/wisp.png`) or a full id (`minecraft:textures/entity/elytra.png`).
+pub fn body_texture(file: &Path, texture: &str) -> Result<Texture, String> {
+    let id = match texture.split_once(':') {
+        Some((ns, p)) => format!("{ns}:{}", p.trim_start_matches("textures/").trim_end_matches(".png")),
+        None => {
+            let ns = mod_root(file).and_then(|r| mod_id(&r)).unwrap_or_else(|| "minecraft".into());
+            format!("{ns}:{}", texture.trim_start_matches('/').trim_end_matches(".png"))
+        }
+    };
+    self::texture(file, &id)
+}
+
 pub fn texture(file: &Path, texture: &str) -> Result<Texture, String> {
     let bytes = texture_bytes(file, texture)?;
     let animated = image_size(&bytes).is_some_and(|(w, h)| h > w && h % w == 0);

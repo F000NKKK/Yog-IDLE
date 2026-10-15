@@ -808,6 +808,15 @@ fn ydata_text(path: String) -> Result<String, String> {
     Ok(yog_data::text::to_string_pretty(&value))
 }
 
+/// A `.ymodel`'s texture, by the format's rules (`content::body_texture`).
+#[tauri::command]
+async fn body_texture(state: State<'_, AppState>, path: String, texture: String) -> Result<content::Texture, String> {
+    validate_within_roots(&state, Path::new(&path))?;
+    tauri::async_runtime::spawn_blocking(move || content::body_texture(Path::new(&path), &texture))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
 /// The items of an item tag (`#minecraft:planks`), nested tags opened.
 #[tauri::command]
 async fn item_tag_items(path: String, tag: String) -> Result<Vec<String>, String> {
@@ -1750,6 +1759,7 @@ pub fn run() {
 
     let builder = builder.invoke_handler(tauri::generate_handler![
         item_tag_items,
+        body_texture,
         ydata_text,
         book_page_preview,
         format_shape,
