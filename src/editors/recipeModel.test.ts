@@ -85,3 +85,15 @@ describe("recipes of the mod's own kinds", () => {
     expect(r).toMatchObject({ type: "mymod:crusher", values: { time: 0 }, result: "minecraft:stone", count: 3 });
   });
 });
+
+describe("the game's single-input kinds", () => {
+  it("reads and writes stonecutting and every cooking kind", () => {
+    const cut = parseRecipe('{ "type": "stonecutting", "ingredient": "@tag:item:hexcasting:amethyst_blocks", "result": "@item:hexcasting:amethyst_bricks", "count": 2 }')!;
+    expect([cut.type, cut.cells[0], cut.result, cut.count]).toEqual(["stonecutting", "#hexcasting:amethyst_blocks", "hexcasting:amethyst_bricks", 2]);
+    expect(parseRecipe(serializeRecipe(cut))).toEqual(cut);
+    const blast = parseRecipe('{ "type": "blasting", "ingredient": "@item:minecraft:iron_ore", "result": "@item:minecraft:iron_ingot" }')!;
+    // Its own default time, not a furnace's — and not written back.
+    expect(blast.cookTime).toBe(100);
+    expect(serializeRecipe(blast)).not.toContain("cook_time");
+  });
+});
