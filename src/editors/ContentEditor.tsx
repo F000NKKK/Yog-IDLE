@@ -236,7 +236,7 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
   const [viewRequest, setViewRequest] = useState<{ view: ViewName; key: number } | null>(null);
   const [images, setImages] = useState<Record<string, LoadedTexture | undefined>>({});
   const [parents, setParents] = useState<Record<string, ParentModel | null>>({});
-  const [choices, setChoices] = useState<{ textures: string[]; strings: string[]; sounds: string[] }>({ textures: [], strings: [], sounds: [] });
+  const [choices, setChoices] = useState<Choices>(NO_CHOICES);
   const rootRef = useRef<HTMLDivElement>(null);
 
   // Paint mode: the textures' pixels, decoded from disk (`decoded`), painted
@@ -353,7 +353,13 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
       invoke<{ value: string }[]>("content_textures", { path }).catch(() => []),
       invoke<string[]>("content_strings", { path }).catch(() => []),
       invoke<string[]>("content_sound_groups", { path }).catch(() => []),
-    ]).then(([tex, strings, sounds]) => live && setChoices({ textures: tex.map((c) => c.value), strings, sounds }));
+      invoke<string[]>("content_tags", { path, registry: kindOf(path) ?? "item" }).catch(() => []),
+      invoke<string[]>("content_tool_materials", { path }).catch(() => []),
+      invoke<string[]>("content_armor_materials", { path }).catch(() => []),
+    ]).then(
+      ([tex, strings, sounds, tags, toolMaterials, armorMaterials]) =>
+        live && setChoices({ textures: tex.map((c) => c.value), strings, sounds, tags, toolMaterials, armorMaterials })
+    );
     return () => {
       live = false;
     };
@@ -980,6 +986,12 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
         if (typeof r !== "string") set(r);
       },
     });
+    /** A list as comma-separated text: empty = unset. */
+    const list = (id: string, name: string, category: string, value: readonly string[] | undefined, set: (v: string[] | undefined) => void, extra: Partial<PropertyDescriptor> = {}): PropertyDescriptor =>
+      text(id, name, category, value?.join(", "), (v) => {
+        const items = (v ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+        set(items.length ? items : undefined);
+      }, extra);
     const prune = (o: Record<string, unknown> | undefined) => !!o && Object.values(o).every((x) => x === undefined);
 
     // General.
@@ -998,6 +1010,16 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
       }),
       choice("register", t("Registration"), general, file.register, ["auto", "manual"], (v) => update((d) => void (d.register = v as ContentFile["register"])), {
         description: t("auto: registered by yog_api::content!(); manual: you register Blocks::x() / Items::x() yourself (to add behavior)."),
+      }),
+      list("tags", t("Tags"), general, file.tags, (v) => update((d) => void (d.tags = v)), {
+        suggestions: choices.tags,
+        description:
+          kind === "block"
+            ? t("Tags it's in, comma-separated: Yog's common tags (yog:logs — the game's or each loader's tag of that meaning), the game's (minecraft:logs) or the mod's own by name. A block joins the block tag and its item the item tag.")
+            : t("Tags it's in, comma-separated: Yog's common tags (yog:ingots/iron — the game's or each loader's tag of that meaning), the game's (minecraft:planks) or the mod's own by name."),
+      }),
+      list("requires", t("Requires Mods"), general, file.requires, (v) => update((d) => void (d.requires = v)), {
+        description: t("Mods it needs, comma-separated — Yog or Java mod ids (pehkui): without every one of them loaded it isn't there."),
       })
     );
 
@@ -1086,7 +1108,24 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
           b.connect_groups?.join(", "),
           (v) => setB((x) => void (x.connect_groups = v ? v.split(/[,\s]+/).filter(Boolean) : undefined)),
           { description: t("Groups of blocks this one connects to (with an arm model in States). Default: itself.") }
-        )
+        ),
+        text("inventory", t("Inventory"), c, b.inventory, (v) => setB((x) => void (x.inventory = v)), {
+          description: t("The inventory screen it opens: the id of a .yui <Screen> with <Slot>s."),
+        }),
+        flag("accepts_items", t("Accepts Items"), c, b.accepts_items, (v) => setB((x) => void (x.accepts_items = v)), false, {
+          description: t("Hoppers and droppers can put items into it; the mod takes what it wants (on_item_insert)."),
+        }),
+        flag("redstone", t("Redstone Source"), c, b.redstone, (v) => setB((x) => void (x.redstone = v)), false, {
+          description: t("Gives off redstone power, set by the mod per position."),
+        }),
+        text("powered", t("Powered Property"), c, b.powered, (v) => setB((x) => void (x.powered = v)), {
+          suggestions: yesNoProperties,
+          description: t("A yes/no property of its states kept on while it gets redstone power."),
+        }),
+        text("comparator", t("Comparator Property"), c, b.comparator, (v) => setB((x) => void (x.comparator = v)), {
+          suggestions: yesNoProperties,
+          description: t("A yes/no property of its states a comparator reads: 15 while it's on."),
+        })
       );
     } else {
       const c = t("Item");
@@ -1108,7 +1147,46 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
             else x.food = { ...(x.food ?? {}), nutrition: v };
           }), { min: 0, int: true }),
         num("saturation", t("Food: Saturation"), c, it.food?.saturation, (v) => setI((x) => void (x.food && (x.food.saturation = v))), { min: 0 }),
-        flag("always_edible", t("Food: Always Edible"), c, it.food?.always_edible, (v) => setI((x) => void (x.food && (x.food.always_edible = v))), false)
+        flag("always_edible", t("Food: Always Edible"), c, it.food?.always_edible, (v) => setI((x) => void (x.food && (x.food.always_edible = v))), false),
+        text("tool_kind", t("Tool: Kind"), c, it.tool?.kind, (v) =>
+          setI((x) => {
+            if (v === undefined) delete x.tool;
+            else x.tool = { material: "iron", ...(x.tool ?? {}), kind: v };
+          }), {
+          suggestions: TOOL_KINDS,
+          description: t("pickaxe, axe, shovel, hoe, sword — or a mod's kind by the blocks it mines, @tag:block:mymod:mineable/hammer."),
+        }),
+        ...(it.tool
+          ? [
+              text("tool_material", t("Tool: Material"), c, it.tool.material, (v) => setI((x) => void (x.tool && v && (x.tool.material = v))), {
+                suggestions: choices.toolMaterials,
+                description: t("The game's material (wood, stone, iron, diamond, gold, netherite) or the mod's, @tool_material:mymod:mythril (a .ydef)."),
+              }),
+              num("attack_damage", t("Tool: Attack Damage"), c, it.tool.attack_damage, (v) => setI((x) => void (x.tool && (x.tool.attack_damage = v))), {
+                description: t("On top of the material's. Default: the kind's (sword 3, axe 6, shovel 1.5, pickaxe 1, hoe 0)."),
+              }),
+              num("attack_speed", t("Tool: Attack Speed"), c, it.tool.attack_speed, (v) => setI((x) => void (x.tool && (x.tool.attack_speed = v))), {
+                description: t("Change of attack speed. Default: the kind's (sword -2.4, axe -3.1, shovel -3, pickaxe -2.8, hoe -1)."),
+              }),
+            ]
+          : []),
+        choice("armor_slot", t("Armor: Slot"), c, it.armor?.slot, ARMOR_SLOTS, (v) =>
+          setI((x) => {
+            if (v === undefined) delete x.armor;
+            else x.armor = { material: "iron", ...(x.armor ?? {}), slot: v as ArmorSlot };
+          }), { optionLabel: (o) => (o ? t(o) : "") }),
+        ...(it.armor
+          ? [
+              text("armor_material", t("Armor: Material"), c, it.armor.material, (v) => setI((x) => void (x.armor && v && (x.armor.material = v))), {
+                suggestions: choices.armorMaterials,
+                description: t("The game's material (leather, chainmail, iron, gold, diamond, turtle, netherite) or the mod's, @armor_material:mymod:mythril (a .ydef)."),
+              }),
+            ]
+          : []),
+        choice("wearable", t("Wearable"), c, it.wearable, ARMOR_SLOTS, (v) => setI((x) => void (x.wearable = v as ArmorSlot | undefined)), {
+          optionLabel: (o) => (o ? t(o) : ""),
+          description: t("Worn in this slot without being armor (a monocle, a crown): right-click and dispensers put it on."),
+        })
       );
     }
 
