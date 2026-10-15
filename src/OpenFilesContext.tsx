@@ -477,7 +477,13 @@ export function OpenFilesProvider({ children }: { children: ReactNode }) {
   const recheckDisk = useCallback(async (only?: Set<string>) => {
     const vanished = new Set<string>();
     for (const tab of tabsRef.current) {
-      if (!tab.textLoaded || (only && !only.has(tab.path))) continue;
+      if (only && !only.has(tab.path)) continue;
+      // A binary file (an image) isn't compared: changed on disk, its view
+      // is told to show it anew.
+      if (!tab.textLoaded) {
+        if (only) setTabs((prev) => prev.map((t) => (t.id === tab.id ? { ...t, contentVersion: t.contentVersion + 1 } : t)));
+        continue;
+      }
       let disk: string;
       try {
         disk = await files.read(tab.path);
@@ -513,7 +519,7 @@ export function OpenFilesProvider({ children }: { children: ReactNode }) {
   // ...and while it's in front too: the open files' folders are watched (a
   // folder, not the file — editors that save by replacing the file would
   // leave a file watch behind).
-  useWatchedFolders("open-files", tabs.filter((t) => t.textLoaded).map((t) => parentOf(t.path)));
+  useWatchedFolders("open-files", tabs.map((t) => parentOf(t.path)));
   useFsChanged((paths) => void recheckDisk(new Set(paths)));
 
   function getComponent(tabId: string): ComponentType {

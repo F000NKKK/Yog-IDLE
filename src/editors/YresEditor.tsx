@@ -40,6 +40,7 @@ import {
 } from "../lang/yres";
 import "./YresEditor.css";
 import { files } from "../files";
+import { useFsChanged, useWatchedFolders } from "../fsWatch";
 
 /** Another file of the same resource set — the neutral one or a culture variant: a column of texts. */
 interface Sibling {
@@ -489,7 +490,20 @@ export function YresEditor({ path, content, onChange, readOnly, contentVersion }
     return file.startsWith(`${base}/`) ? file.slice(base.length + 1) : file;
   }
 
-  const fileUrl = (value: string) => convertFileSrc(/^([a-zA-Z]:)?[/\\]/.test(value) ? value : `${dir}${sep}${value.replace(/\//g, sep)}`);
+  const filePath = (value: string) => (/^([a-zA-Z]:)?[/\\]/.test(value) ? value : `${dir}${sep}${value.replace(/\//g, sep)}`);
+  // An image changed on disk shows anew: its folder is watched, and the
+  // version in its URL (the webview caches by URL) bumped.
+  const [assetVersion, setAssetVersion] = useState(0);
+  const shownFiles = useMemo(
+    () => rows.filter((r) => r.type === "image" || r.type === "file").map((r) => filePath(String(r.value))),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [rows, dir],
+  );
+  useWatchedFolders(`yres:${path}`, shownFiles.map((f) => f.slice(0, Math.max(f.lastIndexOf("/"), f.lastIndexOf("\\")))));
+  useFsChanged((paths) => {
+    if (paths.some((p) => shownFiles.includes(p))) setAssetVersion((v) => v + 1);
+  });
+  const fileUrl = (value: string) => `${convertFileSrc(filePath(value))}?v=${assetVersion}`;
 
   // ── Keyboard and Edit menu ──────────────────────────────────────────────
 
