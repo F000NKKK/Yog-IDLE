@@ -82,6 +82,17 @@ function useSize(el: HTMLElement | null): [number, number] {
  * (`#c:dusts`), the game's and the mod's items offered; the inspector also
  * holds the result's count and the kind's values.
  */
+/** The game's recipe kinds as the editor names them. */
+const GAME_LABELS: Record<string, string> = {
+  shaped: "Shaped",
+  shapeless: "Shapeless",
+  smelting: "Smelting",
+  blasting: "Blasting",
+  smoking: "Smoking",
+  campfire_cooking: "Campfire Cooking",
+  stonecutting: "Stonecutting",
+};
+
 export function RecipeEditor({ path, content, onChange, readOnly }: EditorProps) {
   const t = useT();
   useSyncExternalStore(subscribeImageSources, imageSourcesVersion);
@@ -219,7 +230,7 @@ export function RecipeEditor({ path, content, onChange, readOnly }: EditorProps)
     }
   };
 
-  const gameLabel = (id: string) => t(id === "shaped" ? "Shaped" : id === "shapeless" ? "Shapeless" : id === "smelting" ? "Smelting" : id);
+  const gameLabel = (id: string) => t(GAME_LABELS[id] ?? id);
   const kindOptions = [
     ...kinds.game.map((k) => ({ value: k.id, label: gameLabel(k.id), group: t("Minecraft") })),
     ...kinds.own.map((k) => ({ value: k.id, label: k.id.split(":").pop() ?? k.id, group: t("This mod") })),
@@ -403,10 +414,10 @@ export function RecipeEditor({ path, content, onChange, readOnly }: EditorProps)
       onCommit: (v) => (custom ? updateCustom((r) => (r.count = clampCount(Number(v)))) : updateGame((r) => (r.count = clampCount(Number(v))))),
     },
   ];
-  if (!custom && recipe.type === "smelting") {
+  if (!custom && isCooking(recipe.type)) {
     inspected.push(
-      { id: "experience", category: t("Smelting"), name: t("Experience"), value: recipe.experience, step: 0.1, readOnly: ro, onCommit: (v) => updateGame((r) => (r.experience = Math.max(0, Number(v)))) },
-      { id: "cook_time", category: t("Smelting"), name: t("Cook time (ticks)"), value: recipe.cookTime, readOnly: ro, onCommit: (v) => updateGame((r) => (r.cookTime = Math.max(1, Math.round(Number(v))))) },
+      { id: "experience", category: t("Cooking"), name: t("Experience"), value: recipe.experience, step: 0.1, readOnly: ro, onCommit: (v) => updateGame((r) => (r.experience = Math.max(0, Number(v)))) },
+      { id: "cook_time", category: t("Cooking"), name: t("Cook time (ticks)"), value: recipe.cookTime, readOnly: ro, onCommit: (v) => updateGame((r) => (r.cookTime = Math.max(1, Math.round(Number(v))))) },
     );
   }
   if (custom && kind) {

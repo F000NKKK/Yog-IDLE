@@ -30,11 +30,10 @@ export interface Recipe {
 
 export const GRID = 9;
 const DEFAULT_EXPERIENCE = 0.1;
-const DEFAULT_COOK_TIME = 200;
 const KNOWN = new Set(["type", "pattern", "key", "ingredients", "ingredient", "result", "count", "experience", "cook_time"]);
 
 export function emptyRecipe(): Recipe {
-  return { type: "shaped", cells: Array(GRID).fill(null), result: "", count: 1, experience: DEFAULT_EXPERIENCE, cookTime: DEFAULT_COOK_TIME, extra: {} };
+  return { type: "shaped", cells: Array(GRID).fill(null), result: "", count: 1, experience: DEFAULT_EXPERIENCE, cookTime: COOKING.smelting, extra: {} };
 }
 
 const str = (v: unknown) => (typeof v === "string" ? v : null);
@@ -85,7 +84,7 @@ export function parseRecipe(text: string): Recipe | null {
   r.result = fromRef(str(o.result) ?? "");
   r.count = Math.max(1, Math.min(64, Math.round(num(o.count, 1))));
   r.experience = num(o.experience, DEFAULT_EXPERIENCE);
-  r.cookTime = Math.round(num(o.cook_time, isCooking(r.type) ? COOKING[r.type] : DEFAULT_COOK_TIME));
+  r.cookTime = Math.round(num(o.cook_time, isCooking(r.type) ? COOKING[r.type] : COOKING.smelting));
   for (const [k, v] of Object.entries(o)) if (!KNOWN.has(k)) r.extra[k] = v;
   if (r.type === "shaped") {
     const pattern = Array.isArray(o.pattern) ? o.pattern.map((row) => String(row)) : [];
