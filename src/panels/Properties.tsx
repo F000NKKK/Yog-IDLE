@@ -3,7 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { activatePropertyContext, getCurrentSelection, PROPERTIES_KIND, PropertyGrid, t, tn, useHasPropertyContext, useLocale, useSelection, type PropertyDescriptor, type PropertySet, type ShellSelection } from "substrate-platform-ui";
 import { useActiveFileTab, useOpenFiles } from "../OpenFilesContext";
 import { useProject } from "../ProjectContext";
-import { renamePath, selectDocument, selectPath, type IdeSelectionData } from "../ideSelection";
+import { renamePath, selectDocument, type IdeSelectionData } from "../ideSelection";
 import { baseName, extensionOf, samePath, validateEntryName } from "../paths";
 import { files } from "../files";
 
