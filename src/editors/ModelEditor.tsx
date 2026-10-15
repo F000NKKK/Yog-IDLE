@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type MutableRefObject } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { formatShortcut, Icon, IconButton, SelectField, useKeybinding, usePropertyContext, useT, withShortcut, type EditorProps, type PropertyDescriptor } from "substrate-platform-ui";
+import { Icon, KeyHints, IconButton, SelectField, useKeybinding, usePropertyContext, useT, withShortcut, type EditorProps, type KeyHint, type PropertyDescriptor } from "substrate-platform-ui";
 import { ModelViewport, type GizmoMode, type Selection } from "../body/ModelViewport";
 import {
   blankModel,
@@ -35,14 +35,17 @@ const SNAPS = [
 const NO_PARENT = "—";
 
 /** The keys the viewport's hint names, as the locale writes them. */
-const HINT_KEYS = () => ({
-  alt: formatShortcut("alt"),
-  orbit: formatShortcut("mmb"),
-  pan: formatShortcut("shift+mmb"),
-  front: formatShortcut("num1"),
-  side: formatShortcut("num3"),
-  top: formatShortcut("num7"),
-});
+/** How the view is driven — Properties lists it under the selection. */
+const CONTROLS: KeyHint[] = [
+  { action: "Pick a cube", keys: "lmb" },
+  { action: "Pick its bone", keys: ["alt+lmb", "lmb lmb"] },
+  { action: "Orbit", keys: "mmb" },
+  { action: "Pan", keys: "shift+mmb" },
+  { action: "Zoom", keys: "wheel" },
+  { action: "Move / turn / size", keys: ["g", "r", "s"] },
+  { action: "Front / side / top", keys: ["num1", "num3", "num7"] },
+  { action: "From behind", keys: "ctrl+num1" },
+];
 
 interface LoadedTexture {
   url: string;
@@ -408,8 +411,9 @@ export function ModelEditor({ path, content, onChange, readOnly, contentVersion 
       objectName,
       objectType: selection ? t(selection.kind === "bone" ? "Bone" : selection.kind === "cube" ? "Cube" : "Locator") : undefined,
       objectKey: selection ? JSON.stringify(selection) : "model",
-      objectDescription: t("Click a cube to pick it (again, or {alt}: its bone). {orbit} orbits the view, {pan} pans it, {front}/{side}/{top}: front, side, top.", HINT_KEYS()),
       properties,
+      header: !selection && texture ? <UvNet texture={texture} size={model.textureSize} rects={[]} /> : undefined,
+      footer: <KeyHints hints={CONTROLS} />,
     },
   );
 
@@ -454,19 +458,18 @@ export function ModelEditor({ path, content, onChange, readOnly, contentVersion 
   );
 }
 
-/** A cube's box-UV on the texture: where each of its faces takes its pixels. */
+/** A cube's box-UV on the texture, as wide as Properties: where each of its faces takes its pixels. */
 function UvNet({ texture, size, rects }: { texture: string | null; size: [number, number]; rects: ReturnType<typeof boxUvRects> }) {
-  const scale = Math.max(1, Math.floor(240 / Math.max(size[0], size[1])));
-  const style = useMemo(() => ({ width: size[0] * scale, height: size[1] * scale }), [size, scale]);
+  const pct = (n: number, of: number) => `${(n / of) * 100}%`;
   return (
-    <div className="model-uvnet" style={style}>
-      {texture && <img src={texture} alt="" style={style} draggable={false} />}
+    <div className="model-uvnet" style={{ aspectRatio: `${size[0]} / ${size[1]}` }}>
+      {texture && <img src={texture} alt="" draggable={false} />}
       {rects.map((r) => (
         <div
           key={r.face}
           className={`model-uvnet-face ${r.face}`}
           title={r.face}
-          style={{ left: r.x * scale, top: r.y * scale, width: Math.max(1, r.w * scale), height: Math.max(1, r.h * scale) }}
+          style={{ left: pct(r.x, size[0]), top: pct(r.y, size[1]), width: pct(r.w, size[0]), height: pct(r.h, size[1]) }}
         />
       ))}
     </div>
