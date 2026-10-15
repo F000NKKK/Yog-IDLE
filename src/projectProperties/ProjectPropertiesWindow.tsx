@@ -1,10 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Button, Icon, pushDocumentStep, SettingsWindow, useLocale, useT, type CommitResult, type SettingsSection } from "substrate-platform-ui";
+import { Button, Icon, joinPath, pushDocumentStep, SettingsWindow, useLocale, useT, type CommitResult, type SettingsSection } from "substrate-platform-ui";
 import { useOpenFiles } from "../OpenFilesContext";
 import { openFile } from "../fileOpenBus";
 import { files } from "../files";
-import { joinPath } from "../paths";
-import { reportError } from "../errors";
+import { reportError } from "../reportError";
 import { errorText, projectApi, type ProjectProps } from "./api";
 import type { ProjectPropertiesPage } from "./bus";
 import { ApplicationPage, BuildPage } from "./ApplicationPages";

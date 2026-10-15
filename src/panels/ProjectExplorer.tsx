@@ -23,6 +23,7 @@ import {
   type FileTreeMenuItem,
   type FileTreeNode,
   fileNameOf,
+  joinPath,
 } from "substrate-platform-ui";
 import { useProject, type ProjectInfo } from "../ProjectContext";
 import { openWithItems, useOpenFiles } from "../OpenFilesContext";
@@ -66,10 +67,6 @@ async function attempt(what: string, op: () => Promise<void>) {
 
 /** Cut or Copy in the explorer, waiting for a Paste — module-level so it survives the tree remounting. */
 let explorerClipboard: { paths: string[]; cut: boolean } | null = null;
-
-function joinPath(folder: string, name: string): string {
-  return `${folder.replace(/[/\\]+$/, "")}/${name}`;
-}
 
 /** Windows Explorer's / Visual Studio's name for a pasted duplicate: `a - Copy.rs`, `a - Copy (2).rs`. */
 function copyName(name: string, taken: Set<string>): string {
