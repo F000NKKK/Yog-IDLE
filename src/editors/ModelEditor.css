@@ -1,4 +1,4 @@
-/* The body model designer: a toolbar, the bone tree, the 3D view, the inspector. */
+/* The body model designer: a toolbar, the bone tree, the 3D view (Properties shows the selection). */
 .model-editor {
   display: flex;
   flex-direction: column;

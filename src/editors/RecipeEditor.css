@@ -1,4 +1,4 @@
-/* The recipe editor: a toolbar, the recipe on a GUI panel (the stage), the inspector. */
+/* The recipe editor: a toolbar, the recipe on a GUI panel (the stage); Properties shows the selected place. */
 .recipe-editor {
   display: flex;
   flex-direction: column;
@@ -159,46 +159,6 @@
 
 .recipe-slot-name {
   width: 96px;
-}
-
-/* The inspector: what the selected place holds, the result, the values. */
-.recipe-inspector {
-  width: 300px;
-  flex: none;
-  overflow: auto;
-  padding: var(--sp-space-sm);
-  border-left: 1px solid var(--sp-border);
-  background: var(--sp-surface-1);
-}
-
-.recipe-picked {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-space-sm);
-}
-
-.recipe-picked-icon {
-  width: 36px;
-  height: 36px;
-  flex: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 2px solid;
-  border-color: #373737 #ffffff #ffffff #373737;
-  background: #8b8b8b;
-}
-
-.recipe-picked-icon img {
-  width: 32px;
-  height: 32px;
-  image-rendering: pixelated;
-}
-
-.recipe-input {
-  flex: 1;
-  min-width: 0;
-  width: 100%;
 }
 
 .recipe-hint {

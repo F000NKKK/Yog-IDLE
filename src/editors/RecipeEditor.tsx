@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useState, useSyncExternalStore, type CSSProperties } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { Icon, IconButton, SelectField, usePropertyContext, useT, type EditorProps, type PropertyDescriptor } from "substrate-platform-ui";
+import { Icon, IconButton, SelectField, usePropertyContext, useT, type EditorProps, type PropertyDescriptor, type PropertySet } from "substrate-platform-ui";
 import { DataEditor } from "./DataEditor";
 import { parseDataValue } from "../data/yogData";
 import { imagePreview, imageSources, imageSourcesVersion, ingredientItems, subscribeImageSources } from "../designer/imageSources";
@@ -180,6 +180,11 @@ export function RecipeEditor({ path, content, onChange, readOnly }: EditorProps)
     // One of the game's kinds the editor doesn't lay out (blasting, smithing…): its fields, from the schema.
     return <DataEditor path={path} content={content} onChange={onChange} readOnly={readOnly} format="yrecipe" sourceView={RECIPE_SOURCE_VIEW} />;
   }
+  // What Properties shows while the recipe is active (set once it's drawn, below).
+  const shownProperties = useRef<PropertySet | null>(null);
+  shownProperties.current = null;
+  usePropertyContext(path, () => shownProperties.current);
+
   if (!kinds) return <div className="recipe-editor" />;
   // A kind this mod doesn't declare (another mod's): its fields, from the schema.
   if (custom && !kind) {
@@ -412,14 +417,14 @@ export function RecipeEditor({ path, content, onChange, readOnly }: EditorProps)
   }
 
   // What Properties shows while the recipe is active: the selected place, the result, the recipe's values.
-  usePropertyContext(path, {
+  shownProperties.current = {
     order: "declared",
     objectName: targetLabel,
     objectType: t("Recipe"),
     objectKey: target,
     objectDescription: t("An item, a tag (#c:dusts), or alternatives joined by |. Right-click a place to empty it."),
     properties: inspected,
-  });
+  };
 
   return (
     <div className="recipe-editor">
