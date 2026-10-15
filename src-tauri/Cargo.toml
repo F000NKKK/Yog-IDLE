@@ -43,16 +43,16 @@ proc-macro2 = { version = "1.0.107", features = ["span-locations"] }
 # The screen designer draws with yog-ui itself — the crate mods render with
 # in game — through a recording `YogGfxApi` (yog-abi/yog-gfx), and reads
 # Minecraft's font/textures from the local client jar (zip, png).
-yog-ui = "0.41.4"
-yog-gfx = "0.26"
-yog-abi = "0.29.3"
-yog-book = "0.64"
+yog-ui = "0.42"
+yog-gfx = "0.27"
+yog-abi = "0.30"
+yog-book = "0.65"
 # Yog Data: the text syntax of every Yog format.
 yog-data = "0.4"
 # A dimension's terrain, previewed by the code the runtime generates it with.
 yog-worldgen = "0.1"
 # The source formats' schemas, for generated editors.
-yog-formats = "0.5.1"
+yog-formats = "0.6"
 # SVG images and TrueType fonts, drawn the way the game draws them.
 resvg = { version = "0.48", default-features = false }
 fontdue = "0.9"
@@ -73,7 +73,7 @@ harness = false
 # Debugger integration (Linux-only, matching yog-debugger's own scope) —
 # ordinary crates.io deps, no path/git coupling to the Yog-Mod-Loader repo.
 [target.'cfg(target_os = "linux")'.dependencies]
-yog-symbols = "0.4"
-yog-debugger = "0.9"
+yog-symbols = "0.4.1"
+yog-debugger = "0.9.1"
 yog-hot-reload = "0.2"
 nix = { version = "0.31", features = ["ptrace", "signal", "process"] }
