@@ -89,3 +89,14 @@ pub fn item_tag(path: &Path, tag: &str) -> Vec<String> {
     collect(&roots, &own, &full, &mut BTreeSet::new(), &mut out, 0);
     out
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn yog_tags_open_into_the_tags_they_stand_for() {
+        let items = item_tag(Path::new("/nowhere/r.yrecipe"), "#yog:ingots/iron");
+        assert!(items.iter().any(|i| i == "minecraft:iron_ingot"), "{items:?}");
+    }
+}
