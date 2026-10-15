@@ -799,6 +799,15 @@ async fn book_page_preview(args: designer::book::BookArgs) -> designer::book::Bo
         .unwrap_or_else(|e| designer::book::BookRendered { image: None, scale: 1, shown: None, action: None, animated: false, locales: Vec::new(), error: Some(e.to_string()) })
 }
 
+/// A binary Yog Data file (`.ydata`, what the build compiles a format to)
+/// as Yog Data text, to read.
+#[tauri::command]
+fn ydata_text(path: String) -> Result<String, String> {
+    let bytes = std::fs::read(&path).map_err(|e| e.to_string())?;
+    let value = yog_data::binary::decode(&bytes).map_err(|e| e.to_string())?;
+    Ok(yog_data::text::to_string_pretty(&value))
+}
+
 /// The items of an item tag (`#minecraft:planks`), nested tags opened.
 #[tauri::command]
 async fn item_tag_items(path: String, tag: String) -> Result<Vec<String>, String> {
@@ -1741,6 +1750,7 @@ pub fn run() {
 
     let builder = builder.invoke_handler(tauri::generate_handler![
         item_tag_items,
+        ydata_text,
         book_page_preview,
         format_shape,
         worldgen_preview,

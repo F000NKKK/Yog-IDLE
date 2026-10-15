@@ -8,6 +8,7 @@ import { BOOK_SOURCE_VIEW, BookEditor } from "./BookEditor";
 import { RECIPE_SOURCE_VIEW, RecipeEditor } from "./RecipeEditor";
 import { YRES_SOURCE_VIEW, YresEditor } from "./YresEditor";
 import { DataEditor } from "./DataEditor";
+import { YdataViewer } from "./YdataViewer";
 import type { EditorProps } from "substrate-platform-ui";
 
 // Yog-specific editors, on top of the platform's built-in ones — imported
@@ -177,3 +178,16 @@ for (const [format, name] of [
     kind: "text",
   });
 }
+
+// `.ydata` — binary Yog Data the build compiles formats to: shown as text,
+// read only (it's made, not written).
+registerEditorProvider({
+  id: "yog.ydata",
+  label: "Yog Data",
+  name: "Compiled Yog Data Viewer",
+  icon: "table",
+  extensions: ["ydata"],
+  component: YdataViewer,
+  priority: 20,
+  kind: "binary",
+});

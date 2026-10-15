@@ -261,6 +261,7 @@ registerTranslations(
     "Save changes to {name}?": "Сохранить изменения в {name}?",
     "Save changes to the following files?": "Сохранить изменения в следующих файлах?",
     "Failed to open {path}: {error}": "Не удалось открыть {path}: {error}",
+    "Can't read {path} as Yog Data: {error}": "Не удалось прочитать {path} как Yog Data: {error}",
     "Book page — as the book shows it, with sample values. Edit it in XAML.": "Страница книги — как её покажет книга, с образцами значений. Правится в XAML.",
     "Failed to save {path}: {error}": "Не удалось сохранить {path}: {error}",
     "Can't open {path} as text: {error}": "Не удалось открыть {path} как текст: {error}",
