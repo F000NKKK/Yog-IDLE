@@ -9,6 +9,7 @@ import { RECIPE_SOURCE_VIEW, RecipeEditor } from "./RecipeEditor";
 import { YRES_SOURCE_VIEW, YresEditor } from "./YresEditor";
 import { DataEditor } from "./DataEditor";
 import { YdataViewer } from "./YdataViewer";
+import { MODEL_SOURCE_VIEW, ModelEditor } from "./ModelEditor";
 import type { EditorProps } from "substrate-platform-ui";
 
 // Yog-specific editors, on top of the platform's built-in ones — imported
@@ -202,4 +203,27 @@ registerEditorProvider({
   component: YdataViewer,
   priority: 20,
   kind: "binary",
+});
+
+// `.ymodel` body models: the 3D designer by default, the code a click away.
+registerEditorProvider({
+  id: "yog.ymodel",
+  label: "Model",
+  name: "Body Model Designer",
+  icon: "yogBlock",
+  extensions: ["ymodel"],
+  component: ModelEditor,
+  priority: 20,
+  kind: "designer",
+});
+
+registerEditorProvider({
+  id: MODEL_SOURCE_VIEW,
+  label: "Code",
+  name: "Body Model Source Editor",
+  extensions: ["ymodel"],
+  component: JsonEditor,
+  priority: 0,
+  kind: "text",
+  strict: true,
 });

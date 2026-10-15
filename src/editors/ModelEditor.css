@@ -1,0 +1,161 @@
+/* The body model designer: a toolbar, the bone tree, the 3D view, the inspector. */
+.model-editor {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  background: var(--sp-surface-0);
+}
+
+.model-error,
+.model-hint {
+  padding: var(--sp-space-md);
+  color: var(--sp-text-muted);
+}
+
+.model-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-space-2xs);
+  padding: var(--sp-space-xs) var(--sp-space-sm);
+  border-bottom: 1px solid var(--sp-border);
+  background: var(--sp-surface-1);
+  flex-wrap: wrap;
+}
+
+.model-bar .active {
+  background: var(--sp-accent-subtle, rgba(59, 142, 234, 0.25));
+}
+
+.model-bar-sep {
+  width: 1px;
+  height: 18px;
+  margin: 0 var(--sp-space-2xs);
+  background: var(--sp-border);
+}
+
+.model-bar-text {
+  background: none;
+  border: 1px solid transparent;
+  color: var(--sp-text);
+  padding: 2px 6px;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.model-bar-text:hover:not(:disabled) {
+  border-color: var(--sp-border);
+}
+
+.model-bar-text:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.model-bar-label,
+.model-bar-check {
+  color: var(--sp-text-muted);
+  font-size: 12px;
+  margin-left: var(--sp-space-2xs);
+}
+
+.model-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.model-outliner {
+  width: 200px;
+  flex: none;
+  overflow: auto;
+  border-right: 1px solid var(--sp-border);
+  background: var(--sp-surface-1);
+  padding: var(--sp-space-2xs) 0;
+  font-size: 13px;
+}
+
+.model-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 8px;
+  cursor: pointer;
+  white-space: nowrap;
+  color: var(--sp-text-muted);
+}
+
+.model-row.bone {
+  color: var(--sp-text);
+}
+
+.model-row:hover {
+  background: var(--sp-surface-2);
+}
+
+.model-row.selected {
+  background: var(--sp-accent-subtle, rgba(59, 142, 234, 0.3));
+  color: var(--sp-text);
+}
+
+.model-row-icon {
+  width: 14px;
+  text-align: center;
+  opacity: 0.8;
+}
+
+.model-view {
+  flex: 1;
+  min-width: 0;
+}
+
+.model-inspector {
+  width: 300px;
+  flex: none;
+  overflow: auto;
+  border-left: 1px solid var(--sp-border);
+  background: var(--sp-surface-1);
+}
+
+.model-input {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.model-vec {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+}
+
+.model-vec input {
+  min-width: 0;
+}
+
+/* The selected cube's box-UV over the texture. */
+.model-uvnet {
+  position: relative;
+  margin: var(--sp-space-sm) auto 0;
+  background:
+    repeating-conic-gradient(#3a3a3a 0 25%, #2c2c2c 0 50%) 0 0 / 8px 8px;
+  border: 1px solid var(--sp-border);
+}
+
+.model-uvnet img {
+  position: absolute;
+  inset: 0;
+  image-rendering: pixelated;
+}
+
+.model-uvnet-face {
+  position: absolute;
+  box-sizing: border-box;
+  border: 1px solid #3b8eea;
+  background: rgba(59, 142, 234, 0.15);
+}
+
+.model-uvnet-face.north,
+.model-uvnet-face.south {
+  border-color: #46a758;
+  background: rgba(70, 167, 88, 0.15);
+}
