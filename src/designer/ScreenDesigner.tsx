@@ -63,6 +63,7 @@ import { cellAt, GridLines, GridRails, type GridGeo } from "./GridAdorner";
 import { cellAttrs, cellOf, gridDefs } from "./grid";
 import { designText, useDesignResources, withDesignResources } from "../lang/designResources";
 import "./ScreenDesigner.css";
+import { BookPagePreview, isBookPage } from "./BookPagePreview";
 
 /** What Properties shows for the designer's selection (`setSelection` kind `"yui.widget"`). */
 export interface YuiSelectionData {
@@ -287,7 +288,16 @@ function nodeLabel(n: YuiNode): string {
   return `${name}(${n.kind})`;
 }
 
-export function ScreenDesigner({ path, content, onChange, readOnly, contentVersion, link }: ScreenDesignerProps) {
+/**
+ * The designer of a `.yui`: a book page component (`<Component book_page>`)
+ * is drawn as the book shows it ({@link BookPagePreview}); any other
+ * screen or component on the GUI canvas.
+ */
+export function ScreenDesigner(props: ScreenDesignerProps) {
+  return isBookPage(props.content) ? <BookPagePreview path={props.path} content={props.content} /> : <CanvasDesigner {...props} />;
+}
+
+function CanvasDesigner({ path, content, onChange, readOnly, contentVersion, link }: ScreenDesignerProps) {
   const t = useT();
   const activeTab = useActiveFileTab();
   const isActive = activeTab?.path === path;

@@ -380,3 +380,38 @@
   color: var(--sp-text-muted);
   font-size: 0.9em;
 }
+
+/* A book page component, drawn by the book. */
+.book-page-preview {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  background: var(--editor-background, #1e1e1e);
+}
+.book-page-preview-bar {
+  padding: 4px 8px;
+  font-size: 12px;
+  opacity: 0.75;
+  border-bottom: 1px solid var(--border, #333);
+}
+.book-page-preview-stage {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.book-page-preview-stage img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+.book-page-preview-error {
+  padding: 6px 8px;
+  color: var(--error, #f48771);
+  font-size: 12px;
+  white-space: pre-wrap;
+}
