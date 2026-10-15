@@ -30,6 +30,7 @@ import {
   useKeybinding,
   fileNameOf,
   extensionOf,
+  forgetDocumentHistory,
 } from "substrate-platform-ui";
 import { useBreakpoints } from "./BreakpointsContext";
 import { useDebugSessionContext } from "./DebugSessionContext";
@@ -383,7 +384,12 @@ export function OpenFilesProvider({ children }: { children: ReactNode }) {
   }, [save]);
 
   const removeTabs = useCallback((ids: string[]) => {
-    for (const id of ids) componentCache.current.delete(id);
+    for (const id of ids) {
+      componentCache.current.delete(id);
+      // Its Undo/Redo go with it.
+      const path = tabsRef.current.find((t) => t.id === id)?.path;
+      if (path) forgetDocumentHistory(path);
+    }
     setTabs((prev) => prev.filter((t) => !ids.includes(t.id)));
   }, []);
 
@@ -517,6 +523,8 @@ export function OpenFilesProvider({ children }: { children: ReactNode }) {
         continue;
       }
       if (!current.dirty) {
+        // Changed on disk: steps from before don't apply to it.
+        forgetDocumentHistory(tab.path);
         setTabs((prev) =>
           prev.map((t) =>
             t.id === tab.id && !t.dirty ? { ...t, content: disk, diskContent: disk, missing: false, contentVersion: t.contentVersion + 1 } : t
