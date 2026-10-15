@@ -83,7 +83,8 @@
 /* The model's texture over Properties: a bounded height, centred. */
 .model-uvnet.is-preview {
   width: auto;
-  height: 160px;
+  /* Smaller as the window is (Properties' container). */
+  height: clamp(64px, 22cqh, 160px);
   max-width: calc(100% - 2 * var(--sp-space-sm));
   margin: var(--sp-space-sm) auto;
 }

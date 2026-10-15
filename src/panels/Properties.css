@@ -4,6 +4,10 @@
   flex-direction: column;
   height: 100%;
   min-height: 0;
+  /* The window's own height decides the layout (below). */
+  container-type: size;
+  container-name: properties;
+  overflow-y: auto;
 }
 
 .properties-context-header,
@@ -32,4 +36,22 @@
   flex: 1 1 auto;
   height: auto;
   min-height: 0;
+}
+
+/*
+ * A short window: one column that scrolls — header, rows (kept tall enough
+ * to use) and footer one after another — instead of three parts squeezing
+ * each other to nothing.
+ */
+@container properties (max-height: 480px) {
+  .properties-context-header,
+  .properties-context-footer {
+    max-height: none;
+    overflow: visible;
+  }
+
+  .properties-context-grid {
+    flex: none;
+    height: max(240px, 70cqh);
+  }
 }
