@@ -70,6 +70,14 @@ export interface BlockProps {
   render_layer?: string;
   drops?: "self" | "none" | { item?: string; count?: number | [number, number] };
   connect_groups?: string[];
+  /** The inventory screen it opens: a `.yui` `<Screen id>`. */
+  inventory?: string;
+  redstone?: boolean;
+  /** A yes/no property kept on while it gets redstone power. */
+  powered?: string;
+  /** A yes/no property a comparator reads. */
+  comparator?: string;
+  accepts_items?: boolean;
 }
 
 export interface ItemProps {
@@ -78,7 +86,13 @@ export interface ItemProps {
   fire_resistant?: boolean;
   fuel_ticks?: number;
   food?: { nutrition: number; saturation?: number; always_edible?: boolean };
+  tool?: { kind: string; material: string; attack_damage?: number; attack_speed?: number };
+  armor?: { slot: ArmorSlot; material: string };
+  wearable?: ArmorSlot;
 }
+
+export const ARMOR_SLOTS = ["head", "chest", "legs", "feet"] as const;
+export type ArmorSlot = (typeof ARMOR_SLOTS)[number];
 
 export interface StateRotation {
   x?: number;
@@ -96,7 +110,19 @@ export interface ContentFile {
   item?: ItemProps;
   model?: Model;
   item_model?: Model;
-  states?: { rotations?: StateRotation[]; connect?: { arm: Model; uvlock?: boolean } };
+  /** Mods it needs (Yog or Java mod ids): without them it isn't there. */
+  requires?: string[];
+  /** Tags it's in: `yog:planks`, `minecraft:logs`, or the mod's own by bare name. */
+  tags?: string[];
+  states?: {
+    rotations?: StateRotation[];
+    connect?: { arm: Model; uvlock?: boolean };
+    facing?: "horizontal" | "all";
+    placement?: "toward" | "away";
+    attach?: boolean;
+    waterlogged?: boolean;
+    uvlock?: boolean;
+  };
   [key: string]: unknown;
 }
 
@@ -105,6 +131,10 @@ export const kindOf = (path: string): Kind | null => (/\.yblock$/i.test(path) ? 
 
 /** The game's tools and tiers by short name; a mod's are `@tag:block:…` tags. */
 export const TOOLS = ["pickaxe", "axe", "shovel", "hoe"];
+/** The game's kinds of tool item (a mod's: its `@tag:block:…` mineable tag). */
+export const TOOL_KINDS = [...TOOLS, "sword"];
+export const FACINGS = ["horizontal", "all"] as const;
+export const PLACEMENTS = ["toward", "away"] as const;
 export const TOOL_LEVELS = ["wood", "stone", "iron", "diamond", "netherite"];
 export const RENDER_LAYERS = ["solid", "cutout", "cutout_mipped", "translucent"];
 /** Element rotation angles Minecraft allows. */

@@ -753,6 +753,33 @@ async fn content_sound_groups(state: State<'_, AppState>, path: String) -> Resul
         .map_err(|e| e.to_string())
 }
 
+/// The tool materials an item of the mod at `path` can name.
+#[tauri::command]
+async fn content_tool_materials(state: State<'_, AppState>, path: String) -> Result<Vec<String>, String> {
+    validate_within_roots(&state, Path::new(&path))?;
+    tauri::async_runtime::spawn_blocking(move || content::tool_materials(Path::new(&path)))
+        .await
+        .map_err(|e| e.to_string())
+}
+
+/// The armor materials an item of the mod at `path` can name.
+#[tauri::command]
+async fn content_armor_materials(state: State<'_, AppState>, path: String) -> Result<Vec<String>, String> {
+    validate_within_roots(&state, Path::new(&path))?;
+    tauri::async_runtime::spawn_blocking(move || content::armor_materials(Path::new(&path)))
+        .await
+        .map_err(|e| e.to_string())
+}
+
+/// The tags of `registry` (`item`, `block`) content of the mod at `path` can join.
+#[tauri::command]
+async fn content_tags(state: State<'_, AppState>, path: String, registry: String) -> Result<Vec<String>, String> {
+    validate_within_roots(&state, Path::new(&path))?;
+    tauri::async_runtime::spawn_blocking(move || content::tags(Path::new(&path), &registry))
+        .await
+        .map_err(|e| e.to_string())
+}
+
 /// A model by id with its parents flattened, for previewing a raw parent.
 #[tauri::command]
 async fn content_parent_model(
@@ -1687,6 +1714,15 @@ pub mod bench {
     pub fn content_sound_groups(path: &Path) -> serde_json::Value {
         serde_json::to_value(crate::content::sound_groups(path)).unwrap_or_default()
     }
+    pub fn content_tool_materials(path: &Path) -> serde_json::Value {
+        serde_json::to_value(crate::content::tool_materials(path)).unwrap_or_default()
+    }
+    pub fn content_armor_materials(path: &Path) -> serde_json::Value {
+        serde_json::to_value(crate::content::armor_materials(path)).unwrap_or_default()
+    }
+    pub fn content_tags(path: &Path, registry: &str) -> serde_json::Value {
+        serde_json::to_value(crate::content::tags(path, registry)).unwrap_or_default()
+    }
 
     /// The environment report with the settings in `state_file`.
     pub fn environment_detect(state_file: &Path, project_root: Option<&Path>) -> serde_json::Value {
@@ -1803,6 +1839,9 @@ pub fn run() {
         content_save_texture_animation,
         content_strings,
         content_sound_groups,
+        content_tool_materials,
+        content_armor_materials,
+        content_tags,
         content_parent_model,
         content_import,
         yui_designer_render,

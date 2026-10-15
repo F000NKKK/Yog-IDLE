@@ -425,13 +425,10 @@ pub fn strings(file: &Path) -> Vec<String> {
     out
 }
 
-/// What a block's `sound` offers: the game's sound groups by short name,
-/// then the mod's own (`.ydef` `kind: "sound_group"`) as `@sound_group:` refs.
-pub fn sound_groups(file: &Path) -> Vec<String> {
-    let mut out: Vec<String> = yog_formats::def::SoundGroup::built_ins()
-        .iter()
-        .map(|g| g.id.trim_start_matches("minecraft:").to_string())
-        .collect();
+/// What a `.ydef` reference offers: the game's built-ins by short name,
+/// then the mod's own definitions of `kind` as `@<kind>:` refs.
+fn definitions(file: &Path, kind: &str, built_ins: impl IntoIterator<Item = String>) -> Vec<String> {
+    let mut out: Vec<String> = built_ins.into_iter().map(|id| id.trim_start_matches("minecraft:").to_string()).collect();
     let Some(root) = mod_root(file) else {
         return out;
     };
@@ -441,15 +438,48 @@ pub fn sound_groups(file: &Path) -> Vec<String> {
         let Some(doc) = std::fs::read_to_string(&p).ok().and_then(|t| crate::data::read_object(&t)) else {
             continue;
         };
-        if doc.get("kind").and_then(Value::as_str) != Some("sound_group") {
+        if doc.get("kind").and_then(Value::as_str) != Some(kind) {
             continue;
         }
         if let Some(id) = doc.get("id").and_then(Value::as_str) {
-            own.push(format!("@sound_group:{}", if id.contains(':') { id.to_string() } else { format!("{ns}:{id}") }));
+            own.push(format!("@{kind}:{}", if id.contains(':') { id.to_string() } else { format!("{ns}:{id}") }));
         }
     }
     own.sort();
     out.extend(own);
+    out
+}
+
+/// What a block's `sound` offers: the game's sound groups, then the mod's.
+pub fn sound_groups(file: &Path) -> Vec<String> {
+    definitions(file, "sound_group", yog_formats::def::SoundGroup::built_ins().iter().map(|g| g.id.clone()))
+}
+
+/// What a tool's `material` offers: the game's, then the mod's.
+pub fn tool_materials(file: &Path) -> Vec<String> {
+    definitions(file, "tool_material", yog_formats::def::ToolMaterial::built_ins().iter().map(|m| m.id.clone()))
+}
+
+/// What an armor piece's `material` offers: the game's, then the mod's.
+pub fn armor_materials(file: &Path) -> Vec<String> {
+    definitions(file, "armor_material", yog_formats::def::ArmorMaterial::built_ins().iter().map(|m| m.id.clone()))
+}
+
+/// What a `tags` list of content in `registry` (`item`, `block`) offers:
+/// the mod's own tags by bare name (as the build last listed them), then
+/// Yog's common tags.
+pub fn tags(file: &Path, registry: &str) -> Vec<String> {
+    let mut out = Vec::new();
+    if let Some(root) = mod_root(file) {
+        let ns = mod_id(&root).unwrap_or_default();
+        let listed = std::fs::read(root.join(".yog-build/generated/tags.json"))
+            .ok()
+            .and_then(|b| serde_json::from_slice::<std::collections::BTreeMap<String, std::collections::BTreeMap<String, Value>>>(&b).ok())
+            .and_then(|mut by| by.remove(registry))
+            .unwrap_or_default();
+        out.extend(listed.into_keys().filter_map(|t| t.strip_prefix(&format!("{ns}:")).map(str::to_string)));
+    }
+    out.extend(yog_formats::tags::yog_tags(registry).into_iter().map(|(p, _)| format!("yog:{p}")));
     out
 }
 
