@@ -6,6 +6,7 @@ import { useProject } from "../ProjectContext";
 import { renamePath, selectDocument, type IdeSelectionData } from "../ideSelection";
 import { baseName, extensionOf, samePath, validateEntryName } from "../paths";
 import { files } from "../files";
+import "./Properties.css";
 
 /** `path_info`'s answer (see `properties.rs`). */
 interface PathInfo {
@@ -114,12 +115,16 @@ export function Properties() {
   const [loaded, setLoaded] = useState<Loaded | null>(null);
   const [reloads, setReloads] = useState(0);
   const isContext = selection?.kind === PROPERTIES_KIND;
-  const path = selection && selection.kind !== "multiple" && !isContext ? selection.data.path : null;
+  // Only a file or folder is read here: a window's context republishes on
+  // every change of its own and must not restart (or reset) that.
+  const fileSelection = selection && selection.kind !== "multiple" && !isContext ? selection : null;
+  const path = fileSelection ? fileSelection.data.path : null;
   const tab = path ? tabs.find((t) => t.path === path) : undefined;
   // Saving the file changes its size and timestamp — re-read then too.
   const savedText = tab?.diskContent;
 
   useEffect(() => {
+    const selection = fileSelection;
     if (!selection || !path) {
       setLoaded(null);
       return;
@@ -147,13 +152,21 @@ export function Properties() {
     return () => {
       cancelled = true;
     };
-  }, [selection, path, reloads, savedText]);
+  }, [fileSelection, path, reloads, savedText]);
 
   if (!selection) return <PropertyGrid properties={[]} emptyLabel={t("Select a file or folder in Project Explorer, or click into an editor.")} />;
   if (isContext) {
     // An active window's own context (a designer's selected element) — it builds the rows.
-    const set = selection.data as unknown as PropertySet;
-    return <PropertyGrid {...set} persistKey="properties" />;
+    const { header, footer, ...grid } = selection.data as unknown as PropertySet;
+    return (
+      <div className="properties-context">
+        {header && <div className="properties-context-header">{header}</div>}
+        <div className="properties-context-grid">
+          <PropertyGrid {...grid} persistKey="properties" />
+        </div>
+        {footer && <div className="properties-context-footer">{footer}</div>}
+      </div>
+    );
   }
   if (selection.kind === "multiple") return <PropertyGrid properties={[]} emptyLabel={t("Multiple items are selected.")} />;
   if (!loaded || !path) return <PropertyGrid properties={[]} emptyLabel={t("Loading…")} />;
