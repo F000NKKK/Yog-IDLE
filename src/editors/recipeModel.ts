@@ -8,15 +8,20 @@
 
 import { parseDataValue } from "../data/yogData";
 
-export type RecipeType = "shaped" | "shapeless" | "smelting";
+/** The game's cooking recipes — one input, experience, a time — and their default times (ticks). */
+export const COOKING = { smelting: 200, blasting: 100, smoking: 100, campfire_cooking: 600 } as const;
+export type CookingType = keyof typeof COOKING;
+export const isCooking = (type: string): type is CookingType => type in COOKING;
+
+export type RecipeType = "shaped" | "shapeless" | CookingType | "stonecutting";
 
 export interface Recipe {
   type: RecipeType;
-  /** Shaped: the 3×3 grid, row by row (null = empty). Shapeless: up to 9 ingredients, in order. Smelting: cell 0. */
+  /** Shaped: the 3×3 grid, row by row (null = empty). Shapeless: up to 9 ingredients, in order. Cooking, stonecutting: cell 0. */
   cells: (string | null)[];
   result: string;
   count: number;
-  /** Smelting only. */
+  /** Cooking only. */
   experience: number;
   cookTime: number;
   /** Keys the editor doesn't know (`id`, `$schema`, ...), written back as they were. */
@@ -62,7 +67,7 @@ function ingredientOf(cell: string): string | string[] {
 }
 
 /** The recipe types the editor lays out; other kinds are edited as code. */
-export const EDITED_TYPES: readonly string[] = ["shaped", "shapeless", "smelting"];
+export const EDITED_TYPES: readonly string[] = ["shaped", "shapeless", ...Object.keys(COOKING), "stonecutting"];
 
 /** The recipe in `text`, or `null` when it isn't one the editor lays out (not an object, another kind). */
 export function parseRecipe(text: string): Recipe | null {
@@ -76,11 +81,11 @@ export function parseRecipe(text: string): Recipe | null {
   const o = j as Record<string, unknown>;
   if (o.type !== undefined && !EDITED_TYPES.includes(String(o.type))) return null;
   const r = emptyRecipe();
-  r.type = o.type === "shapeless" || o.type === "smelting" ? o.type : "shaped";
+  r.type = typeof o.type === "string" && EDITED_TYPES.includes(o.type) ? (o.type as RecipeType) : "shaped";
   r.result = fromRef(str(o.result) ?? "");
   r.count = Math.max(1, Math.min(64, Math.round(num(o.count, 1))));
   r.experience = num(o.experience, DEFAULT_EXPERIENCE);
-  r.cookTime = Math.round(num(o.cook_time, DEFAULT_COOK_TIME));
+  r.cookTime = Math.round(num(o.cook_time, isCooking(r.type) ? COOKING[r.type] : DEFAULT_COOK_TIME));
   for (const [k, v] of Object.entries(o)) if (!KNOWN.has(k)) r.extra[k] = v;
   if (r.type === "shaped") {
     const pattern = Array.isArray(o.pattern) ? o.pattern.map((row) => String(row)) : [];
@@ -144,9 +149,9 @@ export function serializeRecipe(r: Recipe): string {
   }
   out.result = r.result ? toRef(r.result) : "";
   if (r.count !== 1) out.count = r.count;
-  if (r.type === "smelting") {
+  if (isCooking(r.type)) {
     if (r.experience !== DEFAULT_EXPERIENCE) out.experience = r.experience;
-    if (r.cookTime !== DEFAULT_COOK_TIME) out.cook_time = r.cookTime;
+    if (r.cookTime !== COOKING[r.type]) out.cook_time = r.cookTime;
   }
   return JSON.stringify(out, null, 2) + "\n";
 }
