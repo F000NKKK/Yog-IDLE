@@ -657,10 +657,10 @@ export function OpenFilesProvider({ children }: { children: ReactNode }) {
           />
         );
         return (
-          // Focus anywhere in the editor makes its file the global selection
-          // (what Properties shows); `display: contents` keeps the wrapper
-          // out of the layout.
-          <div style={{ display: "contents" }} onFocus={() => selectPath(tab.path, "file", "editor")}>
+          // Focus anywhere in the editor shows it in Properties — its own
+          // context (a designer's element) or its file; `display: contents`
+          // keeps the wrapper out of the layout.
+          <div style={{ display: "contents" }} onFocus={() => selectDocument(tab.path)}>
             {generated ? (
               <GeneratedFileBar path={tab.path} content={tab.content}>
                 {editor}

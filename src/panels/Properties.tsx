@@ -1,11 +1,10 @@
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { PropertyGrid, t, tn, useLocale, useSelection, type PropertyDescriptor, type ShellSelection } from "substrate-platform-ui";
+import { activatePropertyContext, getCurrentSelection, PROPERTIES_KIND, PropertyGrid, t, tn, useHasPropertyContext, useLocale, useSelection, type PropertyDescriptor, type PropertySet, type ShellSelection } from "substrate-platform-ui";
 import { useActiveFileTab, useOpenFiles } from "../OpenFilesContext";
 import { useProject } from "../ProjectContext";
 import { renamePath, selectPath, type IdeSelectionData } from "../ideSelection";
 import { baseName, extensionOf, samePath, validateEntryName } from "../paths";
-import type { YuiSelectionData } from "../designer/ScreenDesigner";
 import { files } from "../files";
 
 /** `path_info`'s answer (see `properties.rs`). */
@@ -114,8 +113,8 @@ export function Properties() {
   const { project } = useProject();
   const [loaded, setLoaded] = useState<Loaded | null>(null);
   const [reloads, setReloads] = useState(0);
-  const isWidget = selection?.kind === "yui.widget";
-  const path = selection && selection.kind !== "multiple" && !isWidget ? selection.data.path : null;
+  const isContext = selection?.kind === PROPERTIES_KIND;
+  const path = selection && selection.kind !== "multiple" && !isContext ? selection.data.path : null;
   const tab = path ? tabs.find((t) => t.path === path) : undefined;
   // Saving the file changes its size and timestamp — re-read then too.
   const savedText = tab?.diskContent;
@@ -151,16 +150,10 @@ export function Properties() {
   }, [selection, path, reloads, savedText]);
 
   if (!selection) return <PropertyGrid properties={[]} emptyLabel={t("Select a file or folder in Project Explorer, or click into an editor.")} />;
-  if (isWidget) {
-    // The screen designer's selected widgets — it builds the rows itself.
-    const widget = selection.data as unknown as YuiSelectionData;
-    return (
-      <PropertyGrid
-        objectName={widget.objectName}
-        objectType={widget.objectType}
-        objectDescription={widget.objectDescription}
-        objectKey={widget.objectKey} properties={widget.properties} persistKey="properties" />
-    );
+  if (isContext) {
+    // An active window's own context (a designer's selected element) — it builds the rows.
+    const set = selection.data as unknown as PropertySet;
+    return <PropertyGrid {...set} persistKey="properties" />;
   }
   if (selection.kind === "multiple") return <PropertyGrid properties={[]} emptyLabel={t("Multiple items are selected.")} />;
   if (!loaded || !path) return <PropertyGrid properties={[]} emptyLabel={t("Loading…")} />;
@@ -431,11 +424,30 @@ function manifestProperties(manifest: Manifest, update: (key: string, value: str
   ];
 }
 
-/** Activating an editor tab makes its file the selection, as clicking into it does — Visual Studio's Properties follows the active document. Render once inside the shell. */
+/**
+ * What focusing a document window shows in Properties, as in Visual
+ * Studio: the window's own context (a designer's selected element) when it
+ * has one, else its file.
+ */
+export function selectDocument(path: string): void {
+  if (!activatePropertyContext(path)) selectPath(path, "file", "editor");
+}
+
+/**
+ * Activating an editor tab selects it as clicking into it does
+ * (`selectDocument`) — and a designer whose context comes once it has
+ * loaded takes over from its file. Render once inside the shell.
+ */
 export function ActiveDocumentSelection() {
   const path = useActiveFileTab()?.path;
+  const hasContext = useHasPropertyContext(path);
   useEffect(() => {
-    if (path) selectPath(path, "file", "editor");
+    if (path) selectDocument(path);
   }, [path]);
+  useEffect(() => {
+    // Only while the document itself is what's shown (not Explorer's pick).
+    const current = getCurrentSelection();
+    if (path && hasContext && current?.id === path && current.source === "editor") activatePropertyContext(path);
+  }, [path, hasContext]);
   return null;
 }
