@@ -61,7 +61,7 @@ zip = { version = "9", default-features = false, features = ["deflate"] }
 base64 = "0.23"
 # The designer host (`designer/host.rs`) loads a mod's library to draw its custom components.
 libloading = "0.9"
-quick-xml = "0.41"
+quick-xml = "0.42"
 
 [dev-dependencies]
 criterion = { version = "0.8", default-features = false, features = ["cargo_bench_support"] }
