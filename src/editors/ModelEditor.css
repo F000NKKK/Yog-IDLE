@@ -119,6 +119,14 @@
   border: 1px solid var(--sp-border);
 }
 
+/* The model's texture over Properties: a bounded height, centred. */
+.model-uvnet.is-preview {
+  width: auto;
+  height: 160px;
+  max-width: calc(100% - 2 * var(--sp-space-sm));
+  margin: var(--sp-space-sm) auto;
+}
+
 .model-uvnet img {
   position: absolute;
   inset: 0;

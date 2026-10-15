@@ -38,7 +38,7 @@ const NO_PARENT = "—";
 /** How the view is driven — Properties lists it under the selection. */
 const CONTROLS: KeyHint[] = [
   { action: "Pick a cube", keys: "lmb" },
-  { action: "Pick its bone", keys: ["alt+lmb", "lmb lmb"] },
+  { action: "Pick its bone", keys: "alt+lmb" },
   { action: "Orbit", keys: "mmb" },
   { action: "Pan", keys: "shift+mmb" },
   { action: "Zoom", keys: "wheel" },
@@ -412,7 +412,7 @@ export function ModelEditor({ path, content, onChange, readOnly, contentVersion 
       objectType: selection ? t(selection.kind === "bone" ? "Bone" : selection.kind === "cube" ? "Cube" : "Locator") : undefined,
       objectKey: selection ? JSON.stringify(selection) : "model",
       properties,
-      header: !selection && texture ? <UvNet texture={texture} size={model.textureSize} rects={[]} /> : undefined,
+      header: !selection && texture ? <UvNet texture={texture} size={model.textureSize} rects={[]} preview /> : undefined,
       footer: <KeyHints hints={CONTROLS} />,
     },
   );
@@ -459,10 +459,10 @@ export function ModelEditor({ path, content, onChange, readOnly, contentVersion 
 }
 
 /** A cube's box-UV on the texture, as wide as Properties: where each of its faces takes its pixels. */
-function UvNet({ texture, size, rects }: { texture: string | null; size: [number, number]; rects: ReturnType<typeof boxUvRects> }) {
+function UvNet({ texture, size, rects, preview }: { texture: string | null; size: [number, number]; rects: ReturnType<typeof boxUvRects>; preview?: boolean }) {
   const pct = (n: number, of: number) => `${(n / of) * 100}%`;
   return (
-    <div className="model-uvnet" style={{ aspectRatio: `${size[0]} / ${size[1]}` }}>
+    <div className={preview ? "model-uvnet is-preview" : "model-uvnet"} style={{ aspectRatio: `${size[0]} / ${size[1]}` }}>
       {texture && <img src={texture} alt="" draggable={false} />}
       {rects.map((r) => (
         <div
