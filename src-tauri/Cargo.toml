@@ -52,7 +52,7 @@ yog-data = "0.4"
 # A dimension's terrain, previewed by the code the runtime generates it with.
 yog-worldgen = "0.1"
 # The source formats' schemas, for generated editors.
-yog-formats = "0.5"
+yog-formats = "0.5.1"
 # SVG images and TrueType fonts, drawn the way the game draws them.
 resvg = { version = "0.48", default-features = false }
 fontdue = "0.9"
