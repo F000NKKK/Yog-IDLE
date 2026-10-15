@@ -78,6 +78,7 @@ import { OUTPUT_SOURCES, OutputSourceSync, setOutputSource, useOutputSource, typ
 
 import { GitChangesWindow, GIT_CHANGES_PANEL } from "./git/GitChangesWindow";
 import { GitHost } from "./git/GitHost";
+import { OpenWithPickerHost } from "./OpenWithPicker";
 import { GitMenu } from "./git/GitMenu";
 import { GitStatusBar } from "./git/GitStatusBar";
 import { GitSettingsPage, gitSettingsKeywords } from "./git/GitSettings";
@@ -527,6 +528,7 @@ function ShellChrome({ onOpenSettings, onOpenInstaller, onOpenPublish, run, onRu
       <EditorKeybindings actions={editor} />
       <SearchHost />
       <GitHost />
+      <OpenWithPickerHost />
       <OpenFilesPersistence />
       <ActiveDocumentSelection />
     </>

@@ -58,6 +58,8 @@ registerEditorProvider({
   component: YuiSourceEditor,
   priority: 0,
   kind: "text",
+    // The JSON/XAML of this format only — other files have the general editors.
+    strict: true,
 });
 
 // `.yres` resource files, as Visual Studio opens `.resx`: the resource table
@@ -81,6 +83,8 @@ registerEditorProvider({
   component: JsonEditor,
   priority: 0,
   kind: "text",
+    // The JSON/XAML of this format only — other files have the general editors.
+    strict: true,
 });
 
 // `.yblock` / `.yitem` blocks and items: the 3D model editor by default, the
@@ -104,6 +108,8 @@ registerEditorProvider({
   component: JsonEditor,
   priority: 0,
   kind: "text",
+    // The JSON/XAML of this format only — other files have the general editors.
+    strict: true,
 });
 
 // `.yrecipe` recipes: a crafting table by default, the JSON a click away.
@@ -126,6 +132,8 @@ registerEditorProvider({
   component: JsonEditor,
   priority: 0,
   kind: "text",
+    // The JSON/XAML of this format only — other files have the general editors.
+    strict: true,
 });
 
 // `.ybook` guide books: the book itself, live, by default; the JSON a click away.
@@ -148,6 +156,8 @@ registerEditorProvider({
   component: JsonEditor,
   priority: 0,
   kind: "text",
+    // The JSON/XAML of this format only — other files have the general editors.
+    strict: true,
 });
 
 // Formats without a designer of their own — `.ydef` definitions, `.ylayout`
@@ -176,6 +186,8 @@ for (const [format, name] of [
     component: JsonEditor,
     priority: 0,
     kind: "text",
+    // The JSON/XAML of this format only — other files have the general editors.
+    strict: true,
   });
 }
 

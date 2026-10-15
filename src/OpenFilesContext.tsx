@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ComponentType, type ReactNode } from "react";
+import { openWithPicker } from "./OpenWithPicker";
 import { invalidateDesignResources } from "./lang/designResources";
 import { setSavedFileDiagnostics } from "./diagnostics/buildDiagnostics";
 import { invoke } from "@tauri-apps/api/core";
@@ -156,25 +157,43 @@ interface OpenWithItem {
   onSelect: () => void;
 }
 
+/** How many editors "Open With" lists before "Full List…". */
+const OPEN_WITH_SHOWN = 5;
+
 /**
- * "Open With…" entries for `path`: the editors made for it first (the
- * default marked), then every editor that can open any file — the user may
- * know better than the extension. Designers and viewers made for one format
- * only appear for their own files.
+ * "Open With…" entries for `path`, the likeliest first: the editors made
+ * for it (the default marked), then plain text, then the other general
+ * editors — any text editor can open any file; designers and viewers made
+ * for one format only appear for their own files. At most
+ * {@link OPEN_WITH_SHOWN} of them, then "Full List…" with all of them (and
+ * the one in use, if it isn't among the first).
  */
 export function openWithItems(path: string, current: string | undefined, pick: (view: string) => void): OpenWithItem[] {
   const matching = editorProvidersFor(path);
-  const others = generalEditorProviders().filter((p) => !matching.includes(p));
-  const item = (p: EditorProvider, label: string, separatorBefore = false): OpenWithItem => ({
-    label,
-    checked: p.id === current,
-    separatorBefore,
-    onSelect: () => pick(p.id),
-  });
-  return [
-    ...matching.map((p, i) => item(p, i === 0 ? t("{name} (default)", { name: t(p.name ?? p.label) }) : t(p.name ?? p.label))),
-    ...others.map((p, i) => item(p, t(p.name ?? p.label), i === 0)),
+  const general = generalEditorProviders().filter((p) => !matching.includes(p));
+  // Plain text is the likeliest of the general ones; the rest by name.
+  general.sort((a, b) => Number(b.id === "substrate.text") - Number(a.id === "substrate.text"));
+  const all = [
+    ...matching.map((p, i) => ({ provider: p, label: i === 0 ? t("{name} (default)", { name: t(p.name ?? p.label) }) : t(p.name ?? p.label) })),
+    ...general.map((p) => ({ provider: p, label: t(p.name ?? p.label) })),
   ];
+  const shown = all.slice(0, OPEN_WITH_SHOWN);
+  const items: OpenWithItem[] = shown.map(({ provider, label }, i) => ({
+    label,
+    checked: provider.id === current,
+    // A line between the file's own editors and the general ones.
+    separatorBefore: i > 0 && i === matching.length,
+    onSelect: () => pick(provider.id),
+  }));
+  if (all.length > shown.length) {
+    items.push({
+      label: t("Full List…"),
+      checked: !shown.some((s) => s.provider.id === current) && all.some((a) => a.provider.id === current),
+      separatorBefore: true,
+      onSelect: () => openWithPicker({ providers: all, current, pick }),
+    });
+  }
+  return items;
 }
 
 let nextTabId = 0;
