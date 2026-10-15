@@ -32,7 +32,7 @@ export function GitSettingsPage() {
   async function save(key: string, value: string): Promise<string | null> {
     const before = config?.values[key] ?? "";
     const problem = await write(key, value);
-    if (!problem && before !== value) pushDocumentStep(SETTINGS_HISTORY, { undo: () => void write(key, before), redo: () => void write(key, value) });
+    if (!problem && before !== value) pushDocumentStep(SETTINGS_HISTORY, { undo: () => void write(key, before), redo: () => void write(key, value), merge: `git:${key}` });
     return problem;
   }
 

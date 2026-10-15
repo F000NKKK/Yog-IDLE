@@ -45,7 +45,7 @@ function useEnvironmentSettings(): [Settings, (patch: Partial<Settings>) => void
         void applyEnvironmentSettings(value);
       };
       // Undoable in the Options.
-      undoable(SETTINGS_HISTORY, latest.current, { ...latest.current, ...patch }, apply);
+      undoable(SETTINGS_HISTORY, latest.current, { ...latest.current, ...patch }, apply, `environment:${Object.keys(patch).join(",")}`);
     },
     [setStored]
   );
