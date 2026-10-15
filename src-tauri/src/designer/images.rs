@@ -500,8 +500,23 @@ pub fn candidates(path: &Path) -> Vec<Candidate> {
     out
 }
 
-/// A preview of `source` as a PNG data URL (`size` px, nearest-neighbour).
-pub fn preview(path: &Path, source: &str, size: u32) -> Option<String> {
+/// A preview of an image — the one way the IDE draws any image reference:
+/// its PNG data URL (`size` px, nearest-neighbour; `None` if it can't be
+/// drawn) and, for a raw resource path (`minecraft:textures/item/apple.png`),
+/// the alias to write instead (`item:apple`) — which is also what's drawn.
+#[derive(serde::Serialize)]
+pub struct Preview {
+    pub url: Option<String>,
+    pub alias: Option<String>,
+}
+
+pub fn preview(path: &Path, source: &str, size: u32) -> Preview {
+    let alias = yog_gfx::image::suggest_alias(source);
+    let url = draw_preview(path, alias.as_deref().unwrap_or(source), size);
+    Preview { url, alias }
+}
+
+fn draw_preview(path: &Path, source: &str, size: u32) -> Option<String> {
     use base64::Engine as _;
     let root = super::mod_root(path);
     set_document(root.as_deref());

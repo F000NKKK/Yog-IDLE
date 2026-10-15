@@ -2,7 +2,7 @@
 // designer — one row per `.yui` attribute the selection can have.
 
 import { pt, t, type PropertyDescriptor, type PropertyValue, type XmlSchema } from "substrate-platform-ui";
-import { imagePreview, imageSources, suggestImageAlias } from "./imageSources";
+import { imageAlias, imagePreview, imageSources } from "./imageSources";
 import { CONTAINER_KINDS, cssColor, KIND_INFO, KINDS, parseColor, parseNumber, type YuiNode } from "./yui";
 import { findComponent, type ComponentInfo, type ComponentsSnapshot } from "./components";
 import { AXES, formatLength, gridDefs, parseLength, shiftCells, withGridDefs, type Axis } from "./grid";
@@ -268,7 +268,7 @@ export function widgetProperties(
           row.suggestions = imageSources(yuiPath).map((c) => c.source);
           if (shown) row.image = imagePreview(yuiPath, shown) ?? undefined;
         }
-        const alias = suggestImageAlias(shown);
+        const alias = yuiPath ? imageAlias(yuiPath, shown) : null;
         if (alias) row.description = `${row.description}\n\n${t("This is a raw resource path; use {alias} instead.", { alias })}`;
       }
       if (spec.kind === "color") {

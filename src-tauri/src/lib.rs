@@ -851,7 +851,7 @@ async fn yui_image_preview(
     path: String,
     source: String,
     size: u32,
-) -> Result<Option<String>, String> {
+) -> Result<designer::images::Preview, String> {
     tauri::async_runtime::spawn_blocking(move || {
         designer::images::preview(Path::new(&path), &source, size)
     })

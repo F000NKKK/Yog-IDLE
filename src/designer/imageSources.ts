@@ -15,7 +15,12 @@ export interface ImageSourceCandidate {
 }
 
 const lists = new Map<string, ImageSourceCandidate[]>();
-const previews = new Map<string, string | null>();
+/** What the backend drew for a reference (`designer::images::preview`): its URL, and the alias for a raw path. */
+interface Preview {
+  url: string | null;
+  alias: string | null;
+}
+const previews = new Map<string, Preview>();
 const pending = new Set<string>();
 const listeners = new Set<() => void>();
 let version = 0;
@@ -53,15 +58,14 @@ export function imageSources(path: string): ImageSourceCandidate[] {
   return [];
 }
 
-/** A 32 px preview of `source` as a data URL (`undefined` until loaded, `null` if it can't be drawn). */
-export function imagePreview(path: string, source: string): string | null | undefined {
+function preview(path: string, source: string): Preview | undefined {
   const key = `${path}\n${source}`;
   if (previews.has(key)) return previews.get(key);
   if (!pending.has(key)) {
     pending.add(key);
-    invoke<string | null>("yui_image_preview", { path, source, size: 32 })
-      .then((url) => previews.set(key, url))
-      .catch(() => previews.set(key, null))
+    invoke<Preview>("yui_image_preview", { path, source, size: 32 })
+      .then((p) => previews.set(key, p))
+      .catch(() => previews.set(key, { url: null, alias: null }))
       .finally(() => {
         pending.delete(key);
         changed();
@@ -70,15 +74,20 @@ export function imagePreview(path: string, source: string): string | null | unde
   return undefined;
 }
 
-/** Raw resource path → the alias to use instead (mirrors `yog_gfx::image::suggest_alias`). */
-export function suggestImageAlias(value: string): string | null {
-  const m = /^([a-z0-9_.-]+):textures\/(.+?)(\.png)?$/.exec(value.trim());
-  if (!m) return null;
-  const [, ns, path] = m;
-  const short = (id: string) => (ns === "minecraft" ? id : `${ns}:${id}`);
-  if (path.startsWith("item/")) return `item:${short(path.slice(5))}`;
-  if (path.startsWith("block/")) return `block:${short(path.slice(6))}`;
-  return `${ns}:${path}`;
+/**
+ * A 32 px preview of any image reference — `item:`/`block:`/`sprite:`, a
+ * texture id, a raw resource path, `@Set.name` — as a data URL
+ * (`undefined` until loaded, `null` if it can't be drawn). The one way the
+ * IDE previews an image (re-render on `subscribeImageSources`).
+ */
+export function imagePreview(path: string, source: string): string | null | undefined {
+  const p = preview(path, source);
+  return p === undefined ? undefined : p.url;
+}
+
+/** For a raw resource path, the alias to write instead (`yog_gfx::image::suggest_alias`, asked with the preview). */
+export function imageAlias(path: string, source: string): string | null | undefined {
+  return preview(path, source)?.alias;
 }
 
 const tags = new Map<string, string[]>();
