@@ -122,6 +122,8 @@ export interface ContentFile {
     attach?: boolean;
     waterlogged?: boolean;
     uvlock?: boolean;
+    /** Its own properties: name → values, the first the default. */
+    properties?: Record<string, string[]>;
   };
   [key: string]: unknown;
 }

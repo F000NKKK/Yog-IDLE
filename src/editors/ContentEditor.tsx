@@ -49,6 +49,11 @@ import {
   TEMPLATES,
   TOOL_LEVELS,
   TOOLS,
+  TOOL_KINDS,
+  ARMOR_SLOTS,
+  FACINGS,
+  PLACEMENTS,
+  type ArmorSlot,
   type Axis,
   type ContentFile,
   type Dir,
@@ -67,6 +72,18 @@ import { PaintTools, usePaintState } from "../content/paint/PaintTools";
 import { blankImage, cloneImage, decodeImage, getPixel, sameImage, Stroke, toPngDataUrl, type PixelImage } from "../content/paint/pixels";
 import { spriteLayerElements } from "../content/spriteElements";
 import "./ContentEditor.css";
+
+/** What the pickers offer, from the mod and the game. */
+interface Choices {
+  textures: string[];
+  strings: string[];
+  sounds: string[];
+  tags: string[];
+  toolMaterials: string[];
+  armorMaterials: string[];
+}
+const NO_CHOICES: Choices = { textures: [], strings: [], sounds: [], tags: [], toolMaterials: [], armorMaterials: [] };
+
 
 export const CONTENT_SOURCE_VIEW = "yog.content.source";
 
@@ -993,6 +1010,9 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
         set(items.length ? items : undefined);
       }, extra);
     const prune = (o: Record<string, unknown> | undefined) => !!o && Object.values(o).every((x) => x === undefined);
+    const yesNoProperties = Object.entries(file.states?.properties ?? {})
+      .filter(([, values]) => values.length === 2 && values.includes("true") && values.includes("false"))
+      .map(([name]) => name);
 
     // General.
     const general = t("General");
@@ -1239,6 +1259,37 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
         ...(file.states?.connect
           ? [flag("arm_uvlock", t("Arm UV Lock"), c, file.states.connect.uvlock, (v) => update((d) => void (d.states!.connect!.uvlock = v)), false)]
           : [])
+      );
+    }
+
+    // How it's placed.
+    if (kind === "block") {
+      const c = t("States");
+      const st = file.states ?? {};
+      const setS = (edit: (s: NonNullable<ContentFile["states"]>) => void) =>
+        update((d) => {
+          d.states ??= {};
+          edit(d.states);
+          if (prune(d.states as Record<string, unknown>)) delete d.states;
+        });
+      out.push(
+        choice("facing", t("Facing"), c, st.facing, FACINGS, (v) => setS((x) => void (x.facing = v as typeof st.facing)), {
+          optionLabel: (o) => (o ? t(o) : ""),
+          description: t("The block turns when placed (a facing property); its model's north side is its front."),
+        }),
+        choice("placement", t("Placement"), c, st.placement, PLACEMENTS, (v) => setS((x) => void (x.placement = v as typeof st.placement)), {
+          optionLabel: (o) => (o ? t(o) : ""),
+          description: t("toward: its front faces the player (a furnace, the default); away: the way they look (an observer)."),
+        }),
+        flag("attach", t("Attaches"), c, st.attach, (v) => setS((x) => void (x.attach = v)), false, {
+          description: t("Hangs on a floor, wall or ceiling, as a button does; its model lies on the floor."),
+        }),
+        flag("waterlogged", t("Waterloggable"), c, st.waterlogged, (v) => setS((x) => void (x.waterlogged = v)), false, {
+          description: t("It can stand in water."),
+        }),
+        flag("states_uvlock", t("UV Lock"), c, st.uvlock, (v) => setS((x) => void (x.uvlock = v)), false, {
+          description: t("Its textures stay as they are in the world when it turns."),
+        })
       );
     }
 
