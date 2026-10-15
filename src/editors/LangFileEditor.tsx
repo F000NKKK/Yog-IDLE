@@ -59,10 +59,6 @@ function scanLangFile(text: string): LangEntry[] | null {
 }
 
 /** `assets/<namespace>/lang/<locale>.json` — what Minecraft loads translations from. */
-export function isLangFile(path: string): boolean {
-  return /[\\/]assets[\\/][^\\/]+[\\/]lang[\\/][^\\/]+\.json$/i.test(path);
-}
-
 const REFERENCE_LOCALE = "en_us";
 
 /**
