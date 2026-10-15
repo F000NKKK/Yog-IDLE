@@ -23,7 +23,6 @@ import {
   useDocumentCommands,
   useEditorView,
   useKeybinding,
-  formatShortcut,
   withShortcut,
   t,
   useT,
