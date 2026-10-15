@@ -526,7 +526,7 @@ pub fn page_preview(args: &BookArgs) -> BookRendered {
         "id": format!("{ns}:page_preview"),
         "name": kind.id,
         "categories": [{ "id": entry, "name": kind.id }],
-        "entries": [{ "id": entry, "name": kind.id, "category": entry, "pages": [page] }],
+        "entries": [{ "id": entry, "name": kind.id, "category": format!("@category:{entry}"), "pages": [page] }],
     })
     .to_string();
     let locale = args.locale.as_deref().filter(|l| !l.is_empty());
