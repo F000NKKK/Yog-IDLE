@@ -24,6 +24,7 @@ import {
   useEditorView,
   useKeybinding,
   formatShortcut,
+  withShortcut,
   t,
   useT,
   type MenuBarDropdownEntry,
@@ -187,7 +188,6 @@ export function EditMenu({ actions: a }: { actions: EditorActions }) {
 
 /** The toolbar's editing sections — Save/Save All, Undo/Redo, Format/Toggle Comment — enabled by the active editor's state. */
 export function editorToolbarSections(a: EditorActions): ToolbarSection[] {
-  const withShortcut = (label: string, shortcut: string) => `${t(label)} (${formatShortcut(shortcut)})`;
   return [
     [
       { icon: "save", label: withShortcut("Save All", "Ctrl+Shift+S"), disabled: !a.hasDirty, onClick: a.saveAll },
