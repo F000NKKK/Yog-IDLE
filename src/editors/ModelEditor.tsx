@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type MutableRefObject } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { formatShortcut, Icon, IconButton, Inspector, SelectField, useT, withShortcut, type EditorProps, type PropertyDescriptor } from "substrate-platform-ui";
+import { formatShortcut, Icon, IconButton, Inspector, SelectField, useKeybinding, useT, withShortcut, type EditorProps, type PropertyDescriptor } from "substrate-platform-ui";
 import { ModelViewport, type GizmoMode, type Selection } from "../body/ModelViewport";
 import {
   blankModel,
@@ -116,18 +116,9 @@ export function ModelEditor({ path, content, onChange, readOnly, contentVersion 
     onChange(text);
   };
 
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (!(e.ctrlKey || e.metaKey) || readOnly) return;
-      const k = e.key.toLowerCase();
-      if (k === "z" && !e.shiftKey) step(undo, redo);
-      else if (k === "y" || (k === "z" && e.shiftKey)) step(redo, undo);
-      else return;
-      e.preventDefault();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  });
+  // Layout-independent, like every IDE shortcut: Ctrl+Z is the Z key under "я" too.
+  useKeybinding("Ctrl+Z", () => step(undo, redo), { enabled: !readOnly });
+  useKeybinding(["Ctrl+Y", "Ctrl+Shift+Z"], () => step(redo, undo), { enabled: !readOnly });
 
   // The texture, as the format names it.
   useEffect(() => {

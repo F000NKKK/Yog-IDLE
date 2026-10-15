@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react"
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { TransformControls } from "three/examples/jsm/controls/TransformControls.js";
+import { eventKey } from "substrate-platform-ui";
 import { cubeQuads, type ModelFile, type Vec3 } from "./ymodel";
 
 // The body model editor's 3D view. The model is drawn in its own Java model
@@ -371,7 +372,8 @@ export function ModelViewport(props: ModelViewportProps) {
     const onKey = (e: KeyboardEvent) => {
       const typing = e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || (e.target as HTMLElement)?.isContentEditable;
       if (typing || !el.isConnected || !el.matches(":hover")) return;
-      const k = e.code.startsWith("Numpad") ? e.code.slice(6) : e.key.toLowerCase();
+      // The physical key, whatever the layout types there ("п" is still G).
+      const k = e.code === "NumpadDecimal" ? "." : eventKey(e);
       const flip = e.ctrlKey ? -1 : 1;
       if (k === "g") onMode("translate");
       else if (k === "r") onMode("rotate");
@@ -380,7 +382,7 @@ export function ModelViewport(props: ModelViewportProps) {
       else if (k === "1") view([0, 0, -flip]);
       else if (k === "3") view([flip, 0, 0]);
       else if (k === "7") view([0, -flip, 0], [0, 0, 1]);
-      else if (k === "Decimal" || k === ".") {
+      else if (k === ".") {
         three.orbit.target.set(0, 12, 0);
         view([0, 0, -1]);
       } else return;
