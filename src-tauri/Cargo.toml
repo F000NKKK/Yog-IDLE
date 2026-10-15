@@ -43,7 +43,7 @@ proc-macro2 = { version = "1.0.107", features = ["span-locations"] }
 # The screen designer draws with yog-ui itself — the crate mods render with
 # in game — through a recording `YogGfxApi` (yog-abi/yog-gfx), and reads
 # Minecraft's font/textures from the local client jar (zip, png).
-yog-ui = "0.41.1"
+yog-ui = "0.41.4"
 yog-gfx = "0.26"
 yog-abi = "0.29.3"
 yog-book = "0.64"
@@ -52,7 +52,7 @@ yog-data = "0.4"
 # A dimension's terrain, previewed by the code the runtime generates it with.
 yog-worldgen = "0.1"
 # The source formats' schemas, for generated editors.
-yog-formats = "0.4"
+yog-formats = "0.5"
 # SVG images and TrueType fonts, drawn the way the game draws them.
 resvg = { version = "0.48", default-features = false }
 fontdue = "0.9"
@@ -77,14 +77,3 @@ yog-symbols = "0.4"
 yog-debugger = "0.9"
 yog-hot-reload = "0.2"
 nix = { version = "0.31", features = ["ptrace", "signal", "process"] }
-
-[patch.crates-io]
-yog-book = { path = "/home/f000nk/Projects/yog/Yog-Mod-Loader/rust/crates/yog-book" }
-yog-formats = { path = "/home/f000nk/Projects/yog/Yog-Mod-Loader/rust/crates/yog-formats" }
-yog-data = { path = "/home/f000nk/Projects/yog/Yog-Mod-Loader/rust/crates/yog-data" }
-yog-data-derive = { path = "/home/f000nk/Projects/yog/Yog-Mod-Loader/rust/crates/yog-data-derive" }
-yog-ui = { path = "/home/f000nk/Projects/yog/Yog-Mod-Loader/rust/crates/yog-ui" }
-yog-gfx = { path = "/home/f000nk/Projects/yog/Yog-Mod-Loader/rust/crates/yog-gfx" }
-yog-abi = { path = "/home/f000nk/Projects/yog/Yog-Mod-Loader/rust/crates/yog-abi" }
-yog-registry = { path = "/home/f000nk/Projects/yog/Yog-Mod-Loader/rust/crates/yog-registry" }
-yog-worldgen = { path = "/home/f000nk/Projects/yog/Yog-Mod-Loader/rust/crates/yog-worldgen" }
