@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useState, useSyncExternalStore, type CSSProperties } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { Icon, IconButton, Inspector, SelectField, useT, type EditorProps, type PropertyDescriptor } from "substrate-platform-ui";
+import { Icon, IconButton, SelectField, usePropertyContext, useT, type EditorProps, type PropertyDescriptor } from "substrate-platform-ui";
 import { DataEditor } from "./DataEditor";
 import { parseDataValue } from "../data/yogData";
 import { imagePreview, imageSources, imageSourcesVersion, ingredientItems, subscribeImageSources } from "../designer/imageSources";
@@ -411,6 +411,16 @@ export function RecipeEditor({ path, content, onChange, readOnly }: EditorProps)
     }
   }
 
+  // What Properties shows while the recipe is active: the selected place, the result, the recipe's values.
+  usePropertyContext(path, {
+    order: "declared",
+    objectName: targetLabel,
+    objectType: t("Recipe"),
+    objectKey: target,
+    objectDescription: t("An item, a tag (#c:dusts), or alternatives joined by |. Right-click a place to empty it."),
+    properties: inspected,
+  });
+
   return (
     <div className="recipe-editor">
       {toolbar}
@@ -419,14 +429,6 @@ export function RecipeEditor({ path, content, onChange, readOnly }: EditorProps)
           {stage}
           {!layout && !kind?.slots.length && <p className="recipe-hint">{t("No layout: give the kind a .yui layout (Edit layout… after New kind…) to draw it as books do.")}</p>}
         </div>
-        <Inspector
-          objectName={targetLabel}
-          objectType={t("Recipe")}
-          objectKey={target}
-          properties={inspected}
-          persistKey="yog.recipe.inspector"
-          hint={t("An item, a tag (#c:dusts), or alternatives joined by |. Right-click a place to empty it.")}
-        />
       </div>
     </div>
   );

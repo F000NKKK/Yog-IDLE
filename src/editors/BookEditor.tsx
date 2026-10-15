@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { Inspector, useT, type EditorProps, type PropertyDescriptor, type PropertyValue } from "substrate-platform-ui";
+import { usePropertyContext, useT, type EditorProps, type PropertyDescriptor, type PropertySet, type PropertyValue } from "substrate-platform-ui";
 import { imagePreview, imageSourcesVersion, subscribeImageSources } from "../designer/imageSources";
 import { designText, useDesignResources } from "../lang/designResources";
 import {
@@ -151,6 +151,11 @@ export function BookEditor({ path, content, onChange, readOnly }: EditorProps) {
     const y = (e.nativeEvent.offsetY / img.clientHeight) * SCREEN_H;
     draw({ kind: "click", x, y });
   };
+
+  // What Properties shows while the book is active: the selected book, category, entry or page (set below).
+  const shownProperties = useRef<PropertySet | null>(null);
+  shownProperties.current = null;
+  usePropertyContext(path, () => shownProperties.current);
 
   if (!parsed) {
     return <div className="book-editor book-error">{t("This isn't a book (a JSON object) — fix it in the Code view.")}</div>;
@@ -330,6 +335,14 @@ export function BookEditor({ path, content, onChange, readOnly }: EditorProps) {
     ...target.fields.map(property),
   ];
 
+  shownProperties.current = {
+    order: "declared",
+    objectName: target.title,
+    objectKey: JSON.stringify(sel),
+    objectDescription: t("Texts may refer to resources: @Strings.key, @item:mymod:ruby, @block:stone."),
+    properties,
+  };
+
   // ── Outline ───────────────────────────────────────────────────────────────
 
   const is = (s: Selection) => JSON.stringify(s) === JSON.stringify(sel);
@@ -412,13 +425,6 @@ export function BookEditor({ path, content, onChange, readOnly }: EditorProps) {
           {rendered?.image && rendered.error && <div className="book-preview-error">{rendered.error}</div>}
           <div className="book-preview-hint">{t("Click the book like a reader would — entries, page arrows, home.")}</div>
         </div>
-        <Inspector
-          objectName={target.title}
-          objectKey={JSON.stringify(sel)}
-          properties={properties}
-          persistKey="yog.book.inspector"
-          hint={t("Texts may refer to resources: @Strings.key, @item:mymod:ruby, @block:stone.")}
-        />
       </div>
     </div>
   );

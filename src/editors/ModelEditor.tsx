@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type MutableRefObject } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { formatShortcut, Icon, IconButton, Inspector, SelectField, useKeybinding, useT, withShortcut, type EditorProps, type PropertyDescriptor } from "substrate-platform-ui";
+import { formatShortcut, Icon, IconButton, SelectField, useKeybinding, usePropertyContext, useT, withShortcut, type EditorProps, type PropertyDescriptor } from "substrate-platform-ui";
 import { ModelViewport, type GizmoMode, type Selection } from "../body/ModelViewport";
 import {
   blankModel,
@@ -400,15 +400,17 @@ export function ModelEditor({ path, content, onChange, readOnly, contentVersion 
   }, [model, selection, bone, texture, textureError, readOnly, t]);
 
   const objectName = selection?.kind === "cube" ? t("cube {n}", { n: selection.cube + 1 }) : selection?.kind === "locator" ? selection.locator : selection?.kind === "bone" ? selection.bone : t("Model");
-  const inspector = model && (
-    <Inspector
-      objectName={objectName}
-      objectType={selection ? t(selection.kind === "bone" ? "Bone" : selection.kind === "cube" ? "Cube" : "Locator") : undefined}
-      objectKey={selection ? JSON.stringify(selection) : "model"}
-      properties={properties}
-      persistKey="yog.ymodel.inspector"
-      hint={!selection ? t("Click a cube to pick it (again, or {alt}: its bone). {orbit} orbits the view, {pan} pans it, {front}/{side}/{top}: front, side, top.", HINT_KEYS()) : undefined}
-    />
+  // What Properties shows while the model is active: the model, or what's picked in it.
+  usePropertyContext(
+    path,
+    model && {
+      order: "declared",
+      objectName,
+      objectType: selection ? t(selection.kind === "bone" ? "Bone" : selection.kind === "cube" ? "Cube" : "Locator") : undefined,
+      objectKey: selection ? JSON.stringify(selection) : "model",
+      objectDescription: t("Click a cube to pick it (again, or {alt}: its bone). {orbit} orbits the view, {pan} pans it, {front}/{side}/{top}: front, side, top.", HINT_KEYS()),
+      properties,
+    },
   );
 
   if (error) return <div className="model-error">{t("Can't read this model: {error}", { error })}</div>;
@@ -447,7 +449,6 @@ export function ModelEditor({ path, content, onChange, readOnly, contentVersion 
             })
           }
         />
-        {inspector}
       </div>
     </div>
   );
