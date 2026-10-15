@@ -19,6 +19,13 @@ import {
   type DesignRect,
   type EditorProps,
   type PropertySet,
+  pt,
+  Toolbar,
+  ToolbarButton,
+  ToolbarCheck,
+  ToolbarGroup,
+  ToolbarLabel,
+  ToolbarSelect,
 } from "substrate-platform-ui";
 import { openFile } from "../fileOpenBus";
 import { useActiveFileTab } from "../OpenFilesContext";
@@ -1265,60 +1272,37 @@ function CanvasDesigner({ path, content, onChange, readOnly, contentVersion, lin
         if (!(e.target instanceof HTMLSelectElement || e.target instanceof HTMLInputElement)) publish();
       }}
     >
-      <div className="yui-designer-toolbar">
-        <label>
-          {t("GUI size")}
-          <select value={view.res} onChange={(e) => updateView({ res: Number(e.target.value) })}>
-            {RESOLUTIONS.map((r, i) => (
-              <option key={r.label} value={i}>
-                {r.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          {t("Zoom")}
-          <select value={view.zoom} onChange={(e) => updateView({ zoom: Number(e.target.value) })}>
-            {ZOOMS.map((z) => (
-              <option key={z} value={z}>
-                {z * 100}%
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          <input type="checkbox" checked={view.snap} onChange={(e) => updateView({ snap: e.target.checked })} />
-          {t("Snap")}
-        </label>
-        <label>
-          <input type="checkbox" checked={view.showGrid} onChange={(e) => updateView({ showGrid: e.target.checked })} />
-          {t("Grid")}
-        </label>
-        <span className="yui-designer-sep" />
-        <button type="button" disabled={!canEdit || !hasMovable} onClick={() => reorder(true)} title={t("Bring to Front")}>
-          {t("Bring to Front")}
-        </button>
-        <button type="button" disabled={!canEdit || !hasMovable} onClick={() => reorder(false)} title={t("Send to Back")}>
-          {t("Send to Back")}
-        </button>
-        <span className="yui-designer-sep" />
-        <button
-          type="button"
-          aria-pressed={previewing}
-          data-active={previewing || undefined}
-          onClick={togglePreview}
-          title={previewing ? t("Back to designing: select, move and resize widgets.") : t("Try the screen as in game: hover and press buttons, type into text boxes, scroll lists. Events are shown, not run.")}
-        >
-          {t("Preview")}
-        </button>
-        <span className="yui-designer-status" title={picture?.assets ? t("Drawn by yog-ui with Minecraft {version}'s font and textures ({jar})", { version: picture.assets.version, jar: picture.assets.jar }) : undefined}>
-          {previewing
-            ? (lastEvent ?? t("Preview — events appear here and in Output (General)."))
-            : primary && primaryGeo
-            ? `${nodeLabel(primary)} · ${Math.round(primaryGeo.rect.x)}, ${Math.round(primaryGeo.rect.y)} · ${Math.round(primaryGeo.rect.w)} × ${Math.round(primaryGeo.rect.h)}`
-            : doc.root.attrs.id}
+      <Toolbar>
+        <ToolbarGroup>
+          <ToolbarSelect label="GUI size" value={String(view.res)} options={RESOLUTIONS.map((r, i) => ({ value: String(i), label: r.label }))} onChange={(v) => updateView({ res: Number(v) })} />
+          <ToolbarSelect label="Zoom" value={String(view.zoom)} options={ZOOMS.map((z) => ({ value: String(z), label: `${z * 100}%` }))} onChange={(v) => updateView({ zoom: Number(v) })} />
+          <ToolbarCheck label="Snap" checked={view.snap} onChange={(snap) => updateView({ snap })} />
+          <ToolbarCheck label="Grid" checked={view.showGrid} onChange={(showGrid) => updateView({ showGrid })} />
+        </ToolbarGroup>
+        <ToolbarGroup>
+          <ToolbarButton label="Bring to Front" disabled={!canEdit || !hasMovable} onClick={() => reorder(true)} />
+          <ToolbarButton label="Send to Back" disabled={!canEdit || !hasMovable} onClick={() => reorder(false)} />
+        </ToolbarGroup>
+        <ToolbarGroup>
+          <ToolbarButton
+            icon="play"
+            showLabel
+            label={pt("designer", "Preview")}
+            tooltip={previewing ? "Back to designing: select, move and resize widgets." : "Try the screen as in game: hover and press buttons, type into text boxes, scroll lists. Events are shown, not run."}
+            active={previewing}
+            onClick={togglePreview}
+          />
+        </ToolbarGroup>
+        <span title={picture?.assets ? t("Drawn by yog-ui with Minecraft {version}'s font and textures ({jar})", { version: picture.assets.version, jar: picture.assets.jar }) : undefined}>
+          <ToolbarLabel>
+            {previewing
+              ? (lastEvent ?? t("Preview — events appear here and in Output (General)."))
+              : primary && primaryGeo
+              ? `${nodeLabel(primary)} · ${Math.round(primaryGeo.rect.x)}, ${Math.round(primaryGeo.rect.y)} · ${Math.round(primaryGeo.rect.w)} × ${Math.round(primaryGeo.rect.h)}`
+              : doc.root.attrs.id}
+          </ToolbarLabel>
         </span>
-      </div>
+      </Toolbar>
       {notice && <div className="yui-designer-notice">{notice}</div>}
       <div
         className="yui-designer-canvas"

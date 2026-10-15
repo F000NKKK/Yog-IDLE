@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { usePropertyContext, useT, type EditorProps, type PropertyDescriptor, type PropertySet, type PropertyValue } from "substrate-platform-ui";
+import { Toolbar, ToolbarButton, ToolbarGroup, ToolbarSelect, ToolbarSpacer, pt, usePropertyContext, useT, type EditorProps, type PropertyDescriptor, type PropertySet, type PropertyValue } from "substrate-platform-ui";
 import { imagePreview, imageSourcesVersion, subscribeImageSources } from "../designer/imageSources";
 import { designText, useDesignResources } from "../lang/designResources";
 import {
@@ -283,7 +283,7 @@ export function BookEditor({ path, content, onChange, readOnly }: EditorProps) {
       (f.kind === "item" || f.kind === "entity") && id && !id.startsWith("@")
         ? imagePreview(path, f.kind === "item" ? (id.endsWith(".png") ? id : `item:${id}`) : `item:${id}_spawn_egg`) ?? undefined
         : undefined;
-    const base = { id: f.key, name: t(f.label), readOnly };
+    const base = { id: f.key, name: pt("book", f.label), readOnly };
     switch (f.kind) {
       case "multiline":
         return { ...base, kind: "text", value: str(v), onCommit: (x) => set(String(x)) };
@@ -364,35 +364,32 @@ export function BookEditor({ path, content, onChange, readOnly }: EditorProps) {
 
   return (
     <div className="book-editor">
-      <div className="book-toolbar">
-        <button type="button" disabled={readOnly} onClick={addCategory}>{t("+ Category")}</button>
-        <button type="button" disabled={readOnly || book.categories.length === 0} onClick={addEntry}>{t("+ Entry")}</button>
-        <select
-          disabled={readOnly || entryOfSelection() === undefined}
-          value=""
-          onChange={(e) => e.target.value && addPage(e.target.value)}
-        >
-          <option value="">{t("+ Page…")}</option>
-          {PAGE_TYPES.map((p) => (
-            <option key={p.type} value={p.type}>{t(p.label)}</option>
-          ))}
-        </select>
-        <label className="book-toolbar-locale">
-          {t("Language")}
-          <select value={locale} onChange={(e) => setLocale(e.target.value)}>
-            <option value="">{t("Neutral")}</option>
-            {(rendered?.locales ?? []).map((l) => (
-              <option key={l} value={l}>
-                {l}
-              </option>
-            ))}
-          </select>
-        </label>
-        <span className="book-toolbar-gap" />
-        <button type="button" disabled={readOnly || sel.kind === "book"} onClick={() => move(-1)} title={t("Move up")}>↑</button>
-        <button type="button" disabled={readOnly || sel.kind === "book"} onClick={() => move(1)} title={t("Move down")}>↓</button>
-        <button type="button" disabled={readOnly || sel.kind === "book"} onClick={remove} title={t("Delete")}>✕</button>
-      </div>
+      <Toolbar>
+        <ToolbarGroup>
+          <ToolbarButton icon="plus" label="Category" showLabel disabled={readOnly} onClick={addCategory} />
+          <ToolbarButton icon="plus" label="Entry" showLabel disabled={readOnly || book.categories.length === 0} onClick={addEntry} />
+          <ToolbarSelect
+            value=""
+            disabled={readOnly || entryOfSelection() === undefined}
+            options={[{ value: "", label: t("+ Page…") }, ...PAGE_TYPES.map((p) => ({ value: p.type, label: t(p.label) }))]}
+            onChange={(v) => v && addPage(v)}
+          />
+        </ToolbarGroup>
+        <ToolbarGroup>
+          <ToolbarSelect
+            label="Language"
+            value={locale}
+            options={[{ value: "", label: t("Neutral") }, ...(rendered?.locales ?? []).map((l) => ({ value: l, label: l }))]}
+            onChange={setLocale}
+          />
+        </ToolbarGroup>
+        <ToolbarSpacer />
+        <ToolbarGroup>
+          <ToolbarButton icon="arrowUp" label="Move up" disabled={readOnly || sel.kind === "book"} onClick={() => move(-1)} />
+          <ToolbarButton icon="arrowDown" label="Move down" disabled={readOnly || sel.kind === "book"} onClick={() => move(1)} />
+          <ToolbarButton icon="trash" label="Delete" disabled={readOnly || sel.kind === "book"} onClick={remove} />
+        </ToolbarGroup>
+      </Toolbar>
       <div className="book-body">
         <div className="book-outline">
           {row({ kind: "book" }, str(book.name) || book.id, 0)}

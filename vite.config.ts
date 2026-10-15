@@ -1,12 +1,35 @@
-import { defineConfig } from "vite";
+import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
+import { realpathSync } from "node:fs";
+import path from "node:path";
 
-// @ts-expect-error process is a nodejs global
+/**
+ * Edits to the symlinked `substrate-platform-ui` reload like the app's own.
+ * Under `preserveSymlinks` its modules are known by their `node_modules`
+ * path, which the watcher neither watches nor hears about — so its real
+ * folder is watched and each change is passed on under the linked path.
+ */
+function watchSubstrate(): Plugin {
+  return {
+    name: "yog-idle:watch-substrate",
+    configureServer(server) {
+      const link = path.resolve("node_modules/substrate-platform-ui");
+      const real = realpathSync(link);
+      server.watcher.add(path.join(real, "src"));
+      for (const event of ["change", "add", "unlink"] as const) {
+        server.watcher.on(event, (file) => {
+          if (file.startsWith(real + path.sep)) server.watcher.emit(event, link + file.slice(real.length));
+        });
+      }
+    },
+  };
+}
+
 const host = process.env.TAURI_DEV_HOST;
 
 // https://vite.dev/config/
 export default defineConfig(async () => ({
-  plugins: [react()],
+  plugins: [react(), watchSubstrate()],
   resolve: {
     preserveSymlinks: true,
     // `substrate-platform-ui` is symlinked in via `file:`, and (despite

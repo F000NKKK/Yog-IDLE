@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Icon, IconButton, SelectField, TextField, useT, withShortcut } from "substrate-platform-ui";
+import { formatShortcut, Icon, IconButton, pt, SelectField, TextField, useT, withShortcut } from "substrate-platform-ui";
 import { hexToRgba, rgbaToCss, rgbaToHex, type PaintSettings, type PaintTool, type Rgba } from "./pixels";
 
 // The paint tools panel: tool buttons, brush size, mirror, fill mode, the
@@ -98,7 +98,7 @@ export function PaintTools({ paint, onChange, disabled }: { paint: PaintState; o
         {PAINT_TOOLS.map((x) => (
           <IconButton
             key={x.tool}
-            title={`${t(x.label)} (${x.key})`}
+            title={`${pt("paint tool", x.label)} (${formatShortcut(x.key.toLowerCase())})`}
             aria-pressed={paint.tool === x.tool}
             className={paint.tool === x.tool ? "paint-on" : undefined}
             disabled={disabled}

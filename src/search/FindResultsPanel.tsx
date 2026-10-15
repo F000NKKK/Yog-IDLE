@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { formatShortcut, Icon, IconButton, SearchResults, SymbolIcon, useT, withShortcut, type SearchResultGroup, type SearchResultHit } from "substrate-platform-ui";
+import { formatShortcut, SearchResults, SymbolIcon, Toolbar, ToolbarButton, ToolbarLabel, ToolbarSpacer, useT, type SearchResultGroup, type SearchResultHit } from "substrate-platform-ui";
 import { openFile } from "../fileOpenBus";
 import { cancelFind, clearFindResults, useFindResults } from "./findStore";
 import { openFindInFiles } from "./searchUi";
@@ -63,20 +63,17 @@ export function FindResultsPanel() {
 
   return (
     <div className="idle-find-results">
-      <div className="idle-find-results-toolbar">
-        <span className="idle-find-results-caption" title={results.caption}>
-          {results.caption || t("Find Results")}
-        </span>
-        <IconButton title={withShortcut("Find in Files", "ctrl+shift+f")} onClick={() => openFindInFiles("find")}>
-          <Icon name="search" />
-        </IconButton>
-        <IconButton title={t("Stop Search")} disabled={!results.running} onClick={cancelFind}>
-          <Icon name="stop" />
-        </IconButton>
-        <IconButton title={t("Clear All")} disabled={!results.caption} onClick={clearFindResults}>
-          <Icon name="trash" />
-        </IconButton>
-      </div>
+      <Toolbar>
+        <ToolbarLabel>
+          <span className="idle-find-results-caption" title={results.caption}>
+            {results.caption || t("Find Results")}
+          </span>
+        </ToolbarLabel>
+        <ToolbarSpacer />
+        <ToolbarButton icon="search" label="Find in Files" shortcut="ctrl+shift+f" onClick={() => openFindInFiles("find")} />
+        <ToolbarButton icon="stop" label="Stop Search" disabled={!results.running} onClick={cancelFind} />
+        <ToolbarButton icon="trash" label="Clear All" disabled={!results.caption} onClick={clearFindResults} />
+      </Toolbar>
       {results.running && <div className="idle-find-results-progress" />}
       {results.error && <div className="idle-find-results-error">{results.error}</div>}
       <SearchResults

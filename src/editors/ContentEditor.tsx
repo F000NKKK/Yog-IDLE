@@ -8,6 +8,13 @@ import {
   notify,
   notifyDocumentCommands,
   usePropertyContext,
+  Toolbar,
+  ToolbarButton,
+  ToolbarCheck,
+  ToolbarGroup,
+  ToolbarModes,
+  ToolbarSelect,
+  ToolbarSpacer,
   promptDialog,
   registerDocumentCommands,
   SelectField,
@@ -17,6 +24,7 @@ import {
   type EditorProps,
   type PropertyDescriptor,
   withShortcut,
+  pt,
 } from "substrate-platform-ui";
 import { useOpenFiles } from "../OpenFilesContext";
 import { reportError } from "../reportError";
@@ -957,7 +965,7 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
         num("light", t("Light Level"), c, b.light, (v) => setB((x) => void (x.light = v)), { min: 0, max: 15, int: true }),
         text(
           "tool",
-          t("Tool"),
+          pt("block", "Tool"),
           c,
           tools,
           (v) =>
@@ -1434,68 +1442,62 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
 
   return (
     <div className="content-editor" ref={rootRef}>
-      <div className="content-toolbar">
-        <SelectField aria-label={t("Model")} value={effectiveKey} options={modelChoices} onChange={(v) => pickModel(v as ModelKey)} />
-        <span className="content-divider" />
-        <Button variant={!paintOn && gizmo === "move" ? "primary" : "subtle"} disabled={!!resolved.sprite} onClick={() => pickGizmo("move")} title={withShortcut("Move", "g")}>
-          {t("Move")}
-        </Button>
-        <Button variant={!paintOn && gizmo === "resize" ? "primary" : "subtle"} disabled={!!resolved.sprite} onClick={() => pickGizmo("resize")} title={withShortcut("Resize", "s")}>
-          {t("Resize")}
-        </Button>
-        <Button variant={paintOn ? "primary" : "subtle"} disabled={readOnly} onClick={() => setPaintMode(true)} title={withShortcut("Paint the textures", "p")}>
-          {t("Paint")}
-        </Button>
-        <span className="content-divider" />
-        <Button variant={shading ? "primary" : "subtle"} onClick={() => setShading((s) => !s)} title={t("Minecraft's per-face shading")}>
-          {t("Shading")}
-        </Button>
-        <Button variant={grid ? "primary" : "subtle"} onClick={() => setGrid((g) => !g)}>
-          {t("Grid")}
-        </Button>
-        <SelectField
-          aria-label={t("View")}
-          value=""
-          options={[
-            { value: "", label: t("View…") },
-            { value: "front", label: withShortcut("Front", "1") },
-            { value: "right", label: withShortcut("Right", "3") },
-            { value: "top", label: withShortcut("Top", "7") },
-            { value: "back", label: withShortcut("Back", "ctrl+1") },
-            { value: "left", label: withShortcut("Left", "ctrl+3") },
-            { value: "bottom", label: withShortcut("Bottom", "ctrl+7") },
-          ]}
-          onChange={(v) => v && setViewRequest({ view: v as ViewName, key: Date.now() })}
-        />
-        <span className="content-divider" />
-        <SelectField
-          aria-label={t("Display")}
-          value={displaySlot}
-          options={[{ value: "", label: t("No display transform") }, ...DISPLAY_SLOTS.map((s) => ({ value: s, label: s }))]}
-          onChange={(v) => setDisplaySlot(v as DisplaySlot | "")}
-        />
-        {displaySlot && model?.display?.[displaySlot] && (
-          <Button variant="ghost" disabled={readOnly} onClick={() => update((d) => void delete ensureModel(d, effectiveKey).display?.[displaySlot])}>
-            {t("Reset")}
-          </Button>
-        )}
-        {rotations.length > 1 && effectiveKey === "model" && (
-          <SelectField
-            aria-label={t("Variant")}
-            value={String(Math.min(variant, rotations.length - 1))}
-            options={rotations.map((r, i) => ({ value: String(i), label: `${t("Variant")} ${i + 1} (x${r.x ?? 0} y${r.y ?? 0})` }))}
-            onChange={(v) => setVariant(Number(v))}
+      <Toolbar>
+        <ToolbarGroup>
+          <ToolbarSelect value={effectiveKey} options={modelChoices} onChange={(v) => pickModel(v as ModelKey)} />
+        </ToolbarGroup>
+        <ToolbarGroup>
+          <ToolbarModes
+            showLabels
+            value={paintOn ? "paint" : gizmo}
+            onChange={(m) => (m === "paint" ? setPaintMode(true) : pickGizmo(m))}
+            modes={[
+              { value: "move", label: "Move", shortcut: "g", disabled: !!resolved.sprite },
+              { value: "resize", label: "Resize", shortcut: "s", disabled: !!resolved.sprite },
+              { value: "paint", label: "Paint", shortcut: "p", disabled: readOnly },
+            ]}
           />
-        )}
-        <span className="content-divider" />
-        <Button variant="ghost" disabled={readOnly} onClick={() => void addSlot()}>
-          {t("Add Texture Slot…")}
-        </Button>
-        <span className="content-spacer" />
-        <IconButton title={withShortcut("View Code", "f7")} onClick={viewCode}>
-          <Icon name="code" />
-        </IconButton>
-      </div>
+        </ToolbarGroup>
+        <ToolbarGroup>
+          <ToolbarCheck label="Shading" checked={shading} onChange={setShading} />
+          <ToolbarCheck label="Grid" checked={grid} onChange={setGrid} />
+          <ToolbarSelect
+            value=""
+            options={[
+              { value: "", label: t("View…") },
+              { value: "front", label: withShortcut("Front", "1") },
+              { value: "right", label: withShortcut("Right", "3") },
+              { value: "top", label: withShortcut("Top", "7") },
+              { value: "back", label: withShortcut("Back", "ctrl+1") },
+              { value: "left", label: withShortcut("Left", "ctrl+3") },
+              { value: "bottom", label: withShortcut("Bottom", "ctrl+7") },
+            ]}
+            onChange={(v) => v && setViewRequest({ view: v as ViewName, key: Date.now() })}
+          />
+        </ToolbarGroup>
+        <ToolbarGroup>
+          <ToolbarSelect
+            value={displaySlot}
+            options={[{ value: "", label: t("No display transform") }, ...DISPLAY_SLOTS.map((s) => ({ value: s, label: s }))]}
+            onChange={(v) => setDisplaySlot(v as DisplaySlot | "")}
+          />
+          {displaySlot && model?.display?.[displaySlot] && (
+            <ToolbarButton label="Reset" disabled={readOnly} onClick={() => update((d) => void delete ensureModel(d, effectiveKey).display?.[displaySlot])} />
+          )}
+          {rotations.length > 1 && effectiveKey === "model" && (
+            <ToolbarSelect
+              value={String(Math.min(variant, rotations.length - 1))}
+              options={rotations.map((r, i) => ({ value: String(i), label: `${t("Variant")} ${i + 1} (x${r.x ?? 0} y${r.y ?? 0})` }))}
+              onChange={(v) => setVariant(Number(v))}
+            />
+          )}
+        </ToolbarGroup>
+        <ToolbarGroup>
+          <ToolbarButton icon="plus" label="Texture Slot…" showLabel disabled={readOnly} onClick={() => void addSlot()} />
+        </ToolbarGroup>
+        <ToolbarSpacer />
+        <ToolbarButton icon="code" label="View Code" shortcut="f7" onClick={viewCode} />
+      </Toolbar>
       <div className="content-body">
         <div className="content-outliner">
           {paintPanel}

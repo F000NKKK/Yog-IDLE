@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { Icon, IconButton, SelectField, usePropertyContext, useT, type EditorProps, type PropertyDescriptor, type PropertySet } from "substrate-platform-ui";
+import { Toolbar, ToolbarButton, ToolbarGroup, ToolbarInput, ToolbarLabel, ToolbarSelect, usePropertyContext, useT, type EditorProps, type PropertyDescriptor, type PropertySet } from "substrate-platform-ui";
 import { DataEditor } from "./DataEditor";
 import { parseDataValue } from "../data/yogData";
 import { imagePreview, imageSources, imageSourcesVersion, ingredientItems, subscribeImageSources } from "../designer/imageSources";
@@ -225,51 +225,30 @@ export function RecipeEditor({ path, content, onChange, readOnly }: EditorProps)
   ];
 
   const toolbar = (
-    <div className="recipe-bar">
-      <SelectField aria-label={t("Kind of recipe")} value={typeId} options={kindOptions} disabled={readOnly} onChange={switchTo} />
-      {custom && kind && (
-        <IconButton title={t("Edit kind…")} onClick={() => openFile({ path: kind.file })}>
-          <Icon name="settings" />
-        </IconButton>
-      )}
-      {kind?.layout?.file && (
-        <IconButton title={t("Edit layout…")} onClick={() => openFile({ path: kind.layout!.file })}>
-          <Icon name="grid" />
-        </IconButton>
-      )}
-      <span className="recipe-bar-sep" />
-      {newKind === null ? (
-        <IconButton title={t("New kind…")} disabled={readOnly} onClick={() => setNewKind("")}>
-          <Icon name="plus" />
-        </IconButton>
-      ) : (
-        <span className="recipe-newkind">
-          <input
-            autoFocus
+    <Toolbar>
+      <ToolbarGroup>
+        <ToolbarSelect value={typeId} options={kindOptions} disabled={readOnly} onChange={switchTo} />
+        {custom && kind && <ToolbarButton icon="settings" label="Edit kind…" onClick={() => openFile({ path: kind.file })} />}
+        {kind?.layout?.file && <ToolbarButton icon="grid" label="Edit layout…" onClick={() => openFile({ path: kind.layout!.file })} />}
+      </ToolbarGroup>
+      <ToolbarGroup>
+        {newKind === null ? (
+          <ToolbarButton icon="plus" label="New kind…" disabled={readOnly} onClick={() => setNewKind("")} />
+        ) : (
+          <ToolbarInput
             value={newKind}
             placeholder={t("crusher")}
-            onChange={(e) => setNewKind(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && newKind.trim()) void createKind(newKind);
-              if (e.key === "Escape") setNewKind(null);
-            }}
-          />
-          <IconButton title={t("Create")} disabled={!newKind.trim()} onClick={() => void createKind(newKind)}>
-            <Icon name="check" />
-          </IconButton>
-          <IconButton
-            title={t("Cancel")}
-            onClick={() => {
+            onChange={setNewKind}
+            onSubmit={(name) => void createKind(name)}
+            onCancel={() => {
               setNewKind(null);
               setError(null);
             }}
-          >
-            <Icon name="close" />
-          </IconButton>
-        </span>
-      )}
-      {error && <span className="recipe-bar-error">{error}</span>}
-    </div>
+          />
+        )}
+      </ToolbarGroup>
+      {error && <ToolbarLabel tone="error">{error}</ToolbarLabel>}
+    </Toolbar>
   );
 
   /** An ingredient's item shown now: its alternatives and tags' items in turn, a second each, as JEI does. */

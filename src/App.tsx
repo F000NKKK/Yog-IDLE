@@ -13,8 +13,6 @@ import {
   clearOutputBuffer,
   ContextMenu,
   useContextMenu,
-  Icon,
-  IconButton,
   SettingsWindow,
   AppearanceSettings,
   appearanceSettingsKeywords,
@@ -24,6 +22,9 @@ import {
   internationalSettingsKeywords,
   WindowControls,
   Toolbar,
+  ToolbarButton,
+  ToolbarLabel,
+  ToolbarSpacer,
   useWorkflowRunner,
   pt,
   t,
@@ -111,13 +112,10 @@ function OutputToolWindow() {
   const current = OUTPUT_SOURCES.find((s) => s.id === source) ?? OUTPUT_SOURCES[0];
   return (
     <div className="output-panel">
-      <div className="output-panel-toolbar">
-        <span className="output-panel-label">{t("Show output from:")}</span>
+      <Toolbar>
+        <ToolbarLabel>{t("Show output from:")}</ToolbarLabel>
         <div className="output-panel-source-anchor">
-          <button type="button" className="output-panel-source" onClick={() => menu.openAtAnchor()}>
-            <span>{t(current.label)}</span>
-            <Icon name="chevronRight" size={11} className="output-panel-chevron" />
-          </button>
+          <ToolbarButton label={t(current.label)} dropdown onClick={() => menu.openAtAnchor()} />
           <ContextMenu
             target={menu.target ? { mode: "anchor" } : null}
             items={OUTPUT_SOURCES.map((s) => ({
@@ -128,11 +126,9 @@ function OutputToolWindow() {
             onClose={menu.close}
           />
         </div>
-        <span className="output-panel-spacer" />
-        <IconButton title={t("Clear {source} Output", { source: t(current.label) })} onClick={() => clearOutputBuffer(current.event)}>
-          <Icon name="trash" />
-        </IconButton>
-      </div>
+        <ToolbarSpacer />
+        <ToolbarButton icon="trash" label={t("Clear {source} Output", { source: t(current.label) })} onClick={() => clearOutputBuffer(current.event)} />
+      </Toolbar>
       <div className="output-panel-body">
         <OutputPanel key={current.event} eventName={current.event} emptyLabel={t(EMPTY_LABELS[current.id])} />
       </div>

@@ -7,69 +7,13 @@
   background: var(--sp-surface-0);
 }
 
-.yui-designer-toolbar {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-toolbar-gap);
-  min-height: var(--sp-toolbar-height);
-  padding: var(--sp-toolbar-padding-y) var(--sp-toolbar-padding-x);
-  border-bottom: 1px solid var(--sp-border);
-  background: var(--sp-surface-1);
-  color: var(--sp-text-muted);
-  font: var(--sp-font-size) var(--sp-font-ui);
-  white-space: nowrap;
-  overflow: hidden;
-}
 
-.yui-designer-toolbar label {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--sp-space-xs);
-}
 
-/* Same box as Substrate's Button / SelectField. */
-.yui-designer-toolbar select,
-.yui-designer-toolbar button {
-  font: inherit;
-  color: var(--sp-text);
-  background-color: var(--sp-surface-2);
-  border: 1px solid var(--sp-border);
-  border-radius: var(--sp-control-radius);
-  height: var(--sp-control-height);
-  padding: 0 var(--sp-control-padding-x);
-}
 
-.yui-designer-toolbar select {
-  appearance: none;
-  padding-right: var(--sp-select-chevron-space);
-  background: var(--sp-surface-2) var(--sp-select-chevron) no-repeat right var(--sp-control-padding-x) center;
-  line-height: calc(var(--sp-control-height) - 2px);
-}
 
-.yui-designer-toolbar button:hover:not(:disabled) {
-  border-color: var(--sp-border-strong);
-  background: var(--sp-surface-3);
-}
 
-.yui-designer-toolbar button:disabled {
-  color: var(--sp-text-faint);
-}
 
-/* = `.sp-toolbar-separator` */
-.yui-designer-sep {
-  flex: none;
-  width: 1px;
-  height: var(--sp-icon-size);
-  margin: 0 var(--sp-toolbar-separator-margin);
-  background: var(--sp-border-strong);
-}
 
-.yui-designer-status {
-  margin-left: auto;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  font-family: var(--sp-font-mono);
-}
 
 .yui-designer-canvas {
   flex: 1;
@@ -169,10 +113,6 @@
   font: var(--sp-font-size) var(--sp-font-ui);
 }
 
-.yui-designer-toolbar button[data-active] {
-  border-color: var(--sp-accent-strong);
-  background: var(--sp-surface-3);
-}
 
 /* Preview: the screen as in game, taking the mouse and keyboard. */
 .yui-preview {

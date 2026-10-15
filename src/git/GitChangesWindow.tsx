@@ -1,5 +1,5 @@
 import { useEffect, useState, type KeyboardEvent, type MouseEvent, type ReactNode } from "react";
-import { Button, CheckField, ContextMenu, formatShortcut, Icon, IconButton, useContextMenu, useT, type ContextMenuItem } from "substrate-platform-ui";
+import { Button, CheckField, ContextMenu, formatShortcut, Icon, IconButton, Toolbar, ToolbarButton, ToolbarSpacer, useContextMenu, useT, type ContextMenuItem } from "substrate-platform-ui";
 import { openFile } from "../fileOpenBus";
 import { openBranchPicker } from "./BranchPicker";
 import { changeKindLabel, changeLetter, gitApi, splitRepoPath, type FileChange, type StashInfo } from "./gitApi";
@@ -135,30 +135,28 @@ function BranchBar() {
     : t("{branch} has no upstream branch.", { branch: branchLabel });
   const disabled = !!busy;
   return (
-    <div className="idle-git-toolbar">
-      <button type="button" className="idle-git-branch" title={tracking} onClick={openBranchPicker}>
-        <Icon name="branch" size={14} />
-        <span className="idle-git-branch-name">{branchLabel}</span>
-        <Icon name="chevronRight" size={10} className="idle-git-chevron-down" />
-      </button>
-      <span className="idle-git-spacer" />
-      <ToolButton icon="fetch" title={t("Fetch — download incoming commits without changing your files")} disabled={disabled} onClick={() => void remote("fetch")} />
-      <ToolButton
+    <Toolbar>
+      <ToolbarButton icon="branch" label={branchLabel} tooltip={tracking} showLabel dropdown onClick={openBranchPicker} />
+      <ToolbarSpacer />
+      <ToolbarButton icon="fetch" label="Fetch" tooltip={t("Fetch — download incoming commits without changing your files")} disabled={disabled} onClick={() => void remote("fetch")} />
+      <ToolbarButton
         icon="arrowDown"
+        label="Pull"
         count={status.behind}
-        title={status.behind > 0 ? t("Pull — {count} incoming commits", { count: status.behind }) : t("Pull — fetch and merge incoming commits")}
+        tooltip={status.behind > 0 ? t("Pull — {count} incoming commits", { count: status.behind }) : t("Pull — fetch and merge incoming commits")}
         disabled={disabled}
         onClick={() => void remote("pull")}
       />
-      <ToolButton
+      <ToolbarButton
         icon="arrowUp"
+        label="Push"
         count={status.ahead}
-        title={status.ahead > 0 ? t("Push — {count} outgoing commits", { count: status.ahead }) : t("Push — upload your commits")}
+        tooltip={status.ahead > 0 ? t("Push — {count} outgoing commits", { count: status.ahead }) : t("Push — upload your commits")}
         disabled={disabled}
         onClick={() => void remote("push")}
       />
-      <ToolButton icon="sync" title={t("Sync (Pull then Push)")} disabled={disabled} onClick={() => void remote("sync")} />
-      <ToolButton icon="more" title={t("More Actions")} onClick={(e) => menu.openAtPoint(undefined, belowButton(e))} />
+      <ToolbarButton icon="sync" label="Sync (Pull then Push)" disabled={disabled} onClick={() => void remote("sync")} />
+      <ToolbarButton icon="more" label="More Actions" onClick={(e) => menu.openAtPoint(undefined, belowButton(e))} />
       <ContextMenu
         target={menu.target}
         items={[
@@ -168,17 +166,7 @@ function BranchBar() {
         ]}
         onClose={menu.close}
       />
-    </div>
-  );
-}
-
-/** A Git Changes toolbar button: a 16px icon, and a count beside it when there is one (incoming / outgoing). */
-function ToolButton({ icon, count, title, disabled, onClick }: { icon: string; count?: number; title: string; disabled?: boolean; onClick: (e: MouseEvent<HTMLButtonElement>) => void }) {
-  return (
-    <button type="button" className="idle-git-tool" title={title} aria-label={title} disabled={disabled} onClick={onClick}>
-      <Icon name={icon} size={16} />
-      {!!count && <span className="idle-git-tool-count">{count}</span>}
-    </button>
+    </Toolbar>
   );
 }
 

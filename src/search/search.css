@@ -111,15 +111,6 @@
   min-height: 0;
 }
 
-.idle-find-results-toolbar {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-space-2xs);
-  flex: 0 0 auto;
-  height: var(--sp-toolbar-height);
-  padding: 0 var(--sp-toolbar-padding-x) 0 var(--sp-space-sm);
-  border-bottom: 1px solid var(--sp-border);
-}
 
 .idle-find-results-caption {
   flex: 1;

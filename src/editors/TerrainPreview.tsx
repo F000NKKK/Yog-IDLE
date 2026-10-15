@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { useT } from "substrate-platform-ui";
+import { Toolbar, ToolbarSelect, useT } from "substrate-platform-ui";
 
 interface Preview {
   top: string;
@@ -38,16 +38,14 @@ export function TerrainPreview({ content }: { content: string }) {
   }, [content, size]);
   return (
     <div className="terrain-preview">
-      <div className="terrain-preview-bar">
-        <span>{t("Terrain")}</span>
-        <select value={size} onChange={(e) => setSize(Number(e.target.value))}>
-          {[64, 128, 256, 512].map((s) => (
-            <option key={s} value={s}>
-              {t("{size}×{size} blocks", { size: String(s) })}
-            </option>
-          ))}
-        </select>
-      </div>
+      <Toolbar>
+        <ToolbarSelect
+          label="Terrain"
+          value={String(size)}
+          options={[64, 128, 256, 512].map((s) => ({ value: String(s), label: t("{size}×{size} blocks", { size: String(s) }) }))}
+          onChange={(v) => setSize(Number(v))}
+        />
+      </Toolbar>
       {error && <p className="terrain-preview-error">{error}</p>}
       {preview && (
         <>

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type MutableRefObject } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { Icon, KeyHints, IconButton, SelectField, useKeybinding, usePropertyContext, useT, withShortcut, type EditorProps, type KeyHint, type PropertyDescriptor } from "substrate-platform-ui";
+import { KeyHints, Toolbar, ToolbarButton, ToolbarCheck, ToolbarGroup, ToolbarModes, ToolbarSelect, useKeybinding, usePropertyContext, useT, type EditorProps, type KeyHint, type PropertyDescriptor } from "substrate-platform-ui";
 import { ModelViewport, type GizmoMode, type Selection } from "../body/ModelViewport";
 import {
   blankModel,
@@ -209,49 +209,38 @@ export function ModelEditor({ path, content, onChange, readOnly, contentVersion 
   // ── Panels ──────────────────────────────────────────────────────────────
 
   const toolbar = (
-    <div className="model-bar">
-      {(
-        [
-          ["translate", "Move", "g", "arrowUp"],
-          ["rotate", "Turn", "r", "sync"],
-          ["scale", "Size", "s", "expand"],
-        ] as const
-      ).map(([m, label, keys, icon]) => (
-        <IconButton key={m} title={withShortcut(label, keys)} className={mode === m ? "active" : undefined} onClick={() => setMode(m)}>
-          <Icon name={icon} />
-        </IconButton>
-      ))}
-      <span className="model-bar-sep" />
-      <IconButton title={t("Add bone")} disabled={readOnly} onClick={addBone}>
-        <Icon name="plus" />
-      </IconButton>
-      <button type="button" className="model-bar-text" disabled={readOnly} onClick={addCube}>
-        {t("+ Cube")}
-      </button>
-      <button type="button" className="model-bar-text" disabled={readOnly || !bone} onClick={addLocator}>
-        {t("+ Locator")}
-      </button>
-      <button type="button" className="model-bar-text" disabled={readOnly || !selection || selection.kind === "locator"} onClick={duplicate}>
-        {t("Duplicate")}
-      </button>
-      <button type="button" className="model-bar-text" disabled={readOnly || selection?.kind !== "bone"} onClick={mirror} title={t("A mirrored copy: left ↔ right")}>
-        {t("Mirror")}
-      </button>
-      <IconButton title={t("Delete")} disabled={readOnly || !selection} onClick={remove}>
-        <Icon name="trash" />
-      </IconButton>
-      <span className="model-bar-sep" />
-      <label className="model-bar-label">{t("Snap")}</label>
-      <SelectField
-        aria-label={t("Snap")}
-        value={snap}
-        options={SNAPS.map((s) => ({ value: s.id, label: s.id === "off" ? t("Off") : `${s.move} px / ${s.turn}°` }))}
-        onChange={(v) => setSnap(v as typeof snap)}
-      />
-      <label className="model-bar-check">
-        <input type="checkbox" checked={grid} onChange={(e) => setGrid(e.target.checked)} /> {t("Grid")}
-      </label>
-    </div>
+    <Toolbar>
+      <ToolbarGroup>
+        <ToolbarModes
+          value={mode}
+          onChange={setMode}
+          modes={[
+            { value: "translate", label: "Move", icon: "arrowUp", shortcut: "g" },
+            { value: "rotate", label: "Turn", icon: "sync", shortcut: "r" },
+            { value: "scale", label: "Size", icon: "expand", shortcut: "s" },
+          ]}
+        />
+      </ToolbarGroup>
+      <ToolbarGroup>
+        <ToolbarButton icon="plus" label="Bone" showLabel disabled={readOnly} onClick={addBone} />
+        <ToolbarButton icon="plus" label="Cube" showLabel disabled={readOnly} onClick={addCube} />
+        <ToolbarButton icon="plus" label="Locator" showLabel disabled={readOnly || !bone} onClick={addLocator} />
+      </ToolbarGroup>
+      <ToolbarGroup>
+        <ToolbarButton label="Duplicate" disabled={readOnly || !selection || selection.kind === "locator"} onClick={duplicate} />
+        <ToolbarButton icon="swap" label="Mirror" showLabel disabled={readOnly || selection?.kind !== "bone"} onClick={mirror} />
+        <ToolbarButton icon="trash" label="Delete" disabled={readOnly || !selection} onClick={remove} />
+      </ToolbarGroup>
+      <ToolbarGroup>
+        <ToolbarSelect
+          label="Snap"
+          value={snap}
+          options={SNAPS.map((s) => ({ value: s.id, label: s.id === "off" ? t("Off") : `${s.move} px / ${s.turn}°` }))}
+          onChange={(v) => setSnap(v as typeof snap)}
+        />
+        <ToolbarCheck label="Grid" checked={grid} onChange={setGrid} />
+      </ToolbarGroup>
+    </Toolbar>
   );
 
   const outliner = model && (

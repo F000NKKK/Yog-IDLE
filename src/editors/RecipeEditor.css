@@ -12,40 +12,11 @@
   color: var(--sp-text-muted);
 }
 
-.recipe-bar {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-space-2xs);
-  padding: var(--sp-space-xs) var(--sp-space-sm);
-  border-bottom: 1px solid var(--sp-border);
-  background: var(--sp-surface-1);
-}
 
-.recipe-bar .sp-form-select {
-  min-width: 180px;
-}
 
-.recipe-bar-sep {
-  width: 1px;
-  height: 18px;
-  margin: 0 var(--sp-space-2xs);
-  background: var(--sp-border);
-}
 
-.recipe-bar-error {
-  margin-left: var(--sp-space-sm);
-  color: var(--sp-danger, #e66);
-}
 
-.recipe-newkind {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--sp-space-2xs);
-}
 
-.recipe-newkind input {
-  width: 140px;
-}
 
 .recipe-body {
   display: flex;

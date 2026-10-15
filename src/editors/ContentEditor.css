@@ -12,23 +12,7 @@
   gap: var(--sp-space-sm);
 }
 
-/* Same metrics as Substrate's `.sp-toolbar`: 24px controls, one gap, wraps instead of clipping. */
-.content-toolbar {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  flex: none;
-  gap: var(--sp-space-2xs) var(--sp-toolbar-gap);
-  min-height: var(--sp-toolbar-height);
-  padding: var(--sp-toolbar-padding-y) var(--sp-toolbar-padding-x);
-  border-bottom: 1px solid var(--sp-border);
-}
 
-/* Selects default to the top of their row (for forms); in these rows they sit on the centre line like the buttons. */
-.content-toolbar .sp-form-select,
-.content-pane-header .sp-form-select {
-  align-self: center;
-}
 
 /* = `.sp-toolbar-separator` */
 .content-divider {

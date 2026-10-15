@@ -5,20 +5,22 @@ import {
   Button,
   DataGrid,
   Icon,
-  IconButton,
   SearchField,
   notifyDocumentCommands,
   promptDialog,
   registerDocumentCommands,
   tn,
   useKeybinding,
+  Toolbar,
+  ToolbarButton,
+  ToolbarGroup,
+  ToolbarSpacer,
   useLocale,
   useT,
   type DataGridColumn,
   type DataGridHandle,
   type DirEntry,
   type EditorProps,
-  withShortcut,
 } from "substrate-platform-ui";
 import { useOpenFiles } from "../OpenFilesContext";
 import { reportError } from "../reportError";
@@ -681,26 +683,19 @@ export function YresEditor({ path, content, onChange, readOnly, contentVersion }
 
   return (
     <div className="yres-editor" ref={rootRef}>
-      <div className="yres-toolbar">
-        <IconButton title={t("Add Resource")} disabled={readOnly} onClick={() => gridRef.current?.editCell(NEW_ROW_ID, "name")}>
-          <Icon name="plus" />
-        </IconButton>
-        <IconButton title={t("Remove Resource")} disabled={readOnly || targetRows().length === 0} onClick={deleteRows}>
-          <Icon name="trash" />
-        </IconButton>
-        <span className="yres-divider" />
-        <Button variant={showAll ? "primary" : "subtle"} onClick={toggleShowAll} title={t("Show every language of this resource set as a column")}>
-          {t("All Languages")}
-        </Button>
-        <Button variant="ghost" disabled={readOnly} onClick={() => void addLanguage()}>
-          {t("Add Language…")}
-        </Button>
-        <span className="yres-spacer" />
+      <Toolbar>
+        <ToolbarGroup>
+          <ToolbarButton icon="plus" label="Add Resource" disabled={readOnly} onClick={() => gridRef.current?.editCell(NEW_ROW_ID, "name")} />
+          <ToolbarButton icon="trash" label="Remove Resource" disabled={readOnly || targetRows().length === 0} onClick={deleteRows} />
+        </ToolbarGroup>
+        <ToolbarGroup>
+          <ToolbarButton label="All Languages" tooltip="Show every language of this resource set as a column" active={showAll} onClick={toggleShowAll} />
+          <ToolbarButton icon="plus" label="Language…" showLabel disabled={readOnly} onClick={() => void addLanguage()} />
+        </ToolbarGroup>
+        <ToolbarSpacer />
         <SearchField className="yres-search" value={query} onValueChange={setQuery} placeholder={t("Search resources")} />
-        <IconButton title={withShortcut("View Code", "f7")} onClick={viewCode}>
-          <Icon name="code" />
-        </IconButton>
-      </div>
+        <ToolbarButton icon="code" label="View Code" shortcut="f7" onClick={viewCode} />
+      </Toolbar>
       <div className="yres-grid">
         <DataGrid<Row>
           className="sp-datagrid--flush"

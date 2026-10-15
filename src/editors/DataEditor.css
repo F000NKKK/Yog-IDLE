@@ -41,11 +41,6 @@
   border-left: 1px solid var(--border, #3333);
 }
 
-.terrain-preview-bar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
 
 .terrain-preview img {
   width: 100%;
