@@ -1649,6 +1649,15 @@ pub mod bench {
             Err(e) => serde_json::json!({ "error": e }),
         }
     }
+    pub fn body_texture(path: &Path, texture: &str) -> serde_json::Value {
+        match crate::content::body_texture(path, texture) {
+            Ok(t) => serde_json::to_value(t).unwrap_or_default(),
+            Err(e) => serde_json::json!({ "error": e }),
+        }
+    }
+    pub fn item_tag(path: &Path, tag: &str) -> serde_json::Value {
+        serde_json::to_value(crate::designer::tags::item_tag(path, tag)).unwrap_or_default()
+    }
     pub fn content_textures(path: &Path) -> serde_json::Value {
         serde_json::to_value(crate::content::textures(path)).unwrap_or_default()
     }
