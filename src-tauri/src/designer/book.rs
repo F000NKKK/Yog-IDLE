@@ -17,7 +17,7 @@ use yog_book::{Book, BookRenderer};
 use super::assets::Resources;
 use super::{gfx, images, raster};
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct BookArgs {
     pub path: String,
@@ -34,7 +34,7 @@ pub struct BookArgs {
 }
 
 /// What the reader does before the book is drawn.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 #[serde(tag = "kind", rename_all = "camelCase")]
 pub enum BookAction {
     /// A click at GUI pixels `x, y`.
@@ -418,13 +418,28 @@ pub fn render(args: &BookArgs) -> BookRendered {
         Ok(b) => b,
         Err(e) => return fail(e),
     };
+    render_book(args, book, problem, root.as_deref(), locales)
+}
+
+/// Draws `book` (already read) for `args`: its session's reader, the action.
+fn render_book(args: &BookArgs, book: yog_book::Book, problem: Option<String>, root: Option<&Path>, locales: Vec<String>) -> BookRendered {
+    let (sw, sh) = (args.screen_w.clamp(1, 4096), args.screen_h.clamp(1, 4096));
+    let fail = |error: String| BookRendered {
+        image: None,
+        scale: args.scale,
+        shown: None,
+        action: None,
+        animated: false,
+        locales: locales.clone(),
+        error: Some(error),
+    };
     let json = serde_json::to_string(&book).unwrap_or_default();
 
     let mut sessions = SESSIONS.lock().unwrap_or_else(|e| e.into_inner());
     let session = sessions.entry(args.path.clone()).or_insert_with(|| {
         let mut renderer = BookRenderer::new(book.clone());
         renderer.set_translator(translate);
-        for (id, recipe) in root.as_deref().map(recipes).unwrap_or_default() {
+        for (id, recipe) in root.map(recipes).unwrap_or_default() {
             renderer.add_recipe(id, &recipe);
         }
         Session { renderer, json: json.clone() }
@@ -450,9 +465,9 @@ pub fn render(args: &BookArgs) -> BookRendered {
         None => None,
     };
 
-    images::set_document(root.as_deref());
+    images::set_document(root);
     let ops = gfx::record(sw as i32, sh as i32, |ctx| r.render(ctx, sw as f32, sh as f32));
-    let res = Resources::for_mod(root.as_deref());
+    let res = Resources::for_mod(root);
     let scale = raster::fit_scale(sw, sh, args.scale);
     let canvas = raster::rasterize(&ops, sw, sh, scale, &res);
     match canvas.png() {
@@ -467,6 +482,63 @@ pub fn render(args: &BookArgs) -> BookRendered {
         },
         Err(e) => fail(e),
     }
+}
+
+/// What a page of a mod's kind shows when the designer has no page to read:
+/// a property's default, else a sample of its kind.
+fn sample(p: &yog_book::page_type::PageProperty) -> serde_json::Value {
+    use yog_book::page_type::PropKind;
+    if let Some(d) = &p.default {
+        return yog_data::json::to_json(d);
+    }
+    match p.kind {
+        PropKind::Text => serde_json::Value::String(format!("‹{}›", p.name)),
+        PropKind::BookText => serde_json::Value::String(format!("‹{}› — the page's text, as a book wraps it.", p.name)),
+        PropKind::Number => serde_json::json!(1),
+        PropKind::Bool => serde_json::json!(true),
+        PropKind::Item => serde_json::json!("minecraft:book"),
+        PropKind::Image => serde_json::json!("item:minecraft:book"),
+        PropKind::Data => serde_json::Value::Null,
+    }
+}
+
+/// A `.yui` book page (`<Component book_page="…">`) drawn as the book shows
+/// it: one entry of one page of the kind, its fields defaults or samples,
+/// the kind as it is in the editor (not as saved).
+pub fn page_preview(args: &BookArgs) -> BookRendered {
+    let root = mod_root(Path::new(&args.path));
+    let locales = locales(root.as_deref());
+    let fail = |error: String| BookRendered { image: None, scale: args.scale, shown: None, action: None, animated: false, locales: locales.clone(), error: Some(error) };
+    let ns = root.as_deref().map(crate::mod_ui::ns).unwrap_or_else(|| "minecraft".into());
+    let kind = match yog_book::ui::parse(&args.text).and_then(|el| yog_book::page_type::compile(&el, &ns)) {
+        Ok(k) => k,
+        Err(e) => return fail(e),
+    };
+    let mut page = serde_json::Map::new();
+    page.insert("type".into(), serde_json::Value::String(kind.id.clone()));
+    for p in &kind.properties {
+        let v = sample(p);
+        if !v.is_null() {
+            page.insert(p.name.clone(), v);
+        }
+    }
+    let entry = format!("{ns}:page_preview");
+    let text = serde_json::json!({
+        "id": format!("{ns}:page_preview"),
+        "name": kind.id,
+        "categories": [{ "id": entry, "name": kind.id }],
+        "entries": [{ "id": entry, "name": kind.id, "category": entry, "pages": [page] }],
+    })
+    .to_string();
+    let locale = args.locale.as_deref().filter(|l| !l.is_empty());
+    let (mut book, problem) = match parse(&text, root.as_deref(), locale) {
+        Ok(b) => b,
+        Err(e) => return fail(e),
+    };
+    book.page_types.retain(|t| t.id != kind.id);
+    book.page_types.push(kind);
+    let args = BookArgs { action: Some(BookAction::Show { entry, page: 0 }), ..args.clone() };
+    render_book(&args, book, problem, root.as_deref(), locales)
 }
 
 /// Forgets a closed `.ybook`'s reader.
