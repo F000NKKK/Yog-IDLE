@@ -3,7 +3,9 @@
 //! makes them (its `.yog-build/generated/tags.json` — content files'
 //! `tags`, `.ydef` tags), and the game's — from the newest version that has
 //! the tag (one removed in 1.21 still shows its 1.20 items) — nested tags
-//! opened.
+//! opened. Yog's common tags (`yog:ingots/iron`) are the game's and the
+//! loaders' tags they stand for, and a loader's (`c:`, `forge:`) holds what
+//! `yog_formats::tags` says.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
@@ -11,6 +13,9 @@ use std::path::{Path, PathBuf};
 use serde_json::Value;
 
 use super::assets::{split_id, vanilla_versions};
+
+/// The tags shown: item tags.
+const REGISTRY: &str = "item";
 
 /// The tag files' folders: `item` since 1.21, `items` before.
 const DIRS: [&str; 2] = ["item", "items"];
@@ -29,6 +34,16 @@ fn mod_tags(root: Option<&Path>) -> BTreeMap<String, Vec<String>> {
 fn entries(roots: &[PathBuf], own: &BTreeMap<String, Vec<String>>, tag: &str) -> Vec<String> {
     let mut out = own.get(tag).cloned().unwrap_or_default();
     let (ns, path) = split_id(tag);
+    if ns == "yog"
+        && let Some(of) = yog_formats::tags::yog_tag(REGISTRY, path)
+    {
+        out.extend(of.iter().map(|t| format!("#{t}")));
+        return out;
+    }
+    if let Some(has) = yog_formats::tags::loader_tag(REGISTRY, tag) {
+        out.extend(has.iter().cloned());
+        return out;
+    }
     'versions: for v in vanilla_versions(roots) {
         for dir in DIRS {
             let rel = format!("{ns}/tags/{dir}/{path}.json");
