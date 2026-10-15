@@ -1,0 +1,71 @@
+# Builds Yog IDLE for Linux, Windows and macOS and attaches the packages to
+# the release of the pushed tag (v1.0.0, …). Substrate-Platform is checked
+# out next to it, as on a developer's machine.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            args: ""
+          - os: windows-latest
+            args: ""
+          - os: macos-latest
+            args: "--target universal-apple-darwin"
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: Yog-IDLE
+      - uses: actions/checkout@v4
+        with:
+          repository: F000NKKK/Substrate-Platform
+          path: Substrate-Platform
+
+      - name: Linux libraries
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Rust (the toolchain rust-toolchain.toml pins)
+        working-directory: Yog-IDLE/src-tauri
+        shell: bash
+        run: |
+          rustup show active-toolchain || rustup toolchain install
+          if [ "$RUNNER_OS" = macOS ]; then rustup target add aarch64-apple-darwin x86_64-apple-darwin; fi
+
+      - name: Substrate's UI packages
+        working-directory: Substrate-Platform/ui
+        run: npm ci
+
+      - name: Yog IDLE's packages
+        working-directory: Yog-IDLE
+        run: npm ci
+
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          projectPath: Yog-IDLE
+          tagName: ${{ github.ref_name }}
+          releaseName: "Yog IDLE ${{ github.ref_name }}"
+          releaseBody: "Yog IDLE — the editor, launcher and debugger for Yog mods. Download the package for your system below."
+          releaseDraft: false
+          prerelease: false
+          args: ${{ matrix.args }}
