@@ -10,6 +10,8 @@ import {
   notify,
   notifyDocumentCommands,
   usePropertyContext,
+  pushDocumentStep,
+  documentAction,
   Toolbar,
   ToolbarButton,
   ToolbarCheck,
@@ -152,12 +154,7 @@ type LoadedTexture = TextureSource & { writable: boolean };
 /** A texture's animation as edited here: `null` = no override (the loaded one shows). */
 type AnimationEdit = { animation: TextureAnimation | null } | null;
 
-/** One step of undo: the file's text and the textures it touched (`null`: the texture didn't exist — a new one), and their animations. */
-interface HistoryEntry {
-  text: string;
-  pixels: Record<string, PixelImage | null>;
-  animations?: Record<string, AnimationEdit>;
-}
+
 
 /** A texture painted in the editor (not saved yet, or saved and still shown from memory). */
 interface Edited {
@@ -271,25 +268,18 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
   const sel = selected !== null && selected < elements.length ? selected : null;
   const selEl = sel !== null ? elements[sel] : undefined;
 
-  // ── Undo/redo over the file's text ────────────────────────────────────────
+  // ── Edits — Undo/Redo are the platform's (`documentHistory`): the file's
+  // text is recorded as it changes, painted pixels and animations as steps.
 
   const contentRef = useRef(content);
   contentRef.current = content;
-  const history = useRef<{ past: HistoryEntry[]; future: HistoryEntry[] }>({ past: [], future: [] });
   useEffect(() => {
-    history.current = { past: [], future: [] };
     setImages({});
     setEdited({});
     setSaved({});
     setAnimEdits({});
     notifyDocumentCommands();
   }, [contentVersion]);
-
-  const pushHistory = useCallback((entry: HistoryEntry) => {
-    history.current.past.push(entry);
-    history.current.future = [];
-    notifyDocumentCommands();
-  }, []);
 
   /** Sets painted textures (`null`: back to what's on disk / gone). */
   const setEditedImages = useCallback((patch: Record<string, PixelImage | null>) => {
@@ -309,10 +299,9 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
       edit(draft);
       const text = serializeContent(draft);
       if (text === contentRef.current) return;
-      pushHistory({ text: contentRef.current, pixels: {} });
       onChange(text);
     },
-    [onChange, readOnly, parsed, pushHistory]
+    [onChange, readOnly, parsed]
   );
 
   /** Sets edited animations (`null`: back to the loaded one). */
@@ -326,24 +315,17 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
     setAnimEdits(next);
   }, []);
 
-  const step = useCallback(
-    (back: boolean) => {
-      const h = history.current;
-      const entry = (back ? h.past : h.future).pop();
-      if (entry === undefined || readOnly) return;
-      const cur = editedRef.current;
-      const anims = animEditsRef.current;
-      (back ? h.future : h.past).push({
-        text: contentRef.current,
-        pixels: Object.fromEntries(Object.keys(entry.pixels).map((k) => [k, cur[k]?.img ?? null])),
-        animations: entry.animations && Object.fromEntries(Object.keys(entry.animations).map((k) => [k, anims[k] ?? null])),
-      });
-      if (entry.text !== contentRef.current) onChange(entry.text);
-      if (Object.keys(entry.pixels).length) setEditedImages(entry.pixels);
-      if (entry.animations) setAnimations(entry.animations);
-      notifyDocumentCommands();
-    },
-    [onChange, readOnly, setEditedImages, setAnimations]
+  /** An undoable step: texture `key`'s pixels from `before` to `after` (`null`: not painted here). */
+  const pixelStep = useCallback(
+    (key: string, before: PixelImage | null, after: PixelImage | null) =>
+      pushDocumentStep(path, { undo: () => setEditedImages({ [key]: before }), redo: () => setEditedImages({ [key]: after }) }),
+    [path, setEditedImages]
+  );
+  /** An undoable step: texture `key`'s animation from `before` to `after`. */
+  const animationStep = useCallback(
+    (key: string, before: AnimationEdit, after: AnimationEdit) =>
+      pushDocumentStep(path, { undo: () => setAnimations({ [key]: before }), redo: () => setAnimations({ [key]: after }) }),
+    [path, setAnimations]
   );
 
   /** Edits the current model's own elements (copying a template's/parent's in first). */
@@ -582,23 +564,25 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
     return value;
   };
 
-  /** Points `slot` at a new texture `img` (a copy, or a blank one) — one undo step with `entry`'s text. */
-  const assignTexture = (slot: string, img: PixelImage): { key: string; entry: HistoryEntry } => {
+  /** Points `slot` at a new texture `img` (a copy, or a blank one) — one undo step, the file and the texture. */
+  const assignTexture = (slot: string, img: PixelImage): string => {
     const key = newTexturePath(slot);
-    const entry: HistoryEntry = { text: contentRef.current, pixels: { [key]: null } };
-    const draft = clone(file);
-    const m = ensureModel(draft, effectiveKey);
-    m.textures = { ...(m.textures ?? {}), [slot]: key };
-    onChange(serializeContent(draft));
-    setEditedImages({ [key]: img });
-    return { key, entry };
+    documentAction(path, () => {
+      const draft = clone(file);
+      const m = ensureModel(draft, effectiveKey);
+      m.textures = { ...(m.textures ?? {}), [slot]: key };
+      onChange(serializeContent(draft));
+      setEditedImages({ [key]: img });
+      pixelStep(key, null, img);
+    });
+    return key;
   };
 
   /**
    * A stroke being painted: on one frame of an animated texture (`anim`,
    * image frame `frameIndex` of `strip`), else on the whole image.
    */
-  const stroke = useRef<{ stroke: Stroke; slot: string; key: string; entry: HistoryEntry; frame: number; anim: TextureAnimation | null; frameIndex: number; strip: PixelImage } | null>(null);
+  const stroke = useRef<{ stroke: Stroke; slot: string; key: string; frame: number; anim: TextureAnimation | null; frameIndex: number; strip: PixelImage } | null>(null);
   /** The texture image with the stroke's pixels in it. */
   const strokeImage = (cur: NonNullable<typeof stroke.current>): PixelImage =>
     cur.anim ? pasteFrame(cur.strip, cur.anim, cur.frameIndex, cur.stroke.image) : cur.stroke.image;
@@ -619,18 +603,17 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
       return;
     }
     if (paint.tool === "fill" && !getPixel(frameOf(base), x, y)) return;
-    let entry: HistoryEntry;
     const writable = images[key]?.writable ?? key in editedRef.current;
     if (!writable) {
       // Not the mod's texture (Minecraft's, another mod's): paint a copy in the mod.
       base = cloneImage(base);
-      ({ key, entry } = assignTexture(slot, base));
+      key = assignTexture(slot, base);
       // The copy keeps the animation (written with it on Save).
       if (anim) setAnimations({ [key]: { animation: anim } });
       notify({ level: "info", message: t("Copied into the mod: {path}", { path: `resources/${key}` }) });
-    } else entry = { text: contentRef.current, pixels: { [key]: base } };
+    }
     const s = new Stroke(frameOf(base), paint, x, y);
-    stroke.current = { stroke: s, slot, key, entry, frame: 0, anim, frameIndex, strip: base };
+    stroke.current = { stroke: s, slot, key, frame: 0, anim, frameIndex, strip: base };
     setEditedImages({ [key]: strokeImage(stroke.current) });
   };
 
@@ -651,24 +634,24 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
     if (!cur) return;
     stroke.current = null;
     cancelAnimationFrame(cur.frame);
-    setEditedImages({ [cur.key]: strokeImage(cur) });
-    const copied = cur.entry.pixels[cur.key] === null;
-    if (copied || !sameImage(cur.stroke.image, cur.stroke.base)) {
-      pushHistory(cur.entry);
+    const painted = strokeImage(cur);
+    setEditedImages({ [cur.key]: painted });
+    if (!sameImage(cur.stroke.image, cur.stroke.base)) {
+      pixelStep(cur.key, cur.strip, painted);
       if (cur.stroke.settings.tool !== "eraser") usedColor(cur.stroke.settings.color);
     }
   };
 
   /** Changes texture `key`'s animation (and its image, when frames were added) — one undo step. */
-  const editAnimation = (key: string, animation: TextureAnimation, img?: PixelImage) => {
-    pushHistory({
-      text: contentRef.current,
-      pixels: img ? { [key]: pixelsOf(key) ?? null } : {},
-      animations: { [key]: animEditsRef.current[key] ?? null },
+  const editAnimation = (key: string, animation: TextureAnimation, img?: PixelImage) =>
+    documentAction(path, () => {
+      if (img) {
+        pixelStep(key, editedRef.current[key]?.img ?? null, img);
+        setEditedImages({ [key]: img });
+      }
+      animationStep(key, animEditsRef.current[key] ?? null, { animation });
+      setAnimations({ [key]: { animation } });
     });
-    if (img) setEditedImages({ [key]: img });
-    setAnimations({ [key]: { animation } });
-  };
 
   const onCanvasPaint = (x: number, y: number, phase: PaintPhase, mods: PaintModifiers) => {
     if (phase === "down") activeSlot && beginPaint(activeSlot, x, y, mods.alt);
@@ -705,8 +688,7 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
     });
     const n = Number(r.button);
     if (!n) return;
-    const { entry } = assignTexture(slot, blankImage(n, n));
-    pushHistory(entry);
+    assignTexture(slot, blankImage(n, n));
     setPaintSlot(slot);
   };
 
@@ -730,8 +712,7 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
   const addLayer = () => {
     const first = pixelsOf(resolved.textures.layer0);
     const slot = `layer${layers.length}`;
-    const { entry } = assignTexture(slot, blankImage(first?.w ?? 16, first?.h ?? 16));
-    pushHistory(entry);
+    assignTexture(slot, blankImage(first?.w ?? 16, first?.h ?? 16));
     setPaintSlot(slot);
   };
   const removeLayer = (slot: string) => {
@@ -872,10 +853,8 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
       setFace(null);
     });
   };
-  const commands = useRef({ step, deleteElement, duplicateElement, copyElement, pasteElement, sel, elements });
-  commands.current = { step, deleteElement, duplicateElement, copyElement, pasteElement, sel, elements };
-  useKeybinding("Ctrl+Z", () => commands.current.step(true), { when: editable });
-  useKeybinding(["Ctrl+Y", "Ctrl+Shift+Z"], () => commands.current.step(false), { when: editable });
+  const commands = useRef({ deleteElement, duplicateElement, copyElement, pasteElement, sel, elements });
+  commands.current = { deleteElement, duplicateElement, copyElement, pasteElement, sel, elements };
   useKeybinding("Delete", () => commands.current.deleteElement(), { when: editable });
   useKeybinding("Ctrl+C", () => void commands.current.copyElement(), { when: editable });
   useKeybinding("Ctrl+X", () => void commands.current.copyElement().then((ok) => ok && commands.current.deleteElement()), { when: editable });
@@ -905,10 +884,6 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
   useEffect(
     () =>
       registerDocumentCommands(path, {
-        canUndo: () => !readOnly && history.current.past.length > 0,
-        undo: () => commands.current.step(true),
-        canRedo: () => !readOnly && history.current.future.length > 0,
-        redo: () => commands.current.step(false),
         hasSelection: () => commands.current.sel !== null,
         cut: () => void commands.current.copyElement().then((ok) => ok && commands.current.deleteElement()),
         copy: () => void commands.current.copyElement(),
