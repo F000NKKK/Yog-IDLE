@@ -1,8 +1,9 @@
+import { frameRect } from "./animation";
 import { useEffect, useRef, useState } from "react";
 import type { TextureSource } from "./Viewport";
 import type { Uv } from "./model";
 
-// The 2D UV editor: the face's texture (first frame of an animated one) on a
+// The 2D UV editor: the face's texture (one frame of an animated one) on a
 // 16×16 pixel grid, the selected face's rectangle on it — drag inside to move
 // it, drag a corner or edge to resize it; snapping to whole pixels (Shift:
 // quarter pixels). Other faces using the same texture are outlined faintly.
@@ -54,8 +55,10 @@ export function UvEditor({ image, uv, others = [], onCommit, readOnly }: UvEdito
         g.fillRect(PAD + x * 16, PAD + y * 16, 16, 16);
       }
     if (img) {
-      const frame = image?.animated && img.height > img.width ? img.width : img.height;
-      g.drawImage(img, 0, 0, img.width, frame, PAD, PAD, SIZE, SIZE);
+      // An animated texture: the frame shown (held while painting), else its first.
+      const anim = image?.animation;
+      const [fx, fy, fw, fh] = anim ? frameRect(anim, img.width, image.pinned ?? anim.frames[0]?.index ?? 0) : [0, 0, img.width, img.height];
+      g.drawImage(img, fx, fy, fw, fh, PAD, PAD, SIZE, SIZE);
     }
     g.strokeStyle = "rgba(255,255,255,0.08)";
     g.lineWidth = 1;

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import * as THREE from "three";
+import { frameNow, frameRect, msToNextFrame, type TextureAnimation } from "./animation";
 import {
   autoUv,
   DIRS,
@@ -18,10 +19,11 @@ import {
 // bounds, an axes gizmo, click-to-select, and move/resize handles that snap
 // to Minecraft's pixel grid. One unit = one model pixel.
 
-/** A texture the view can draw: a data URL; `animated` = frames stacked vertically. */
+/** A texture the view can draw: a data URL, and its animation (played live, or held on image frame `pinned`). */
 export interface TextureSource {
   url: string;
-  animated: boolean;
+  animation: TextureAnimation | null;
+  pinned?: number;
 }
 
 /** One model drawn in the view. */
@@ -101,8 +103,32 @@ function checkerTexture(): THREE.Texture {
   return t;
 }
 
+/** An animated texture in the scene, and for a sprite, how to give its mesh the shape of a frame. */
+interface AnimatedTexture {
+  texture: THREE.Texture;
+  src: TextureSource;
+  shapeOf?: (frame: number) => void;
+}
+
 /** Loaded textures (shared, keyed by URL) and their pixels for sprites. */
 const textureCache = new Map<string, { texture: THREE.Texture; image: Promise<HTMLImageElement> }>();
+
+/**
+ * Shows image frame `index` of `anim` on `texture`: geometry maps one frame
+ * to the whole 0–1 UV square, the texture's repeat/offset pick the frame.
+ */
+function showFrame(texture: THREE.Texture, anim: TextureAnimation | null, index: number) {
+  const img = texture.image as HTMLImageElement | undefined;
+  if (!img?.width) return;
+  if (!anim) {
+    texture.repeat.set(1, 1);
+    texture.offset.set(0, 0);
+    return;
+  }
+  const [x, y, w, h] = frameRect(anim, img.width, index);
+  texture.repeat.set(w / img.width, h / img.height);
+  texture.offset.set(x / img.width, 1 - (y + h) / img.height);
+}
 
 function loadTexture(src: TextureSource, onLoad: () => void): { texture: THREE.Texture; image: Promise<HTMLImageElement> } {
   const hit = textureCache.get(src.url);
@@ -116,12 +142,7 @@ function loadTexture(src: TextureSource, onLoad: () => void): { texture: THREE.T
     const img = new Image();
     img.onload = () => {
       texture.image = img;
-      // An animated texture: show its first frame.
-      if (src.animated && img.height > img.width) {
-        const frames = img.height / img.width;
-        texture.repeat.set(1, 1 / frames);
-        texture.offset.set(0, 1 - 1 / frames);
-      }
+      showFrame(texture, src.animation, src.pinned ?? src.animation?.frames[0]?.index ?? 0);
       texture.needsUpdate = true;
       resolve(img);
       onLoad();
@@ -219,14 +240,14 @@ function faceMesh(corners: Vec3[], uvs: [number, number][], shade: number, mat: 
 }
 
 /** Pixels of a sprite → its extruded geometry (front, back and the edges of opaque pixels). */
-function spriteGeometry(img: HTMLImageElement, animated: boolean): THREE.BufferGeometry {
-  const w = img.width;
-  const h = animated && img.height > img.width ? img.width : img.height;
+function spriteGeometry(img: HTMLImageElement, anim: TextureAnimation | null, frame: number): THREE.BufferGeometry {
+  // The shape is the shown frame's opaque pixels; its UVs span one frame (see `showFrame`).
+  const [fx, fy, w, h] = anim ? frameRect(anim, img.width, frame) : [0, 0, img.width, img.height];
   const c = document.createElement("canvas");
   c.width = w;
   c.height = h;
   const g = c.getContext("2d", { willReadFrequently: true })!;
-  g.drawImage(img, 0, 0);
+  g.drawImage(img, -fx, -fy);
   const data = g.getImageData(0, 0, w, h).data;
   const opaque = (x: number, y: number) => x >= 0 && y >= 0 && x < w && y < h && data[(y * w + x) * 4 + 3] > 25;
   const px = 16 / w;
@@ -243,12 +264,11 @@ function spriteGeometry(img: HTMLImageElement, animated: boolean): THREE.BufferG
       col.push(shade, shade, shade);
     }
   };
-  const vFrame = animated && img.height > img.width ? img.width / img.height : 1;
   const U = (x: number) => x / w;
-  const V = (y: number) => 1 - (y / h) * vFrame;
+  const V = (y: number) => 1 - y / h;
   // Front (south, +z) and back.
-  quad([[0, 16, z1], [16, 16, z1], [16, 0, z1], [0, 0, z1]], [[0, 1], [1, 1], [1, 1 - vFrame], [0, 1 - vFrame]], 1);
-  quad([[16, 16, z0], [0, 16, z0], [0, 0, z0], [16, 0, z0]], [[1, 1], [0, 1], [0, 1 - vFrame], [1, 1 - vFrame]], 0.8);
+  quad([[0, 16, z1], [16, 16, z1], [16, 0, z1], [0, 0, z1]], [[0, 1], [1, 1], [1, 0], [0, 0]], 1);
+  quad([[16, 16, z0], [0, 16, z0], [0, 0, z0], [16, 0, z0]], [[1, 1], [0, 1], [0, 0], [1, 0]], 0.8);
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
       if (!opaque(x, y)) continue;
@@ -430,6 +450,10 @@ export function Viewport({
       handles: [] as THREE.Object3D[],
       renderer: null as THREE.WebGLRenderer | null,
       frame: 0,
+      /** Animated textures in the scene: shown frame set each draw. */
+      animated: [] as AnimatedTexture[],
+      /** The timer that redraws when an animation's frame changes. */
+      tick: 0,
     };
   }, []);
 
@@ -472,6 +496,19 @@ export function Viewport({
         ? (three.orth.top - three.orth.bottom) / h
         : (2 * camera.position.distanceTo(three.north.getWorldPosition(new THREE.Vector3())) * Math.tan(THREE.MathUtils.degToRad(three.persp.fov / 2))) / h;
       three.north.scale.setScalar(NORTH_MARKER_PX * unitsPerPx);
+      // Animated textures: the frame showing now (or the one held), and a
+      // redraw when the next one is due — 20 ticks a second, as in game.
+      const now = performance.now();
+      let next = Infinity;
+      for (const { texture, src, shapeOf } of three.animated) {
+        const anim = src.animation!;
+        const frame = src.pinned ?? frameNow(anim, now);
+        showFrame(texture, anim, frame);
+        shapeOf?.(frame);
+        if (src.pinned === undefined && anim.frames.length > 1) next = Math.min(next, msToNextFrame(anim, now));
+      }
+      clearTimeout(three.tick);
+      if (next < Infinity) three.tick = window.setTimeout(() => invalidate.current(), Math.max(10, next));
       renderer.setViewport(0, 0, w, h);
       renderer.setScissorTest(false);
       renderer.clear();
@@ -496,6 +533,7 @@ export function Viewport({
     return () => {
       ro.disconnect();
       cancelAnimationFrame(three.frame);
+      clearTimeout(three.tick);
       three.frame = 0;
       renderer.dispose();
       renderer.domElement.remove();
@@ -532,6 +570,8 @@ export function Viewport({
     three.model.add(root);
     let outline: THREE.Object3D | null = null;
     let outlineMatrix = new THREE.Matrix4();
+    const animated: AnimatedTexture[] = [];
+    three.animated = animated;
     for (const part of parts) {
       const group = new THREE.Group();
       group.matrixAutoUpdate = false;
@@ -539,7 +579,10 @@ export function Viewport({
       root.add(group);
       const textureOf = (value: string | undefined): THREE.Texture => {
         const src = value ? images[value] : undefined;
-        return src ? loadTexture(src, () => setLoaded((n) => n + 1)).texture : three.checker;
+        if (!src) return three.checker;
+        const { texture } = loadTexture(src, () => setLoaded((n) => n + 1));
+        if (src.animation) animated.push({ texture, src });
+        return texture;
       };
       if (part.sprite) {
         for (const [layer, { slot, texture: value }] of part.sprite.entries()) {
@@ -548,16 +591,29 @@ export function Viewport({
           const entry = loadTexture(src, () => setLoaded((n) => n + 1));
           const img = entry.texture.image as HTMLImageElement | undefined;
           if (!img || !img.width) continue;
-          const geo = spriteGeometry(img, src.animated);
+          // A sprite's shape is its frame's opaque pixels: an animated one
+          // has a shape per frame, made when first shown (see `draw`).
+          const shapes = new Map<number, THREE.BufferGeometry>();
+          const shapeOf = (frame: number) => {
+            let geo = shapes.get(frame);
+            if (!geo) {
+              geo = spriteGeometry(img, src.animation, frame);
+              if (!shading) geo.setAttribute("color", new THREE.Float32BufferAttribute(new Array(geo.getAttribute("position").count * 3).fill(1), 3));
+              shapes.set(frame, geo);
+              disposables.push(geo);
+            }
+            return geo;
+          };
+          const geo = shapeOf(src.pinned ?? src.animation?.frames[0]?.index ?? 0);
           const mat = material(entry.texture, "cutout", !!part.ghost);
           mat.vertexColors = true;
-          if (!shading) geo.setAttribute("color", new THREE.Float32BufferAttribute(new Array(geo.getAttribute("position").count * 3).fill(1), 3));
           if (part.tints?.[layer]) mat.color.set(part.tints[layer]);
           const mesh = new THREE.Mesh(geo, mat);
-          mesh.userData = { part: part.editable ? "edit" : "other", paint: { slot, space: "image" } };
+          if (src.animation) animated.push({ texture: entry.texture, src, shapeOf: (frame) => (mesh.geometry = shapeOf(frame)) });
+          mesh.userData = { part: part.editable ? "edit" : "other", paint: { slot } };
           mesh.position.z = layer * 0.01;
           group.add(mesh);
-          disposables.push(geo, mat);
+          disposables.push(mat);
         }
         continue;
       }
@@ -577,7 +633,7 @@ export function Viewport({
           const shade = shading && el.shade !== false ? FACE_SHADE[dir] : 1;
           const uv = face.uv ?? autoUv(dir, el.from, el.to);
           const mesh = faceMesh(faceCorners(dir, el.from, el.to), faceUvs(uv, face.rotation ?? 0), shade, mat);
-          mesh.userData = { part: part.editable ? "edit" : "other", element: index, face: dir, paint: { slot, space: "frame" } };
+          mesh.userData = { part: part.editable ? "edit" : "other", element: index, face: dir, paint: { slot } };
           eg.add(mesh);
           disposables.push(mesh.geometry, mat);
           if (part.editable && index === selected && dir === selectedFace) {
@@ -667,16 +723,18 @@ export function Viewport({
     const paintHit = (e: PointerEvent): PaintHit | null => {
       raycaster.setFromCamera(ndc(e), camera());
       for (const hit of raycaster.intersectObjects(three.model.children, true)) {
-        const data = hit.object.userData as { part?: string; element?: number; face?: Dir; paint?: { slot: string; space: "frame" | "image" } };
+        const data = hit.object.userData as { part?: string; element?: number; face?: Dir; paint?: { slot: string } };
         if (data.part !== "edit" || !data.paint || !hit.uv) continue;
         const map = ((hit.object as THREE.Mesh).material as THREE.MeshBasicMaterial).map;
         const img = map?.image as { width?: number; height?: number } | undefined;
         if (!map || map === three.checker || !img?.width || !img.height) return null;
-        const h = data.paint.space === "frame" ? img.height * map.repeat.y : img.height;
+        // The pixel in the shown frame (UVs span one frame — `showFrame`).
+        const w = Math.round(img.width * map.repeat.x);
+        const h = Math.round(img.height * map.repeat.y);
         const clamp = (n: number, max: number) => Math.min(max - 1, Math.max(0, Math.floor(n)));
         return {
           slot: data.paint.slot,
-          x: clamp(hit.uv.x * img.width, img.width),
+          x: clamp(hit.uv.x * w, w),
           y: clamp((1 - hit.uv.y) * h, h),
           element: data.element ?? null,
           face: data.face ?? null,

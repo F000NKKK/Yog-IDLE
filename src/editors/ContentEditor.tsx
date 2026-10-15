@@ -1,3 +1,5 @@
+import { cropFrame, pasteFrame, sameAnimation, stillAnimation, type TextureAnimation } from "../content/animation";
+import { FrameStrip } from "../content/paint/FrameStrip";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import {
@@ -147,10 +149,14 @@ function resolve(model: Model | undefined, kind: "block" | "item", parents: Reco
 /** A texture as loaded: its image, and whether it's the mod's own file (paintable in place). */
 type LoadedTexture = TextureSource & { writable: boolean };
 
-/** One step of undo: the file's text and the textures it touched (`null`: the texture didn't exist — a new one). */
+/** A texture's animation as edited here: `null` = no override (the loaded one shows). */
+type AnimationEdit = { animation: TextureAnimation | null } | null;
+
+/** One step of undo: the file's text and the textures it touched (`null`: the texture didn't exist — a new one), and their animations. */
 interface HistoryEntry {
   text: string;
   pixels: Record<string, PixelImage | null>;
+  animations?: Record<string, AnimationEdit>;
 }
 
 /** A texture painted in the editor (not saved yet, or saved and still shown from memory). */
@@ -247,6 +253,13 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
   const [saved, setSaved] = useState<Record<string, PixelImage>>({});
   const editedRef = useRef(edited);
   editedRef.current = edited;
+  // Animations edited here (frames added, times changed), over the loaded
+  // ones; which step of each is painted, and whether they play.
+  const [animEdits, setAnimEdits] = useState<Record<string, AnimationEdit>>({});
+  const animEditsRef = useRef(animEdits);
+  animEditsRef.current = animEdits;
+  const [paintEntry, setPaintEntry] = useState<Record<string, number>>({});
+  const [playing, setPlaying] = useState(false);
 
   // A model key that no longer exists (the arm removed, say) → the main model.
   const effectiveKey: ModelKey = modelOf(file, modelKey) || modelKey === "model" ? modelKey : "model";
@@ -268,6 +281,7 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
     setImages({});
     setEdited({});
     setSaved({});
+    setAnimEdits({});
     notifyDocumentCommands();
   }, [contentVersion]);
 
@@ -301,21 +315,35 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
     [onChange, readOnly, parsed, pushHistory]
   );
 
+  /** Sets edited animations (`null`: back to the loaded one). */
+  const setAnimations = useCallback((patch: Record<string, AnimationEdit>) => {
+    const next = { ...animEditsRef.current };
+    for (const [k, v] of Object.entries(patch)) {
+      if (v) next[k] = v;
+      else delete next[k];
+    }
+    animEditsRef.current = next;
+    setAnimEdits(next);
+  }, []);
+
   const step = useCallback(
     (back: boolean) => {
       const h = history.current;
       const entry = (back ? h.past : h.future).pop();
       if (entry === undefined || readOnly) return;
       const cur = editedRef.current;
+      const anims = animEditsRef.current;
       (back ? h.future : h.past).push({
         text: contentRef.current,
         pixels: Object.fromEntries(Object.keys(entry.pixels).map((k) => [k, cur[k]?.img ?? null])),
+        animations: entry.animations && Object.fromEntries(Object.keys(entry.animations).map((k) => [k, anims[k] ?? null])),
       });
       if (entry.text !== contentRef.current) onChange(entry.text);
       if (Object.keys(entry.pixels).length) setEditedImages(entry.pixels);
+      if (entry.animations) setAnimations(entry.animations);
       notifyDocumentCommands();
     },
-    [onChange, readOnly, setEditedImages]
+    [onChange, readOnly, setEditedImages, setAnimations]
   );
 
   /** Edits the current model's own elements (copying a template's/parent's in first). */
@@ -414,31 +442,36 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
     [edited, saved, decoded, named]
   );
 
-  /** What the view and the pickers show: painted textures over the loaded ones. */
-  const shownImages = useMemo(() => {
-    const out: Record<string, LoadedTexture | undefined> = { ...images };
-    for (const [k, e] of Object.entries(edited)) out[k] = { url: e.url, animated: images[k]?.animated ?? false, writable: true };
-    return out;
-  }, [images, edited]);
+  /** A texture's animation as shown: edited here, else as loaded. */
+  const animOf = (key: string | undefined): TextureAnimation | null =>
+    key ? (animEdits[key] ? animEdits[key]!.animation : (images[key]?.animation ?? null)) : null;
+  /** Animations changed here and not saved. */
+  const animDirtyKeys = useMemo(
+    () => Object.keys(animEdits).filter((k) => !sameAnimation(animEdits[k]?.animation, images[k]?.animation)),
+    [animEdits, images]
+  );
 
-  const saveState = useRef({ dirtyKeys, edited, images });
-  saveState.current = { dirtyKeys, edited, images };
+  const saveState = useRef({ dirtyKeys, edited, images, animDirtyKeys, animEdits });
+  saveState.current = { dirtyKeys, edited, images, animDirtyKeys, animEdits };
   const saveTextures = useCallback(async () => {
-    const { dirtyKeys: keys, edited: cur } = saveState.current;
+    const { dirtyKeys: keys, edited: cur, animDirtyKeys: animKeys, animEdits: anims } = saveState.current;
     const written: Record<string, Edited> = {};
     for (const key of keys) {
       const e = cur[key];
       await invoke<string>("content_save_texture", { path, texture: key, png: e.url.slice(e.url.indexOf(",") + 1) });
       written[key] = e;
     }
+    // The .mcmeta after its png: its frame size is checked against the image.
+    for (const key of animKeys) await invoke<string>("content_save_texture_animation", { path, texture: key, animation: anims[key]?.animation ?? null });
     setSaved((s) => ({ ...s, ...Object.fromEntries(Object.entries(written).map(([k, e]) => [k, e.img])) }));
     setImages((m) => {
       const next = { ...m };
-      for (const [k, e] of Object.entries(written)) next[k] = { url: e.url, animated: m[k]?.animated ?? false, writable: true };
+      for (const [k, e] of Object.entries(written)) next[k] = { url: e.url, animation: m[k]?.animation ?? null, writable: true };
+      for (const k of animKeys) if (next[k]) next[k] = { ...next[k]!, animation: anims[k]?.animation ?? null };
       return next;
     });
   }, [path]);
-  const sideDirty = !readOnly && dirtyKeys.length > 0;
+  const sideDirty = !readOnly && (dirtyKeys.length > 0 || animDirtyKeys.length > 0);
   useEffect(() => setSideState(path, { dirty: sideDirty, save: saveTextures }), [path, sideDirty, saveTextures, setSideState]);
   useEffect(() => () => setSideState(path, null), [path, setSideState]);
 
@@ -448,11 +481,12 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
     const recheck = () => {
       const { dirtyKeys: keys, images: cur } = saveState.current;
       for (const key of Object.keys(cur)) {
-        if (keys.includes(key)) continue;
+        if (keys.includes(key) || saveState.current.animDirtyKeys.includes(key)) continue;
         invoke<LoadedTexture>("content_texture", { path, texture: key })
           .then((src) => {
             if (saveState.current.images[key]?.url === src.url) return;
             setImages((m) => ({ ...m, [key]: src }));
+            setAnimations({ [key]: null });
             setSaved((s) => {
               const { [key]: _, ...rest } = s;
               return rest;
@@ -464,7 +498,7 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
     };
     window.addEventListener("focus", recheck);
     return () => window.removeEventListener("focus", recheck);
-  }, [path, setEditedImages]);
+  }, [path, setEditedImages, setAnimations]);
 
   // ── What the view draws ───────────────────────────────────────────────────
 
@@ -510,6 +544,27 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
   const paintSlots = resolved.slots.filter((s) => resolved.textures[s] && s !== "particle");
   const activeSlot = paintSlot && paintSlots.includes(paintSlot) ? paintSlot : faceSlot && paintSlots.includes(faceSlot) ? faceSlot : (paintSlots[0] ?? null);
   const activeKey = activeSlot ? resolved.textures[activeSlot] : undefined;
+  const activeAnim = animOf(activeKey);
+  const activeEntry = activeKey && activeAnim ? Math.max(0, Math.min(paintEntry[activeKey] ?? 0, activeAnim.frames.length - 1)) : 0;
+  /** The image frame painted: the picked step's (frame 0 — the whole image — when it isn't animated). */
+  const activeFrame = activeAnim?.frames[activeEntry]?.index ?? 0;
+
+  /** What the view and the pickers show: painted textures over the loaded ones, the painted frame held while painting. */
+  const shownImages = useMemo(() => {
+    const out: Record<string, LoadedTexture | undefined> = {};
+    for (const k of new Set([...Object.keys(images), ...Object.keys(edited)])) {
+      const loaded = images[k];
+      const e = edited[k];
+      if (!loaded && !e) {
+        out[k] = undefined;
+        continue;
+      }
+      const animation = animEdits[k] ? animEdits[k]!.animation : (loaded?.animation ?? null);
+      const pinned = paintOn && !playing && k === activeKey && animation ? activeFrame : undefined;
+      out[k] = { url: e?.url ?? loaded!.url, animation, writable: e ? true : loaded!.writable, pinned };
+    }
+    return out;
+  }, [images, edited, animEdits, paintOn, playing, activeKey, activeFrame]);
   // The 2D view follows the face picked in the outliner or the view.
   useEffect(() => {
     if (faceSlot) setPaintSlot(faceSlot);
@@ -539,30 +594,44 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
     return { key, entry };
   };
 
-  const stroke = useRef<{ stroke: Stroke; slot: string; key: string; entry: HistoryEntry; frame: number } | null>(null);
+  /**
+   * A stroke being painted: on one frame of an animated texture (`anim`,
+   * image frame `frameIndex` of `strip`), else on the whole image.
+   */
+  const stroke = useRef<{ stroke: Stroke; slot: string; key: string; entry: HistoryEntry; frame: number; anim: TextureAnimation | null; frameIndex: number; strip: PixelImage } | null>(null);
+  /** The texture image with the stroke's pixels in it. */
+  const strokeImage = (cur: NonNullable<typeof stroke.current>): PixelImage =>
+    cur.anim ? pasteFrame(cur.strip, cur.anim, cur.frameIndex, cur.stroke.image) : cur.stroke.image;
 
   const beginPaint = (slot: string, x: number, y: number, pick: boolean) => {
     if (!paintOn || stroke.current) return;
     let key = resolved.textures[slot];
     let base = pixelsOf(key);
     if (!key || !base) return;
+    // An animated texture is painted a frame at a time: the one picked in
+    // the frame strip (for the texture in the 2D view), else the first.
+    const anim = animOf(key);
+    const frameIndex = anim ? (key === activeKey ? activeFrame : (anim.frames[0]?.index ?? 0)) : 0;
+    const frameOf = (img: PixelImage) => (anim ? cropFrame(img, anim, frameIndex) : img);
     if (paint.tool === "picker" || pick) {
-      const c = getPixel(base, x, y);
+      const c = getPixel(frameOf(base), x, y);
       if (c) setPaint({ color: c, ...(paint.tool === "picker" ? { tool: "pencil" as const } : {}) });
       return;
     }
-    if (paint.tool === "fill" && !getPixel(base, x, y)) return;
+    if (paint.tool === "fill" && !getPixel(frameOf(base), x, y)) return;
     let entry: HistoryEntry;
     const writable = images[key]?.writable ?? key in editedRef.current;
     if (!writable) {
       // Not the mod's texture (Minecraft's, another mod's): paint a copy in the mod.
       base = cloneImage(base);
       ({ key, entry } = assignTexture(slot, base));
+      // The copy keeps the animation (written with it on Save).
+      if (anim) setAnimations({ [key]: { animation: anim } });
       notify({ level: "info", message: t("Copied into the mod: {path}", { path: `resources/${key}` }) });
     } else entry = { text: contentRef.current, pixels: { [key]: base } };
-    const s = new Stroke(base, paint, x, y);
-    stroke.current = { stroke: s, slot, key, entry, frame: 0 };
-    setEditedImages({ [key]: s.image });
+    const s = new Stroke(frameOf(base), paint, x, y);
+    stroke.current = { stroke: s, slot, key, entry, frame: 0, anim, frameIndex, strip: base };
+    setEditedImages({ [key]: strokeImage(stroke.current) });
   };
 
   const movePaint = (x: number, y: number) => {
@@ -573,7 +642,7 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
     if (!cur.frame)
       cur.frame = requestAnimationFrame(() => {
         cur.frame = 0;
-        if (stroke.current === cur) setEditedImages({ [cur.key]: cur.stroke.image });
+        if (stroke.current === cur) setEditedImages({ [cur.key]: strokeImage(cur) });
       });
   };
 
@@ -582,12 +651,23 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
     if (!cur) return;
     stroke.current = null;
     cancelAnimationFrame(cur.frame);
-    setEditedImages({ [cur.key]: cur.stroke.image });
+    setEditedImages({ [cur.key]: strokeImage(cur) });
     const copied = cur.entry.pixels[cur.key] === null;
     if (copied || !sameImage(cur.stroke.image, cur.stroke.base)) {
       pushHistory(cur.entry);
       if (cur.stroke.settings.tool !== "eraser") usedColor(cur.stroke.settings.color);
     }
+  };
+
+  /** Changes texture `key`'s animation (and its image, when frames were added) — one undo step. */
+  const editAnimation = (key: string, animation: TextureAnimation, img?: PixelImage) => {
+    pushHistory({
+      text: contentRef.current,
+      pixels: img ? { [key]: pixelsOf(key) ?? null } : {},
+      animations: { [key]: animEditsRef.current[key] ?? null },
+    });
+    if (img) setEditedImages({ [key]: img });
+    setAnimations({ [key]: { animation } });
   };
 
   const onCanvasPaint = (x: number, y: number, phase: PaintPhase, mods: PaintModifiers) => {
@@ -678,7 +758,9 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
         reportError(t("The texture {texture} isn't loaded.", { texture }));
         return;
       }
-      els.push(...spriteLayerElements(img, slot, i, images[texture]?.animated ? img.w : img.h));
+      // An animated sprite's shape is its first frame's.
+      const anim = animOf(texture);
+      els.push(...spriteLayerElements(anim ? cropFrame(img, anim, anim.frames[0]?.index ?? 0) : img, slot, i));
     }
     if (
       els.length > 256 &&
@@ -1272,8 +1354,8 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
   const activeImg = pixelsOf(activeKey);
   const overlays: { rect: [number, number, number, number]; primary?: boolean }[] = [];
   if (paintOn && activeImg && activeSlot && selEl && !resolved.sprite) {
-    const sx = activeImg.w / 16;
-    const sy = (images[activeKey!]?.animated ? activeImg.w : activeImg.h) / 16;
+    const sx = (activeAnim?.frameWidth ?? activeImg.w) / 16;
+    const sy = (activeAnim?.frameHeight ?? activeImg.h) / 16;
     for (const d of DIRS) {
       const f = selEl.faces[d];
       if (!f || f.texture.replace(/^#/, "") !== activeSlot) continue;
@@ -1516,10 +1598,14 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
                   onChange={(v) => setPaintSlot(v)}
                 />
                 {activeForeign && <span className="content-paint-note">{t("Not the mod's texture — the first stroke copies it into the mod.")}</span>}
+                <Spacer />
+                {activeKey && activeImg && !activeAnim && !activeForeign && (
+                  <ToolbarButton icon="play" label="Animate" showLabel tooltip="Make it an animated texture: frames, played in game (.png.mcmeta)" disabled={readOnly} onClick={() => editAnimation(activeKey, stillAnimation(activeImg))} />
+                )}
               </div>
               <PaintCanvas
                 className="content-paint-canvas"
-                image={activeImg ?? null}
+                image={activeImg ? (activeAnim ? cropFrame(activeImg, activeAnim, activeFrame) : activeImg) : null}
                 overlays={overlays}
                 grid={paint.grid}
                 brushSize={paint.tool === "pencil" || paint.tool === "eraser" || paint.tool === "line" ? paint.size : 1}
@@ -1527,6 +1613,18 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
                 onPaint={readOnly ? undefined : onCanvasPaint}
                 emptyText={activeKey ? t("Loading {texture}…", { texture: activeKey }) : t("No texture to paint. Use New Texture… or set a texture slot.")}
               />
+              {activeKey && activeImg && activeAnim && (
+                <FrameStrip
+                  image={activeImg}
+                  animation={activeAnim}
+                  selected={activeEntry}
+                  onSelect={(n) => setPaintEntry((m) => ({ ...m, [activeKey]: n }))}
+                  playing={playing}
+                  onPlaying={setPlaying}
+                  onChange={(animation, img) => editAnimation(activeKey, animation, img)}
+                  readOnly={readOnly || activeForeign}
+                />
+              )}
             </div>
           )}
           <Viewport

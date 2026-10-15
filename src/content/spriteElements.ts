@@ -10,9 +10,8 @@ import type { Element, Uv } from "./model";
 const ALPHA = 25;
 
 /** Opaque pixels of the image (its first frame) as rectangles `[x, y, w, h]`. */
-function opaqueRects(img: PixelImage, frameHeight = img.h): [number, number, number, number][] {
-  const { w } = img;
-  const h = Math.min(frameHeight, img.h);
+function opaqueRects(img: PixelImage): [number, number, number, number][] {
+  const { w, h } = img;
   const opaque = (x: number, y: number) => img.data[(y * w + x) * 4 + 3] > ALPHA;
   const used = new Uint8Array(w * h);
   const out: [number, number, number, number][] = [];
@@ -36,15 +35,16 @@ function opaqueRects(img: PixelImage, frameHeight = img.h): [number, number, num
  * Elements for one sprite layer: a 1px-thick slab per rectangle, the front
  * and back showing the rectangle of the texture, the edges its border pixels.
  * Layer `n` sits a hair in front of the one below, and has tint index `n`
- * (as `item/generated` gives it).
+ * (as `item/generated` gives it). An animated texture passes the frame its
+ * shape comes from.
  */
-export function spriteLayerElements(img: PixelImage, slot: string, layer: number, frameHeight = img.h): Element[] {
+export function spriteLayerElements(img: PixelImage, slot: string, layer: number): Element[] {
   const sx = 16 / img.w;
-  const sy = 16 / Math.min(frameHeight, img.h);
+  const sy = 16 / img.h;
   const r = (n: number) => Math.round(n * 1000) / 1000;
   const grow = layer * 0.01;
   const tex = `#${slot}`;
-  return opaqueRects(img, frameHeight).map(([x, y, w, h], i) => {
+  return opaqueRects(img).map(([x, y, w, h], i) => {
     const u0 = r(x * sx);
     const u1 = r((x + w) * sx);
     const v0 = r(y * sy);

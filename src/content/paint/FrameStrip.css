@@ -1,0 +1,74 @@
+/* An animated texture's frames under the paint canvas. */
+.frame-strip {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--sp-border);
+  background: var(--sp-surface-1);
+}
+
+.frame-strip .sp-toolbar {
+  border-bottom: none;
+}
+
+.frame-strip-time {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-space-xs);
+  color: var(--sp-text-muted);
+  white-space: nowrap;
+}
+
+.frame-strip-time input {
+  width: 56px;
+  height: var(--sp-control-height);
+  box-sizing: border-box;
+  padding: 0 var(--sp-space-xs);
+  border: 1px solid var(--sp-border);
+  border-radius: var(--sp-control-radius);
+  background: var(--sp-surface-0);
+  color: var(--sp-text);
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+}
+
+.frame-strip-tiles {
+  display: flex;
+  gap: var(--sp-space-2xs);
+  padding: 0 var(--sp-space-sm) var(--sp-space-sm);
+  overflow-x: auto;
+}
+
+.frame-strip-tile {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid transparent;
+  border-radius: var(--sp-radius-sm);
+  background: var(--sp-surface-0);
+  color: var(--sp-text-muted);
+  font: inherit;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+
+.frame-strip-tile:hover {
+  border-color: var(--sp-border-strong);
+}
+
+.frame-strip-tile[aria-selected="true"] {
+  border-color: var(--sp-accent);
+  background: var(--sp-accent-soft);
+  color: var(--sp-text);
+}
+
+.frame-strip-tile img {
+  width: 32px;
+  height: 32px;
+  image-rendering: pixelated;
+  background: repeating-conic-gradient(#3a3a3a 0 25%, #2c2c2c 0 50%) 0 0 / 8px 8px;
+}
