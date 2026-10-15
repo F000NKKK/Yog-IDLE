@@ -81,10 +81,6 @@ import { BookPagePreview, isBookPage } from "./BookPagePreview";
 export interface DesignerLink {
   /** Writes a designer edit (`prev` → `next`) into the XAML as one undo step; the new text, or `null` when the edit can't be made now (the markup there is invalid or not parsed yet). */
   write: (prev: YuiDoc, next: YuiDoc) => string | null;
-  undo: () => void;
-  redo: () => void;
-  canUndo: () => boolean;
-  canRedo: () => boolean;
   /** The designer's selection as child-index paths, primary first — the XAML marks it, and moves its cursor there when `reveal`. */
   selected: (paths: number[][], reveal: boolean) => void;
   /** The designer was focused more recently than the XAML — the Edit menu acts on it. */
@@ -119,20 +115,11 @@ const RESOLUTIONS: { w: number; h: number; label: string }[] = [
 const ZOOMS = [1, 2, 3, 4, 5, 6, 8];
 const GRID = 2;
 
-/** One undo step: the document as it was, its exact text (so undoing back to the saved text clears the dirty mark), and what was selected. */
-interface HistoryEntry {
-  doc: YuiDoc;
-  text: string;
-  selection: string[];
-}
-
 interface Session {
   text: string;
   doc: YuiDoc;
-  past: HistoryEntry[];
-  future: HistoryEntry[];
   selection: string[];
-  /** Linked to the XAML (whose history is CodeMirror's): the selection that went with each text the designer wrote or left — restored when undo/redo brings that text back. */
+  /** The selection that went with each text the designer wrote or left — restored when Undo/Redo (the XAML's CodeMirror history, or the platform's) brings that text back. */
   selectionByText: Map<string, number[][]>;
 }
 
@@ -144,15 +131,6 @@ function rememberSelection(s: Session, text: string, doc: YuiDoc, selection: str
     selection.map((uid) => pathOf(doc.root, uid)).filter((p): p is number[] => !!p)
   );
   while (s.selectionByText.size > 400) s.selectionByText.delete(s.selectionByText.keys().next().value!);
-}
-
-/** Focus is in a text box (or a code editor) whose own Ctrl+Z undoes typing. */
-function inTextField(): boolean {
-  const el = document.activeElement;
-  if (!(el instanceof HTMLElement)) return false;
-  if (el instanceof HTMLTextAreaElement) return true;
-  if (el instanceof HTMLInputElement) return !["checkbox", "radio", "button", "submit", "range", "color", "file"].includes(el.type);
-  return el.isContentEditable;
 }
 
 interface ViewSettings {
@@ -322,7 +300,7 @@ function CanvasDesigner({ path, content, onChange, readOnly, contentVersion, lin
       }
       if (text.trim() === "") {
         const doc = newScreen(`mymod:${screenIdOf(path)}`);
-        const session: Session = { text: serializeYui(doc), doc, past: [], future: [], selection: [], selectionByText: new Map() };
+        const session: Session = { text: serializeYui(doc), doc, selection: [], selectionByText: new Map() };
         sessionRef.current = session;
         sessions.set(path, session);
         setError(null);
@@ -330,7 +308,7 @@ function CanvasDesigner({ path, content, onChange, readOnly, contentVersion, lin
         const root = modRootOf(path);
         const finish = (modId: string | null) => {
           const s = sessionRef.current;
-          if (!s || s !== session || s.past.length > 0) return;
+          if (!s || s !== session || s.text !== serializeYui(session.doc)) return;
           if (modId) s.doc = { ...s.doc, root: withAttrs(s.doc.root, { id: `${modId}:${screenIdOf(path)}` }) };
           s.text = serializeYui(s.doc);
           setRevision((r) => r + 1);
@@ -345,7 +323,7 @@ function CanvasDesigner({ path, content, onChange, readOnly, contentVersion, lin
       }
       try {
         const doc = parseYui(text);
-        const session: Session = { text, doc, past: [], future: [], selection: [], selectionByText: new Map() };
+        const session: Session = { text, doc, selection: [], selectionByText: new Map() };
         sessionRef.current = session;
         sessions.set(path, session);
         setError(null);
@@ -365,6 +343,23 @@ function CanvasDesigner({ path, content, onChange, readOnly, contentVersion, lin
     load(content);
   }
 
+  // A text that isn't the designer's own (Undo/Redo): it takes it, with
+  // the selection that went with it. Linked, the XAML passes it on.
+  if (!link && sessionRef.current && content !== sessionRef.current.text) {
+    const s = sessionRef.current;
+    try {
+      const parsed = parseYui(content);
+      s.doc = { ...parsed, root: adoptUids(s.doc.root, parsed.root) };
+      s.text = content;
+      const remembered = s.selectionByText.get(content);
+      s.selection = remembered
+        ? remembered.map((p) => nodeAtPath(s.doc.root, p)?.uid).filter((uid): uid is string => !!uid)
+        : s.selection.filter((uid) => findNode(s.doc.root, uid));
+    } catch {
+      /* the text was ours once: it parses */
+    }
+  }
+
   const session = sessionRef.current;
   const doc = session?.doc ?? null;
   const selection = session?.selection ?? [];
@@ -374,23 +369,21 @@ function CanvasDesigner({ path, content, onChange, readOnly, contentVersion, lin
       const s = sessionRef.current;
       if (!s || readOnly || next === s.doc) return;
       const before = s.text;
+      rememberSelection(s, before, s.doc, s.selection);
       if (link) {
         const text = link.write(s.doc, next);
         if (text === null) return;
-        rememberSelection(s, before, s.doc, s.selection);
         s.text = text;
       } else {
-        s.past.push({ doc: s.doc, text: s.text, selection: s.selection });
-        if (s.past.length > 200) s.past.shift();
-        s.future = [];
-        // Only what changed is rewritten — the rest of the file stays as the user wrote it.
+        // Only what changed is rewritten — the rest of the file stays as the
+        // user wrote it. Undo is the platform's history of the text.
         s.text = patchYui(s.text, s.doc, next);
         onChange(s.text);
       }
       s.doc = next;
       if (nextSelection) s.selection = nextSelection;
       s.selection = s.selection.filter((uid) => findNode(next.root, uid));
-      if (link) rememberSelection(s, s.text, next, s.selection);
+      rememberSelection(s, s.text, next, s.selection);
       setRevision((r) => r + 1);
       notifyDocumentCommands();
     },
@@ -404,31 +397,6 @@ function CanvasDesigner({ path, content, onChange, readOnly, contentVersion, lin
     setRevision((r) => r + 1);
     notifyDocumentCommands();
   }, []);
-
-  const step = useCallback(
-    (back: boolean) => {
-      const s = sessionRef.current;
-      if (!s || readOnly) return;
-      if (link) {
-        if (back) link.undo();
-        else link.redo();
-        return;
-      }
-      const from = back ? s.past : s.future;
-      const to = back ? s.future : s.past;
-      const entry = from.pop();
-      if (!entry) return;
-      to.push({ doc: s.doc, text: s.text, selection: s.selection });
-      // The exact text it had — undoing back to what's saved leaves the tab clean.
-      s.text = entry.text;
-      s.doc = entry.doc;
-      s.selection = entry.selection.filter((uid) => findNode(entry.doc.root, uid));
-      onChange(s.text);
-      setRevision((r) => r + 1);
-      notifyDocumentCommands();
-    },
-    [onChange, readOnly, link]
-  );
 
   // ── Layout ────────────────────────────────────────────────────────────────
 
@@ -910,16 +878,12 @@ function CanvasDesigner({ path, content, onChange, readOnly, contentVersion, lin
 
   // ── Commands (Edit menu, Toolbox, keys) ───────────────────────────────────
 
-  const commands = useRef({ deleteSelection, copySelection, paste, duplicate, step, addWidget, select, reorder, nudge });
-  commands.current = { deleteSelection, copySelection, paste, duplicate, step, addWidget, select, reorder, nudge };
+  const commands = useRef({ deleteSelection, copySelection, paste, duplicate, addWidget, select, reorder, nudge });
+  commands.current = { deleteSelection, copySelection, paste, duplicate, addWidget, select, reorder, nudge };
 
   useEffect(
     () =>
       registerDocumentCommands(path, {
-        canUndo: () => !readOnly && (link ? link.canUndo() : (sessionRef.current?.past.length ?? 0) > 0),
-        undo: () => commands.current.step(true),
-        canRedo: () => !readOnly && (link ? link.canRedo() : (sessionRef.current?.future.length ?? 0) > 0),
-        redo: () => commands.current.step(false),
         hasSelection: () => {
           const s = sessionRef.current;
           return !!s && movable(s.doc, s.selection).length > 0;
@@ -955,7 +919,7 @@ function CanvasDesigner({ path, content, onChange, readOnly, contentVersion, lin
               ? remembered.map((p) => nodeAtPath(s.doc.root, p)?.uid).filter((uid): uid is string => !!uid)
               : s.selection.filter((uid) => findNode(s.doc.root, uid));
           } else {
-            const session: Session = { text, doc, past: [], future: [], selection: [], selectionByText: new Map() };
+            const session: Session = { text, doc, selection: [], selectionByText: new Map() };
             sessionRef.current = session;
             sessions.set(path, session);
           }
@@ -1140,15 +1104,7 @@ function CanvasDesigner({ path, content, onChange, readOnly, contentVersion, lin
   };
   const editable = () => focused() && !readOnly;
   const keyOpts = { when: editable };
-  // Undo/redo, as in Visual Studio, act on the active designer from anywhere
-  // that has no undo of its own — the canvas, the Toolbox, Document Outline,
-  // the Properties grid between edits — not just while the canvas has focus.
-  const isActiveRef = useRef(isActive);
-  isActiveRef.current = isActive;
-  const historyOpts = { when: () => !readOnly && (focused() || (isActiveRef.current && !inTextField())) };
   useKeybinding(["Delete"], () => commands.current.deleteSelection(), keyOpts);
-  useKeybinding("Ctrl+Z", () => commands.current.step(true), historyOpts);
-  useKeybinding(["Ctrl+Y", "Ctrl+Shift+Z"], () => commands.current.step(false), historyOpts);
   useKeybinding("Ctrl+C", () => void commands.current.copySelection(), { when: focused });
   useKeybinding("Ctrl+X", () => void (commands.current.copySelection() && commands.current.deleteSelection()), keyOpts);
   useKeybinding("Ctrl+V", () => commands.current.paste(), keyOpts);

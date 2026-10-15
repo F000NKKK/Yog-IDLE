@@ -1,13 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   editorApplyText,
-  editorCanRedo,
-  editorCanUndo,
-  editorRedo,
   editorRevealRange,
   editorSetLinkedRange,
   editorSyncListener,
-  editorUndo,
   Icon,
   IconButton,
   linkedRangeHighlight,
@@ -190,10 +186,6 @@ export function YuiSplitEditor(props: EditorProps) {
         editorApplyText(view, text, DESIGNER);
         return text;
       },
-      undo: () => viewRef.current && editorUndo(viewRef.current, false),
-      redo: () => viewRef.current && editorRedo(viewRef.current, false),
-      canUndo: () => !!viewRef.current && editorCanUndo(viewRef.current),
-      canRedo: () => !!viewRef.current && editorCanRedo(viewRef.current),
       selected: (paths, reveal) => {
         selectedPath.current = paths[0] ?? null;
         mark(reveal);
