@@ -1608,6 +1608,30 @@ pub mod bench {
     pub use crate::search::OpenDocument;
     pub use crate::symbols::{extract_symbols, fuzzy_match};
 
+    /// What a content file's editor asks for (the designer bridge).
+    pub fn content_texture(path: &Path, texture: &str) -> serde_json::Value {
+        match crate::content::texture(path, texture) {
+            Ok(t) => serde_json::to_value(t).unwrap_or_default(),
+            Err(e) => serde_json::json!({ "error": e }),
+        }
+    }
+    pub fn content_textures(path: &Path) -> serde_json::Value {
+        serde_json::to_value(crate::content::textures(path)).unwrap_or_default()
+    }
+    pub fn content_strings(path: &Path) -> serde_json::Value {
+        serde_json::to_value(crate::content::strings(path)).unwrap_or_default()
+    }
+    pub fn content_sound_groups(path: &Path) -> serde_json::Value {
+        serde_json::to_value(crate::content::sound_groups(path)).unwrap_or_default()
+    }
+
+    /// The environment report with the settings in `state_file`.
+    pub fn environment_detect(state_file: &Path, project_root: Option<&Path>) -> serde_json::Value {
+        let settings = crate::environment::load_settings_from(state_file);
+        serde_json::to_value(crate::environment::detect(&crate::environment::SystemProbe, &settings, project_root, false))
+            .unwrap_or_default()
+    }
+
     /// A Code Search index over in-memory `(absolute, relative, source)` files.
     pub struct CodeIndex(crate::symbols::RootIndex);
 

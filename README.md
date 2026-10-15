@@ -2,251 +2,170 @@
 
 <a id="top"></a>
 
-# 🧪 Yog-IDLE
+<img src="src-tauri/icons/128x128.png" alt="Yog IDLE" width="96">
 
-### The IDE for Yog Minecraft mods: design, build, run, debug, hot-reload
+# Yog IDLE
 
+**The IDE for Yog Minecraft mods — design, build, run, debug and hot-reload in one place**
+
+[![Release](https://img.shields.io/github/v/release/F000NKKK/Yog-IDLE?label=download)](https://github.com/F000NKKK/Yog-IDLE/releases/latest)
 [![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
 [![Commercial license](https://img.shields.io/badge/commercial-available-blueviolet.svg)](COMMERCIAL-LICENSE.md)
-[![Tauri 2](https://img.shields.io/badge/Tauri-2-24C8DB.svg)](https://tauri.app/)
-[![React 19](https://img.shields.io/badge/React-19-61DAFB.svg)](https://react.dev/)
-[![Rust 1.99](https://img.shields.io/badge/Rust-1.99-orange.svg)](rust-toolchain.toml)
-![Linux](https://img.shields.io/badge/Linux-supported-success)
+![Platforms](https://img.shields.io/badge/platforms-Linux%20%7C%20Windows%20%7C%20macOS-informational)
 
-🇺🇸 **English** | 🇷🇺 [Русский](README.ru.md)
+**English** · [Русский](README.ru.md)
 
-[Overview](#-overview) • [Features](#-key-features) • [Formats](#-file-formats) • [Getting Started](#-getting-started) • [Architecture](#-architecture) • [Status](#-status) • [Docs](#-documentation)
+[Download](#-download) · [Tour](#-a-tour) · [Getting started](#-getting-started) · [Building from source](#-building-from-source) · [Contributing](CONTRIBUTING.md)
 
 </div>
 
 ---
 
-## 📖 Overview
+Yog IDLE is a desktop IDE for mods made with the
+[Yog mod loader](https://github.com/F000NKKK/Yog-Mod-Loader). It looks and
+works like Visual Studio — Project Explorer, tabs, Properties, Toolbox, Output,
+Terminal — and adds a visual editor for every kind of file a Yog mod has:
+screens, blocks, items, recipes, guide books, translations and data tables.
+What you see in an editor is drawn by the same code the game runs.
 
-**Yog-IDLE** is a desktop IDE for mods built on the
-[Yog mod loader](https://github.com/F000NKKK/Yog-Mod-Loader). It is laid out
-like Visual Studio: Project Explorer, editor tabs, Properties, Toolbox,
-Document Outline, Output and Terminal. On top of that it has editors made for
-Yog's own file types:
+<p align="center"><img src="docs/images/screen-designer.png" alt="The screen designer with Yog-Modlist's mod list" width="900"></p>
 
-- a **screen designer** for `.yui` screens and components,
-- a **3D model editor with a paint mode** for `.yblock` / `.yitem` blocks and items,
-- a **resource table** for `.yres` texts and images in every language,
-- plus build, run, a **native debugger** and **hot reload** into a running game.
+## 📦 Download
 
-It is a [Tauri](https://tauri.app/) app (Rust backend, React frontend) built
-on [Substrate Platform](https://github.com/F000NKKK/Substrate-Platform), a
-generic IDE core with a docking shell, editors and widgets.
+Ready-made packages are on the [Releases](https://github.com/F000NKKK/Yog-IDLE/releases/latest) page:
 
-<p align="center"><img src="docs/images/overview.png" alt="Yog-IDLE with Yog-Modlist open: mod_list.yui in the screen designer with the search box selected, Project Explorer and Properties" width="900"></p>
+| System | Package |
+|---|---|
+| Windows | installer (.exe) or .msi |
+| Linux | .deb, .rpm or AppImage |
+| macOS | universal .dmg (Intel and Apple Silicon) |
 
-### 🎯 Why Yog-IDLE?
+You don't have to install anything else by hand. On the first start IDLE
+checks your machine and offers to install what's missing — Rust, the build
+targets for every platform, Zig, the JDKs for Minecraft and the Yog command
+line tool — into your user folder, without administrator rights.
 
-- **👀 What you see is what the game draws.** The designer renders screens
-  with `yog-ui` itself, the same crate mods use, with Minecraft's own font
-  and textures read from your local client jar.
-- **🔁 Markup and canvas stay in sync.** Edit the XAML or drag on the canvas;
-  both panes update, and one undo stack covers both.
-- **🧱 Blocks and items without Blockbench.** Model, texture and paint a
-  block in the IDE, and the result is a `.yblock` that `yog build` turns into
-  Minecraft assets.
-- **🐞 Real debugging.** Breakpoints, stepping, call stacks and variables in
-  the mod's Rust code while the game runs.
+<p align="center"><img src="docs/images/environment.png" alt="The Yog Environment window: every component installed" width="900"></p>
 
-## 🌟 Key Features
+## 🧭 A tour
 
-### 🖼️ Screen designer (`.yui`)
-- Design and XAML side by side, with two-way sync, selection sync and XAML completion
-- Toolbox, rubber-band selection, move/resize handles, snaplines, a 2px grid,
-  arrow-key nudging, cut/copy/paste, z-order, undo/redo
-- **WPF-style `Grid` editing**: row/column rails with sizes (`Auto`, `*`, px),
-  click to split, drag to resize, a Row/ColumnDefinition editor, drop into a cell
-- **Components**: the mod's `<Component>` files appear in the Toolbox, and
-  instances are drawn for real. Components with code are built for the host
-  machine and rendered in a separate process, so a crash can't take down the IDE
-- **Image sources** picker: `item:`, `block:`, `sprite:`, `mod:` and the mod's
-  own textures, with previews
-- **Preview mode**: hover and click buttons, scroll lists and type into text
-  boxes as in game. Events are logged instead of run
-- Double-click a control to jump to its handler in the code-behind
-- **Drawn as the game builds it**: `<Screen.Resources>` styles (with
-  `based_on`) and values, the screen's theme, yog-kit's `ToggleButton`,
-  `ListView` and `ItemsControl`; a bound value shows its design-time `d:`
-  value (`d:text="Sample"`) or nothing, so a text box shows its placeholder
-- **Ctrl+wheel** (or a pinch) zooms around the cursor, up to 800%
+### Screens
 
-<p align="center"><img src="docs/images/screen-designer.png" alt="Screen designer: mod_list.yui in Design + XAML split with the outer Grid selected, Toolbox and Properties docked" width="900"></p>
+Screens and components are written in a XAML-like markup. The designer shows
+the markup and the canvas side by side and keeps them in sync: drag a button
+and the markup changes, edit the markup and the canvas redraws. Everything is
+drawn with Minecraft's own font and textures from your game, including
+styles, themes, lists and your own components. The preview mode lets you
+click buttons, scroll lists and type into text boxes as in the game.
 
-### 📕 Book designer (`.ybook`)
-- The guide book drawn by yog-book itself — the renderer the game runs —
-  with the game's font and textures: click it like a reader (categories,
-  entries, page arrows, home) and the outline follows
-- Outline of categories, entries and pages; add, remove and reorder them;
-  a property grid for what's selected; every edit shows at once
-- **Language** switcher: read the book in each language its `.yres` texts
-  are translated into, item and entity names included
-- Crafting grids with 3D blocks, the mod's own recipes and block models,
-  entities, multiblocks and spell patterns, animated as in game
+### Blocks and items
 
-<p align="center"><img src="docs/images/book-designer.png" alt="The book designer on HexMod-Yog's Hex Notebook: the outline with a pattern page selected, the book open at it, the page's properties" width="900"></p>
+A 3D model editor made for Minecraft: orbit, pan and zoom the model, move and
+resize its elements with pixel snapping, edit UVs, block states and how the
+item is held. Every property of a block — hardness, tool, light, sound,
+drops — is in the property grid on the right.
 
-### 🍳 Recipe editor (`.yrecipe`)
-- Yog's recipes as a crafting table (shaped, shapeless) or a furnace: drop
-  items into the slots. The other kinds (blasting, stonecutting, smithing…)
-  are edited in the JSON view (F7)
+<p align="center"><img src="docs/images/block-editor.png" alt="A netherite ALU block of Yog-VLSI in the 3D editor with its properties" width="900"></p>
 
-### 🧊 Block and item editor (`.yblock` / `.yitem`)
-- 3D viewport with orbit, pan, zoom, numpad views and Minecraft face shading
-- Outliner, **Move (G)** and **Resize (S)** handles with pixel snapping,
-  rotation limited to what Minecraft allows
-- UV editor, display-slot preview (gui, ground, hand, head...), block-state
-  variants, item model and connection-arm models
-- **Paint (P)**: paint on the model or in the 2D texture view with pencil,
-  eraser, fill, color picker, line and rectangle tools, mirror X, palette and
-  recent colors. **New Texture...** creates a blank 16/32/64 px texture.
-  Vanilla textures are copied into the mod on the first stroke
-- Sprite items open in Paint with layers; **Convert to 3D Elements** extrudes a sprite into a model
-- **Project › Import...** imports resource-pack and Blockbench models
+Press **P** to paint right on the model or on the flat texture, with a pencil,
+fill, line, rectangle, mirror and a palette. Sprite items get layers and can
+be turned into a 3D model in one click. Resource-pack and Blockbench models
+can be imported.
 
-<p align="center"><img src="docs/images/content-editor.png" alt="Content editor: HexMod-Yog's akashic_bookshelf.yblock in the 3D view with an element selected and the Move handles" width="900"></p>
+<p align="center"><img src="docs/images/paint-mode.png" alt="Paint mode on a chip item: the texture and the 3D item side by side" width="900"></p>
 
-<p align="center"><img src="docs/images/paint-mode.png" alt="Paint mode on HexMod-Yog's spellbook.yitem: 2D texture canvas and the 3D item side by side, tool strip, palette and layers" width="900"></p>
+### Recipes
 
-### 🌍 Resource editor (`.yres`)
-- A ResX-style grid (Name | Value | Type | Comment) with type-aware editors:
-  color picker, file picker with thumbnails, numbers, checkboxes
-- **All Languages** shows a column per culture variant (`Strings.ru_ru.yres`,
-  ...) and highlights untranslated texts; **Add Language...** creates a new one
-- Validation (bad names, duplicate keys, wrong types), search, spreadsheet copy/paste
-- Saving regenerates `<Set>.g.rs`, which is shown nested under the `.yres`
+Crafting recipes are edited on a crafting table: drop items into the slots,
+set the result and its count. Shaped, shapeless and furnace recipes have their
+own views; any other kind, including kinds your mod defines, opens as text.
 
-<p align="center"><img src="docs/images/yres-editor.png" alt="The .yres editor: HexMod-Yog's Items.yres with All Languages on (English and Russian columns)" width="900"></p>
+<p align="center"><img src="docs/images/recipe-editor.png" alt="The recipe editor: a shaped recipe for the iron ALU" width="900"></p>
 
-### ▶️ Build, run and debug
-- **Build** runs `yog build`. Saved **publish profiles** package a `.yog` or run `yog publish exports`
-- **Run** targets come from `[run.<name>]` in `yog.toml`, in Release or Debug.
-  The status bar shows the game's pid and loaded mods
-- **Hot reload**: rebuild and swap the mod into the running game (the ABI must not change)
-- **Debugger** (`yog-debugger`, ptrace + DAP): gutter breakpoints, Break All
-  (pauses only the render and server threads), step over/into/out, per-thread
-  call stack with **Just My Code**, Locals, **Watch** expressions and value
-  tooltips on hover
-- **Output** keeps a separate source per producer (Build, Run, Debug, Game, Source Control...)
+### Guide books
 
-<p align="center"><img src="docs/images/debugger.png" alt="Debugger stopped at a breakpoint in HexMod-Yog's casting VM: Watch, Autos, Locals, Call Stack, Threads and Registers" width="900"></p>
+The guide book designer draws the book with the renderer the game uses. Click
+it like a player would — categories, entries, page arrows — and the outline on
+the left follows. Add and reorder categories, entries and pages, edit them in
+the property grid, and switch the language to read every translation.
 
-### 🧰 Everything else an IDE needs
-- CodeMirror editors with tab pinning and Markdown preview (GFM, KaTeX, Mermaid)
-- **Properties** grid for the project, `yog.toml` entries and files, written
-  back with formatting preserved; **Project Properties** pages
-- **Git**: Git Changes and Git Repository windows, branches, diffs,
-  fetch/pull/push, all through your own `git` and its config
-- **Code Search** (Ctrl+T) over files and Rust symbols, plus **Find/Replace in Files**
-- **Environment** installer: finds or installs `yog`, rustup targets, Zig,
-  `cargo-zigbuild` and the JDKs, like the Visual Studio Installer
-- Integrated terminals (xterm.js on a real PTY), a settings window, and an English or Russian UI
+<p align="center"><img src="docs/images/book-designer.png" alt="The book designer with HexMod's Hex Notebook" width="900"></p>
 
-## 📄 File Formats
+### Texts, translations and data tables
 
-| File | Opens in | Format reference |
-|---|---|---|
-| `src/**/*.yui` (`<Screen>` / `<Component>`) | Screen designer + XAML | [docs/yui.md](docs/yui.md) |
-| `.yui` with `x:ViewModel` | Same, compiled to a yog-kit view | [docs/mvvm.md](docs/mvvm.md) |
-| `resources/**/*.yres` | Resource table | [docs/yres.md](docs/yres.md) |
-| `content/**/*.yblock`, `*.yitem` | 3D model editor + paint | [docs/blocks-items.md](docs/blocks-items.md) |
-| `content/**/*.ybook` | Book designer | [docs/books.md](docs/books.md) |
-| `content/**/*.yrecipe` | Recipe editor | [Yog-Mod-Loader README](https://github.com/F000NKKK/Yog-Mod-Loader#-key-features) |
-| `yog.toml` | Properties grid / text | [Yog-Mod-Loader README](https://github.com/F000NKKK/Yog-Mod-Loader#-quick-start) |
+Resources are a table of names and values: texts, colors, numbers, images and
+sounds. **All Languages** puts every translation in its own column and marks
+the missing ones. Saving generates typed accessors for the mod's code.
 
-Every editor keeps a text view: **F7** (or the code button) switches to the
-underlying XML/JSON.
+<p align="center"><img src="docs/images/yres-editor.png" alt="The resource table with Yog-VLSI's texts" width="900"></p>
 
-## 🚀 Getting Started
+Data tables — tiers, costs, any list of records a mod declares — open in the
+code editor; a mod gets typed access to their rows.
 
-Yog-IDLE depends on Substrate-Platform through relative paths, so clone both
-side by side:
+<p align="center"><img src="docs/images/ydef-table.png" alt="Yog-VLSI's tier table" width="900"></p>
+
+### Build, run and debug
+
+- **Build** packages the mod for all five platforms at once.
+- **Run** starts Minecraft with your mod on Fabric, NeoForge or Forge, in
+  Release or Debug.
+- **Hot reload** rebuilds the mod and swaps it into the running game.
+- The **debugger** stops at breakpoints in the mod's Rust code while the game
+  runs: step, call stack, locals, watch expressions and values on hover
+  (Linux for now, like hot reload).
+
+<p align="center"><img src="docs/images/debugger.png" alt="The debugger stopped at a breakpoint" width="900"></p>
+
+### And the rest of an IDE
+
+Code editors with Markdown preview, Git (changes, branches, diffs, push and
+pull), code search by file and symbol, find and replace in files, integrated
+terminals, an English and a Russian interface, and settings for everything —
+including where the tools live and which JDK each Minecraft version uses.
+
+<p align="center"><img src="docs/images/options.png" alt="Options: the Environment page" width="900"></p>
+
+## 🚀 Getting started
+
+1. Install IDLE and let it set up the environment.
+2. **File › Open Folder** on a mod — a folder with a yog.toml.
+   [Yog-Modlist](https://github.com/F000NKKK/Yog-Modlist) is a small one to
+   start with; [Yog-VLSI](https://github.com/F000NKKK/Yog-VLSI) uses every
+   editor.
+3. Pick a loader and a Minecraft version in the toolbar and press ▶.
+
+The formats are described in [docs](docs): [screens](docs/yui.md),
+[view models](docs/mvvm.md), [resources](docs/yres.md),
+[blocks and items](docs/blocks-items.md), [books](docs/books.md).
+
+## 🛠 Building from source
+
+IDLE is built with [Tauri](https://tauri.app/) (Rust and React) on top of
+[Substrate Platform](https://github.com/F000NKKK/Substrate-Platform), so clone
+the two side by side:
 
 ```bash
 git clone https://github.com/F000NKKK/Substrate-Platform.git
 git clone https://github.com/F000NKKK/Yog-IDLE.git
-
 (cd Substrate-Platform/ui && npm install)
-cd Yog-IDLE
-npm install
-npm run tauri dev        # development build with hot module reload
-npm run tauri build      # release bundle
+cd Yog-IDLE && npm install
+npm run tauri dev      # run with hot module reload
+npm run tauri build    # make the installers
 ```
 
-To work on mods you also need the `yog` CLI (`cargo install --locked yog-cli`), and for
-running the game a [Yog-Mod-Loader](https://github.com/F000NKKK/Yog-Mod-Loader)
-checkout with JDK 17/21. **Tools › Check Environment...** finds what's
-missing and **Tools › Install Components...** installs it.
+## 🤝 Contributing
 
-Then use **File › Open Folder** on a folder with a `yog.toml`.
-[Yog-Modlist](https://github.com/F000NKKK/Yog-Modlist) is a good first project:
-it has a view-model screen, two components and translated resources.
-
-## 📐 Architecture
-
-```mermaid
-flowchart LR
-    subgraph ui["Frontend (React, Vite)"]
-        app["Yog-IDLE UI<br/>designer · content editor · .yres · git · debugger"]
-        sp["substrate-platform-ui<br/>docking shell · editors · widgets"]
-    end
-    subgraph core["Backend (Rust, Tauri)"]
-        tauri["Yog-IDLE commands<br/>yui render · content · search · git · environment"]
-        spr["substrate-platform<br/>tasks · workflows · PTY · logs · projects"]
-    end
-    cli["yog CLI"]
-    game["Minecraft + yog-runtime"]
-    app --> sp
-    app <-- "invoke / events" --> tauri
-    tauri --> spr
-    tauri -- "build · run · ui gen · res check" --> cli
-    tauri <-- "control socket: status, hot reload" --> game
-    tauri -- "ptrace / DAP (yog-debugger)" --> game
-```
-
-- `src/` is the React frontend (`designer/`, `content/`, `editors/`, `git/`,
-  `search/`, `debugger/`, `panels/`...).
-- `src-tauri/` is the Rust backend. The designer's `yui` renderer builds the
-  same `yog-ui` widget tree a mod's generated code builds, and rasterizes it
-  with Minecraft's font and textures.
-- Generic pieces (docking, editors, DataGrid, PropertyGrid, terminal, task
-  runner) belong in Substrate Platform. Yog-specific features stay in this repo.
-
-## 🚧 Status
-
-Active development, used daily on Linux.
-
-- **Works**: everything listed above.
-- **Linux only**: debugging (`ptrace`), hot reload and the in-game status
-  bar (the runtime's Unix control socket).
-- **Planned**: live preview of a designed screen in the running game (the
-  route is hot reload of the regenerated code); debugging and hot reload on
-  Windows and macOS.
-
-## 📚 Documentation
-
-- [docs/yui.md](docs/yui.md): `.yui` screens: elements, sizing, `Grid`, images, components, the designer
-- [docs/mvvm.md](docs/mvvm.md): view-model screens with yog-kit: bindings, commands, lists, styles, testing
-- [docs/yres.md](docs/yres.md): `.yres` resources, translations, generated accessors
-- [docs/blocks-items.md](docs/blocks-items.md): `.yblock` / `.yitem`, models, import, the 3D editor
+Bug reports, ideas and pull requests are welcome — see
+[CONTRIBUTING.md](CONTRIBUTING.md). Security issues go privately, as described in
+[SECURITY.md](SECURITY.md).
 
 ## 📄 License
 
-Dual-licensed: **AGPL-3.0-only** ([LICENSE](LICENSE)), free for any use that
-complies with the AGPL, or a **Commercial License** for closed-source use,
-free below $1,000/month net profit with a sliding royalty above that. See
-[COMMERCIAL-LICENSE.md](COMMERCIAL-LICENSE.md).
-
----
+Free under the [AGPL-3.0](LICENSE). A [commercial license](COMMERCIAL-LICENSE.md)
+is available for closed-source use, free below $1,000 a month of net profit.
 
 <div align="center">
 
-**[⬆ Back to Top](#top)**
-
-Part of the [Yog](https://github.com/F000NKKK/Yog-Mod-Loader) project
+Part of the [Yog](https://github.com/F000NKKK/Yog-Mod-Loader) project · [Back to top](#top)
 
 </div>
