@@ -4,10 +4,10 @@ import {
   ContextMenu,
   DesignSurface,
   eventKey,
-  getCurrentSelection,
+  activatePropertyContext,
   notifyDocumentCommands,
   registerDocumentCommands,
-  setSelection,
+  setPropertyContext,
   tn,
   useContextMenu,
   useKeybinding,
@@ -18,7 +18,7 @@ import {
   type DesignPoint,
   type DesignRect,
   type EditorProps,
-  type PropertyDescriptor,
+  type PropertySet,
 } from "substrate-platform-ui";
 import { openFile } from "../fileOpenBus";
 import { useActiveFileTab } from "../OpenFilesContext";
@@ -887,15 +887,18 @@ function CanvasDesigner({ path, content, onChange, readOnly, contentVersion, lin
         },
       ),
     };
-    setSelection({ id: data.objectKey, kind: "yui.widget", data, source: "editor" });
+  };
+  /** Shows the designer's selection in Properties — a click on the surface, a pick in the XAML. */
+  const publish = () => {
+    setPropertyContext(path, propertySet());
+    activatePropertyContext(path);
   };
   const publishRef = useRef(publish);
   publishRef.current = publish;
 
-  useEffect(() => {
-    const current = getCurrentSelection<YuiSelectionData>();
-    if (current?.kind === "yui.widget" && current.data.path === path) publishRef.current();
-  });
+  // Kept current (shown at once while it's in Properties); gone with the designer.
+  useEffect(() => setPropertyContext(path, propertySet()));
+  useEffect(() => () => setPropertyContext(path, null), [path]);
 
   // ── Commands (Edit menu, Toolbox, keys) ───────────────────────────────────
 
