@@ -22,6 +22,7 @@ import {
   editorUndo,
   useDocumentCommands,
   useEditorView,
+  useDocumentHistory,
   useKeybinding,
   withShortcut,
   t,
@@ -82,6 +83,8 @@ export function useEditorActions() {
   const designer = useDocumentCommands(tab?.path);
   const view = textView && !designer?.preferred?.() ? textView : null;
   const doc = view ? null : designer;
+  // Any other designer: the platform's history of its edits.
+  const history = useDocumentHistory(tab?.path, tab?.content);
   const { save, saveAll, hasDirty, closeTab } = useOpenFiles();
   const localFormatter = tab ? LOCAL_FORMATTERS[extensionOf(tab.path)] : undefined;
   const canFormat = (useFormatSupported(textView && tab && !localFormatter ? tab.path : null) || !!localFormatter) && !!textView && !textView.state.readOnly;
@@ -107,10 +110,12 @@ export function useEditorActions() {
     hasDirty,
     saveAll,
     close: () => (tab ? closeTab(tab.id) : Promise.resolve(true)),
-    canUndo: view ? editorCanUndo(view) : !!doc?.canUndo(),
-    undo: () => (view ? editorUndo(view) : doc?.undo()),
-    canRedo: view ? editorCanRedo(view) : !!doc?.canRedo(),
-    redo: () => (view ? editorRedo(view) : doc?.redo()),
+    canUndo: view ? editorCanUndo(view) : doc ? doc.canUndo() : history.canUndo,
+    undo: () => (view ? editorUndo(view) : doc ? doc.undo() : history.undo()),
+    canRedo: view ? editorCanRedo(view) : doc ? doc.canRedo() : history.canRedo,
+    redo: () => (view ? editorRedo(view) : doc ? doc.redo() : history.redo()),
+    /** Undo/Redo go to a designer (not a code view, which binds its own keys). */
+    designerUndo: !view,
     hasSelection: view ? editorHasSelection(view) : !!doc?.hasSelection(),
     canCut: view ? editorHasSelection(view) && !view.state.readOnly : !!doc?.hasSelection(),
     cut: () =>
@@ -142,6 +147,14 @@ export type EditorActions = ReturnType<typeof useEditorActions>;
 
 /** Keybindings that act on the active editor tab beyond CodeMirror's own (undo, find, toggle comment, ... are already bound inside each editor): Ctrl+S saves it, Ctrl+Shift+S saves every file, Ctrl+F4 / Ctrl+W closes it, Shift+Alt+F (or Ctrl+K Ctrl+D) formats it. Renders nothing. */
 export function EditorKeybindings({ actions }: { actions: EditorActions }) {
+  // A designer's Undo/Redo — not while typing in a field (its own undo) or in code.
+  const designerKeys = () => {
+    const el = document.activeElement;
+    const typing = el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement || el instanceof HTMLSelectElement || (el instanceof HTMLElement && el.isContentEditable);
+    return actions.designerUndo && !typing;
+  };
+  useKeybinding("Ctrl+Z", () => (actions.canUndo ? actions.undo() : false), { id: "edit.undo", when: designerKeys });
+  useKeybinding(["Ctrl+Y", "Ctrl+Shift+Z"], () => (actions.canRedo ? actions.redo() : false), { id: "edit.redo", when: designerKeys });
   useKeybinding("Ctrl+S", () => void actions.save(), { id: "file.save" });
   useKeybinding("Ctrl+Shift+S", () => void actions.saveAll(), { id: "file.saveAll" });
   useKeybinding(["Ctrl+F4", "Ctrl+W"], () => void actions.close(), { id: "file.close" });

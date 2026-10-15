@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type MutableRefObject } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { KeyHints, Toolbar, ToolbarButton, ToolbarCheck, ToolbarGroup, ToolbarModes, ToolbarSelect, useKeybinding, usePropertyContext, useT, type EditorProps, type KeyHint, type PropertyDescriptor } from "substrate-platform-ui";
+import { KeyHints, Toolbar, ToolbarButton, ToolbarCheck, ToolbarGroup, ToolbarModes, ToolbarSelect, usePropertyContext, useT, type EditorProps, type KeyHint, type PropertyDescriptor } from "substrate-platform-ui";
 import { ModelViewport, type GizmoMode, type Selection } from "../body/ModelViewport";
 import {
   blankModel,
@@ -67,8 +67,6 @@ export function ModelEditor({ path, content, onChange, readOnly, contentVersion 
   const [grid, setGrid] = useState(true);
   const [texture, setTexture] = useState<string | null>(null);
   const [textureError, setTextureError] = useState<string | null>(null);
-  const undo = useRef<string[]>([]);
-  const redo = useRef<string[]>([]);
   const lastText = useRef(content);
 
   // The document: read at mount and when the file changed under us.
@@ -82,16 +80,24 @@ export function ModelEditor({ path, content, onChange, readOnly, contentVersion 
     lastText.current = content;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [contentVersion]);
+  // A text that isn't ours (Undo/Redo — the platform's history — or the
+  // code view): the model follows it.
+  useEffect(() => {
+    if (content === lastText.current) return;
+    lastText.current = content;
+    try {
+      setModel(content.trim() ? parseModel(content) : blankModel());
+      setError(null);
+    } catch (e) {
+      setError(String(e));
+    }
+  }, [content]);
 
   const write = useCallback(
-    (next: ModelFile, record = true) => {
+    (next: ModelFile) => {
       if (readOnly) return;
       const text = serializeModel(next);
       if (text === lastText.current) return;
-      if (record) {
-        undo.current.push(lastText.current);
-        redo.current = [];
-      }
       lastText.current = text;
       setModel(next);
       onChange(text);
@@ -106,22 +112,6 @@ export function ModelEditor({ path, content, onChange, readOnly, contentVersion 
     write(next);
   };
 
-  const step = (from: MutableRefObject<string[]>, to: MutableRefObject<string[]>) => {
-    const text = from.current.pop();
-    if (text === undefined) return;
-    to.current.push(lastText.current);
-    lastText.current = text;
-    try {
-      setModel(parseModel(text));
-    } catch {
-      /* the text was ours: it parses */
-    }
-    onChange(text);
-  };
-
-  // Layout-independent, like every IDE shortcut: Ctrl+Z is the Z key under "я" too.
-  useKeybinding("Ctrl+Z", () => step(undo, redo), { enabled: !readOnly });
-  useKeybinding(["Ctrl+Y", "Ctrl+Shift+Z"], () => step(redo, undo), { enabled: !readOnly });
 
   // The texture, as the format names it.
   useEffect(() => {
