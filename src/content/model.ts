@@ -136,6 +136,8 @@ export const TOOLS = ["pickaxe", "axe", "shovel", "hoe"];
 /** The game's kinds of tool item (a mod's: its `@tag:block:…` mineable tag). */
 export const TOOL_KINDS = [...TOOLS, "sword"];
 export const FACINGS = ["horizontal", "all"] as const;
+/** How the facings are shown (translated). */
+export const FACING_LABELS: Record<(typeof FACINGS)[number], string> = { horizontal: "Horizontal (4 sides)", all: "Any of the six sides" };
 export const PLACEMENTS = ["toward", "away"] as const;
 export const TOOL_LEVELS = ["wood", "stone", "iron", "diamond", "netherite"];
 export const RENDER_LAYERS = ["solid", "cutout", "cutout_mipped", "translucent"];

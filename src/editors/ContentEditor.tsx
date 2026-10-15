@@ -52,6 +52,7 @@ import {
   TOOL_KINDS,
   ARMOR_SLOTS,
   FACINGS,
+  FACING_LABELS,
   PLACEMENTS,
   type ArmorSlot,
   type Axis,
@@ -1274,7 +1275,7 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
         });
       out.push(
         choice("facing", t("Facing"), c, st.facing, FACINGS, (v) => setS((x) => void (x.facing = v as typeof st.facing)), {
-          optionLabel: (o) => (o ? t(o) : ""),
+          optionLabel: (o) => (o ? t(FACING_LABELS[o as keyof typeof FACING_LABELS]) : ""),
           description: t("The block turns when placed (a facing property); its model's north side is its front."),
         }),
         choice("placement", t("Placement"), c, st.placement, PLACEMENTS, (v) => setS((x) => void (x.placement = v as typeof st.placement)), {
