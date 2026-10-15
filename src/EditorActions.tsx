@@ -24,7 +24,7 @@ import {
   useEditorView,
   useDocumentHistory,
   documentHistory,
-  undoScopeOf,
+  undoTarget,
   useKeybinding,
   withShortcut,
   t,
@@ -158,10 +158,9 @@ export function EditorKeybindings({ actions }: { actions: EditorActions }) {
   // commit message).
   const route = (): ((redo: boolean) => void) | null => {
     const el = document.activeElement;
-    const typing = el instanceof HTMLTextAreaElement || (el instanceof HTMLInputElement && !["checkbox", "radio", "button", "range", "color"].includes(el.type));
-    if (typing) return null;
-    const scope = undoScopeOf(el);
-    if (scope) return (redo: boolean) => (redo ? documentHistory(scope).redo() : documentHistory(scope).undo());
+    const target = undoTarget(el);
+    if (target === "own") return null;
+    if (target) return (redo: boolean) => (redo ? documentHistory(target.scope).redo() : documentHistory(target.scope).undo());
     const cm = el instanceof HTMLElement ? el.closest(".cm-editor") : null;
     if (cm && !(actions.textView && actions.textView.dom.contains(cm))) return null;
     return (redo: boolean) => void (redo ? actions.redo() : actions.undo());
