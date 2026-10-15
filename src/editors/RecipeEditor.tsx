@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useState, useSyncExternalStore, type CSSProperties } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { FormField, FormSection, Icon, IconButton, SelectField, useT, type EditorProps } from "substrate-platform-ui";
+import { Icon, IconButton, Inspector, SelectField, useT, type EditorProps, type PropertyDescriptor } from "substrate-platform-ui";
 import { DataEditor } from "./DataEditor";
 import { parseDataValue } from "../data/yogData";
 import { imagePreview, imageSources, imageSourcesVersion, ingredientItems, subscribeImageSources } from "../designer/imageSources";
@@ -91,10 +91,8 @@ export function RecipeEditor({ path, content, onChange, readOnly }: EditorProps)
   const typeId = custom ? custom.type : recipe.type;
   const kind = kinds ? (custom ? kinds.own : kinds.game).find((k) => k.id === typeId) : undefined;
   const [target, setTarget] = useState<Target>("g:0");
-  const [draft, setDraft] = useState("");
   const [newKind, setNewKind] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
   // Slots with several possible items (tags, alternatives) show the next each second.
   const [cycleTick, setCycleTick] = useState(0);
   useEffect(() => {
@@ -114,7 +112,6 @@ export function RecipeEditor({ path, content, onChange, readOnly }: EditorProps)
     return "";
   };
   const current = valueAt(target);
-  useEffect(() => setDraft(current), [current, target]);
 
   const write = useCallback(
     (text: string) => {
@@ -299,7 +296,6 @@ export function RecipeEditor({ path, content, onChange, readOnly }: EditorProps)
         title={value ? (shown && shown !== value ? `${value} — ${shown}` : value) : t("Empty — click, then pick an item")}
         onClick={() => {
           setTarget(at);
-          inputRef.current?.focus();
         }}
         onContextMenu={(e) => {
           e.preventDefault();
@@ -370,9 +366,50 @@ export function RecipeEditor({ path, content, onChange, readOnly }: EditorProps)
     const shown = current ? cycled(current) : null;
     return shown ? imagePreview(path, `item:${shown}`) : null;
   })();
-  const number = (value: number, set: (n: number) => void, opts: { min?: number; max?: number; step?: number } = {}) => (
-    <input type="number" className="recipe-input" value={value} min={opts.min} max={opts.max} step={opts.step} disabled={readOnly} onChange={(e) => set(Number(e.target.value) || 0)} />
-  );
+  /** The inspector: the selected place, the result, the recipe's values. */
+  const ro = !!readOnly;
+  const clampCount = (n: number) => Math.max(1, Math.min(64, Math.round(n)));
+  const inspected: PropertyDescriptor[] = [
+    {
+      id: "place",
+      category: targetLabel,
+      name: target === "result" ? t("Result") : t("Ingredient"),
+      value: current,
+      image: targetIcon ?? undefined,
+      suggestions: items,
+      description: t("An item, a tag (#c:dusts), or alternatives joined by |. Right-click a place to empty it."),
+      readOnly: ro,
+      onCommit: (v) => put(target, String(v)),
+    },
+    {
+      id: "count",
+      category: t("Result"),
+      name: t("Count"),
+      value: count,
+      validate: (v) => (Number(v) >= 1 && Number(v) <= 64 ? null : t("1 to 64")),
+      readOnly: ro,
+      onCommit: (v) => (custom ? updateCustom((r) => (r.count = clampCount(Number(v)))) : updateGame((r) => (r.count = clampCount(Number(v))))),
+    },
+  ];
+  if (!custom && recipe.type === "smelting") {
+    inspected.push(
+      { id: "experience", category: t("Smelting"), name: t("Experience"), value: recipe.experience, step: 0.1, readOnly: ro, onCommit: (v) => updateGame((r) => (r.experience = Math.max(0, Number(v)))) },
+      { id: "cook_time", category: t("Smelting"), name: t("Cook time (ticks)"), value: recipe.cookTime, readOnly: ro, onCommit: (v) => updateGame((r) => (r.cookTime = Math.max(1, Math.round(Number(v))))) },
+    );
+  }
+  if (custom && kind) {
+    for (const v of kind.values) {
+      const value = custom.values[v.name];
+      inspected.push({
+        id: `value.${v.name}`,
+        category: t("Values"),
+        name: v.name,
+        value: v.kind === "bool" ? !!value : v.kind === "number" ? Number(value ?? 0) : String(value ?? ""),
+        readOnly: ro,
+        onCommit: (x) => updateCustom((r) => (r.values[v.name] = x as never)),
+      });
+    }
+  }
 
   return (
     <div className="recipe-editor">
@@ -382,56 +419,14 @@ export function RecipeEditor({ path, content, onChange, readOnly }: EditorProps)
           {stage}
           {!layout && !kind?.slots.length && <p className="recipe-hint">{t("No layout: give the kind a .yui layout (Edit layout… after New kind…) to draw it as books do.")}</p>}
         </div>
-        <aside className="recipe-inspector">
-          <FormSection title={targetLabel}>
-            <div className="recipe-picked">
-              <div className="recipe-picked-icon">{targetIcon && <img src={targetIcon} alt="" />}</div>
-              <input
-                ref={inputRef}
-                className="recipe-input"
-                list="recipe-items"
-                value={draft}
-                disabled={readOnly}
-                placeholder={target === "result" ? "minecraft:paper" : "minecraft:paper | #c:dusts"}
-                onChange={(e) => setDraft(e.target.value)}
-                onBlur={() => put(target, draft)}
-                onKeyDown={(e) => e.key === "Enter" && put(target, draft)}
-              />
-            </div>
-            <datalist id="recipe-items">
-              {items.map((id) => (
-                <option key={id} value={id} />
-              ))}
-            </datalist>
-            <p className="recipe-hint">{t("An item, a tag (#c:dusts), or alternatives joined by |. Right-click a place to empty it.")}</p>
-          </FormSection>
-          <FormSection title={t("Result")}>
-            <FormField label={t("Count")}>
-              {number(count, (n) => (custom ? updateCustom((r) => (r.count = Math.max(1, Math.min(64, n)))) : updateGame((r) => (r.count = Math.max(1, Math.min(64, n))))), { min: 1, max: 64 })}
-            </FormField>
-          </FormSection>
-          {!custom && recipe.type === "smelting" && (
-            <FormSection title={t("Smelting")}>
-              <FormField label={t("Experience")}>{number(recipe.experience, (n) => updateGame((r) => (r.experience = Math.max(0, n))), { min: 0, step: 0.1 })}</FormField>
-              <FormField label={t("Cook time (ticks)")}>{number(recipe.cookTime, (n) => updateGame((r) => (r.cookTime = Math.max(1, Math.round(n)))), { min: 1 })}</FormField>
-            </FormSection>
-          )}
-          {custom && kind && kind.values.length > 0 && (
-            <FormSection title={t("Values")}>
-              {kind.values.map((v) => (
-                <FormField key={v.name} label={v.name}>
-                  {v.kind === "bool" ? (
-                    <input type="checkbox" checked={!!custom.values[v.name]} disabled={readOnly} onChange={(e) => updateCustom((r) => (r.values[v.name] = e.target.checked))} />
-                  ) : v.kind === "number" ? (
-                    number(Number(custom.values[v.name] ?? 0), (n) => updateCustom((r) => (r.values[v.name] = n)))
-                  ) : (
-                    <input className="recipe-input" value={String(custom.values[v.name] ?? "")} disabled={readOnly} onChange={(e) => updateCustom((r) => (r.values[v.name] = e.target.value))} />
-                  )}
-                </FormField>
-              ))}
-            </FormSection>
-          )}
-        </aside>
+        <Inspector
+          objectName={targetLabel}
+          objectType={t("Recipe")}
+          objectKey={target}
+          properties={inspected}
+          persistKey="yog.recipe.inspector"
+          hint={t("An item, a tag (#c:dusts), or alternatives joined by |. Right-click a place to empty it.")}
+        />
       </div>
     </div>
   );

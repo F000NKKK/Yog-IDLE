@@ -7,8 +7,7 @@
   background: var(--sp-surface-0);
 }
 
-.model-error,
-.model-hint {
+.model-error {
   padding: var(--sp-space-md);
   color: var(--sp-text-muted);
 }
@@ -109,29 +108,6 @@
   min-width: 0;
 }
 
-.model-inspector {
-  width: 320px;
-  flex: none;
-  overflow: auto;
-  border-left: 1px solid var(--sp-border);
-  background: var(--sp-surface-1);
-}
-
-.model-input {
-  width: 100%;
-  box-sizing: border-box;
-}
-
-.model-vec {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 4px;
-}
-
-.model-vec input {
-  min-width: 0;
-}
-
 /* The selected cube's box-UV over the texture. */
 .model-uvnet {
   position: relative;
@@ -158,53 +134,4 @@
 .model-uvnet-face.south {
   border-color: #46a758;
   background: rgba(70, 167, 88, 0.15);
-}
-
-/* The inspector is narrow: short labels, the controls get the rest. */
-.model-inspector {
-  overflow-x: hidden;
-}
-
-.model-inspector .sp-form-field {
-  grid-template-columns: 96px minmax(0, 1fr);
-  gap: var(--sp-space-sm);
-}
-
-.model-inspector input[type="number"],
-.model-inspector input:not([type]),
-.model-inspector input[type="text"] {
-  width: 100%;
-  min-width: 0;
-  box-sizing: border-box;
-  height: var(--sp-control-height, 24px);
-  padding: 0 6px;
-  background: var(--sp-surface-0);
-  color: var(--sp-text);
-  border: 1px solid var(--sp-border);
-  border-radius: 3px;
-  font: inherit;
-  font-variant-numeric: tabular-nums;
-}
-
-/* No spinners: they ate the room; drag the gizmo or type. */
-.model-inspector input[type="number"] {
-  appearance: textfield;
-  -moz-appearance: textfield;
-  text-align: right;
-}
-
-.model-inspector input[type="number"]::-webkit-inner-spin-button,
-.model-inspector input[type="number"]::-webkit-outer-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
-}
-
-.model-inspector input:focus {
-  outline: none;
-  border-color: var(--sp-accent, #3b8eea);
-}
-
-.model-inspector .sp-form-select {
-  width: 100%;
-  min-width: 0;
 }

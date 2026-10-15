@@ -7,7 +7,7 @@ import {
   IconButton,
   notify,
   notifyDocumentCommands,
-  PropertyGrid,
+  Inspector,
   promptDialog,
   registerDocumentCommands,
   SelectField,
@@ -1503,36 +1503,36 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
             viewRequest={viewRequest}
           />
         </div>
-        <div className="content-side">
-          <PropertyGrid
-            className="content-properties"
-            objectName={selEl ? (selEl.name ?? `${t("Element")} ${(sel ?? 0) + 1}`) : (file.name ?? path.split(/[\\/]/).pop())}
-            objectType={selEl ? t("Element") : kind === "block" ? t("Block") : t("Item")}
-            objectKey={`${effectiveKey}:${sel ?? "-"}:${face ?? "-"}`}
-            properties={properties}
-            persistKey="yog.content.properties"
-          />
-          {!paintOn && faceData && face && selEl && (
-            <div className="content-uv-pane">
-              <div className="content-pane-header">
-                <span>
-                  {t("UV")}: {t(face)}
-                </span>
-                <span className="content-spacer" />
-                <Button variant="ghost" disabled={readOnly || !faceData.uv} onClick={() => editElements((els) => void delete els[sel!].faces[face]!.uv)}>
-                  {t("Auto UV")}
-                </Button>
+        <Inspector
+          order="sorted"
+          objectName={selEl ? (selEl.name ?? `${t("Element")} ${(sel ?? 0) + 1}`) : (file.name ?? path.split(/[\\/]/).pop())}
+          objectType={selEl ? t("Element") : kind === "block" ? t("Block") : t("Item")}
+          objectKey={`${effectiveKey}:${sel ?? "-"}:${face ?? "-"}`}
+          properties={properties}
+          persistKey="yog.content.properties"
+          footer={
+            !paintOn && faceData && face && selEl ? (
+              <div className="content-uv-pane">
+                <div className="content-pane-header">
+                  <span>
+                    {t("UV")}: {t(face)}
+                  </span>
+                  <span className="content-spacer" />
+                  <Button variant="ghost" disabled={readOnly || !faceData.uv} onClick={() => editElements((els) => void delete els[sel!].faces[face]!.uv)}>
+                    {t("Auto UV")}
+                  </Button>
+                </div>
+                <UvEditor
+                  image={faceTexture ? shownImages[faceTexture] : undefined}
+                  uv={faceData.uv ?? autoUv(face, selEl.from, selEl.to)}
+                  others={otherUvs}
+                  readOnly={readOnly}
+                  onCommit={(uv) => editElements((els) => void (els[sel!].faces[face]!.uv = uv))}
+                />
               </div>
-              <UvEditor
-                image={faceTexture ? shownImages[faceTexture] : undefined}
-                uv={faceData.uv ?? autoUv(face, selEl.from, selEl.to)}
-                others={otherUvs}
-                readOnly={readOnly}
-                onCommit={(uv) => editElements((els) => void (els[sel!].faces[face]!.uv = uv))}
-              />
-            </div>
-          )}
-        </div>
+            ) : undefined
+          }
+        />
       </div>
     </div>
   );

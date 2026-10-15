@@ -187,7 +187,6 @@
 
 .content-uv-pane {
   flex: none;
-  border-top: 1px solid var(--sp-border);
 }
 
 .content-uv {

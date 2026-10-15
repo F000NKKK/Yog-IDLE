@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type MutableRefObject } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { FormField, FormSection, Icon, IconButton, SelectField, useT, type EditorProps } from "substrate-platform-ui";
+import { formatShortcut, Icon, IconButton, Inspector, SelectField, useT, type EditorProps, type PropertyDescriptor } from "substrate-platform-ui";
 import { ModelViewport, type GizmoMode, type Selection } from "../body/ModelViewport";
 import {
   blankModel,
@@ -15,6 +15,7 @@ import {
   renameBone,
   serializeModel,
   type Bone,
+  type Cube,
   type ModelFile,
   type Vec3,
 } from "../body/ymodel";
@@ -29,6 +30,19 @@ const SNAPS = [
   { id: "0.25", move: 0.25, turn: 1 },
   { id: "off", move: 0, turn: 0 },
 ] as const;
+
+/** The parent choice meaning "no parent". */
+const NO_PARENT = "—";
+
+/** The keys the viewport's hint names, as the locale writes them. */
+const HINT_KEYS = () => ({
+  alt: formatShortcut("alt"),
+  orbit: formatShortcut("mmb"),
+  pan: formatShortcut("shift+mmb"),
+  front: formatShortcut("num1"),
+  side: formatShortcut("num3"),
+  top: formatShortcut("num7"),
+});
 
 interface LoadedTexture {
   url: string;
@@ -290,131 +304,120 @@ export function ModelEditor({ path, content, onChange, readOnly, contentVersion 
     </div>
   );
 
-  const vec = (label: string, value: Vec3, set: (v: Vec3) => void, stepBy = 1) => (
-    <FormField label={label}>
-      <div className="model-vec">
-        {value.map((n, i) => (
-          <input
-            key={i}
-            type="number"
-            step={stepBy}
-            value={n}
-            disabled={readOnly}
-            onChange={(e) => {
-              const v = [...value] as Vec3;
-              v[i] = Number(e.target.value) || 0;
-              set(v);
-            }}
-          />
-        ))}
-      </div>
-    </FormField>
-  );
-
   const editBone = (change: (b: Bone) => void) =>
     edit((m) => {
       const b = m.bones.find((x) => x.name === selection!.bone);
       if (b) change(b);
     });
 
+  // The inspector: the model, then what's selected — one property grid.
+  const properties = useMemo((): PropertyDescriptor[] => {
+    if (!model) return [];
+    const ro = !!readOnly;
+    const out: PropertyDescriptor[] = [
+      {
+        id: "texture",
+        category: t("Model"),
+        name: t("Texture"),
+        value: model.texture,
+        description: t("A path under the mod's textures/ (entity/wisp.png) or a full id") + (textureError ? `\n${textureError}` : ""),
+        readOnly: ro,
+        onCommit: (v) => edit((m) => void (m.texture = String(v))),
+      },
+      {
+        id: "texture_size",
+        category: t("Model"),
+        name: t("Texture size"),
+        value: model.textureSize,
+        labels: ["W", "H"],
+        description: t("The texture's size in pixels, as its UVs count them"),
+        readOnly: ro,
+        onCommit: (v) => edit((m) => void (m.textureSize = (v as number[]).map((n) => Math.max(1, Math.round(n))) as [number, number])),
+      },
+    ];
+    if (selection?.kind === "bone" && bone) {
+      const cat = t("Bone");
+      out.push(
+        {
+          id: "bone.name",
+          category: cat,
+          name: t("Name"),
+          value: bone.name,
+          readOnly: ro,
+          validate: (v) => (!String(v).trim() ? t("A name is needed") : String(v) !== bone.name && model.bones.some((b) => b.name === String(v)) ? t("Another bone has this name") : null),
+          onCommit: (v) => {
+            const name = String(v).trim();
+            edit((m) => renameBone(m, bone.name, name));
+            setSelection({ kind: "bone", bone: name });
+          },
+        },
+        {
+          id: "bone.parent",
+          category: cat,
+          name: t("Parent"),
+          value: bone.parent ?? NO_PARENT,
+          options: [NO_PARENT, ...model.bones.filter((b) => !isAncestor(model, bone.name, b.name)).map((b) => b.name)],
+          description: t("The bone it hangs on; none: the anchor (a vanilla part, the model, the entity). Bones the model lacks are the vanilla model's parts — for clips, not here"),
+          readOnly: ro,
+          onCommit: (v) => editBone((b) => void (b.parent = v === NO_PARENT ? null : String(v))),
+        },
+        { id: "bone.pivot", category: cat, name: t("Pivot"), value: bone.pivot, step: 0.5, description: t("Where it turns about, in its parent's space (PartPose offset), pixels"), readOnly: ro, onCommit: (v) => editBone((b) => void (b.pivot = [...(v as number[])] as Vec3)) },
+        { id: "bone.rotation", category: cat, name: t("Turn (°)"), value: bone.rotation, step: 2.5, description: t("Its rest turn, degrees — Z, then Y, then X (as ModelPart)"), readOnly: ro, onCommit: (v) => editBone((b) => void (b.rotation = [...(v as number[])] as Vec3)) },
+      );
+    }
+    const c = selection?.kind === "cube" ? bone?.cubes[selection.cube] : undefined;
+    if (selection?.kind === "cube" && c) {
+      const cat = t("Cube");
+      const editCube = (change: (cube: Cube) => void) =>
+        editBone((b) => {
+          const cube = b.cubes[selection.cube];
+          if (cube) change(cube);
+        });
+      out.push(
+        { id: "cube.origin", category: cat, name: t("Origin"), value: c.origin, step: 0.5, description: t("Its corner, in the bone's space, pixels"), readOnly: ro, onCommit: (v) => editCube((x) => void (x.origin = [...(v as number[])] as Vec3)) },
+        { id: "cube.size", category: cat, name: t("Size"), value: c.size, description: t("Its size, pixels"), readOnly: ro, onCommit: (v) => editCube((x) => void (x.size = (v as number[]).map((n) => Math.max(0, n)) as Vec3)) },
+        { id: "cube.uv", category: cat, name: t("UV"), value: c.uv, labels: ["U", "V"], description: t("Where its box-UV starts on the texture (texOffs), pixels"), readOnly: ro, onCommit: (v) => editCube((x) => void (x.uv = [...(v as number[])] as [number, number])) },
+        { id: "cube.inflate", category: cat, name: t("Inflate"), value: c.inflate, step: 0.25, description: t("Grown on every side, the UVs kept (CubeDeformation)"), readOnly: ro, onCommit: (v) => editCube((x) => void (x.inflate = Number(v))) },
+        { id: "cube.mirror", category: cat, name: t("Mirror UV"), value: c.mirror, description: t("Its UVs mirrored left to right (mirror())"), readOnly: ro, onCommit: (v) => editCube((x) => void (x.mirror = v === true)) },
+        { id: "cube.net", category: cat, name: t("Texture"), value: null, render: () => <UvNet texture={texture} size={model.textureSize} rects={boxUvRects(c)} /> },
+      );
+    }
+    if (selection?.kind === "locator" && bone && selection.locator in bone.locators) {
+      const cat = t("Locator");
+      out.push(
+        {
+          id: "locator.name",
+          category: cat,
+          name: t("Name"),
+          value: selection.locator,
+          readOnly: ro,
+          validate: (v) => (!String(v).trim() ? t("A name is needed") : String(v) !== selection.locator && String(v) in bone.locators ? t("Another locator has this name") : null),
+          onCommit: (v) => {
+            const name = String(v).trim();
+            editBone((b) => {
+              b.locators[name] = b.locators[selection.locator];
+              delete b.locators[selection.locator];
+            });
+            setSelection({ kind: "locator", bone: bone.name, locator: name });
+          },
+        },
+        { id: "locator.at", category: cat, name: t("Place"), value: bone.locators[selection.locator], step: 0.5, description: t("A point in the bone's space a mod follows (a camera, a hand's grip), pixels"), readOnly: ro, onCommit: (v) => editBone((b) => void (b.locators[selection.locator] = [...(v as number[])] as Vec3)) },
+      );
+    }
+    return out;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [model, selection, bone, texture, textureError, readOnly, t]);
+
+  const objectName = selection?.kind === "cube" ? t("cube {n}", { n: selection.cube + 1 }) : selection?.kind === "locator" ? selection.locator : selection?.kind === "bone" ? selection.bone : t("Model");
   const inspector = model && (
-    <div className="model-inspector">
-      <FormSection title={t("Model")}>
-        <FormField label={t("Texture")} hint={t("A path under the mod's textures/ (entity/wisp.png) or a full id")} error={textureError}>
-          <input className="model-input" value={model.texture} disabled={readOnly} onChange={(e) => edit((m) => void (m.texture = e.target.value))} />
-        </FormField>
-        <FormField label={t("Texture size")}>
-          <div className="model-vec">
-            {model.textureSize.map((n, i) => (
-              <input
-                key={i}
-                type="number"
-                min={1}
-                value={n}
-                disabled={readOnly}
-                onChange={(e) => edit((m) => void (m.textureSize[i] = Math.max(1, Number(e.target.value) || 1)))}
-              />
-            ))}
-          </div>
-        </FormField>
-      </FormSection>
-      {selection?.kind === "bone" && bone && (
-        <FormSection title={t("Bone")}>
-          <FormField label={t("Name")}>
-            <input
-              className="model-input"
-              defaultValue={bone.name}
-              key={bone.name}
-              disabled={readOnly}
-              onBlur={(e) => {
-                const name = e.target.value.trim();
-                if (!name || name === bone.name || model.bones.some((b) => b.name === name)) return;
-                edit((m) => renameBone(m, bone.name, name));
-                setSelection({ kind: "bone", bone: name });
-              }}
-            />
-          </FormField>
-          <FormField label={t("Parent")} hint={t("Bones the model lacks are the vanilla model's parts — for clips, not here")}>
-            <SelectField
-              aria-label={t("Parent")}
-              value={bone.parent ?? ""}
-              options={[{ value: "", label: t("(none — the anchor)") }, ...model.bones.filter((b) => !isAncestor(model, bone.name, b.name)).map((b) => ({ value: b.name, label: b.name }))]}
-              disabled={readOnly}
-              onChange={(v) => editBone((b) => void (b.parent = v || null))}
-            />
-          </FormField>
-          {vec(t("Pivot"), bone.pivot, (v) => editBone((b) => void (b.pivot = v)), 0.5)}
-          {vec(t("Turn (°)"), bone.rotation, (v) => editBone((b) => void (b.rotation = v)), 2.5)}
-        </FormSection>
-      )}
-      {selection?.kind === "cube" && bone?.cubes[selection.cube] && (() => {
-        const c = bone.cubes[selection.cube];
-        const editCube = (change: (cube: typeof c) => void) => editBone((b) => change(b.cubes[selection.cube]));
-        return (
-          <FormSection title={t("Cube")}>
-            {vec(t("Origin"), c.origin, (v) => editCube((x) => void (x.origin = v)), 0.5)}
-            {vec(t("Size"), c.size, (v) => editCube((x) => void (x.size = v.map((n) => Math.max(0, n)) as Vec3)))}
-            <FormField label={t("UV")}>
-              <div className="model-vec">
-                {c.uv.map((n, i) => (
-                  <input key={i} type="number" value={n} disabled={readOnly} onChange={(e) => editCube((x) => void (x.uv[i] = Number(e.target.value) || 0))} />
-                ))}
-              </div>
-            </FormField>
-            <FormField label={t("Inflate")} hint={t("Grown on every side, the UVs kept (CubeDeformation)")}>
-              <input className="model-input" type="number" step={0.25} value={c.inflate} disabled={readOnly} onChange={(e) => editCube((x) => void (x.inflate = Number(e.target.value) || 0))} />
-            </FormField>
-            <FormField label={t("Mirror UV")}>
-              <input type="checkbox" checked={c.mirror} disabled={readOnly} onChange={(e) => editCube((x) => void (x.mirror = e.target.checked))} />
-            </FormField>
-            <UvNet texture={texture} size={model.textureSize} rects={boxUvRects(c)} />
-          </FormSection>
-        );
-      })()}
-      {selection?.kind === "locator" && bone && selection.locator in bone.locators && (
-        <FormSection title={t("Locator")}>
-          <FormField label={t("Name")}>
-            <input
-              className="model-input"
-              defaultValue={selection.locator}
-              key={selection.locator}
-              disabled={readOnly}
-              onBlur={(e) => {
-                const name = e.target.value.trim();
-                if (!name || name === selection.locator || name in bone.locators) return;
-                editBone((b) => {
-                  b.locators[name] = b.locators[selection.locator];
-                  delete b.locators[selection.locator];
-                });
-                setSelection({ kind: "locator", bone: bone.name, locator: name });
-              }}
-            />
-          </FormField>
-          {vec(t("Place"), bone.locators[selection.locator], (v) => editBone((b) => void (b.locators[selection.locator] = v)), 0.5)}
-        </FormSection>
-      )}
-      {!selection && <p className="model-hint">{t("Click a cube to pick it (again, or Alt: its bone). Middle drag orbits, Shift+middle pans, numpad 1/3/7 front/side/top.")}</p>}
-    </div>
+    <Inspector
+      objectName={objectName}
+      objectType={selection ? t(selection.kind === "bone" ? "Bone" : selection.kind === "cube" ? "Cube" : "Locator") : undefined}
+      objectKey={selection ? JSON.stringify(selection) : "model"}
+      properties={properties}
+      persistKey="yog.ymodel.inspector"
+      hint={!selection ? t("Click a cube to pick it (again, or {alt}: its bone). {orbit} orbits the view, {pan} pans it, {front}/{side}/{top}: front, side, top.", HINT_KEYS()) : undefined}
+    />
   );
 
   if (error) return <div className="model-error">{t("Can't read this model: {error}", { error })}</div>;
