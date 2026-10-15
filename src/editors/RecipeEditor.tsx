@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { Toolbar, ToolbarButton, ToolbarGroup, ToolbarInput, ToolbarLabel, ToolbarSelect, usePropertyContext, useT, type EditorProps, type PropertyDescriptor, type PropertySet } from "substrate-platform-ui";
+import { Toolbar, ToolbarButton, ToolbarGroup, ToolbarInput, ToolbarLabel, ToolbarSelect, usePropertyContext, useT, type EditorProps, type PropertyDescriptor, type PropertySet, fileTypeOf } from "substrate-platform-ui";
 import { DataEditor } from "./DataEditor";
 import { parseDataValue } from "../data/yogData";
 import { imagePreview, imageSources, imageSourcesVersion, ingredientItems, subscribeImageSources } from "../designer/imageSources";
@@ -53,7 +53,7 @@ function useRecipeKinds(path: string): [Kinds | null, () => void] {
     };
   }, [path, asked]);
   useFsChanged((paths) => {
-    if (paths.some((p) => p.endsWith(".ydef") || p.endsWith(".yui"))) reload();
+    if (paths.some((p) => ["yog.ydef", "yog.yui"].includes(fileTypeOf(p)?.id ?? ""))) reload();
   });
   return [kinds, reload];
 }

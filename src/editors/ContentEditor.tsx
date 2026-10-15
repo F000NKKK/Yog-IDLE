@@ -25,6 +25,7 @@ import {
   type PropertyDescriptor,
   withShortcut,
   pt,
+  stemOf,
 } from "substrate-platform-ui";
 import { useOpenFiles } from "../OpenFilesContext";
 import { reportError } from "../reportError";
@@ -516,7 +517,7 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
 
   /** A new png under `resources/` for `slot` — `item/<file>.png`, `block/<file>_<slot>.png` and the like, not yet taken. */
   const newTexturePath = (slot: string): string => {
-    const stem = (path.split(/[\\/]/).pop() ?? "texture").replace(/\.(yblock|yitem)$/i, "").toLowerCase().replace(/[^a-z0-9_.-]/g, "_");
+    const stem = (stemOf(path) || "texture").toLowerCase().replace(/[^a-z0-9_.-]/g, "_");
     const folder = modelKind === "item" || resolved.sprite ? "item" : "block";
     const several = paintSlots.length > 1 || effectiveKey === "arm";
     const base = `${folder}/${stem}${several ? `_${slot}` : ""}`;

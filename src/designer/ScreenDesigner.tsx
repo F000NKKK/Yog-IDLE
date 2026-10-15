@@ -26,6 +26,7 @@ import {
   ToolbarGroup,
   ToolbarLabel,
   ToolbarSelect,
+  stemOf,
 } from "substrate-platform-ui";
 import { openFile } from "../fileOpenBus";
 import { useActiveFileTab } from "../OpenFilesContext";
@@ -268,9 +269,9 @@ function clampCells(grid: YuiNode): YuiNode {
 const positioned = (n: YuiNode, parent: YuiNode | null) => !!parent && (isCanvas(parent) || n.attrs.x !== undefined || n.attrs.y !== undefined);
 const round = (v: number) => formatNumber(Math.round(v));
 
-function stemOf(path: string): string {
-  const name = path.split(/[\\/]/).pop() ?? "screen";
-  return name.replace(/\.yui$/i, "").replace(/[^a-z0-9_]/gi, "_").toLowerCase() || "screen";
+/** The screen's name as an identifier (`Main Menu.yui` → `main_menu`). */
+function screenIdOf(path: string): string {
+  return stemOf(path).replace(/[^a-z0-9_]/gi, "_").toLowerCase() || "screen";
 }
 
 /** The mod a file belongs to: the folder holding the `src/` it's in. */
@@ -320,7 +321,7 @@ function CanvasDesigner({ path, content, onChange, readOnly, contentVersion, lin
         return;
       }
       if (text.trim() === "") {
-        const doc = newScreen(`mymod:${stemOf(path)}`);
+        const doc = newScreen(`mymod:${screenIdOf(path)}`);
         const session: Session = { text: serializeYui(doc), doc, past: [], future: [], selection: [], selectionByText: new Map() };
         sessionRef.current = session;
         sessions.set(path, session);
@@ -330,7 +331,7 @@ function CanvasDesigner({ path, content, onChange, readOnly, contentVersion, lin
         const finish = (modId: string | null) => {
           const s = sessionRef.current;
           if (!s || s !== session || s.past.length > 0) return;
-          if (modId) s.doc = { ...s.doc, root: withAttrs(s.doc.root, { id: `${modId}:${stemOf(path)}` }) };
+          if (modId) s.doc = { ...s.doc, root: withAttrs(s.doc.root, { id: `${modId}:${screenIdOf(path)}` }) };
           s.text = serializeYui(s.doc);
           setRevision((r) => r + 1);
           if (!readOnly) onChange(s.text);
