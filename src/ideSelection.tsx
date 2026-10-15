@@ -3,7 +3,7 @@
 // right when a selected file is renamed or deleted, whichever panel did it.
 // The Properties window reads it back through `useSelection`.
 
-import { getCurrentSelection, setSelection, t } from "substrate-platform-ui";
+import { activatePropertyContext, getCurrentSelection, setSelection, t } from "substrate-platform-ui";
 import { isWithin, renamedPath } from "./paths";
 import { files } from "./files";
 
@@ -15,6 +15,15 @@ export type SelectionSource = "explorer" | "editor";
 
 export function selectPath(path: string, kind: "file" | "folder", source: SelectionSource): void {
   setSelection({ id: path, kind, data: { path }, source });
+}
+
+/**
+ * What focusing a document window shows in Properties, as in Visual
+ * Studio: the window's own context (a designer's selected element) when it
+ * has one, else its file.
+ */
+export function selectDocument(path: string): void {
+  if (!activatePropertyContext(path)) selectPath(path, "file", "editor");
 }
 
 export function selectMultiple(count: number, source: SelectionSource): void {

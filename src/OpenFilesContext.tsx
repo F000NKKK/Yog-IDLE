@@ -37,7 +37,7 @@ import { samePath } from "./paths";
 import { onOpenFileRequest, openFile, type FileOpenRequest } from "./fileOpenBus";
 import { baseName, generatedSource, isGeneratedCode, isWithin, parentOf } from "./paths";
 import { reportError } from "./reportError";
-import { selectPath } from "./ideSelection";
+import { selectDocument } from "./ideSelection";
 import { addCloseGuard } from "./windowClose";
 import { useGlobalStateStore } from "./WorkspaceContext";
 import { files } from "./files";

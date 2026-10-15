@@ -3,7 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { activatePropertyContext, getCurrentSelection, PROPERTIES_KIND, PropertyGrid, t, tn, useHasPropertyContext, useLocale, useSelection, type PropertyDescriptor, type PropertySet, type ShellSelection } from "substrate-platform-ui";
 import { useActiveFileTab, useOpenFiles } from "../OpenFilesContext";
 import { useProject } from "../ProjectContext";
-import { renamePath, selectPath, type IdeSelectionData } from "../ideSelection";
+import { renamePath, selectDocument, selectPath, type IdeSelectionData } from "../ideSelection";
 import { baseName, extensionOf, samePath, validateEntryName } from "../paths";
 import { files } from "../files";
 
@@ -422,15 +422,6 @@ function manifestProperties(manifest: Manifest, update: (key: string, value: str
       description: t("[dev] yog_api_path: builds against a local yog-api checkout instead of crates.io. Empty when unset."),
     },
   ];
-}
-
-/**
- * What focusing a document window shows in Properties, as in Visual
- * Studio: the window's own context (a designer's selected element) when it
- * has one, else its file.
- */
-export function selectDocument(path: string): void {
-  if (!activatePropertyContext(path)) selectPath(path, "file", "editor");
 }
 
 /**
