@@ -80,11 +80,19 @@ fn ydefs(dir: &Path, out: &mut Vec<PathBuf>) {
 
 /// The game's kinds the recipe editor lays out — as books show them (their
 /// built-in layouts, or the mod's own `recipe_layout` for them): the
-/// crafting grid's 9 places (`grid`), a furnace's input.
+/// crafting grid's 9 places (`grid`), a furnace's or a stonecutter's input.
 pub fn game_kinds(root: &Path) -> Vec<Kind> {
     let layouts = crate::mod_ui::recipe_layouts(root);
     let own: Vec<yog_book::layout::RecipeLayout> = layouts.iter().map(|(_, l)| l.clone()).collect();
-    [("shaped", "grid", 9), ("shapeless", "grid", 9), ("smelting", "input", 1)]
+    [
+        ("shaped", "grid", 9),
+        ("shapeless", "grid", 9),
+        ("smelting", "input", 1),
+        ("blasting", "input", 1),
+        ("smoking", "input", 1),
+        ("campfire_cooking", "input", 1),
+        ("stonecutting", "input", 1),
+    ]
         .into_iter()
         .map(|(id, slot, max)| {
             let file = layouts.iter().find(|(_, l)| l.kinds.iter().any(|k| k == id)).map(|(f, _)| f.clone()).unwrap_or_default();
