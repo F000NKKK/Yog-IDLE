@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { CheckField, CommitTextField, FormField, FormPage, FormSection, SelectField, useT } from "substrate-platform-ui";
+import { CheckField, CommitTextField, FormField, FormPage, FormSection, pushDocumentStep, SelectField, SETTINGS_HISTORY, useT } from "substrate-platform-ui";
 import { gitApi, type GlobalConfig } from "./gitApi";
 import { refreshGit } from "./gitStore";
 
@@ -17,7 +17,7 @@ export function GitSettingsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  async function save(key: string, value: string): Promise<string | null> {
+  async function write(key: string, value: string): Promise<string | null> {
     try {
       await gitApi.configSet(key, value);
       setConfig((prev) => (prev ? { ...prev, values: { ...prev.values, [key]: value } } : prev));
@@ -26,6 +26,14 @@ export function GitSettingsPage() {
     } catch (err) {
       return t(String(err));
     }
+  }
+
+  /** Writes a setting — undoable in the Options. */
+  async function save(key: string, value: string): Promise<string | null> {
+    const before = config?.values[key] ?? "";
+    const problem = await write(key, value);
+    if (!problem && before !== value) pushDocumentStep(SETTINGS_HISTORY, { undo: () => void write(key, before), redo: () => void write(key, value) });
+    return problem;
   }
 
   if (error) return <FormPage title={t("Source Control")} description={error}>{null}</FormPage>;

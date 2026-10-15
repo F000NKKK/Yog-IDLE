@@ -23,6 +23,8 @@ import {
   useDocumentCommands,
   useEditorView,
   useDocumentHistory,
+  documentHistory,
+  undoScopeOf,
   useKeybinding,
   withShortcut,
   t,
@@ -149,17 +151,29 @@ export type EditorActions = ReturnType<typeof useEditorActions>;
 
 /** Keybindings that act on the active editor tab beyond CodeMirror's own (undo, find, toggle comment, ... are already bound inside each editor): Ctrl+S saves it, Ctrl+Shift+S saves every file, Ctrl+F4 / Ctrl+W closes it, Shift+Alt+F (or Ctrl+K Ctrl+D) formats it. Renders nothing. */
 export function EditorKeybindings({ actions }: { actions: EditorActions }) {
-  // Undo/Redo, the one way in for every editor: the active tab's code view
-  // or its designer's history — except in a field of its own (a text box,
-  // another CodeMirror such as a commit message), which keeps its undo.
-  const ours = () => {
+  // Undo/Redo, the one way in for everything: the history of the window the
+  // focus is in (Options, Project Properties, Properties — `UndoScope`),
+  // else the active tab's code view or designer — except in a field that
+  // keeps its own while typing (a text box, another CodeMirror such as a
+  // commit message).
+  const route = (): ((redo: boolean) => void) | null => {
     const el = document.activeElement;
-    if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement || el instanceof HTMLSelectElement) return false;
+    const typing = el instanceof HTMLTextAreaElement || (el instanceof HTMLInputElement && !["checkbox", "radio", "button", "range", "color"].includes(el.type));
+    if (typing) return null;
+    const scope = undoScopeOf(el);
+    if (scope) return (redo: boolean) => (redo ? documentHistory(scope).redo() : documentHistory(scope).undo());
     const cm = el instanceof HTMLElement ? el.closest(".cm-editor") : null;
-    return !cm || (!!actions.textView && actions.textView.dom.contains(cm));
+    if (cm && !(actions.textView && actions.textView.dom.contains(cm))) return null;
+    return (redo: boolean) => void (redo ? actions.redo() : actions.undo());
   };
-  useKeybinding("Ctrl+Z", () => (ours() ? void actions.undo() : false), { id: "edit.undo" });
-  useKeybinding(["Ctrl+Y", "Ctrl+Shift+Z"], () => (ours() ? void actions.redo() : false), { id: "edit.redo" });
+  // `false`: not ours — the key goes on to the field.
+  const run = (redo: boolean) => {
+    const to = route();
+    if (!to) return false;
+    to(redo);
+  };
+  useKeybinding("Ctrl+Z", () => run(false), { id: "edit.undo" });
+  useKeybinding(["Ctrl+Y", "Ctrl+Shift+Z"], () => run(true), { id: "edit.redo" });
   useKeybinding("Ctrl+S", () => void actions.save(), { id: "file.save" });
   useKeybinding("Ctrl+Shift+S", () => void actions.saveAll(), { id: "file.saveAll" });
   useKeybinding(["Ctrl+F4", "Ctrl+W"], () => void actions.close(), { id: "file.close" });

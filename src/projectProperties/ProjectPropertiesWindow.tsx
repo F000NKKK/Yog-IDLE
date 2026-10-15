@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Button, Icon, SettingsWindow, useLocale, useT, type CommitResult, type SettingsSection } from "substrate-platform-ui";
+import { Button, Icon, pushDocumentStep, SettingsWindow, useLocale, useT, type CommitResult, type SettingsSection } from "substrate-platform-ui";
 import { useOpenFiles } from "../OpenFilesContext";
 import { openFile } from "../fileOpenBus";
+import { files } from "../files";
+import { joinPath } from "../paths";
+import { reportError } from "../errors";
 import { errorText, projectApi, type ProjectProps } from "./api";
 import type { ProjectPropertiesPage } from "./bus";
 import { ApplicationPage, BuildPage } from "./ApplicationPages";
@@ -46,6 +49,7 @@ export function ProjectPropertiesWindow({
   const { recheckDisk } = useOpenFiles();
   const [props, setProps] = useState<ProjectProps | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const undoScope = `project-properties:${root}`;
 
   useEffect(() => {
     let cancelled = false;
@@ -58,10 +62,28 @@ export function ProjectPropertiesWindow({
     };
   }, [root]);
 
+  // Every write is a step of the window's history: yog.toml as it was
+  // before, written back on Undo (and as it became, on Redo).
+  const manifest = joinPath(root, "yog.toml");
+  const restore = useCallback(
+    async (text: string) => {
+      try {
+        await files.write(manifest, text);
+        setProps(await projectApi.read(root));
+        void recheckDisk();
+      } catch (err) {
+        reportError(t("Couldn't write yog.toml: {error}", { error: errorText(err) }));
+      }
+    },
+    [manifest, root, recheckDisk, t]
+  );
   const apply = useCallback(
     async (write: () => Promise<ProjectProps>): Promise<CommitResult> => {
       try {
+        const before = await files.read(manifest);
         setProps(await write());
+        const after = await files.read(manifest);
+        if (after !== before) pushDocumentStep(undoScope, { undo: () => void restore(before), redo: () => void restore(after) });
         // An open yog.toml tab picks up the edit (or asks, if it has unsaved changes).
         void recheckDisk();
         return null;
@@ -69,7 +91,7 @@ export function ProjectPropertiesWindow({
         return errorText(err);
       }
     },
-    [recheckDisk]
+    [manifest, recheckDisk, restore]
   );
 
   const sections = useMemo<SettingsSection[]>(() => {
@@ -90,6 +112,7 @@ export function ProjectPropertiesWindow({
 
   return (
     <SettingsWindow
+      undoScope={undoScope}
       title={t("{name} Properties", { name })}
       sections={sections}
       initialSectionId={initialPage}

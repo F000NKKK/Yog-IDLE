@@ -13,6 +13,8 @@ import {
   notify,
   t,
   useT,
+  undoable,
+  SETTINGS_HISTORY,
 } from "substrate-platform-ui";
 import { useProject } from "../ProjectContext";
 import { useGlobalState, useGlobalStateStore } from "../WorkspaceContext";
@@ -37,10 +39,13 @@ function useEnvironmentSettings(): [Settings, (patch: Partial<Settings>) => void
   latest.current = settings;
   const change = useCallback(
     (patch: Partial<Settings>) => {
-      const next = { ...latest.current, ...patch };
-      latest.current = next;
-      setStored(next);
-      void applyEnvironmentSettings(next);
+      const apply = (value: Settings) => {
+        latest.current = value;
+        setStored(value);
+        void applyEnvironmentSettings(value);
+      };
+      // Undoable in the Options.
+      undoable(SETTINGS_HISTORY, latest.current, { ...latest.current, ...patch }, apply);
     },
     [setStored]
   );
