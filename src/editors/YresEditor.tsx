@@ -134,40 +134,17 @@ export function YresEditor({ path, content, onChange, readOnly, contentVersion }
   /** The row/column the grid's keyboard focus was last on — where a single-value paste goes. */
   const activeRef = useRef<{ row: Row | null; column: string | null }>({ row: null, column: null });
 
-  // ── Undo/redo over this file's text ───────────────────────────────────────
+  // ── Edits (Undo/Redo: the platform's history of the text) ──────────────
 
   const contentRef = useRef(content);
   contentRef.current = content;
-  const history = useRef<{ past: string[]; future: string[] }>({ past: [], future: [] });
-  useEffect(() => {
-    // Reloaded from disk (or replaced by the Code view): old steps no longer apply.
-    history.current = { past: [], future: [] };
-    notifyDocumentCommands();
-  }, [contentVersion]);
 
   const apply = useCallback(
     (next: YresEntry[]) => {
       if (readOnly) return;
       const text = serializeYres(next.map(({ line: _, ...e }) => e));
       if (text === contentRef.current) return;
-      history.current.past.push(contentRef.current);
-      history.current.future = [];
       onChange(text);
-      notifyDocumentCommands();
-    },
-    [onChange, readOnly]
-  );
-
-  const step = useCallback(
-    (back: boolean) => {
-      const h = history.current;
-      const from = back ? h.past : h.future;
-      const to = back ? h.future : h.past;
-      const text = from.pop();
-      if (text === undefined || readOnly) return;
-      to.push(contentRef.current);
-      onChange(text);
-      notifyDocumentCommands();
     },
     [onChange, readOnly]
   );
@@ -516,15 +493,13 @@ export function YresEditor({ path, content, onChange, readOnly, contentVersion }
   };
   const editable = () => !readOnly && gridFocused();
   const focusedWithin = () => !!rootRef.current && rootRef.current.contains(document.activeElement);
-  const commands = useRef({ deleteRows, copyRows, paste, step, targetRows, rows });
-  commands.current = { deleteRows, copyRows, paste, step, targetRows, rows };
+  const commands = useRef({ deleteRows, copyRows, paste, targetRows, rows });
+  commands.current = { deleteRows, copyRows, paste, targetRows, rows };
 
   useKeybinding("Delete", () => commands.current.deleteRows(), { when: editable });
   useKeybinding("Ctrl+C", () => void commands.current.copyRows(), { when: gridFocused });
   useKeybinding("Ctrl+X", () => void (commands.current.copyRows() && commands.current.deleteRows()), { when: editable });
   useKeybinding("Ctrl+V", () => void commands.current.paste(), { when: editable });
-  useKeybinding("Ctrl+Z", () => commands.current.step(true), { when: editable });
-  useKeybinding(["Ctrl+Y", "Ctrl+Shift+Z"], () => commands.current.step(false), { when: editable });
   const viewCode = () => {
     const tab = tabsRef.current.find((x) => x.path === path);
     if (tab) void setView(tab.id, YRES_SOURCE_VIEW);
@@ -534,10 +509,6 @@ export function YresEditor({ path, content, onChange, readOnly, contentVersion }
   useEffect(
     () =>
       registerDocumentCommands(path, {
-        canUndo: () => !readOnly && history.current.past.length > 0,
-        undo: () => commands.current.step(true),
-        canRedo: () => !readOnly && history.current.future.length > 0,
-        redo: () => commands.current.step(false),
         hasSelection: () => commands.current.targetRows().length > 0,
         cut: () => void (commands.current.copyRows() && commands.current.deleteRows()),
         copy: () => void commands.current.copyRows(),
