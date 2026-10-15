@@ -22,13 +22,14 @@ import {
   type ContextMenuItem,
   type FileTreeMenuItem,
   type FileTreeNode,
+  fileNameOf,
 } from "substrate-platform-ui";
 import { useProject, type ProjectInfo } from "../ProjectContext";
 import { openWithItems, useOpenFiles } from "../OpenFilesContext";
 import { openFile } from "../fileOpenBus";
 import { reportError } from "../reportError";
 import { EVENT, emitTo } from "../events";
-import { baseName, generatedCodePath, isWithin, parentOf, renamedPath, validateEntryName as validateName } from "../paths";
+import { generatedCodePath, isWithin, parentOf, renamedPath, validateEntryName as validateName } from "../paths";
 import { openProjectProperties } from "../projectProperties/bus";
 import { registerExplorerRename, renamePath, selectionPathRemoved, selectionPathRenamed, selectMultiple, selectPath } from "../ideSelection";
 import { NewItemDialog, templateFiles, type ItemTemplate } from "./NewItemDialog";
@@ -117,7 +118,7 @@ function withGeneratedCode(nodes: FileTreeNode[], root: string): FileTreeNode[] 
     if (node.kind === "folder") return node.children ? { ...node, children: withGeneratedCode(node.children, root) } : node;
     const generated = generatedCodePath(root, node.id);
     if (!generated) return node;
-    const child: FileTreeNode = { id: generated, name: baseName(generated), kind: "file", generated: true };
+    const child: FileTreeNode = { id: generated, name: fileNameOf(generated), kind: "file", generated: true };
     return { ...node, nested: [...(node.nested ?? []), child] };
   });
 }
@@ -271,7 +272,7 @@ function ProjectExplorerTree({ project }: { project: ProjectInfo }) {
     await attempt(t("Failed to add files"), async () => {
       const taken = await takenNames(folder);
       for (const from of paths) {
-        const name = copyName(baseName(from), taken);
+        const name = copyName(fileNameOf(from), taken);
         taken.add(name.toLowerCase());
         await files.copy(from, joinPath(folder, name));
       }
@@ -288,13 +289,13 @@ function ProjectExplorerTree({ project }: { project: ProjectInfo }) {
       for (const from of paths) {
         if (!copy && isWithin(folder, from)) throw new Error(t("Can't move a folder into itself."));
         if (copy) {
-          const name = copyName(baseName(from), taken);
+          const name = copyName(fileNameOf(from), taken);
           taken.add(name.toLowerCase());
           await files.copy(from, joinPath(folder, name));
           continue;
         }
         if (parentOf(from) === folder.replace(/[/\\]+$/, "")) continue;
-        const name = baseName(from);
+        const name = fileNameOf(from);
         if (taken.has(name.toLowerCase())) throw new Error(t('"{name}" already exists.', { name }));
         const to = joinPath(folder, name);
         await files.rename(from, to);
@@ -468,7 +469,7 @@ function ProjectExplorerTree({ project }: { project: ProjectInfo }) {
     if (node.kind !== "file") return;
     const pair = pairOf(node);
     if (pair && node.id === pair.screen) {
-      openFile({ path: pair.code, name: baseName(pair.code) });
+      openFile({ path: pair.code, name: fileNameOf(pair.code) });
       return;
     }
     const code = editorProvidersFor(node.id).find((p) => p.kind === "text") ?? generalEditorProviders().find((p) => p.kind === "text");
@@ -480,7 +481,7 @@ function ProjectExplorerTree({ project }: { project: ProjectInfo }) {
     if (node.kind !== "file") return;
     const pair = pairOf(node);
     if (pair && node.id === pair.code) {
-      openFile({ path: pair.screen, name: baseName(pair.screen) });
+      openFile({ path: pair.screen, name: fileNameOf(pair.screen) });
       return;
     }
     const designer = designerView(node.id);

@@ -28,9 +28,10 @@ import {
   useT,
   type MenuBarDropdownEntry,
   type ToolbarSection,
+  extensionOf,
 } from "substrate-platform-ui";
 import { useActiveFileTab, useOpenFiles } from "./OpenFilesContext";
-import { extensionOf } from "./paths";
+
 import { reportError } from "./reportError";
 import { openCodeSearch, openFindInFiles } from "./search/searchUi";
 import { formatYui } from "./designer/yuiText";

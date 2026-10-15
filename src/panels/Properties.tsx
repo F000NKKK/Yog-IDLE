@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { activatePropertyContext, getCurrentSelection, PROPERTIES_KIND, PropertyGrid, t, tn, useHasPropertyContext, useLocale, useSelection, type PropertyDescriptor, type PropertySet, type ShellSelection } from "substrate-platform-ui";
+import { activatePropertyContext, fileTypeOf, getCurrentSelection, PROPERTIES_KIND, PropertyGrid, t, tn, useHasPropertyContext, useLocale, useSelection, type PropertyDescriptor, type PropertySet, type ShellSelection, fileNameOf, extensionOf } from "substrate-platform-ui";
 import { useActiveFileTab, useOpenFiles } from "../OpenFilesContext";
 import { useProject } from "../ProjectContext";
 import { renamePath, selectDocument, type IdeSelectionData } from "../ideSelection";
-import { baseName, extensionOf, samePath, validateEntryName } from "../paths";
+import { samePath, validateEntryName } from "../paths";
 import { files } from "../files";
 import "./Properties.css";
 
@@ -40,31 +40,10 @@ interface Loaded {
   error: string | null;
 }
 
-const LANGUAGES: Record<string, string> = {
-  rs: "Rust",
-  toml: "TOML",
-  json: "JSON",
-  md: "Markdown",
-  java: "Java",
-  xml: "XML",
-  svg: "SVG",
-  properties: "Java Properties",
-  lang: "Minecraft Language",
-  png: "PNG Image",
-  jpg: "JPEG Image",
-  jpeg: "JPEG Image",
-  gif: "GIF Image",
-  txt: "Plain Text",
-  sh: "Shell Script",
-  gradle: "Gradle",
-  kts: "Kotlin Script",
-  yml: "YAML",
-  yaml: "YAML",
-};
-
-function languageOf(path: string): string {
+/** What kind of file `path` is, as the file types name it (Rust, PNG Image, Yog Screen) — else its extension. */
+function kindOf(path: string): string {
   const ext = extensionOf(path);
-  return t(LANGUAGES[ext] ?? (ext ? ext.toUpperCase() : "Plain Text"));
+  return fileTypeOf(path)?.name ? t(fileTypeOf(path)!.name) : ext ? ext.toUpperCase() : t("File");
 }
 
 function formatSize(bytes: number): string {
@@ -172,7 +151,7 @@ export function Properties() {
   if (!loaded || !path) return <PropertyGrid properties={[]} emptyLabel={t("Loading…")} />;
 
   const shownPath = loaded.selection.data.path;
-  const name = baseName(shownPath);
+  const name = fileNameOf(shownPath);
   if (!loaded.info) return <PropertyGrid properties={[]} emptyLabel={t("Couldn't read {name}: {error}", { name, error: loaded.error ?? "" })} />;
 
   const info = loaded.info;
@@ -215,7 +194,7 @@ export function Properties() {
           id: "language",
           name: t("Language"),
           category: t("Editor"),
-          value: languageOf(shownPath),
+          value: kindOf(shownPath),
           readOnly: true,
           description: t("The language the file is edited as."),
         },
@@ -269,7 +248,7 @@ function fileProperties(path: string, info: PathInfo, rename: (value: unknown) =
       id: "name",
       name: t("File Name"),
       category: t("Misc"),
-      value: baseName(path),
+      value: fileNameOf(path),
       validate: validateName,
       onCommit: rename,
       description: t("The file's name. Renaming it here renames it on disk; open tabs follow it."),
@@ -279,7 +258,7 @@ function fileProperties(path: string, info: PathInfo, rename: (value: unknown) =
       id: "type",
       name: t("Type"),
       category: t("Misc"),
-      value: ext ? `${languageOf(path)} (.${ext})` : t("File"),
+      value: ext ? `${kindOf(path)} (.${ext})` : t("File"),
       readOnly: true,
       description: t("The kind of file, by its extension."),
     },
@@ -328,7 +307,7 @@ function folderProperties(path: string, info: PathInfo, rename: ((value: unknown
       id: "name",
       name: t("Folder Name"),
       category: t("Misc"),
-      value: baseName(path),
+      value: fileNameOf(path),
       validate: validateName,
       onCommit: rename ?? undefined,
       description: rename
