@@ -1,12 +1,36 @@
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { activatePropertyContext, fileTypeOf, getCurrentSelection, PROPERTIES_KIND, PropertyGrid, t, tn, useHasPropertyContext, useLocale, useSelection, type PropertyDescriptor, type PropertySet, type ShellSelection, fileNameOf, extensionOf } from "substrate-platform-ui";
+import {
+  activatePropertyContext,
+  fileTypeOf,
+  getCurrentSelection,
+  PROPERTIES_KIND,
+  PropertyGrid,
+  t,
+  tn,
+  useHasPropertyContext,
+  useLocale,
+  useSelection,
+  type PropertyDescriptor,
+  type PropertySet,
+  type ShellSelection,
+  fileNameOf,
+  extensionOf,
+  joinPath,
+  pushDocumentStep,
+  UndoScope,
+} from "substrate-platform-ui";
 import { useActiveFileTab, useOpenFiles } from "../OpenFilesContext";
 import { useProject } from "../ProjectContext";
 import { renamePath, selectDocument, type IdeSelectionData } from "../ideSelection";
 import { samePath, validateEntryName } from "../paths";
 import { files } from "../files";
+import { editManifest } from "../projectProperties/manifestHistory";
+import { reportError } from "../reportError";
 import "./Properties.css";
+
+/** The history of what Properties changes outside any document: renames, yog.toml fields. */
+const PROPERTIES_HISTORY = "properties";
 
 /** `path_info`'s answer (see `properties.rs`). */
 interface PathInfo {
@@ -137,8 +161,9 @@ export function Properties() {
   if (isContext) {
     // An active window's own context (a designer's selected element) — it builds the rows.
     const { header, footer, ...grid } = selection.data as unknown as PropertySet;
+    // Ctrl+Z here undoes in the document the rows edit.
     return (
-      <div className="properties-context">
+      <div className="properties-context" data-undo-scope={selection.source}>
         {header && <div className="properties-context-header">{header}</div>}
         <div className="properties-context-grid">
           <PropertyGrid {...grid} persistKey="properties" />
@@ -159,7 +184,14 @@ export function Properties() {
   const reload = () => setReloads((n) => n + 1);
 
   const rename = async (value: unknown) => {
-    await renamePath(shownPath, String(value).trim(), pathRenamed);
+    const to = String(value).trim();
+    const from = fileNameOf(shownPath);
+    await renamePath(shownPath, to, pathRenamed);
+    const renamed = joinPath(shownPath.replace(/[/\\][^/\\]*$/, ""), to);
+    pushDocumentStep(PROPERTIES_HISTORY, {
+      undo: () => void renamePath(renamed, from, pathRenamed).catch((e) => reportError(String(e))),
+      redo: () => void renamePath(shownPath, to, pathRenamed).catch((e) => reportError(String(e))),
+    });
   };
 
   const properties: PropertyDescriptor[] = [];
@@ -218,7 +250,10 @@ export function Properties() {
           // saving that tab would silently undo this change.
           const manifestTab = tabs.find((t) => samePath(t.path, `${shownPath}/yog.toml`) && t.dirty);
           if (manifestTab) return t("yog.toml has unsaved changes in the editor — save or discard them first.");
-          const manifest = await invoke<Manifest>("mod_manifest_set", { projectRoot: shownPath, key, value });
+          const manifest = await editManifest(PROPERTIES_HISTORY, shownPath, () => invoke<Manifest>("mod_manifest_set", { projectRoot: shownPath, key, value }), () => {
+            reload();
+            void recheckDisk();
+          });
           setLoaded((prev) => (prev && prev.selection === loaded.selection ? { ...prev, manifest } : prev));
           // A clean yog.toml tab shows the new text.
           await recheckDisk();
@@ -238,7 +273,11 @@ export function Properties() {
     }
   }
 
-  return <PropertyGrid objectName={name} objectType={objectType} objectKey={shownPath} properties={properties} persistKey="properties" />;
+  return (
+    <UndoScope id={PROPERTIES_HISTORY}>
+      <PropertyGrid objectName={name} objectType={objectType} objectKey={shownPath} properties={properties} persistKey="properties" />
+    </UndoScope>
+  );
 }
 
 function fileProperties(path: string, info: PathInfo, rename: (value: unknown) => Promise<void>, reload: () => void): PropertyDescriptor[] {
