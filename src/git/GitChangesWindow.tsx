@@ -1,5 +1,5 @@
 import { useEffect, useState, type KeyboardEvent, type MouseEvent, type ReactNode } from "react";
-import { Button, CheckField, ContextMenu, Icon, IconButton, useContextMenu, useT, type ContextMenuItem } from "substrate-platform-ui";
+import { Button, CheckField, ContextMenu, formatShortcut, Icon, IconButton, useContextMenu, useT, type ContextMenuItem } from "substrate-platform-ui";
 import { openFile } from "../fileOpenBus";
 import { openBranchPicker } from "./BranchPicker";
 import { changeKindLabel, changeLetter, gitApi, splitRepoPath, type FileChange, type StashInfo } from "./gitApi";
@@ -292,7 +292,7 @@ function CommitBox() {
       />
       <div className="idle-git-commit-row">
         <div className="idle-git-split">
-          <Button variant="primary" disabled={!canCommit} title={t("{action} (Ctrl+Enter)", { action: commitLabel })} onClick={() => run("nothing")}>
+          <Button variant="primary" disabled={!canCommit} title={`${commitLabel} (${formatShortcut("ctrl+enter")})`} onClick={() => run("nothing")}>
             {commitLabel}
           </Button>
           <Button variant="primary" className="idle-git-split-arrow" title={t("More Commit Actions")} onClick={(e) => menu.openAtPoint(undefined, belowButton(e))}>

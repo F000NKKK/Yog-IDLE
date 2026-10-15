@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type MutableRefObject } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { formatShortcut, Icon, IconButton, Inspector, SelectField, useT, type EditorProps, type PropertyDescriptor } from "substrate-platform-ui";
+import { formatShortcut, Icon, IconButton, Inspector, SelectField, useT, withShortcut, type EditorProps, type PropertyDescriptor } from "substrate-platform-ui";
 import { ModelViewport, type GizmoMode, type Selection } from "../body/ModelViewport";
 import {
   blankModel,
@@ -218,12 +218,12 @@ export function ModelEditor({ path, content, onChange, readOnly, contentVersion 
     <div className="model-bar">
       {(
         [
-          ["translate", "Move (G)", "arrowUp"],
-          ["rotate", "Turn (R)", "sync"],
-          ["scale", "Size (S)", "expand"],
+          ["translate", "Move", "g", "arrowUp"],
+          ["rotate", "Turn", "r", "sync"],
+          ["scale", "Size", "s", "expand"],
         ] as const
-      ).map(([m, label, icon]) => (
-        <IconButton key={m} title={t(label)} className={mode === m ? "active" : undefined} onClick={() => setMode(m)}>
+      ).map(([m, label, keys, icon]) => (
+        <IconButton key={m} title={withShortcut(label, keys)} className={mode === m ? "active" : undefined} onClick={() => setMode(m)}>
           <Icon name={icon} />
         </IconButton>
       ))}

@@ -13,6 +13,7 @@ import {
   messageDialog,
   promptDialog,
   useT,
+  formatShortcut,
 } from "substrate-platform-ui";
 import { useEnvironment } from "../environment/environmentStore";
 import { errorText, projectApi, type RunPreset, type RunTarget } from "./api";
@@ -67,7 +68,7 @@ export function DebugPage({ root, props, apply }: PageProps) {
   return (
     <FormPage
       title={t("Debug")}
-      description={t("Run targets — what Start (F5) and Start Without Debugging launch. Each builds the mod, copies the .yog into its export folder and runs its command.")}
+      description={t("Run targets — what Start ({keys}) and Start Without Debugging launch. Each builds the mod, copies the .yog into its export folder and runs its command.", { keys: formatShortcut("f5") })}
       actions={
         <>
           <Button onClick={() => setAdding((a) => !a)}>

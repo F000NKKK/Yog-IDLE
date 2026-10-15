@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { Icon, IconButton, QuickPick, SymbolIcon, getEditorView, revealLine, useT, type QuickPickFilter, type QuickPickItem } from "substrate-platform-ui";
+import { formatShortcut, getEditorView, Icon, IconButton, QuickPick, revealLine, SymbolIcon, useT, type QuickPickFilter, type QuickPickItem } from "substrate-platform-ui";
 import { openFile } from "../fileOpenBus";
 import { useActiveFileTab, useOpenFiles } from "../OpenFilesContext";
 import { useProject } from "../ProjectContext";
@@ -166,7 +166,7 @@ export function CodeSearch({ onClose, onDock, embedded, focusKey }: { onClose?: 
     <QuickPick<Item>
       query={text}
       onQueryChange={setText}
-      placeholder={t("Search code (Ctrl+T) — f: files, t: types, m: members, x: text, :line")}
+      placeholder={t("Search code ({keys}) — f: files, t: types, m: members, x: text, :line", { keys: formatShortcut("ctrl+t") })}
       filters={filters}
       activeFilter={mode}
       onFilterChange={(id) => setText(withMode(text, id as Mode))}

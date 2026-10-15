@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { Icon, IconButton, SearchResults, SymbolIcon, useT, type SearchResultGroup, type SearchResultHit } from "substrate-platform-ui";
+import { formatShortcut, Icon, IconButton, SearchResults, SymbolIcon, useT, withShortcut, type SearchResultGroup, type SearchResultHit } from "substrate-platform-ui";
 import { openFile } from "../fileOpenBus";
 import { cancelFind, clearFindResults, useFindResults } from "./findStore";
 import { openFindInFiles } from "./searchUi";
@@ -67,7 +67,7 @@ export function FindResultsPanel() {
         <span className="idle-find-results-caption" title={results.caption}>
           {results.caption || t("Find Results")}
         </span>
-        <IconButton title={t("Find in Files (Ctrl+Shift+F)")} onClick={() => openFindInFiles("find")}>
+        <IconButton title={withShortcut("Find in Files", "ctrl+shift+f")} onClick={() => openFindInFiles("find")}>
           <Icon name="search" />
         </IconButton>
         <IconButton title={t("Stop Search")} disabled={!results.running} onClick={cancelFind}>
@@ -82,7 +82,7 @@ export function FindResultsPanel() {
       <SearchResults
         groups={groups}
         summary={summary}
-        emptyText={t("Use Find in Files (Ctrl+Shift+F) to search the project.")}
+        emptyText={t("Use Find in Files ({keys}) to search the project.", { keys: formatShortcut("ctrl+shift+f") })}
         onActivate={(group, hit) => openFile({ path: group.key, line: hit?.line, column: hit?.column })}
       />
     </div>

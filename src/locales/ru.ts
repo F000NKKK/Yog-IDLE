@@ -299,9 +299,7 @@ registerTranslations(
     "Pivot": "Опора",
     "Texture size": "Размер текстуры",
     "Turn (°)": "Поворот (°)",
-    "Move (G)": "Переместить (G)",
-    "Turn (R)": "Повернуть (R)",
-    "Size (S)": "Размер (S)",
+    Turn: "Повернуть",
     "Full List…": "Полный список…",
     "Open with…": "Открыть с помощью…",
     "current": "текущий",
@@ -489,10 +487,9 @@ registerTranslations(
     "(stopped at the result limit)": "(достигнут предел числа результатов)",
     "(cancelled)": "(отменено)",
     "Searching…": "Поиск…",
-    "Find in Files (Ctrl+Shift+F)": "Найти в файлах (Ctrl+Shift+F)",
     "Stop Search": "Остановить поиск",
     "Clear All": "Очистить все",
-    "Use Find in Files (Ctrl+Shift+F) to search the project.": "Используйте \"Найти в файлах\" (Ctrl+Shift+F) для поиска по проекту.",
+    "Use Find in Files ({keys}) to search the project.": "Используйте \"Найти в файлах\" ({keys}) для поиска по проекту.",
     All: "Все",
     Files: "Файлы",
     Types: "Типы",
@@ -503,8 +500,8 @@ registerTranslations(
       "Откройте проект или папку, чтобы искать в коде. Введите :строка, чтобы перейти к строке.",
     "Type to search files, types, members and text.": "Начните вводить для поиска файлов, типов, членов и текста.",
     "No results found.": "Ничего не найдено.",
-    "Search code (Ctrl+T) — f: files, t: types, m: members, x: text, :line":
-      "Поиск кода (Ctrl+T) — f: файлы, t: типы, m: члены, x: текст, :строка",
+    "Search code ({keys}) — f: files, t: types, m: members, x: text, :line":
+      "Поиск кода ({keys}) — f: файлы, t: типы, m: члены, x: текст, :строка",
     navigate: "перемещение",
     open: "открыть",
     "next filter": "следующий фильтр",
@@ -831,7 +828,7 @@ registerTranslations("ru", {
   "A .yog bundles a native library per platform. Building fewer is faster, but the mod then only loads on those. Saved for this project in .yog-idle/ (YOG_TARGETS); with all of them checked, the Environment option \"Build for this platform only\" decides.":
     "Файл .yog содержит нативную библиотеку для каждой платформы. Чем их меньше, тем быстрее сборка, но мод загрузится только на них. Сохраняется для проекта в .yog-idle/ (YOG_TARGETS); если отмечены все, решает параметр среды \"Собирать только для этой платформы\".",
   "{platform} (this computer)": "{platform} (этот компьютер)",
-  "Run targets — what Start (F5) and Start Without Debugging launch. Each builds the mod, copies the .yog into its export folder and runs its command.":
+  "Run targets — what Start ({keys}) and Start Without Debugging launch. Each builds the mod, copies the .yog into its export folder and runs its command.":
     "Цели запуска — то, что запускают \"Пуск\" (F5) и \"Запуск без отладки\". Каждая собирает мод, копирует .yog в свою папку экспорта и выполняет свою команду.",
   "Add Run Target...": "Добавить цель запуска...",
   "Add Run Target": "Добавление цели запуска",
@@ -1191,7 +1188,6 @@ registerTranslations("ru", {
   "Working Tree": "Рабочее дерево",
   "remote": "удаленная",
   "upstream gone": "вышестоящая ветвь удалена",
-  "{action} (Ctrl+Enter)": "{action} (CTRL+ВВОД)",
   "{ahead} outgoing / {behind} incoming commits": "Исходящих фиксаций: {ahead}, входящих: {behind}",
   "{branch} has no upstream branch.": "У {branch} нет вышестоящей ветви.",
   "{branch} tracks {upstream}: {behind} incoming, {ahead} outgoing": "{branch} отслеживает {upstream}: входящих {behind}, исходящих {ahead}",

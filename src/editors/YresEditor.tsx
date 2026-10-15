@@ -18,6 +18,7 @@ import {
   type DataGridHandle,
   type DirEntry,
   type EditorProps,
+  withShortcut,
 } from "substrate-platform-ui";
 import { useOpenFiles } from "../OpenFilesContext";
 import { reportError } from "../reportError";
@@ -696,7 +697,7 @@ export function YresEditor({ path, content, onChange, readOnly, contentVersion }
         </Button>
         <span className="yres-spacer" />
         <SearchField className="yres-search" value={query} onValueChange={setQuery} placeholder={t("Search resources")} />
-        <IconButton title={`${t("View Code")} (F7)`} onClick={viewCode}>
+        <IconButton title={withShortcut("View Code", "f7")} onClick={viewCode}>
           <Icon name="code" />
         </IconButton>
       </div>

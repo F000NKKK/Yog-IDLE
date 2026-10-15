@@ -16,6 +16,7 @@ import {
   useT,
   type EditorProps,
   type PropertyDescriptor,
+  withShortcut,
 } from "substrate-platform-ui";
 import { useOpenFiles } from "../OpenFilesContext";
 import { reportError } from "../reportError";
@@ -1352,7 +1353,7 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
         <IconButton title={t("Add Element")} disabled={readOnly} onClick={addElement}>
           <Icon name="plus" />
         </IconButton>
-        <IconButton title={`${t("Duplicate")} (Ctrl+D)`} disabled={readOnly || sel === null} onClick={duplicateElement}>
+        <IconButton title={withShortcut("Duplicate", "ctrl+d")} disabled={readOnly || sel === null} onClick={duplicateElement}>
           <Icon name="split" />
         </IconButton>
         <IconButton title={t("Move Up")} disabled={readOnly || sel === null || sel === 0} onClick={() => moveElement(-1)}>
@@ -1397,13 +1398,13 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
       <div className="content-toolbar">
         <SelectField aria-label={t("Model")} value={effectiveKey} options={modelChoices} onChange={(v) => pickModel(v as ModelKey)} />
         <span className="content-divider" />
-        <Button variant={!paintOn && gizmo === "move" ? "primary" : "subtle"} disabled={!!resolved.sprite} onClick={() => pickGizmo("move")} title={`${t("Move")} (G)`}>
+        <Button variant={!paintOn && gizmo === "move" ? "primary" : "subtle"} disabled={!!resolved.sprite} onClick={() => pickGizmo("move")} title={withShortcut("Move", "g")}>
           {t("Move")}
         </Button>
-        <Button variant={!paintOn && gizmo === "resize" ? "primary" : "subtle"} disabled={!!resolved.sprite} onClick={() => pickGizmo("resize")} title={`${t("Resize")} (S)`}>
+        <Button variant={!paintOn && gizmo === "resize" ? "primary" : "subtle"} disabled={!!resolved.sprite} onClick={() => pickGizmo("resize")} title={withShortcut("Resize", "s")}>
           {t("Resize")}
         </Button>
-        <Button variant={paintOn ? "primary" : "subtle"} disabled={readOnly} onClick={() => setPaintMode(true)} title={`${t("Paint the textures")} (P)`}>
+        <Button variant={paintOn ? "primary" : "subtle"} disabled={readOnly} onClick={() => setPaintMode(true)} title={withShortcut("Paint the textures", "p")}>
           {t("Paint")}
         </Button>
         <span className="content-divider" />
@@ -1418,12 +1419,12 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
           value=""
           options={[
             { value: "", label: t("View…") },
-            { value: "front", label: `${t("Front")} (1)` },
-            { value: "right", label: `${t("Right")} (3)` },
-            { value: "top", label: `${t("Top")} (7)` },
-            { value: "back", label: `${t("Back")} (Ctrl+1)` },
-            { value: "left", label: `${t("Left")} (Ctrl+3)` },
-            { value: "bottom", label: `${t("Bottom")} (Ctrl+7)` },
+            { value: "front", label: withShortcut("Front", "1") },
+            { value: "right", label: withShortcut("Right", "3") },
+            { value: "top", label: withShortcut("Top", "7") },
+            { value: "back", label: withShortcut("Back", "ctrl+1") },
+            { value: "left", label: withShortcut("Left", "ctrl+3") },
+            { value: "bottom", label: withShortcut("Bottom", "ctrl+7") },
           ]}
           onChange={(v) => v && setViewRequest({ view: v as ViewName, key: Date.now() })}
         />
@@ -1452,7 +1453,7 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
           {t("Add Texture Slot…")}
         </Button>
         <span className="content-spacer" />
-        <IconButton title={`${t("View Code")} (F7)`} onClick={viewCode}>
+        <IconButton title={withShortcut("View Code", "f7")} onClick={viewCode}>
           <Icon name="code" />
         </IconButton>
       </div>

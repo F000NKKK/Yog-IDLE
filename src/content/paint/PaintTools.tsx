@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Icon, IconButton, SelectField, TextField, useT } from "substrate-platform-ui";
+import { Icon, IconButton, SelectField, TextField, useT, withShortcut } from "substrate-platform-ui";
 import { hexToRgba, rgbaToCss, rgbaToHex, type PaintSettings, type PaintTool, type Rgba } from "./pixels";
 
 // The paint tools panel: tool buttons, brush size, mirror, fill mode, the
@@ -109,7 +109,7 @@ export function PaintTools({ paint, onChange, disabled }: { paint: PaintState; o
         ))}
         <span className="content-divider" />
         <IconButton
-          title={`${t("Mirror X")} (M)`}
+          title={withShortcut("Mirror X", "m")}
           aria-pressed={paint.mirrorX}
           className={paint.mirrorX ? "paint-on" : undefined}
           disabled={disabled}
