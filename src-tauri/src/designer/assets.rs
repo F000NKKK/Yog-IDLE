@@ -107,6 +107,15 @@ impl Vanilla {
         out
     }
 
+    /// `data/<key>` from the jar (tags, recipes, …), if there.
+    pub fn read_data(&self, key: &str) -> Option<Vec<u8>> {
+        let mut zip = self.zip.lock().ok()?;
+        let mut entry = zip.by_name(&format!("data/{key}")).ok()?;
+        let mut bytes = Vec::new();
+        entry.read_to_end(&mut bytes).ok()?;
+        Some(bytes)
+    }
+
     /// The game's item and block texture names (`apple`, `stone`, ...),
     /// sorted — what `item:` / `block:` sources can show in the designer.
     pub fn texture_names(&self) -> (Vec<String>, Vec<String>) {

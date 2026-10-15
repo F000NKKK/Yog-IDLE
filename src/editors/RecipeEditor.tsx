@@ -3,7 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { FormField, FormSection, Icon, IconButton, SelectField, useT, type EditorProps } from "substrate-platform-ui";
 import { DataEditor } from "./DataEditor";
 import { parseDataValue } from "../data/yogData";
-import { imagePreview, imageSources, imageSourcesVersion, subscribeImageSources } from "../designer/imageSources";
+import { imagePreview, imageSources, imageSourcesVersion, ingredientItems, subscribeImageSources } from "../designer/imageSources";
 import { openFile } from "../fileOpenBus";
 import { useFsChanged } from "../fsWatch";
 import {
@@ -95,6 +95,12 @@ export function RecipeEditor({ path, content, onChange, readOnly }: EditorProps)
   const [newKind, setNewKind] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  // Slots with several possible items (tags, alternatives) show the next each second.
+  const [cycleTick, setCycleTick] = useState(0);
+  useEffect(() => {
+    const h = window.setInterval(() => setCycleTick((n) => n + 1), 1000);
+    return () => window.clearInterval(h);
+  }, []);
   const [stageEl, setStageEl] = useState<HTMLDivElement | null>(null);
   const [stageW, stageH] = useSize(stageEl);
 
@@ -264,6 +270,12 @@ export function RecipeEditor({ path, content, onChange, readOnly }: EditorProps)
     </div>
   );
 
+  /** An ingredient's item shown now: its alternatives and tags' items in turn, a second each, as JEI does. */
+  const cycled = (value: string): string | null => {
+    const items = ingredientItems(path, value);
+    return items.length ? items[cycleTick % items.length] : null;
+  };
+
   /** The `n`-th place of game slot `slot` (`grid`, `input`) as a target. */
   const gameTarget = (slot: string, index: number) => (slot === "grid" ? `g:${index}` : `g:0`);
   const words = (text: string) =>
@@ -276,15 +288,15 @@ export function RecipeEditor({ path, content, onChange, readOnly }: EditorProps)
 
   const cell = (at: Target, style: CSSProperties, size: number) => {
     const value = valueAt(at) || null;
-    const first = value?.split("|")[0].trim();
-    const icon = first && !first.startsWith("#") ? imagePreview(path, `item:${first}`) : null;
+    const shown = value ? cycled(value) : null;
+    const icon = shown ? imagePreview(path, `item:${shown}`) : null;
     return (
       <button
         key={at}
         type="button"
         className={`recipe-spot${target === at ? " selected" : ""}`}
         style={{ ...style, width: size, height: size }}
-        title={value ?? t("Empty — click, then pick an item")}
+        title={value ? (shown && shown !== value ? `${value} — ${shown}` : value) : t("Empty — click, then pick an item")}
         onClick={() => {
           setTarget(at);
           inputRef.current?.focus();
@@ -355,8 +367,8 @@ export function RecipeEditor({ path, content, onChange, readOnly }: EditorProps)
         ? `${target.split(":")[1]} ${Number(target.split(":")[2]) + 1}`
         : t("Ingredient {n}", { n: Number(target.slice(2)) + 1 });
   const targetIcon = (() => {
-    const first = current.split("|")[0].trim();
-    return first && !first.startsWith("#") ? imagePreview(path, `item:${first}`) : null;
+    const shown = current ? cycled(current) : null;
+    return shown ? imagePreview(path, `item:${shown}`) : null;
   })();
   const number = (value: number, set: (n: number) => void, opts: { min?: number; max?: number; step?: number } = {}) => (
     <input type="number" className="recipe-input" value={value} min={opts.min} max={opts.max} step={opts.step} disabled={readOnly} onChange={(e) => set(Number(e.target.value) || 0)} />

@@ -791,6 +791,14 @@ async fn yui_image_sources(path: String) -> Result<Vec<designer::images::Candida
         .map_err(|e| e.to_string())
 }
 
+/// The items of an item tag (`#minecraft:planks`), nested tags opened.
+#[tauri::command]
+async fn item_tag_items(path: String, tag: String) -> Result<Vec<String>, String> {
+    tauri::async_runtime::spawn_blocking(move || designer::tags::item_tag(Path::new(&path), &tag))
+        .await
+        .map_err(|e| e.to_string())
+}
+
 /// A Yog image source drawn `size` px square, as a PNG data URL.
 #[tauri::command]
 async fn yui_image_preview(
@@ -1724,6 +1732,7 @@ pub fn run() {
     let builder = builder.manage(debugger::DebugState::default());
 
     let builder = builder.invoke_handler(tauri::generate_handler![
+        item_tag_items,
         format_shape,
         worldgen_preview,
         recipe_kinds,

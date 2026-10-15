@@ -17,6 +17,7 @@ pub mod host;
 pub mod images;
 pub mod markup;
 pub mod raster;
+pub mod tags;
 pub mod recipe_area;
 
 use std::collections::HashMap;

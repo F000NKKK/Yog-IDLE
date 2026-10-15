@@ -80,3 +80,38 @@ export function suggestImageAlias(value: string): string | null {
   if (path.startsWith("block/")) return `block:${short(path.slice(6))}`;
   return `${ns}:${path}`;
 }
+
+const tags = new Map<string, string[]>();
+
+/**
+ * The items of item tag `tag` (`#minecraft:planks`) for the file at
+ * `path` — `undefined` until loaded, empty if the tag is unknown.
+ */
+export function tagItems(path: string, tag: string): string[] | undefined {
+  const key = `${path}\n#${tag}`;
+  if (tags.has(key)) return tags.get(key);
+  if (!pending.has(key)) {
+    pending.add(key);
+    invoke<string[]>("item_tag_items", { path, tag })
+      .then((items) => tags.set(key, items))
+      .catch(() => tags.set(key, []))
+      .finally(() => {
+        pending.delete(key);
+        changed();
+      });
+  }
+  return undefined;
+}
+
+/**
+ * The items an ingredient may be, in order: alternatives (`a|b`), tags
+ * (`#c:dusts`) opened into their items — what a slot shows in turn.
+ */
+export function ingredientItems(path: string, value: string): string[] {
+  const out: string[] = [];
+  for (const part of value.split("|").map((p) => p.trim()).filter(Boolean)) {
+    if (part.startsWith("#")) out.push(...(tagItems(path, part.slice(1)) ?? []));
+    else out.push(part);
+  }
+  return out;
+}
