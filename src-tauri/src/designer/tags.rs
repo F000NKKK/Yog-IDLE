@@ -1,51 +1,61 @@
 //! What an item tag holds (`#minecraft:planks`), for slots that show each
-//! of its items in turn, as JEI does: the mod's own `data/<ns>/tags/…` and
-//! the game's (from the client jar), nested tags opened.
+//! of its items in turn, as JEI does: the mod's own tags as `yog build`
+//! makes them (its `.yog-build/generated/tags.json` — content files'
+//! `tags`, `.ydef` tags), and the game's — from the newest version that has
+//! the tag (one removed in 1.21 still shows its 1.20 items) — nested tags
+//! opened.
 
-use std::collections::BTreeSet;
-use std::path::Path;
+use std::collections::{BTreeMap, BTreeSet};
+use std::path::{Path, PathBuf};
 
 use serde_json::Value;
 
-use super::assets::{Resources, split_id};
+use super::assets::{split_id, vanilla_versions};
 
 /// The tag files' folders: `item` since 1.21, `items` before.
 const DIRS: [&str; 2] = ["item", "items"];
 
-fn tag_file(res: &Resources, root: Option<&Path>, ns: &str, path: &str) -> Vec<Value> {
-    let mut out = Vec::new();
-    for dir in DIRS {
-        let rel = format!("{ns}/tags/{dir}/{path}.json");
-        if let Some(root) = root {
-            for base in [root.join("data"), root.join("src/data"), root.join("resources/data")] {
-                if let Some(v) = std::fs::read(base.join(&rel)).ok().and_then(|b| serde_json::from_slice(&b).ok()) {
-                    out.push(v);
+/// The mod's item tags, as the CLI listed them (`yog content check` / `yog build`).
+fn mod_tags(root: Option<&Path>) -> BTreeMap<String, Vec<String>> {
+    let Some(root) = root else { return BTreeMap::new() };
+    std::fs::read(root.join(".yog-build/generated/tags.json"))
+        .ok()
+        .and_then(|b| serde_json::from_slice::<BTreeMap<String, BTreeMap<String, Vec<String>>>>(&b).ok())
+        .and_then(|mut kinds| kinds.remove("item"))
+        .unwrap_or_default()
+}
+
+/// Tag `tag`'s entries: the mod's, then the game's from the newest version with it.
+fn entries(roots: &[PathBuf], own: &BTreeMap<String, Vec<String>>, tag: &str) -> Vec<String> {
+    let mut out = own.get(tag).cloned().unwrap_or_default();
+    let (ns, path) = split_id(tag);
+    'versions: for v in vanilla_versions(roots) {
+        for dir in DIRS {
+            let rel = format!("{ns}/tags/{dir}/{path}.json");
+            let Some(file) = v.read_data(&rel).and_then(|b| serde_json::from_slice::<Value>(&b).ok()) else { continue };
+            for e in file.get("values").and_then(Value::as_array).into_iter().flatten() {
+                // `"id"` or `{ "id": …, "required": false }`.
+                if let Some(id) = e.as_str().or_else(|| e.get("id").and_then(Value::as_str)) {
+                    out.push(id.to_owned());
                 }
             }
-        }
-        if let Some(v) = res.vanilla.as_ref().and_then(|v| v.read_data(&rel)).and_then(|b| serde_json::from_slice(&b).ok()) {
-            out.push(v);
+            break 'versions;
         }
     }
     out
 }
 
-fn collect(res: &Resources, root: Option<&Path>, tag: &str, seen: &mut BTreeSet<String>, out: &mut Vec<String>, depth: usize) {
+fn collect(roots: &[PathBuf], own: &BTreeMap<String, Vec<String>>, tag: &str, seen: &mut BTreeSet<String>, out: &mut Vec<String>, depth: usize) {
     if depth > 16 || !seen.insert(tag.to_owned()) {
         return;
     }
-    let (ns, path) = split_id(tag);
-    for file in tag_file(res, root, ns, path) {
-        for v in file.get("values").and_then(Value::as_array).into_iter().flatten() {
-            // `"id"` or `{ "id": …, "required": false }`.
-            let Some(id) = v.as_str().or_else(|| v.get("id").and_then(Value::as_str)) else { continue };
-            match id.strip_prefix('#') {
-                Some(inner) => collect(res, root, inner, seen, out, depth + 1),
-                None => {
-                    let full = if id.contains(':') { id.to_owned() } else { format!("minecraft:{id}") };
-                    if !out.contains(&full) {
-                        out.push(full);
-                    }
+    for id in entries(roots, own, tag) {
+        match id.strip_prefix('#') {
+            Some(inner) => collect(roots, own, inner, seen, out, depth + 1),
+            None => {
+                let full = if id.contains(':') { id } else { format!("minecraft:{id}") };
+                if !out.contains(&full) {
+                    out.push(full);
                 }
             }
         }
@@ -56,8 +66,11 @@ fn collect(res: &Resources, root: Option<&Path>, tag: &str, seen: &mut BTreeSet<
 /// file at `path` belongs to; empty if the tag is unknown.
 pub fn item_tag(path: &Path, tag: &str) -> Vec<String> {
     let root = super::mod_root(path);
-    let res = Resources::for_mod(root.as_deref());
+    let roots: Vec<PathBuf> = root.iter().flat_map(|r| [r.clone(), r.parent().map(Path::to_path_buf).unwrap_or_default()]).collect();
+    let own = mod_tags(root.as_deref());
     let mut out = Vec::new();
-    collect(&res, root.as_deref(), tag.trim_start_matches('#'), &mut BTreeSet::new(), &mut out, 0);
+    let tag = tag.trim_start_matches('#');
+    let full = if tag.contains(':') { tag.to_owned() } else { format!("minecraft:{tag}") };
+    collect(&roots, &own, &full, &mut BTreeSet::new(), &mut out, 0);
     out
 }

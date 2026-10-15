@@ -300,6 +300,24 @@ pub fn vanilla(extra_roots: &[PathBuf]) -> Option<Arc<Vanilla>> {
     None
 }
 
+static ALL_VANILLA: OnceLock<Vec<Arc<Vanilla>>> = OnceLock::new();
+
+/// Every Minecraft version found, newest first — for what one version has
+/// and another hasn't (a tag removed in 1.21).
+pub fn vanilla_versions(extra_roots: &[PathBuf]) -> &'static [Arc<Vanilla>] {
+    ALL_VANILLA.get_or_init(|| {
+        let mut jars = client_jars(extra_roots);
+        jars.sort_by_key(|(v, _)| std::cmp::Reverse(version_key(v)));
+        jars.dedup_by(|a, b| a.0 == b.0);
+        jars.into_iter()
+            .filter_map(|(version, jar)| {
+                let zip = zip::ZipArchive::new(File::open(&jar).ok()?).ok()?;
+                Some(Arc::new(Vanilla { objects: asset_objects(&version), jar, version, zip: Mutex::new(zip) }))
+            })
+            .collect()
+    })
+}
+
 /// Resolves `namespace:path` resources for one mod: its `assets/` dir, then vanilla.
 #[derive(Clone)]
 pub struct Resources {
