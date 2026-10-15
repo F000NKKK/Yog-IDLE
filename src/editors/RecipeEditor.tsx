@@ -4,7 +4,7 @@ import { ItemHeader, ItemIcons } from "../designer/ItemIcons";
 import { Toolbar, ToolbarButton, ToolbarGroup, ToolbarInput, ToolbarLabel, ToolbarSelect, usePropertyContext, useT, type EditorProps, type PropertyDescriptor, type PropertySet, type PropertyValue, fileTypeOf } from "substrate-platform-ui";
 import { DataEditor } from "./DataEditor";
 import { parseDataValue } from "../data/yogData";
-import { imagePreview, imageSources, imageSourcesVersion, ingredientItems, subscribeImageSources } from "../designer/imageSources";
+import { iconSource, imagePreview, imageSources, imageSourcesVersion, ingredientItems, subscribeImageSources } from "../designer/imageSources";
 import { openFile } from "../fileOpenBus";
 import { useFsChanged } from "../fsWatch";
 import {
@@ -271,7 +271,7 @@ export function RecipeEditor({ path, content, onChange, readOnly }: EditorProps)
   const cell = (at: Target, style: CSSProperties, size: number) => {
     const value = valueAt(at) || null;
     const shown = value ? cycled(value) : null;
-    const icon = shown ? imagePreview(path, `item:${shown}`) : null;
+    const icon = shown ? imagePreview(path, iconSource(shown)) : null;
     return (
       <button
         key={at}
@@ -349,7 +349,7 @@ export function RecipeEditor({ path, content, onChange, readOnly }: EditorProps)
         : t("Ingredient {n}", { n: Number(target.slice(2)) + 1 });
   const targetIcon = (() => {
     const shown = current ? cycled(current) : null;
-    return shown ? imagePreview(path, `item:${shown}`) : null;
+    return shown ? imagePreview(path, iconSource(shown)) : null;
   })();
   /** The inspector: the selected place, the result, the recipe's values. */
   const ro = !!readOnly;
@@ -386,7 +386,7 @@ export function RecipeEditor({ path, content, onChange, readOnly }: EditorProps)
             category: t("Result"),
             name: t("Item"),
             value: valueAt("result"),
-            image: valueAt("result") ? (imagePreview(path, `item:${valueAt("result")}`) ?? undefined) : undefined,
+            image: valueAt("result") ? (imagePreview(path, iconSource(valueAt("result"))) ?? undefined) : undefined,
             suggestions: items,
             readOnly: ro,
             onCommit: (v: PropertyValue) => put("result", String(v)),

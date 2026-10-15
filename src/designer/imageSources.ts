@@ -85,6 +85,18 @@ export function imagePreview(path: string, source: string): string | null | unde
   return p === undefined ? undefined : p.url;
 }
 
+/**
+ * The image source for an icon named `id` — the one rule every editor uses:
+ * an image reference stays as it is (`item:…`, `block:…`, `sprite:…`,
+ * `@Set.name`, a texture path or `ns:textures/….png`); anything else is an
+ * item, drawn as its icon (`item:<id>`).
+ */
+export function iconSource(id: string): string {
+  const v = id.trim();
+  if (/^(item|block|sprite|mod):/.test(v) || v.startsWith("@") || v.endsWith(".png") || /^[a-z0-9_.-]+:textures\//.test(v)) return v;
+  return `item:${v}`;
+}
+
 /** For a raw resource path, the alias to write instead (`yog_gfx::image::suggest_alias`, asked with the preview). */
 export function imageAlias(path: string, source: string): string | null | undefined {
   return preview(path, source)?.alias;

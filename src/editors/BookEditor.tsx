@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore
 import { invoke } from "@tauri-apps/api/core";
 import { Toolbar, ToolbarButton, ToolbarGroup, ToolbarSelect, pt, usePropertyContext, useT, type EditorProps, type PropertyDescriptor, type PropertySet, type PropertyValue, Spacer } from "substrate-platform-ui";
 import { ItemHeader } from "../designer/ItemIcons";
-import { imagePreview, imageSourcesVersion, subscribeImageSources } from "../designer/imageSources";
+import { iconSource, imagePreview, imageSourcesVersion, subscribeImageSources } from "../designer/imageSources";
 import { designText, useDesignResources } from "../lang/designResources";
 import {
   BOOK_FIELDS,
@@ -283,7 +283,7 @@ export function BookEditor({ path, content, onChange, readOnly }: EditorProps) {
     const image =
       id && !id.startsWith("@")
         ? f.kind === "item"
-          ? imagePreview(path, id.endsWith(".png") ? id : `item:${id}`) ?? undefined
+          ? imagePreview(path, iconSource(id)) ?? undefined
           : f.kind === "entity"
             ? imagePreview(path, `item:${id}_spawn_egg`) ?? undefined
             : f.kind === "image"
@@ -364,12 +364,12 @@ export function BookEditor({ path, content, onChange, readOnly }: EditorProps) {
   // ── Outline ───────────────────────────────────────────────────────────────
 
   const is = (s: Selection) => JSON.stringify(s) === JSON.stringify(sel);
-  const row = (s: Selection, label: string, depth: number, iconSource?: string) => {
-    const iconId = iconSource ? refId(iconSource) : "";
-    const icon = iconId && !iconId.startsWith("@") ? imagePreview(path, iconId.endsWith(".png") ? iconId : `item:${iconId}`) : null;
+  const row = (s: Selection, label: string, depth: number, icon?: string) => {
+    const iconId = icon ? refId(icon) : "";
+    const shownIcon = iconId && !iconId.startsWith("@") ? imagePreview(path, iconSource(iconId)) : null;
     return (
       <button key={JSON.stringify(s)} type="button" className={`book-row${is(s) ? " selected" : ""}`} style={{ paddingLeft: 6 + depth * 14 }} onClick={() => select(s)}>
-        {icon ? <img src={icon} alt="" /> : <span className="book-row-dot" />}
+        {shownIcon ? <img src={shownIcon} alt="" /> : <span className="book-row-dot" />}
         <span className="book-row-label">{shownText(label) || t("(unnamed)")}</span>
       </button>
     );
