@@ -10,36 +10,10 @@
   font-size: var(--sp-font-size);
 }
 
-.idle-fif-tabs {
+.idle-fif-modes {
   display: flex;
-  gap: var(--sp-space-2xs);
+  min-width: 0;
   margin-bottom: var(--sp-space-xs);
-  padding: var(--sp-space-2xs);
-  align-self: flex-start;
-  background: var(--sp-surface-0);
-  border: 1px solid var(--sp-border);
-  border-radius: var(--sp-control-radius);
-}
-
-.idle-fif-tab {
-  height: var(--sp-control-height);
-  padding: 0 var(--sp-space-md);
-  border: none;
-  border-radius: var(--sp-control-radius);
-  background: transparent;
-  color: var(--sp-text-muted);
-  font: inherit;
-  cursor: pointer;
-}
-
-.idle-fif-tab:hover {
-  color: var(--sp-text);
-}
-
-.idle-fif-tab[data-active] {
-  background: var(--sp-surface-3);
-  color: var(--sp-text);
-  box-shadow: inset 0 -2px 0 var(--sp-accent);
 }
 
 /* A field's caption: a step of space above (separating it from the previous field), tight to its own control below. */

@@ -16,6 +16,7 @@ import {
   type SearchOptions,
   CheckField,
   SelectField,
+  ToolbarModes,
 } from "substrate-platform-ui";
 import { useActiveFileTab, useOpenFiles } from "../OpenFilesContext";
 import { useProject } from "../ProjectContext";
@@ -213,20 +214,16 @@ export function FindInFilesWindow() {
 
   return (
     <div className="idle-fif-body" onKeyDown={onKeyDown}>
-      <div className="idle-fif-tabs" role="tablist">
-        {(["find", "replace"] as const).map((m) => (
-          <button
-            key={m}
-            type="button"
-            role="tab"
-            aria-selected={mode === m}
-            className="idle-fif-tab"
-            data-active={mode === m || undefined}
-            onClick={() => setMode(m)}
-          >
-            {m === "find" ? t("Find in Files") : t("Replace in Files")}
-          </button>
-        ))}
+      <div className="idle-fif-modes">
+        <ToolbarModes
+          showLabels
+          value={mode}
+          onChange={setMode}
+          modes={[
+            { value: "find", label: "Find in Files" },
+            { value: "replace", label: "Replace in Files" },
+          ]}
+        />
       </div>
 
       <label className="idle-fif-label" htmlFor="idle-fif-find">
