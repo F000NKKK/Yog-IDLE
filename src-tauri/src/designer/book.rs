@@ -401,7 +401,6 @@ pub fn parse(text: &str, mod_root: Option<&Path>, locale: Option<&str>) -> Resul
 }
 
 pub fn render(args: &BookArgs) -> BookRendered {
-    let (sw, sh) = (args.screen_w.clamp(1, 4096), args.screen_h.clamp(1, 4096));
     let root = mod_root(Path::new(&args.path));
     let locales = locales(root.as_deref());
     let locale = args.locale.as_deref().filter(|l| !l.is_empty());
@@ -605,4 +604,34 @@ mod tests {
         assert_eq!(r.shown, None);
         close("/tmp/test.ybook");
     }
+
+    #[test]
+    fn a_book_page_component_is_drawn_as_the_book_shows_it() {
+        let dir = std::env::temp_dir().join(format!("yog-idle-page-preview-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(dir.join("src/ui")).unwrap();
+        std::fs::write(dir.join("yog.toml"), "[mod]\nid = \"mymod\"\n").unwrap();
+        let yui = r#"<Component name="Note" book_page="note">
+            <Property name="title" type="text"/>
+            <Property name="body" type="book_text" default="Hello"/>
+            <BookHeader text="{x:Bind title}"/>
+            <BookText text="{x:Bind body}"/>
+            <Drawn drawer="mymod:thing" h="32" data="{x:Bind title}"/>
+        </Component>"#;
+        let args = BookArgs {
+            path: dir.join("src/ui/note.yui").to_string_lossy().into_owned(),
+            text: yui.into(),
+            screen_w: 480,
+            screen_h: 270,
+            scale: 1,
+            action: None,
+            locale: None,
+        };
+        let r = page_preview(&args);
+        assert!(r.error.is_none(), "{:?}", r.error);
+        assert!(r.image.is_some());
+        assert_eq!(r.shown, Some(("mymod:page_preview".to_string(), 0)));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
 }
