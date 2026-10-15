@@ -37,6 +37,8 @@ export interface Field {
   key: string;
   label: string;
   kind: "text" | "multiline" | "number" | "bool" | "item" | "entity" | "image" | "color" | "list" | "font";
+  /** The group Properties lists it under — default "Content". */
+  group?: "Text" | "Appearance" | "Order and visibility";
 }
 
 /** Every page type, with its fields. */
@@ -45,10 +47,10 @@ export const PAGE_TYPES: { type: string; label: string; fields: Field[] }[] = [
     type: "text",
     label: "Text",
     fields: [
-      { key: "title", label: "Title", kind: "text" },
-      { key: "text", label: "Text", kind: "multiline" },
-      { key: "font", label: "Font", kind: "font" },
-      { key: "font_size", label: "Size", kind: "number" },
+      { key: "title", label: "Title", kind: "text", group: "Text" },
+      { key: "text", label: "Text", kind: "multiline", group: "Text" },
+      { key: "font", label: "Font", kind: "font", group: "Appearance" },
+      { key: "font_size", label: "Size", kind: "number", group: "Appearance" },
     ],
   },
   {
@@ -56,18 +58,18 @@ export const PAGE_TYPES: { type: string; label: string; fields: Field[] }[] = [
     label: "Spotlight",
     fields: [
       { key: "item", label: "Item", kind: "item" },
-      { key: "title", label: "Title", kind: "text" },
-      { key: "text", label: "Text", kind: "multiline" },
+      { key: "title", label: "Title", kind: "text", group: "Text" },
+      { key: "text", label: "Text", kind: "multiline", group: "Text" },
     ],
   },
-  { type: "recipe", label: "Recipe", fields: [{ key: "recipe", label: "Recipe", kind: "text" }, { key: "text", label: "Text", kind: "multiline" }] },
+  { type: "recipe", label: "Recipe", fields: [{ key: "recipe", label: "Recipe", kind: "text" }, { key: "text", label: "Text", kind: "multiline", group: "Text" }] },
   {
     type: "image",
     label: "Image",
     fields: [
       { key: "texture", label: "Image", kind: "image" },
-      { key: "title", label: "Title", kind: "text" },
-      { key: "text", label: "Text", kind: "multiline" },
+      { key: "title", label: "Title", kind: "text", group: "Text" },
+      { key: "text", label: "Text", kind: "multiline", group: "Text" },
     ],
   },
   {
@@ -75,16 +77,16 @@ export const PAGE_TYPES: { type: string; label: string; fields: Field[] }[] = [
     label: "Entity",
     fields: [
       { key: "entity", label: "Entity", kind: "entity" },
-      { key: "name", label: "Name", kind: "text" },
-      { key: "text", label: "Text", kind: "multiline" },
+      { key: "name", label: "Name", kind: "text", group: "Text" },
+      { key: "text", label: "Text", kind: "multiline", group: "Text" },
     ],
   },
   {
     type: "multiblock",
     label: "Multiblock",
     fields: [
-      { key: "name", label: "Name", kind: "text" },
-      { key: "text", label: "Text", kind: "multiline" },
+      { key: "name", label: "Name", kind: "text", group: "Text" },
+      { key: "text", label: "Text", kind: "multiline", group: "Text" },
     ],
   },
   // A picture the mod's code draws (its `data` is edited in the code view).
@@ -93,40 +95,40 @@ export const PAGE_TYPES: { type: string; label: string; fields: Field[] }[] = [
     label: "Drawn by the mod",
     fields: [
       { key: "drawer", label: "Drawer", kind: "text" },
-      { key: "title", label: "Title", kind: "text" },
-      { key: "height", label: "Picture height", kind: "number" },
-      { key: "caption", label: "Caption", kind: "text" },
-      { key: "text", label: "Text", kind: "multiline" },
+      { key: "title", label: "Title", kind: "text", group: "Text" },
+      { key: "height", label: "Picture height", kind: "number", group: "Appearance" },
+      { key: "caption", label: "Caption", kind: "text", group: "Text" },
+      { key: "text", label: "Text", kind: "multiline", group: "Text" },
     ],
   },
-  { type: "relations", label: "Related entries", fields: [{ key: "entries", label: "Entries", kind: "list" }, { key: "text", label: "Text", kind: "multiline" }] },
+  { type: "relations", label: "Related entries", fields: [{ key: "entries", label: "Entries", kind: "list" }, { key: "text", label: "Text", kind: "multiline", group: "Text" }] },
   { type: "empty", label: "Empty", fields: [] },
 ];
 
 export const BOOK_FIELDS: Field[] = [
-  { key: "name", label: "Name", kind: "text" },
-  { key: "subtitle", label: "Subtitle", kind: "text" },
-  { key: "version", label: "Edition", kind: "number" },
-  { key: "landing_text", label: "Landing text", kind: "multiline" },
-  { key: "nameplate_color", label: "Nameplate color", kind: "text" },
-  { key: "accent", label: "Accent color", kind: "text" },
-  { key: "book_texture", label: "Book texture", kind: "text" },
+  { key: "name", label: "Name", kind: "text", group: "Text" },
+  { key: "subtitle", label: "Subtitle", kind: "text", group: "Text" },
+  { key: "version", label: "Edition", kind: "number", group: "Order and visibility" },
+  { key: "landing_text", label: "Landing text", kind: "multiline", group: "Text" },
+  { key: "nameplate_color", label: "Nameplate color", kind: "color", group: "Appearance" },
+  { key: "accent", label: "Accent color", kind: "color", group: "Appearance" },
+  { key: "book_texture", label: "Book texture", kind: "image", group: "Appearance" },
 ];
 
 export const CATEGORY_FIELDS: Field[] = [
-  { key: "name", label: "Name", kind: "text" },
-  { key: "description", label: "Description", kind: "multiline" },
+  { key: "name", label: "Name", kind: "text", group: "Text" },
+  { key: "description", label: "Description", kind: "multiline", group: "Text" },
   { key: "icon", label: "Icon", kind: "item" },
-  { key: "sortnum", label: "Order", kind: "number" },
+  { key: "sortnum", label: "Order", kind: "number", group: "Order and visibility" },
 ];
 
 export const ENTRY_FIELDS: Field[] = [
-  { key: "name", label: "Name", kind: "text" },
+  { key: "name", label: "Name", kind: "text", group: "Text" },
   { key: "icon", label: "Icon", kind: "item" },
-  { key: "priority", label: "Order", kind: "number" },
-  { key: "read_by_default", label: "Read from the start", kind: "bool" },
-  { key: "secret", label: "Hidden", kind: "bool" },
-  { key: "advancement", label: "Unlocked by advancement", kind: "text" },
+  { key: "priority", label: "Order", kind: "number", group: "Order and visibility" },
+  { key: "read_by_default", label: "Read from the start", kind: "bool", group: "Order and visibility" },
+  { key: "secret", label: "Hidden", kind: "bool", group: "Order and visibility" },
+  { key: "advancement", label: "Unlocked by advancement", kind: "text", group: "Order and visibility" },
 ];
 
 export function pageFields(type: string): Field[] {

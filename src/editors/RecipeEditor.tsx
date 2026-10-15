@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { Toolbar, ToolbarButton, ToolbarGroup, ToolbarInput, ToolbarLabel, ToolbarSelect, usePropertyContext, useT, type EditorProps, type PropertyDescriptor, type PropertySet, fileTypeOf } from "substrate-platform-ui";
+import { ItemHeader, ItemIcons } from "../designer/ItemIcons";
+import { Toolbar, ToolbarButton, ToolbarGroup, ToolbarInput, ToolbarLabel, ToolbarSelect, usePropertyContext, useT, type EditorProps, type PropertyDescriptor, type PropertySet, type PropertyValue, fileTypeOf } from "substrate-platform-ui";
 import { DataEditor } from "./DataEditor";
 import { parseDataValue } from "../data/yogData";
 import { imagePreview, imageSources, imageSourcesVersion, ingredientItems, subscribeImageSources } from "../designer/imageSources";
@@ -365,6 +366,33 @@ export function RecipeEditor({ path, content, onChange, readOnly }: EditorProps)
       readOnly: ro,
       onCommit: (v) => put(target, String(v)),
     },
+    // A tag or alternatives: the items they stand for — pick one to use it alone.
+    ...(current && (current.includes("#") || current.includes("|"))
+      ? [
+          {
+            id: "matches",
+            category: targetLabel,
+            name: t("Matches"),
+            value: null,
+            render: () => <ItemIcons path={path} items={ingredientItems(path, current)} onPick={ro ? undefined : (id) => put(target, id)} empty={t("No item matches it (yet).")} />,
+          } satisfies PropertyDescriptor,
+        ]
+      : []),
+    // What it makes, whichever place is selected.
+    ...(target !== "result"
+      ? [
+          {
+            id: "result",
+            category: t("Result"),
+            name: t("Item"),
+            value: valueAt("result"),
+            image: valueAt("result") ? (imagePreview(path, `item:${valueAt("result")}`) ?? undefined) : undefined,
+            suggestions: items,
+            readOnly: ro,
+            onCommit: (v: PropertyValue) => put("result", String(v)),
+          } satisfies PropertyDescriptor,
+        ]
+      : []),
     {
       id: "count",
       category: t("Result"),
@@ -397,6 +425,7 @@ export function RecipeEditor({ path, content, onChange, readOnly }: EditorProps)
 
   // What Properties shows while the recipe is active: the selected place, the result, the recipe's values.
   shownProperties.current = {
+    header: <ItemHeader path={path} item={current ? cycled(current) : null} caption={targetLabel} />,
     order: "declared",
     objectName: targetLabel,
     objectType: t("Recipe"),

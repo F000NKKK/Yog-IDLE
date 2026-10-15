@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { Toolbar, ToolbarButton, ToolbarGroup, ToolbarSelect, pt, usePropertyContext, useT, type EditorProps, type PropertyDescriptor, type PropertySet, type PropertyValue, Spacer } from "substrate-platform-ui";
+import { ItemHeader } from "../designer/ItemIcons";
 import { imagePreview, imageSourcesVersion, subscribeImageSources } from "../designer/imageSources";
 import { designText, useDesignResources } from "../lang/designResources";
 import {
@@ -280,13 +281,21 @@ export function BookEditor({ path, content, onChange, readOnly }: EditorProps) {
     const set = (value: Json | undefined) => target.set(withField(target.obj, f.key, value));
     const id = typeof v === "string" ? refId(v) : "";
     const image =
-      (f.kind === "item" || f.kind === "entity") && id && !id.startsWith("@")
-        ? imagePreview(path, f.kind === "item" ? (id.endsWith(".png") ? id : `item:${id}`) : `item:${id}_spawn_egg`) ?? undefined
+      id && !id.startsWith("@")
+        ? f.kind === "item"
+          ? imagePreview(path, id.endsWith(".png") ? id : `item:${id}`) ?? undefined
+          : f.kind === "entity"
+            ? imagePreview(path, `item:${id}_spawn_egg`) ?? undefined
+            : f.kind === "image"
+              ? imagePreview(path, id) ?? undefined
+              : undefined
         : undefined;
-    const base = { id: f.key, name: pt("book", f.label), readOnly };
+    // `@Book.title`: shown as the book shows it, the reference a click away.
+    const shown = typeof v === "string" && v.startsWith("@") && shownText(v) !== v ? `${shownText(v)}  ‹${v}›` : undefined;
+    const base = { id: f.key, name: pt("book", f.label), category: t(f.group ?? "Content"), readOnly };
     switch (f.kind) {
       case "multiline":
-        return { ...base, kind: "text", value: str(v), onCommit: (x) => set(String(x)) };
+        return { ...base, kind: "text", value: str(v), displayValue: shown, onCommit: (x) => set(String(x)) };
       case "list":
         return {
           ...base,
@@ -300,18 +309,21 @@ export function BookEditor({ path, content, onChange, readOnly }: EditorProps) {
       case "bool":
         return { ...base, value: v === true, onCommit: (x) => set(x === true ? true : undefined) };
       case "color": {
-        const hex = typeof v === "number" ? `#${(v >>> 0).toString(16).toUpperCase().padStart(8, "0")}` : "";
+        // A number (ARGB) or text (`RRGGBB`, `#RRGGBB`), kept as written.
+        const digits = (x: string) => x.trim().replace(/^#|^0x/i, "");
+        const text = typeof v === "number" ? `#${(v >>> 0).toString(16).toUpperCase().padStart(8, "0")}` : str(v);
+        const d = digits(text);
+        const swatch = /^[0-9a-f]{6}$/i.test(d) ? `#${d}` : /^[0-9a-f]{8}$/i.test(d) ? `#${d.slice(2)}${d.slice(0, 2)}` : undefined;
         return {
           ...base,
-          value: hex,
-          // ARGB → the swatch's #RRGGBBAA.
-          swatch: hex ? `#${hex.slice(3)}${hex.slice(1, 3)}` : undefined,
-          validate: (x) => (Number.isNaN(parseInt(String(x).replace(/^#|^0x/i, ""), 16)) ? t("Not a colour: #AARRGGBB.") : null),
-          onCommit: (x) => set(parseInt(String(x).replace(/^#|^0x/i, ""), 16) >>> 0),
+          value: text,
+          swatch,
+          validate: (x) => (/^([0-9a-f]{6}|[0-9a-f]{8})$/i.test(digits(String(x))) ? null : t("Not a colour: #RRGGBB or #AARRGGBB.")),
+          onCommit: (x) => set(typeof v === "number" ? parseInt(digits(String(x)), 16) >>> 0 : String(x).trim()),
         };
       }
       default:
-        return { ...base, value: str(v), image, onCommit: (x) => set(String(x) || undefined) };
+        return { ...base, value: str(v), displayValue: shown, image, onCommit: (x) => set(String(x) || undefined) };
     }
   };
 
@@ -335,7 +347,12 @@ export function BookEditor({ path, content, onChange, readOnly }: EditorProps) {
     ...target.fields.map(property),
   ];
 
+  const headerIcon = typeof target.obj.icon === "string" ? refId(target.obj.icon) : "";
   shownProperties.current = {
+    header:
+      (sel.kind === "category" || sel.kind === "entry") && headerIcon && !headerIcon.startsWith("@") ? (
+        <ItemHeader path={path} item={headerIcon} caption={shownText(str(target.obj.name)) || target.title} />
+      ) : undefined,
     order: "declared",
     objectName: target.title,
     objectKey: JSON.stringify(sel),

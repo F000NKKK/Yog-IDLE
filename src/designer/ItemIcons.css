@@ -1,0 +1,84 @@
+/* Items as icons: what a tag or a list of alternatives stands for. */
+.item-icons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+}
+
+.item-icons-cell {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 1px solid var(--sp-border);
+  border-radius: var(--sp-radius-sm);
+  background: var(--sp-surface-0);
+  color: var(--sp-text-muted);
+  font: inherit;
+  font-size: 10px;
+}
+
+button.item-icons-cell {
+  cursor: pointer;
+}
+
+button.item-icons-cell:hover {
+  border-color: var(--sp-accent);
+}
+
+.item-icons-cell img {
+  width: 20px;
+  height: 20px;
+  image-rendering: pixelated;
+}
+
+.item-icons-empty {
+  color: var(--sp-text-faint);
+}
+
+/* A selected item, large, over Properties' rows. */
+.item-header {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-space-md);
+  padding: var(--sp-space-sm) var(--sp-space-md);
+}
+
+.item-header-icon {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border: 1px solid var(--sp-border);
+  border-radius: var(--sp-radius-sm);
+  background: repeating-conic-gradient(#3a3a3a 0 25%, #2c2c2c 0 50%) 0 0 / 8px 8px;
+}
+
+.item-header-icon img {
+  width: 40px;
+  height: 40px;
+  image-rendering: pixelated;
+}
+
+.item-header-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.item-header-caption {
+  font-weight: 600;
+}
+
+.item-header-id {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--sp-text-muted);
+  font-family: var(--sp-font-mono, monospace);
+  font-size: 0.92em;
+}
