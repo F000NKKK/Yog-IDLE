@@ -14,6 +14,8 @@ import {
   useShell,
   useT,
   type SearchOptions,
+  CheckField,
+  SelectField,
 } from "substrate-platform-ui";
 import { useActiveFileTab, useOpenFiles } from "../OpenFilesContext";
 import { useProject } from "../ProjectContext";
@@ -255,22 +257,16 @@ export function FindInFilesWindow() {
           <label className="idle-fif-label" htmlFor="idle-fif-lookin">
             {t("Look in:")}
           </label>
-          <select
+          <SelectField
             id="idle-fif-lookin"
-            className="idle-fif-select"
             value={lookIn}
-            onChange={(e) => setRemembered((r) => ({ ...r, lookIn: e.target.value as LookIn }))}
-          >
-            <option value="current" disabled={!available.current}>
-              {t("Current document")}
-            </option>
-            <option value="open" disabled={!available.open}>
-              {t("All open documents")}
-            </option>
-            <option value="project" disabled={!available.project}>
-              {t("Entire project")}
-            </option>
-          </select>
+            onChange={(v) => setRemembered((r) => ({ ...r, lookIn: v as LookIn }))}
+            options={[
+              { value: "current", label: t("Current document"), disabled: !available.current },
+              { value: "open", label: t("All open documents"), disabled: !available.open },
+              { value: "project", label: t("Entire project"), disabled: !available.project },
+            ]}
+          />
         </div>
         <div className="idle-fif-col">
           <label className="idle-fif-label" htmlFor="idle-fif-mask">
@@ -288,14 +284,13 @@ export function FindInFilesWindow() {
       </div>
       {lookIn === "project" && <div className="idle-fif-hint">{t("Includes subfolders; skips .gitignore'd files, target/, node_modules/ and binaries.")}</div>}
       {lookIn === "project" && mode === "find" && (
-        <label className="idle-fif-hint">
-          <input
-            type="checkbox"
+        <div className="idle-fif-hint">
+          <CheckField
             checked={!!remembered.includeGenerated}
-            onChange={(e) => setRemembered((r) => ({ ...r, includeGenerated: e.target.checked }))}
-          />{" "}
-          {t("Include generated files (.yog-build/generated)")}
-        </label>
+            onChange={(on) => setRemembered((r) => ({ ...r, includeGenerated: on }))}
+            label={t("Include generated files (.yog-build/generated)")}
+          />
+        </div>
       )}
 
       <div className="idle-fif-buttons">

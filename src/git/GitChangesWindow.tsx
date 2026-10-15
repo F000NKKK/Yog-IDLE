@@ -1,5 +1,5 @@
 import { useEffect, useState, type KeyboardEvent, type MouseEvent, type ReactNode } from "react";
-import { Button, CheckField, ContextMenu, formatShortcut, Icon, IconButton, Toolbar, ToolbarButton, ToolbarSpacer, useContextMenu, useT, type ContextMenuItem } from "substrate-platform-ui";
+import { Button, CheckField, ContextMenu, formatShortcut, Icon, IconButton, Toolbar, ToolbarButton, useContextMenu, useT, type ContextMenuItem, Spacer } from "substrate-platform-ui";
 import { openFile } from "../fileOpenBus";
 import { openBranchPicker } from "./BranchPicker";
 import { changeKindLabel, changeLetter, gitApi, splitRepoPath, type FileChange, type StashInfo } from "./gitApi";
@@ -137,7 +137,7 @@ function BranchBar() {
   return (
     <Toolbar>
       <ToolbarButton icon="branch" label={branchLabel} tooltip={tracking} showLabel dropdown onClick={openBranchPicker} />
-      <ToolbarSpacer />
+      <Spacer />
       <ToolbarButton icon="fetch" label="Fetch" tooltip={t("Fetch — download incoming commits without changing your files")} disabled={disabled} onClick={() => void remote("fetch")} />
       <ToolbarButton
         icon="arrowDown"
@@ -309,7 +309,7 @@ function Section({ id, title, count, actions, children }: { id: string; title: s
         <Icon name="chevronRight" size={10} className={open ? "idle-git-chevron-down" : undefined} />
         <span className="idle-git-section-title">{title}</span>
         <span className="idle-git-count">{count}</span>
-        <span className="idle-git-spacer" />
+        <Spacer />
         <span className="idle-git-section-actions" onClick={(e) => e.stopPropagation()}>
           {actions}
         </span>

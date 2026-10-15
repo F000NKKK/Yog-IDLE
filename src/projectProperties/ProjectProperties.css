@@ -117,9 +117,6 @@
   font-weight: normal;
 }
 
-.project-props-spacer {
-  flex: 1;
-}
 
 .project-props-dep-editor {
   display: flex;

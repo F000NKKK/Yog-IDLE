@@ -14,7 +14,6 @@ import {
   ToolbarGroup,
   ToolbarModes,
   ToolbarSelect,
-  ToolbarSpacer,
   promptDialog,
   registerDocumentCommands,
   SelectField,
@@ -26,6 +25,7 @@ import {
   withShortcut,
   pt,
   stemOf,
+  Spacer,
 } from "substrate-platform-ui";
 import { useOpenFiles } from "../OpenFilesContext";
 import { reportError } from "../reportError";
@@ -1290,7 +1290,7 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
     <>
       <div className="content-pane-header">
         <span>{t("Paint")}</span>
-        <span className="content-spacer" />
+        <Spacer />
         <Button variant="ghost" onClick={() => void newTexture()} title={t("A blank texture for the slot being painted")}>
           {t("New Texture…")}
         </Button>
@@ -1303,7 +1303,7 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
     <>
       <div className="content-pane-header">
         <span>{t("Layers")}</span>
-        <span className="content-spacer" />
+        <Spacer />
         <IconButton title={t("Add Layer")} disabled={readOnly} onClick={addLayer}>
           <Icon name="plus" />
         </IconButton>
@@ -1358,7 +1358,7 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
     <>
       <div className="content-pane-header">
         <span>{t("Elements")}</span>
-        <span className="content-spacer" />
+        <Spacer />
         <IconButton title={t("Add Element")} disabled={readOnly} onClick={addElement}>
           <Icon name="plus" />
         </IconButton>
@@ -1417,7 +1417,7 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
                   <span>
                     {t("UV")}: {t(face)}
                   </span>
-                  <span className="content-spacer" />
+                  <Spacer />
                   <Button variant="ghost" disabled={readOnly || !faceData.uv} onClick={() => editElements((els) => void delete els[sel!].faces[face]!.uv)}>
                     {t("Auto UV")}
                   </Button>
@@ -1496,7 +1496,7 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
         <ToolbarGroup>
           <ToolbarButton icon="plus" label="Texture Slot…" showLabel disabled={readOnly} onClick={() => void addSlot()} />
         </ToolbarGroup>
-        <ToolbarSpacer />
+        <Spacer />
         <ToolbarButton icon="code" label="View Code" shortcut="f7" onClick={viewCode} />
       </Toolbar>
       <div className="content-body">

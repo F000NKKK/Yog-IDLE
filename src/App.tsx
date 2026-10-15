@@ -24,7 +24,6 @@ import {
   Toolbar,
   ToolbarButton,
   ToolbarLabel,
-  ToolbarSpacer,
   useWorkflowRunner,
   pt,
   t,
@@ -33,6 +32,7 @@ import {
   useKeybinding,
   notify,
   type ToolbarSection,
+  Spacer,
 } from "substrate-platform-ui";
 import type { PanelDef, SettingsSection } from "substrate-platform-ui";
 
@@ -126,7 +126,7 @@ function OutputToolWindow() {
             onClose={menu.close}
           />
         </div>
-        <ToolbarSpacer />
+        <Spacer />
         <ToolbarButton icon="trash" label={t("Clear {source} Output", { source: t(current.label) })} onClick={() => clearOutputBuffer(current.event)} />
       </Toolbar>
       <div className="output-panel-body">

@@ -14,13 +14,13 @@ import {
   Toolbar,
   ToolbarButton,
   ToolbarGroup,
-  ToolbarSpacer,
   useLocale,
   useT,
   type DataGridColumn,
   type DataGridHandle,
   type DirEntry,
   type EditorProps,
+  Spacer,
 } from "substrate-platform-ui";
 import { useOpenFiles } from "../OpenFilesContext";
 import { reportError } from "../reportError";
@@ -692,7 +692,7 @@ export function YresEditor({ path, content, onChange, readOnly, contentVersion }
           <ToolbarButton label="All Languages" tooltip="Show every language of this resource set as a column" active={showAll} onClick={toggleShowAll} />
           <ToolbarButton icon="plus" label="Language…" showLabel disabled={readOnly} onClick={() => void addLanguage()} />
         </ToolbarGroup>
-        <ToolbarSpacer />
+        <Spacer />
         <SearchField className="yres-search" value={query} onValueChange={setQuery} placeholder={t("Search resources")} />
         <ToolbarButton icon="code" label="View Code" shortcut="f7" onClick={viewCode} />
       </Toolbar>

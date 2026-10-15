@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { Button, ComponentList, FloatingWindow, Icon, t, useT, type ComponentListItem, type ComponentListSection, type ComponentStatus } from "substrate-platform-ui";
+import { Button, ComponentList, FloatingWindow, Icon, t, useT, type ComponentListItem, type ComponentListSection, type ComponentStatus, Spacer } from "substrate-platform-ui";
 import { useProject } from "../ProjectContext";
 import {
   canInstall,
@@ -176,7 +176,7 @@ export function EnvironmentWindow({ onClose, onOpenOptions }: { onClose: () => v
           <Button variant="ghost" onClick={onOpenOptions}>
             {t("Options...")}
           </Button>
-          <span className="environment-footer-spacer" />
+          <Spacer />
           {busy ? (
             <Button onClick={cancelInstall}>{t("Cancel Install")}</Button>
           ) : (

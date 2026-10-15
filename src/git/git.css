@@ -52,10 +52,6 @@
   overflow-wrap: anywhere;
 }
 
-.idle-git-spacer {
-  flex: 1 1 0;
-  min-width: 0;
-}
 
 .idle-git-chevron-down {
   transform: rotate(90deg);

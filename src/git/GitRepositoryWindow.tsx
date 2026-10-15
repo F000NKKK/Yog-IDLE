@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type MouseEvent } from "react";
-import { Button, ContextMenu, Icon, IconButton, useContextMenu, useT, type ContextMenuItem } from "substrate-platform-ui";
+import { Button, ContextMenu, Icon, IconButton, useContextMenu, useT, type ContextMenuItem, Spacer } from "substrate-platform-ui";
 import { openFile } from "../fileOpenBus";
 import { checkoutBranch, localNameOf } from "./BranchPicker";
 import { changeKindLabel, changeLetter, gitApi, splitRepoPath, type BranchInfo, type CommitInfo, type FileChange } from "./gitApi";
@@ -85,7 +85,7 @@ export function GitRepositoryWindow() {
         <div className="idle-git-pane-header">
           <Icon name="history" size={13} />
           <span className="idle-git-section-title">{t("History - {branch}", { branch: shownName })}</span>
-          <span className="idle-git-spacer" />
+          <Spacer />
           <IconButton title={t("Refresh")} onClick={() => void refreshGit()}>
             <Icon name="restart" />
           </IconButton>
@@ -135,7 +135,7 @@ function BranchList({ selected, onSelect }: { selected: string; onSelect: (name:
       <div className="idle-git-pane-header">
         <Icon name="branch" size={13} />
         <span className="idle-git-section-title">{t("Branches")}</span>
-        <span className="idle-git-spacer" />
+        <Spacer />
         <IconButton title={t("New Branch...")} onClick={() => void promptNewBranch()}>
           <Icon name="plus" />
         </IconButton>

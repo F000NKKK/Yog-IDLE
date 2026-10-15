@@ -14,19 +14,7 @@
 
 
 
-/* = `.sp-toolbar-separator` */
-.content-divider {
-  flex: none;
-  align-self: center;
-  width: 1px;
-  height: var(--sp-icon-size);
-  margin: 0 var(--sp-toolbar-separator-margin);
-  background: var(--sp-border-strong);
-}
 
-.content-spacer {
-  flex: 1;
-}
 
 .content-body {
   flex: 1;
@@ -55,6 +43,10 @@
   border-bottom: 1px solid var(--sp-border);
   font-weight: 600;
   white-space: nowrap;
+}
+
+.content-pane-header .sp-form-select {
+  align-self: center;
 }
 
 .content-note {

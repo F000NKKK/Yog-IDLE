@@ -150,8 +150,7 @@
   background: var(--sp-accent-soft);
 }
 
-.yi-publish-option input,
-.yi-publish-check input {
+.yi-publish-option input {
   margin: 2px 0 0;
   accent-color: var(--sp-accent);
 }
@@ -165,18 +164,6 @@
 .yi-publish-option-detail {
   font-size: 0.85em;
   color: var(--sp-text-faint);
-}
-
-.yi-publish-check {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-space-sm);
-  padding-left: var(--sp-space-md);
-  cursor: pointer;
-}
-
-.yi-publish-check input {
-  margin: 0;
 }
 
 .yi-publish-error {

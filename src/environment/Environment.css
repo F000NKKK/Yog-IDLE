@@ -68,9 +68,6 @@
   border-top: 1px solid var(--sp-border);
 }
 
-.environment-footer-spacer {
-  flex: 1;
-}
 
 .environment-jdk-row {
   display: flex;

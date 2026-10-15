@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { Toolbar, ToolbarButton, ToolbarGroup, ToolbarSelect, ToolbarSpacer, pt, usePropertyContext, useT, type EditorProps, type PropertyDescriptor, type PropertySet, type PropertyValue } from "substrate-platform-ui";
+import { Toolbar, ToolbarButton, ToolbarGroup, ToolbarSelect, pt, usePropertyContext, useT, type EditorProps, type PropertyDescriptor, type PropertySet, type PropertyValue, Spacer } from "substrate-platform-ui";
 import { imagePreview, imageSourcesVersion, subscribeImageSources } from "../designer/imageSources";
 import { designText, useDesignResources } from "../lang/designResources";
 import {
@@ -383,7 +383,7 @@ export function BookEditor({ path, content, onChange, readOnly }: EditorProps) {
             onChange={setLocale}
           />
         </ToolbarGroup>
-        <ToolbarSpacer />
+        <Spacer />
         <ToolbarGroup>
           <ToolbarButton icon="arrowUp" label="Move up" disabled={readOnly || sel.kind === "book"} onClick={() => move(-1)} />
           <ToolbarButton icon="arrowDown" label="Move down" disabled={readOnly || sel.kind === "book"} onClick={() => move(1)} />

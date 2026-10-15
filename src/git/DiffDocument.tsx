@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { DiffEditor, Icon, IconButton, useT, type DiffLayout } from "substrate-platform-ui";
+import { DiffEditor, Icon, IconButton, useT, type DiffLayout, Spacer } from "substrate-platform-ui";
 import { openFile } from "../fileOpenBus";
 import { gitApi, type DiffTexts } from "./gitApi";
 import type { DiffRequest } from "./gitDocuments";
@@ -67,7 +67,7 @@ export function DiffDocument({ request }: { request: DiffRequest }) {
         <span className="idle-git-diff-path" title={path}>
           {path}
         </span>
-        <span className="idle-git-spacer" />
+        <Spacer />
         <IconButton title={layout === "sideBySide" ? t("Inline Diff") : t("Side-by-Side Diff")} onClick={toggleLayout}>
           <Icon name={layout === "sideBySide" ? "list" : "split"} />
         </IconButton>

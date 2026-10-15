@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { Button, IconButton, TextField, Icon, useDraggable, confirmDialog, pt, useT } from "substrate-platform-ui";
+import { Button, CheckField, IconButton, TextField, Icon, useDraggable, confirmDialog, pt, useT } from "substrate-platform-ui";
 import { reportError } from "../reportError";
 import "./PublishWindow.css";
 
@@ -170,10 +170,7 @@ export function PublishWindow({ projectRoot, onClose }: { projectRoot: string; o
               </label>
             ))}
             {mode === "exports" && (
-              <label className="yi-publish-check">
-                <input type="checkbox" checked={dryRun} onChange={(e) => setDryRun(e.target.checked)} />
-                {t("Dry run (don't upload)")}
-              </label>
+              <CheckField checked={dryRun} onChange={setDryRun} label={t("Dry run (don't upload)")} />
             )}
           </div>
         </section>

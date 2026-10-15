@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { formatShortcut, SearchResults, SymbolIcon, Toolbar, ToolbarButton, ToolbarLabel, ToolbarSpacer, useT, type SearchResultGroup, type SearchResultHit } from "substrate-platform-ui";
+import { formatShortcut, SearchResults, SymbolIcon, Toolbar, ToolbarButton, ToolbarLabel, useT, type SearchResultGroup, type SearchResultHit, Spacer } from "substrate-platform-ui";
 import { openFile } from "../fileOpenBus";
 import { cancelFind, clearFindResults, useFindResults } from "./findStore";
 import { openFindInFiles } from "./searchUi";
@@ -69,7 +69,7 @@ export function FindResultsPanel() {
             {results.caption || t("Find Results")}
           </span>
         </ToolbarLabel>
-        <ToolbarSpacer />
+        <Spacer />
         <ToolbarButton icon="search" label="Find in Files" shortcut="ctrl+shift+f" onClick={() => openFindInFiles("find")} />
         <ToolbarButton icon="stop" label="Stop Search" disabled={!results.running} onClick={cancelFind} />
         <ToolbarButton icon="trash" label="Clear All" disabled={!results.caption} onClick={clearFindResults} />

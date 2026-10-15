@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { formatShortcut, Icon, IconButton, pt, SelectField, TextField, useT, withShortcut } from "substrate-platform-ui";
+import { formatShortcut, Icon, IconButton, pt, SelectField, TextField, useT, withShortcut, Spacer, Divider } from "substrate-platform-ui";
 import { hexToRgba, rgbaToCss, rgbaToHex, type PaintSettings, type PaintTool, type Rgba } from "./pixels";
 
 // The paint tools panel: tool buttons, brush size, mirror, fill mode, the
@@ -107,7 +107,7 @@ export function PaintTools({ paint, onChange, disabled }: { paint: PaintState; o
             <Icon name={x.icon} />
           </IconButton>
         ))}
-        <span className="content-divider" />
+        <Divider />
         <IconButton
           title={withShortcut("Mirror X", "m")}
           aria-pressed={paint.mirrorX}
@@ -197,7 +197,7 @@ export function PaintTools({ paint, onChange, disabled }: { paint: PaintState; o
       </div>
       <div className="content-pane-subheader">
         <span>{t("Palette")}</span>
-        <span className="content-spacer" />
+        <Spacer />
         <IconButton size="sm" title={t("Add the Color to the Palette")} onClick={() => !paint.palette.some(same) && onChange({ palette: [...paint.palette, paint.color] })}>
           <Icon name="plus" />
         </IconButton>

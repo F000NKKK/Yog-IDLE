@@ -13,6 +13,7 @@ import {
   confirmDialog,
   messageDialog,
   useT,
+  Spacer,
 } from "substrate-platform-ui";
 import { emptyDependency, errorText, projectApi, type CrateHit, type Dependency } from "./api";
 import { checkPlain } from "./ApplicationPages";
@@ -111,7 +112,7 @@ function DependencySection({
               <div className="project-props-dep-row">
                 <span className="project-props-dep-name">{dep.name}</span>
                 <span className="project-props-dep-version">{describe(dep, t)}</span>
-                <span className="project-props-spacer" />
+                <Spacer />
                 <IconButton title={t("Edit")} aria-label={t("Edit")} onClick={() => setEditing((e) => (e === dep.name ? null : dep.name))}>
                   <Icon name="settings" />
                 </IconButton>

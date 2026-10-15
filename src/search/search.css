@@ -49,9 +49,8 @@
   font-size: var(--sp-font-size-sm);
 }
 
-/* The plain fields read as the same sunken boxes as the search field. */
-.idle-fif-input.sp-textfield,
-.idle-fif-select {
+/* The plain field reads as the same sunken box as the search field. */
+.idle-fif-input.sp-textfield {
   height: var(--sp-control-height);
   background: var(--sp-surface-0);
   border: 1px solid var(--sp-border);
@@ -61,20 +60,10 @@
   font-size: var(--sp-font-size);
 }
 
-.idle-fif-input.sp-textfield:focus,
-.idle-fif-select:focus {
+.idle-fif-input.sp-textfield:focus {
   outline: none;
   border-color: var(--sp-accent);
   box-shadow: 0 0 0 1px var(--sp-accent-soft);
-}
-
-.idle-fif-select {
-  appearance: none;
-  width: 100%;
-  padding: 0 var(--sp-select-chevron-space) 0 calc(var(--sp-control-padding-x) - 1px);
-  background: var(--sp-surface-0) var(--sp-select-chevron) no-repeat right var(--sp-control-padding-x) center;
-  line-height: calc(var(--sp-control-height) - 2px);
-  cursor: pointer;
 }
 
 .idle-fif-row {
