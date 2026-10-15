@@ -5591,9 +5591,9 @@ dependencies = [
 
 [[package]]
 name = "yog-data"
-version = "0.4.0"
+version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0f29f93b7f3cc0580e59c6d3c91df4860797999d0b69ada98ace1d3ba53e2dcf"
+checksum = "7bac418ae97ebbe209507b04476ebca7adf9f7df38a3cc0b39720fc55d5b121f"
 dependencies = [
  "bumpalo",
  "serde",
@@ -5627,9 +5627,9 @@ dependencies = [
 
 [[package]]
 name = "yog-formats"
-version = "0.6.0"
+version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a248d375c62b88c3063cc09037a4fcc58624a3dba10f3655da2e062e3ef5990c"
+checksum = "a8d3fc4f2fce83a4ef0bec7e7ca117ef8997b0ddf95819b0eaca878e988d957f"
 dependencies = [
  "yog-body",
  "yog-data",
@@ -5698,9 +5698,9 @@ dependencies = [
 
 [[package]]
 name = "yog-registry"
-version = "0.33.0"
+version = "0.33.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "df3b2aa91b20214aa143036f8946686c3c1c3ca6dfb887ac8b0e23ed7cf571de"
+checksum = "1faf173c010b4a458da766bf8a72e35f4287217b593b319d80584468cb931e80"
 dependencies = [
  "serde",
  "yog-abi",
