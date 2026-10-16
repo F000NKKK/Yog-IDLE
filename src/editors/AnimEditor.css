@@ -1,0 +1,193 @@
+/* The animation designer: the clip in 3D over its timeline. */
+.anim-body {
+  flex-direction: column;
+}
+
+.anim-view {
+  position: relative;
+  flex: 1;
+  min-height: 160px;
+}
+
+.anim-time {
+  min-width: 56px;
+  font-family: var(--sp-font-mono);
+  font-size: var(--sp-font-size-sm);
+  color: var(--sp-text-muted);
+  text-align: right;
+}
+
+.anim-empty {
+  padding: var(--sp-space-md);
+  color: var(--sp-text-muted);
+  border-top: 1px solid var(--sp-border);
+}
+
+.anim-timeline {
+  --row: 20px;
+  display: flex;
+  flex: none;
+  max-height: 45%;
+  min-height: 120px;
+  overflow: auto;
+  border-top: 1px solid var(--sp-border-strong);
+  background: var(--sp-surface-1);
+  font-size: var(--sp-font-size-sm);
+  user-select: none;
+}
+
+.anim-heads {
+  flex: none;
+  width: 170px;
+  border-right: 1px solid var(--sp-border);
+}
+
+.anim-ruler-head,
+.anim-ruler {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  height: var(--row);
+  background: var(--sp-surface-2);
+  border-bottom: 1px solid var(--sp-border);
+}
+
+.anim-ruler-head {
+  padding: 0 8px;
+  line-height: var(--row);
+  color: var(--sp-text-muted);
+}
+
+.anim-head {
+  display: flex;
+  align-items: center;
+  height: var(--row);
+  padding: 0 8px;
+  white-space: nowrap;
+}
+
+.anim-head.is-bone {
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.anim-head.is-channel {
+  padding-left: 22px;
+  color: var(--sp-text-muted);
+}
+
+.anim-head.is-picked,
+.anim-lane.is-bone.is-picked {
+  background: var(--sp-accent-soft);
+}
+
+.anim-head-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.anim-head-remove {
+  display: none;
+  border: none;
+  background: none;
+  color: var(--sp-text-muted);
+  cursor: pointer;
+}
+
+.anim-head:hover .anim-head-remove {
+  display: inline-flex;
+}
+
+.anim-add {
+  width: calc(100% - 12px);
+  margin: 4px 6px;
+  background: var(--sp-surface-0);
+  color: var(--sp-text);
+  border: 1px solid var(--sp-border-strong);
+  border-radius: var(--sp-radius-sm);
+}
+
+.anim-lanes {
+  position: relative;
+  flex: 1;
+  min-width: 200px;
+}
+
+.anim-ruler {
+  cursor: ew-resize;
+}
+
+.anim-tick {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  padding-left: 3px;
+  border-left: 1px solid var(--sp-border-strong);
+  color: var(--sp-text-faint);
+  line-height: var(--row);
+  font-size: 11px;
+}
+
+.anim-lane {
+  position: relative;
+  height: var(--row);
+  border-bottom: 1px solid var(--sp-border);
+}
+
+.anim-lane.is-bone {
+  background: var(--sp-surface-2);
+}
+
+.anim-key {
+  position: absolute;
+  top: 50%;
+  width: 9px;
+  height: 9px;
+  margin: -5px 0 0 -5px;
+  transform: rotate(45deg);
+  background: #e0e0e0;
+  border: 1px solid #222;
+  cursor: grab;
+  z-index: 1;
+}
+
+.anim-key.ease-smooth {
+  border-radius: 50%;
+  background: #8fd18f;
+}
+
+.anim-key.ease-step {
+  background: #d9a85c;
+}
+
+.anim-key.is-summary {
+  width: 7px;
+  height: 7px;
+  margin: -4px 0 0 -4px;
+  background: #9b9b9e;
+  cursor: pointer;
+}
+
+.anim-key.is-picked {
+  background: var(--sp-accent-strong);
+  border-color: #fff;
+}
+
+.anim-playhead,
+.anim-end {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 0;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.anim-playhead {
+  border-left: 2px solid #4a9eff;
+}
+
+.anim-end {
+  border-left: 1px dashed var(--sp-text-faint);
+}

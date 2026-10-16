@@ -42,7 +42,7 @@ export interface ModelViewportProps {
   selection: Selection;
   onSelect: (s: Selection) => void;
   /** A finished gizmo drag: the bone's new pivot/turn (degrees)/scale, or a cube's origin/size, or a locator's place. */
-  onBone: (bone: string, pivot: Vec3, rotation: Vec3) => void;
+  onBone: (bone: string, pivot: Vec3, rotation: Vec3, scale: Vec3) => void;
   onCube: (bone: string, cube: number, origin: Vec3, size: Vec3) => void;
   onLocator: (bone: string, locator: string, at: Vec3) => void;
   mode: GizmoMode;
@@ -51,6 +51,8 @@ export interface ModelViewportProps {
   snap: { move: number; turn: number };
   showGrid: boolean;
   pose?: PoseOverride | null;
+  /** The gizmo moves, turns and scales the selected bone on top of `pose` (keying a clip): `onBone` gets the posed values. */
+  editPose?: boolean;
   overlay?: ViewOverlay;
   style?: CSSProperties;
   className?: string;
@@ -132,8 +134,9 @@ interface Three {
 }
 
 export function ModelViewport(props: ModelViewportProps) {
-  const { model, texture, selection, mode, onMode, snap, showGrid, pose, overlay } = props;
-  const posed = !!pose;
+  const { model, texture, selection, mode, onMode, snap, showGrid, pose, overlay, editPose } = props;
+  // A pose hides the gizmo, unless it's the pose being edited.
+  const posed = !!pose && !editPose;
   const hostRef = useRef<HTMLDivElement>(null);
   const [three, setThree] = useState<Three | null>(null);
   const propsRef = useRef(props);
@@ -214,7 +217,7 @@ export function ModelViewport(props: ModelViewportProps) {
     const r = (n: number) => Math.round(n * 1000) / 1000;
     if (sel.kind === "bone") {
       const e = obj.rotation;
-      p.onBone(sel.bone, [r(obj.position.x), r(obj.position.y), r(obj.position.z)], [r(rad2deg(e.x)), r(rad2deg(e.y)), r(rad2deg(e.z))]);
+      p.onBone(sel.bone, [r(obj.position.x), r(obj.position.y), r(obj.position.z)], [r(rad2deg(e.x)), r(rad2deg(e.y)), r(rad2deg(e.z))], [r(obj.scale.x), r(obj.scale.y), r(obj.scale.z)]);
     } else if (sel.kind === "cube") {
       const c = p.model.bones.find((b) => b.name === sel.bone)?.cubes[sel.cube];
       if (!c) return;
@@ -385,13 +388,13 @@ export function ModelViewport(props: ModelViewportProps) {
     if (!three) return;
     const kind = selection?.kind;
     // A cube scales (its size), a bone turns, a locator only moves.
-    const m: GizmoMode = kind === "locator" ? "translate" : kind === "cube" && mode === "rotate" ? "translate" : kind === "bone" && mode === "scale" ? "translate" : mode;
+    const m: GizmoMode = kind === "locator" ? "translate" : kind === "cube" && mode === "rotate" ? "translate" : kind === "bone" && mode === "scale" && !editPose ? "translate" : mode;
     three.gizmo.setMode(m);
     three.gizmo.setTranslationSnap(snap.move || null);
     three.gizmo.setRotationSnap(snap.turn ? deg(snap.turn) : null);
     three.gizmo.setScaleSnap(null);
     draw.current();
-  }, [three, mode, snap, selection]);
+  }, [three, mode, snap, selection, editPose]);
 
   // ── Picking and keys ────────────────────────────────────────────────────
 

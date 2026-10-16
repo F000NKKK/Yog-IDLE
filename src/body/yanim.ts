@@ -19,6 +19,13 @@ export type Loop = (typeof LOOPS)[number];
 export const CHANNELS = ["rotation", "position", "scale"] as const;
 export type Channel = (typeof CHANNELS)[number];
 
+/**
+ * The game's humanoid model parts (`HumanoidModel`'s part names) a clip may
+ * move when a player or a disguise is drawn with the game's model; a
+ * model's own bones are offered first.
+ */
+export const VANILLA_PARTS = ["head", "hat", "body", "right_arm", "left_arm", "right_leg", "left_leg"] as const;
+
 export interface Key {
   time: number;
   /** As the file spells it (`"0.25"`). */

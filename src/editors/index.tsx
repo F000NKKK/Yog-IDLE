@@ -11,6 +11,7 @@ import { DataEditor } from "./DataEditor";
 import { YdataViewer } from "./YdataViewer";
 import { MODEL_SOURCE_VIEW, ModelEditor } from "./ModelEditor";
 import { ENTITY_SOURCE_VIEW, EntityEditor } from "./EntityEditor";
+import { ANIM_SOURCE_VIEW, AnimEditor } from "./AnimEditor";
 import type { EditorProps } from "substrate-platform-ui";
 
 // Yog-specific editors, on top of the platform's built-in ones — imported
@@ -246,6 +247,30 @@ registerEditorProvider({
   label: "Code",
   name: "Entity Source Editor",
   fileTypes: ["yog.yentity"],
+  component: JsonEditor,
+  priority: 0,
+  kind: "text",
+  strict: true,
+});
+
+// `.yanim` clips: a timeline over the clip played in 3D by default, the
+// code a click away.
+registerEditorProvider({
+  id: "yog.yanim",
+  label: "Timeline",
+  name: "Animation Designer",
+  icon: "yogAnim",
+  fileTypes: ["yog.yanim"],
+  component: AnimEditor,
+  priority: 20,
+  kind: "designer",
+});
+
+registerEditorProvider({
+  id: ANIM_SOURCE_VIEW,
+  label: "Code",
+  name: "Animation Source Editor",
+  fileTypes: ["yog.yanim"],
   component: JsonEditor,
   priority: 0,
   kind: "text",
