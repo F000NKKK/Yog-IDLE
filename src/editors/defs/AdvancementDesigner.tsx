@@ -52,8 +52,14 @@ export function AdvancementDesigner({ path, file, update, readOnly, kindLabel }:
 
   // The mod's advancements, this one as it's being edited; a parent outside the mod drawn too.
   const nodes = useMemo<Shown[]>(() => {
-    const out: Shown[] = defs.filter((d) => d.file !== path && d.id !== thisId).map((d) => ({ id: d.id, parent: parentOf(d.value), file: d.file, value: d.value }));
-    out.push({ id: thisId, parent: parentOf(file), file: path, value: file });
+    const current = defs.findIndex((d) => d.file === path);
+    const selected = current >= 0 ? current : defs.findIndex((d) => d.id === thisId);
+    const out: Shown[] = defs.map((d, i) => {
+      const active = i === selected;
+      const value = active ? file : d.value;
+      return { id: active ? thisId : d.id, parent: parentOf(value), file: active ? path : d.file, value };
+    });
+    if (selected < 0) out.push({ id: thisId, parent: parentOf(file), file: path, value: file });
     for (const n of [...out]) if (n.parent && !out.some((o) => o.id === n.parent)) out.push({ id: n.parent, parent: null, file: null, value: {} });
     return out;
   }, [defs, file, path, thisId]);
@@ -98,7 +104,7 @@ export function AdvancementDesigner({ path, file, update, readOnly, kindLabel }:
       row("description", t("Description"), c, file.description as string | undefined, (v) => update((d) => void (d.description = v)), { suggestions: strings }),
       choice("frame", t("Frame"), c, file.frame as string | undefined, FRAMES, (v) => update((d) => void (d.frame = v === "task" ? undefined : v)), {
         optionLabel: (o) => (o ? t(FRAME_LABELS[o as keyof typeof FRAME_LABELS]) : ""),
-        description: t("How its frame looks: a task (square), a goal (rounded) or a challenge (spiked)."),
+        description: t("How its frame looks: a task (square), a goal (rounded) or a challenge (diamond)."),
       }),
       flag("hidden", t("Hidden"), c, file.hidden as boolean | undefined, false, (v) => update((d) => void (d.hidden = v)), { description: t("Not shown before it's had.") }),
     ];

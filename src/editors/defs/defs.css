@@ -43,35 +43,36 @@
 }
 
 .adv-node.frame-challenge {
-  border-width: 0;
-  background: #1b1b1b;
-  clip-path: polygon(50% 0, 62% 12%, 83% 7%, 88% 28%, 100% 50%, 88% 62%, 93% 83%, 72% 88%, 50% 100%, 38% 88%, 17% 93%, 12% 72%, 0 50%, 12% 38%, 7% 17%, 28% 12%);
+  border: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .adv-node.frame-challenge::before,
 .adv-node.frame-challenge::after {
   content: "";
   position: absolute;
-  clip-path: polygon(50% 0, 62% 12%, 83% 7%, 88% 28%, 100% 50%, 88% 62%, 93% 83%, 72% 88%, 50% 100%, 38% 88%, 17% 93%, 12% 72%, 0 50%, 12% 38%, 7% 17%, 28% 12%);
+  clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
   pointer-events: none;
 }
 
 .adv-node.frame-challenge::before {
-  inset: 2px;
-  background: linear-gradient(135deg, #d7d7d7 0%, #8a8a8a 52%, #555 100%);
+  inset: 0;
+  background: #1b1b1b;
 }
 
 .adv-node.frame-challenge::after {
-  inset: 4px;
+  inset: calc(var(--k) * 2px);
   background: #8a8a8a;
 }
 
 .adv-node.frame-challenge.is-this {
-  background: #8a6414;
+  background: transparent;
+  box-shadow: none;
 }
 
 .adv-node.frame-challenge.is-this::before {
-  background: linear-gradient(135deg, #ffe08a 0%, #e6b33a 52%, #8a6414 100%);
+  background: #8a6414;
 }
 
 .adv-node.frame-challenge.is-this::after {
