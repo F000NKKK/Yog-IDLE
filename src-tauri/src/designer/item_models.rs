@@ -261,3 +261,72 @@ const EGGS: &[(&str, u32, u32)] = &[
     ("zombie_villager", 0x563C33, 0x799C65),
     ("zombified_piglin", 0xEA9393, 0x4C7129),
 ];
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn png(pixel: [u8; 4]) -> Vec<u8> {
+        let mut bytes = Vec::new();
+        let mut encoder = png::Encoder::new(&mut bytes, 1, 1);
+        encoder.set_color(png::ColorType::Rgba);
+        encoder.set_depth(png::BitDepth::Eight);
+        let mut writer = encoder.write_header().unwrap();
+        writer.write_image_data(&pixel).unwrap();
+        drop(writer);
+        bytes
+    }
+
+    #[test]
+    fn content_potion_uses_vanilla_layers_and_effect_color() {
+        let dir = std::env::temp_dir().join(format!("idle-item-model-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(dir.join("content/items")).unwrap();
+        std::fs::create_dir_all(dir.join("content/effects")).unwrap();
+        std::fs::create_dir_all(dir.join("assets/minecraft/models/item")).unwrap();
+        std::fs::create_dir_all(dir.join("assets/minecraft/textures/item")).unwrap();
+        std::fs::write(dir.join("yog.toml"), "[mod]\nid = \"hexcasting\"\n").unwrap();
+        std::fs::write(
+            dir.join("content/items/enlarge_grid.yitem"),
+            r#"{ model: { parent: "minecraft:item/potion" }, item: { potion: { effects: [{ effect: "@effect:hexcasting:enlarge_grid" }] } } }"#,
+        )
+        .unwrap();
+        std::fs::write(
+            dir.join("content/effects/enlarge_grid.ydef"),
+            r#"{ kind: "effect", id: "enlarge_grid", color: 13137407 }"#,
+        )
+        .unwrap();
+        std::fs::write(
+            dir.join("assets/minecraft/models/item/potion.json"),
+            r#"{"textures":{"layer0":"minecraft:item/potion_overlay","layer1":"minecraft:item/potion"}}"#,
+        )
+        .unwrap();
+        std::fs::write(
+            dir.join("assets/minecraft/textures/item/potion_overlay.png"),
+            png([255, 255, 255, 255]),
+        )
+        .unwrap();
+        std::fs::write(
+            dir.join("assets/minecraft/textures/item/potion.png"),
+            png([0, 0, 0, 0]),
+        )
+        .unwrap();
+
+        let res = Resources { mod_root: Some(dir.clone()), vanilla: None };
+        let Some(Look::Flat(image)) = look(&res, "hexcasting:enlarge_grid") else {
+            panic!("content potion should resolve to a layered item model");
+        };
+        let color = 13_137_407u32;
+        assert_eq!(
+            &image.rgba[..],
+            &[
+                ((color >> 16) & 0xFF) as u8,
+                ((color >> 8) & 0xFF) as u8,
+                (color & 0xFF) as u8,
+                255,
+            ]
+        );
+        assert!(matches!(look(&res, "yog:potion/awkward"), Some(Look::Flat(_))));
+        let _ = std::fs::remove_dir_all(dir);
+    }
+}
