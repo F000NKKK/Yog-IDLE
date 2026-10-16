@@ -356,18 +356,22 @@ export function RecipeEditor({ path, content, onChange, readOnly }: EditorProps)
       <section>
         <div className="recipe-brewing-label">{t("Before")}</div>
         <div className="recipe-brewing-gui" style={{ backgroundImage: brewingTexture ? `url(${brewingTexture})` : undefined }}>
-          <div className="recipe-brewing-fuel">
+          <div className="recipe-brewing-fuel" title={t("Fuel: Blaze Powder")}>
             {imagePreview(path, iconSource("minecraft:blaze_powder")) && <img src={imagePreview(path, iconSource("minecraft:blaze_powder"))!} alt="" />}
           </div>
-          {cell(gameTarget("input", 0), { left: 158, top: 34, width: 32, height: 32 }, 32)}
-          {Array.from({ length: 3 }, (_, i) => cell("from", { left: 112 + i * 46, top: 116, width: 32, height: 32 }, 32, `from-${i}`))}
+          {cell(gameTarget("input", 0), { left: 150, top: 22, width: 32, height: 32 }, 32)}
+          {Array.from({ length: 3 }, (_, i) => cell("from", { left: 104 + i * 46, top: 104, width: 32, height: 32 }, 32, `from-${i}`))}
+          <div className="recipe-brewing-bubbles" aria-hidden="true"><i /><i /><i /></div>
         </div>
       </section>
-      <span className="recipe-brewing-arrow">→</span>
+      <div className="recipe-brewing-process" aria-label={t("Brewing progress")}>
+        <div className="recipe-brewing-progress"><span /></div>
+        <span>{t("400 ticks")}</span>
+      </div>
       <section>
         <div className="recipe-brewing-label">{t("After")}</div>
         <div className="recipe-brewing-gui" style={{ backgroundImage: brewingTexture ? `url(${brewingTexture})` : undefined }}>
-          {Array.from({ length: 3 }, (_, i) => cell("result", { left: 112 + i * 46, top: 116, width: 32, height: 32 }, 32, `result-${i}`))}
+          {Array.from({ length: 3 }, (_, i) => cell("result", { left: 104 + i * 46, top: 104, width: 32, height: 32 }, 32, `result-${i}`))}
         </div>
       </section>
     </div>
