@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { contentText } from "../bench/fixtures";
-import { parseContent } from "./model";
+import { clone, parseContent, patchContent } from "./model";
+import { renameProperty } from "./states";
 
 function parsed(text: string): unknown {
   const r = parseContent(text);
@@ -25,5 +26,37 @@ describe("parseContent", () => {
     expect(file.model.textures.note).toBe("a // not a comment, ]");
     expect(file.model.elements).toHaveLength(20);
     expect(Object.keys(file.model.elements[19].faces)).toEqual(["north", "south", "up"]);
+  });
+});
+
+describe("editing a .yblock's text", () => {
+  const text = `// A lamp.
+{
+  "block": { "powered": "lit" }, // redstone turns it on
+  "states": {
+    "properties": {
+      /* On or off. */
+      "lit": ["false", "true"]
+    },
+    "models": { "on": { "parent": "cube_all" } },
+    "variants": { "lit=true": "on" }
+  },
+  "future_field": { "kept": true }
+}
+`;
+  it("keeps comments and fields it doesn't know through a states edit", () => {
+    const parsed = parseContent(text);
+    if (!parsed.ok) throw new Error(parsed.error);
+    expect(patchContent(text, parsed.file)).toBe(text);
+    const file = clone(parsed.file);
+    renameProperty(file.states!, file.block, "lit", "powered");
+    const out = patchContent(text, file);
+    expect(out).toContain("// A lamp.");
+    expect(out).toContain("// redstone turns it on");
+    expect(out).toContain('/* On or off. */\n      "powered": ["false", "true"]');
+    expect(out).toContain('"future_field": { "kept": true }');
+    const again = parseContent(out);
+    expect(again.ok && again.file).toEqual(file);
+    expect(again.ok && again.file.states?.variants).toEqual({ "powered=true": "on" });
   });
 });
