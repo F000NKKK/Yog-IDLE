@@ -123,6 +123,8 @@ export function RecipeEditor({ path, content, onChange, readOnly }: EditorProps)
   const [newKind, setNewKind] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [brewingTexture, setBrewingTexture] = useState<string | null>(null);
+  const [brewingSprites, setBrewingSprites] = useState<{ fuel: string; progress: string; bubbles: string } | null>(null);
+  const [brewTick, setBrewTick] = useState(0);
   // Slots with several possible items (tags, alternatives) show the next each second.
   const [cycleTick, setCycleTick] = useState(0);
   useEffect(() => {
@@ -132,17 +134,33 @@ export function RecipeEditor({ path, content, onChange, readOnly }: EditorProps)
   useEffect(() => {
     if (recipe.type !== "brewing") {
       setBrewingTexture(null);
+      setBrewingSprites(null);
       return;
     }
     let live = true;
-    invoke<{ url: string }>("content_texture", { path, texture: "minecraft:gui/container/brewing_stand" }).then(
-      (x) => live && setBrewingTexture(x.url),
-      (e) => live && setError(t("Can't load the brewing stand image: {error}", { error: String(e) })),
+    const texture = (name: string) => invoke<{ url: string }>("content_texture", { path, texture: name }).then((x) => x.url);
+    Promise.all([
+      texture("minecraft:gui/container/brewing_stand"),
+      texture("minecraft:gui/sprites/container/brewing_stand/fuel_length"),
+      texture("minecraft:gui/sprites/container/brewing_stand/brew_progress"),
+      texture("minecraft:gui/sprites/container/brewing_stand/bubbles"),
+    ]).then(
+      ([gui, fuel, progress, bubbles]) => {
+        if (!live) return;
+        setBrewingTexture(gui);
+        setBrewingSprites({ fuel, progress, bubbles });
+      },
+      (e) => live && setError(t("Can't load Minecraft brewing textures: {error}", { error: String(e) })),
     );
     return () => {
       live = false;
     };
   }, [path, recipe.type, t]);
+  useEffect(() => {
+    if (recipe.type !== "brewing") return;
+    const timer = window.setInterval(() => setBrewTick((n) => (n + 1) % 400), 50);
+    return () => window.clearInterval(timer);
+  }, [recipe.type, path]);
   const [stageEl, setStageEl] = useState<HTMLDivElement | null>(null);
   const [stageW, stageH] = useSize(stageEl);
 
@@ -351,29 +369,38 @@ export function RecipeEditor({ path, content, onChange, readOnly }: EditorProps)
     ? Math.max(2, Math.min(6, Math.floor(Math.min((stageW - 64) / (layout.size[0] + 8), (stageH - 64) / (layout.size[1] + 8)))))
     : 3;
   const count = custom ? custom.count : recipe.count;
+  const brewing = brewTick > 0;
+  const brewProgressHeight = Math.floor(28 * brewTick / 400);
+  const bubbleLengths = [29, 24, 20, 16, 11, 6, 0];
+  const bubbleLength = brewing ? bubbleLengths[Math.floor(brewTick / 2) % bubbleLengths.length] : 0;
+  const fuelLength = brewTick < 12 ? Math.floor(18 * brewTick / 12) : 18;
   const stage = !custom && recipe.type === "brewing" ? (
     <div className="recipe-brewing-flow">
       <section>
         <div className="recipe-brewing-label">{t("Before")}</div>
         <div className="recipe-brewing-gui" style={{ backgroundImage: brewingTexture ? `url(${brewingTexture})` : undefined }}>
-          <div className="recipe-brewing-fuel" title={t("Fuel: Blaze Powder")}>
+          {!brewing && <div className="recipe-brewing-fuel" title={t("Fuel: Blaze Powder")}>
             {imagePreview(path, iconSource("minecraft:blaze_powder")) && <img src={imagePreview(path, iconSource("minecraft:blaze_powder"))!} alt="" />}
-          </div>
+          </div>}
           {cell(gameTarget("input", 0), { left: 150, top: 22, width: 32, height: 32 }, 32)}
-          {Array.from({ length: 3 }, (_, i) => cell("from", { left: 104 + i * 46, top: 104, width: 32, height: 32 }, 32, `from-${i}`))}
-          <div className="recipe-brewing-arrow-progress" aria-hidden="true" />
-          <div className="recipe-brewing-bubbles" aria-hidden="true"><i /><i /><i /></div>
+          {Array.from({ length: 3 }, (_, i) => cell("from", { left: [104, 150, 196][i], top: i === 1 ? 104 : 90, width: 32, height: 32 }, 32, `from-${i}`))}
+          {brewingSprites && fuelLength > 0 && <img className="recipe-brewing-fuel-sprite" src={brewingSprites.fuel} alt="" style={{ width: fuelLength * 2 }} />}
+          {brewingSprites && brewProgressHeight > 0 && <div className="recipe-brewing-progress-sprite" style={{ height: brewProgressHeight * 2 }}>
+            <img src={brewingSprites.progress} alt="" />
+          </div>}
+          {brewingSprites && bubbleLength > 0 && <div className="recipe-brewing-bubbles-sprite" style={{ height: bubbleLength * 2, top: (14 + 29 - bubbleLength) * 2 - 12 }}>
+            <img src={brewingSprites.bubbles} alt="" style={{ top: -(29 - bubbleLength) * 2 }} />
+          </div>}
         </div>
       </section>
       <div className="recipe-brewing-process" aria-label={t("Brewing progress")}>
         <div className="recipe-brewing-transition" aria-hidden="true">→</div>
-        <div className="recipe-brewing-progress"><span /></div>
-        <span>{t("{ticks} ticks", { ticks: 400 })}</span>
+        <span>{t("{ticks} ticks", { ticks: 400 - brewTick })}</span>
       </div>
       <section>
         <div className="recipe-brewing-label">{t("After")}</div>
         <div className="recipe-brewing-gui" style={{ backgroundImage: brewingTexture ? `url(${brewingTexture})` : undefined }}>
-          {Array.from({ length: 3 }, (_, i) => cell("result", { left: 104 + i * 46, top: 104, width: 32, height: 32 }, 32, `result-${i}`))}
+          {Array.from({ length: 3 }, (_, i) => cell("result", { left: [104, 150, 196][i], top: i === 1 ? 104 : 90, width: 32, height: 32 }, 32, `result-${i}`))}
         </div>
       </section>
     </div>
