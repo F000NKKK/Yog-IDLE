@@ -38,13 +38,18 @@ pub fn look(res: &Resources, id: &str) -> Option<Look> {
     );
     let is = |p: &str| parents.iter().any(|x| split_id(x).1 == p);
     if (is("item/template_skull") || is("builtin/entity"))
-        && let Some(tex) = HEADS.iter().find(|(name, _)| *name == path).map(|(_, t)| *t)
+        && let Some(tex) = HEADS
+            .iter()
+            .find(|(name, _)| *name == path)
+            .map(|(_, t)| *t)
     {
         return head(res, tex).map(Look::Head);
     }
     let mut layers = Vec::new();
     for i in 0.. {
-        let Some(t) = textures.get(&format!("layer{i}")) else { break };
+        let Some(t) = textures.get(&format!("layer{i}")) else {
+            break;
+        };
         layers.push(t.clone());
     }
     if layers.is_empty() {
@@ -52,7 +57,10 @@ pub fn look(res: &Resources, id: &str) -> Option<Look> {
     }
     // The tints the game's item colors give each layer.
     let tints: Vec<Option<u32>> = if is("item/template_spawn_egg") {
-        let (a, b) = EGGS.iter().find(|(n, ..)| path.strip_suffix("_spawn_egg") == Some(n)).map(|(_, a, b)| (*a, *b))?;
+        let (a, b) = EGGS
+            .iter()
+            .find(|(n, ..)| path.strip_suffix("_spawn_egg") == Some(n))
+            .map(|(_, a, b)| (*a, *b))?;
         vec![Some(a), Some(b)]
     } else if let Some(color) = appearance.as_ref().and_then(|(_, color)| *color) {
         vec![Some(color)]
@@ -66,12 +74,19 @@ pub fn look(res: &Resources, id: &str) -> Option<Look> {
     let mut out: Option<Image> = None;
     for (i, layer) in layers.iter().enumerate() {
         let (lns, lpath) = split_id(layer);
-        let Some(img) = res.read(lns, &format!("textures/{lpath}.png")).and_then(|b| decode_png(&b)) else { continue };
+        let Some(img) = res
+            .read(lns, &format!("textures/{lpath}.png"))
+            .and_then(|b| decode_png(&b))
+        else {
+            continue;
+        };
         let img = first_frame(img);
         let tint = tints.get(i).copied().flatten();
         match &mut out {
             None => out = Some(tinted(img, tint)),
-            Some(base) if base.width == img.width && base.height == img.height => over(base, &tinted(img, tint)),
+            Some(base) if base.width == img.width && base.height == img.height => {
+                over(base, &tinted(img, tint))
+            }
             Some(_) => {}
         }
     }
@@ -79,7 +94,11 @@ pub fn look(res: &Resources, id: &str) -> Option<Look> {
 }
 
 /// A model's parents (itself first) and its textures, the child's winning.
-fn model_chain(res: &Resources, model: &str, content_model: Option<&Value>) -> (Vec<String>, HashMap<String, String>) {
+fn model_chain(
+    res: &Resources,
+    model: &str,
+    content_model: Option<&Value>,
+) -> (Vec<String>, HashMap<String, String>) {
     let mut chain = Vec::new();
     let mut textures = HashMap::new();
     let mut at = model.to_string();
@@ -312,7 +331,10 @@ mod tests {
         )
         .unwrap();
 
-        let res = Resources { mod_root: Some(dir.clone()), vanilla: None };
+        let res = Resources {
+            mod_root: Some(dir.clone()),
+            vanilla: None,
+        };
         let Some(Look::Flat(image)) = look(&res, "hexcasting:enlarge_grid") else {
             panic!("content potion should resolve to a layered item model");
         };
@@ -326,7 +348,10 @@ mod tests {
                 255,
             ]
         );
-        assert!(matches!(look(&res, "yog:potion/awkward"), Some(Look::Flat(_))));
+        assert!(matches!(
+            look(&res, "yog:potion/awkward"),
+            Some(Look::Flat(_))
+        ));
         let _ = std::fs::remove_dir_all(dir);
     }
 }
