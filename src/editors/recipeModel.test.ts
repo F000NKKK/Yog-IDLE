@@ -38,7 +38,7 @@ describe("recipeModel", () => {
   it("isn't a recipe", () => {
     expect(parseRecipe("[1]")).toBeNull();
     expect(parseRecipe("{")).toBeNull();
-    expect(parseRecipe('{ type: "brewing" }'), "another kind: edited as code, never overwritten").toBeNull();
+    expect(parseRecipe('{ type: "not_a_recipe" }'), "another kind: edited as code, never overwritten").toBeNull();
   });
 
   it("reads and writes Yog Data references, alternatives kept", () => {
@@ -95,6 +95,23 @@ describe("the game's single-input kinds", () => {
     // Its own default time, not a furnace's — and not written back.
     expect(blast.cookTime).toBe(100);
     expect(serializeRecipe(blast)).not.toContain("cook_time");
+  });
+
+  it("reads and writes brewing with stable potion references", () => {
+    const r = parseRecipe(`{
+      type: "brewing",
+      from: "@potion:yog:awkward",
+      ingredient: "@item:hexcasting:amethyst_dust",
+      result: "@potion:hexcasting:enlarge_grid",
+    }`)!;
+    expect([r.from, r.cells[0], r.result]).toEqual(["yog:awkward", "hexcasting:amethyst_dust", "hexcasting:enlarge_grid"]);
+    expect(JSON.parse(serializeRecipe(r))).toMatchObject({
+      type: "brewing",
+      from: "@potion:yog:awkward",
+      ingredient: "@item:hexcasting:amethyst_dust",
+      result: "@potion:hexcasting:enlarge_grid",
+    });
+    expect(parseRecipe(serializeRecipe(r))).toEqual(r);
   });
 });
 
