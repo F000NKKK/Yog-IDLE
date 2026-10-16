@@ -356,7 +356,6 @@ export function RecipeEditor({ path, content, onChange, readOnly }: EditorProps)
       <section>
         <div className="recipe-brewing-label">{t("Before")}</div>
         <div className="recipe-brewing-gui" style={{ backgroundImage: brewingTexture ? `url(${brewingTexture})` : undefined }}>
-          <div className="recipe-brewing-fuel-meter" title={t("Brewing fuel")} aria-hidden="true"><span /></div>
           <div className="recipe-brewing-fuel" title={t("Fuel: Blaze Powder")}>
             {imagePreview(path, iconSource("minecraft:blaze_powder")) && <img src={imagePreview(path, iconSource("minecraft:blaze_powder"))!} alt="" />}
           </div>

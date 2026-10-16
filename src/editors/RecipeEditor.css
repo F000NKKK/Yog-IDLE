@@ -111,31 +111,23 @@
   justify-content: center;
 }
 
-.recipe-brewing-fuel-meter {
-  position: absolute;
-  left: 26px;
-  top: 20px;
-  width: 24px;
-  height: 28px;
-  overflow: hidden;
-  pointer-events: none;
-}
-
-.recipe-brewing-fuel-meter span {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(to top, #ff6a00 0%, #ffd12a 58%, #fff1a0 100%);
-  clip-path: polygon(42% 0, 62% 0, 58% 24%, 82% 18%, 100% 47%, 88% 78%, 67% 100%, 29% 100%, 7% 76%, 0 48%, 22% 26%, 42% 30%);
-  transform-origin: bottom;
-  animation: brewing-fuel-level 4s linear infinite;
-}
-
 .recipe-brewing-fuel img {
   width: 32px;
   height: 32px;
   image-rendering: pixelated;
-  filter: drop-shadow(0 0 4px rgba(255, 168, 20, 0.65));
-  animation: brewing-fuel-glow 1s ease-in-out infinite alternate;
+  animation: brewing-fuel-consume 4s steps(1, end) infinite;
+}
+
+.recipe-brewing-fuel::after {
+  content: "";
+  position: absolute;
+  inset: 7px;
+  pointer-events: none;
+  opacity: 0;
+  background:
+    radial-gradient(circle, #ffd34d 0 1px, transparent 2px) 0 0 / 8px 8px,
+    radial-gradient(circle, #ff9b27 0 1px, transparent 2px) 100% 100% / 9px 9px;
+  animation: brewing-fuel-puff 4s steps(1, end) infinite;
 }
 
 .recipe-brewing-process {
@@ -252,21 +244,29 @@
   animation: brewing-result 4s ease-in-out infinite;
 }
 
-@keyframes brewing-fuel-level {
-  0%, 8% {
-    transform: scaleY(1);
+@keyframes brewing-fuel-consume {
+  0%, 14%, 100% {
+    opacity: 1;
+    transform: scale(1);
   }
-  88%, 100% {
-    transform: scaleY(0.06);
+  20%, 90% {
+    opacity: 0;
+    transform: scale(0.25);
   }
 }
 
-@keyframes brewing-fuel-glow {
-  from {
-    filter: drop-shadow(0 0 2px rgba(255, 168, 20, 0.35));
+@keyframes brewing-fuel-puff {
+  0%, 13%, 100% {
+    opacity: 0;
+    transform: scale(0.5);
   }
-  to {
-    filter: drop-shadow(0 0 6px rgba(255, 168, 20, 0.9));
+  20%, 34% {
+    opacity: 1;
+    transform: scale(1.1);
+  }
+  40%, 90% {
+    opacity: 0;
+    transform: scale(1.4);
   }
 }
 
@@ -306,7 +306,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   .recipe-brewing-fuel img,
-  .recipe-brewing-fuel-meter span,
+  .recipe-brewing-fuel::after,
   .recipe-brewing-progress span,
   .recipe-brewing-arrow-progress::before,
   .recipe-brewing-bubbles i,
