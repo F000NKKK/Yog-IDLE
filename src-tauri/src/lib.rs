@@ -1334,6 +1334,21 @@ fn debug_supported() -> bool {
     cfg!(target_os = "linux")
 }
 
+/// The answer to a hot reload that needs a restart for part of it (the
+/// dialog the `confirm` stage opens): `"apply"`, `"restart"` or `"cancel"`.
+#[tauri::command]
+fn mod_hot_reload_decide(app: AppHandle, choice: String) -> Result<(), String> {
+    #[cfg(target_os = "linux")]
+    {
+        debugger::decide_hot_reload(app, choice)
+    }
+    #[cfg(not(target_os = "linux"))]
+    {
+        let _ = (app, choice);
+        Err("hot reload needs the control socket, Linux only so far".into())
+    }
+}
+
 /// The toolbar's Hot Reload: rebuilds the project and swaps the new build
 /// into the running game over `yog-runtime`'s control socket — see
 /// `debugger::hot_reload`. That socket is only wired up on Linux so far.
@@ -1887,6 +1902,7 @@ pub fn run() {
         mod_build,
         mod_clean,
         mod_hot_reload,
+        mod_hot_reload_decide,
         publish_profiles_list,
         publish_profile_save,
         publish_profile_delete,

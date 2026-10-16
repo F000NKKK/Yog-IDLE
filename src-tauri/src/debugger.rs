@@ -189,8 +189,9 @@ pub struct RunSession {
     /// Write half of the control socket, once it's connected (the read
     /// half lives on `connect_and_watch`'s thread).
     control: Option<UnixStream>,
-    /// Set while `hot_reload` waits for the runtime's `hot-reload-done`.
-    hot_reload_waiter: Option<Sender<bool>>,
+    /// Set while a request waits for the runtime's answer: the event it
+    /// waits for (`hot-reload-done`, `hot-reload-check`) and where it goes.
+    reply_waiter: Option<(&'static str, Sender<serde_json::Value>)>,
     tracer: Option<TracerHandle>,
 }
 
@@ -453,8 +454,11 @@ pub fn run_with_mode(
     let socket_path = control_socket_path();
 
     let mut args = vec!["run".to_string(), config_name.clone()];
+    // A Debug run is the one that hot-reloads (`--dev`); a Release run is
+    // built as players get it, nothing of hot reload in it.
     if debug {
         args.push("--debug".to_string());
+        args.push("--dev".to_string());
     }
 
     let (child, log) = crate::spawn_yog_run(
@@ -474,7 +478,7 @@ pub fn run_with_mode(
         real_pid: None,
         debug_mode: debug,
         control: None,
-        hot_reload_waiter: None,
+        reply_waiter: None,
         tracer: None,
     });
     let _ = app.emit(
@@ -654,7 +658,20 @@ fn handle_control_event(
     event: &serde_json::Value,
     raw: &str,
 ) {
-    match event.get("event").and_then(|v| v.as_str()) {
+    let name = event.get("event").and_then(|v| v.as_str());
+    // An answer someone's waiting for.
+    {
+        let debug_state = app.state::<DebugState>();
+        let mut guard = debug_state.0.lock().unwrap();
+        if let Some(session) = guard.as_mut().filter(|s| s.id == session_id)
+            && session.reply_waiter.as_ref().is_some_and(|(want, _)| Some(*want) == name)
+            && let Some((_, waiter)) = session.reply_waiter.take()
+        {
+            let _ = waiter.send(event.clone());
+            return;
+        }
+    }
+    match name {
         Some("mods") => {
             let _ = app.emit(
                 crate::events::GAME_STATUS,
@@ -664,24 +681,6 @@ fn handle_control_event(
                     mods: parse_mods(event),
                 },
             );
-        }
-        Some("hot-reload-done") => {
-            let ok = event.get("ok").and_then(|v| v.as_bool()).unwrap_or(false);
-            let debug_state = app.state::<DebugState>();
-            let mut guard = debug_state.0.lock().unwrap();
-            let waiter = guard
-                .as_mut()
-                .filter(|s| s.id == session_id)
-                .and_then(|s| s.hot_reload_waiter.take());
-            match waiter {
-                Some(waiter) => {
-                    let _ = waiter.send(ok);
-                }
-                // Nobody asked (or it already timed out) — still worth showing.
-                None => {
-                    let _ = app.emit(crate::events::OUTPUT_DEBUG, format!("[control] {raw}"));
-                }
-            }
         }
         other => {
             let _ = app.emit(
@@ -705,6 +704,23 @@ struct HotReloadEvent {
     /// Only set once `stage == "done"`.
     ok: Option<bool>,
     message: String,
+    /// `stage == "confirm"`: what the new build registers that only a
+    /// restart applies — `<kind> <id>` each.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    changes: Option<RegistrationChanges>,
+}
+
+#[derive(Clone, Serialize, Default)]
+pub struct RegistrationChanges {
+    added: Vec<String>,
+    removed: Vec<String>,
+    changed: Vec<String>,
+}
+
+impl RegistrationChanges {
+    fn is_empty(&self) -> bool {
+        self.added.is_empty() && self.removed.is_empty() && self.changed.is_empty()
+    }
 }
 
 fn emit_hot_reload(
@@ -729,6 +745,7 @@ fn emit_hot_reload(
             mod_id: mod_id.to_string(),
             ok,
             message,
+            changes: None,
         },
     );
 }
@@ -737,7 +754,9 @@ fn emit_hot_reload(
 /// debug-mode run) and asks the running game to hot-reload it over the
 /// control socket: `{"cmd":"hot_reload","mod_id",..,"yog_path":..}`,
 /// answered by `{"event":"hot-reload-done","ok":..}`. The runtime only
-/// accepts a `.yog` built against the exact same ABI version it's running.
+/// accepts a `.yog` of its ABI major and a minor no newer than its own.
+/// Only in a Debug run: what only a restart applies is checked first, and
+/// the user decides (the `confirm` stage, [`decide_hot_reload`]).
 ///
 /// Returns once the work is started — progress and the outcome arrive as
 /// `hot-reload` events (plus Output lines), same reasoning as
@@ -758,19 +777,79 @@ pub fn hot_reload(app: AppHandle, project_root: String) -> Result<(), String> {
         }
         (session.id, session.debug_mode)
     };
+    if !debug_mode {
+        return Err("hot reload works in a Debug run — a Release run is built as players get it, without it".to_string());
+    }
     if HOT_RELOAD_BUSY.swap(true, Ordering::SeqCst) {
         return Err("a hot reload is already in progress".to_string());
     }
 
     std::thread::spawn(move || {
-        let (ok, message) = match run_hot_reload(&app, &root, &mod_id, session_id, debug_mode) {
-            Ok(()) => (true, format!("{mod_id} reloaded")),
-            Err(e) => (false, e),
-        };
-        HOT_RELOAD_BUSY.store(false, Ordering::SeqCst);
-        emit_hot_reload(&app, "done", &mod_id, Some(ok), message);
+        let outcome = run_hot_reload(&app, &root, &mod_id, session_id, debug_mode);
+        finish_hot_reload(&app, &mod_id, outcome);
     });
     Ok(())
+}
+
+/// A built `.yog` waiting for the user: it registers what only a restart applies.
+struct PendingReload {
+    mod_id: String,
+    session_id: u64,
+    yog_path: PathBuf,
+}
+
+static PENDING_RELOAD: Mutex<Option<PendingReload>> = Mutex::new(None);
+
+/// What a hot reload came to: done (reloaded, or why not), or waiting for
+/// the user's choice ([`decide_hot_reload`]).
+enum Outcome {
+    Done(Result<(), String>),
+    Waiting,
+}
+
+fn finish_hot_reload(app: &AppHandle, mod_id: &str, outcome: Outcome) {
+    let (ok, message) = match outcome {
+        Outcome::Waiting => return,
+        Outcome::Done(Ok(())) => (true, format!("{mod_id} reloaded")),
+        Outcome::Done(Err(e)) => (false, e),
+    };
+    HOT_RELOAD_BUSY.store(false, Ordering::SeqCst);
+    emit_hot_reload(app, "done", mod_id, Some(ok), message);
+}
+
+/// The user's answer to a hot reload that needs a restart for part of it:
+/// `"apply"` reloads what can be (code, resources, data) anyway; anything
+/// else drops it (`"restart"`: the IDE restarts the game itself).
+pub fn decide_hot_reload(app: AppHandle, choice: String) -> Result<(), String> {
+    let pending = PENDING_RELOAD.lock().unwrap().take().ok_or("no hot reload is waiting")?;
+    std::thread::spawn(move || {
+        let outcome = if choice == "apply" {
+            Outcome::Done(apply_reload(&app, &pending.mod_id, pending.session_id, &pending.yog_path))
+        } else {
+            Outcome::Done(Err(format!("{} not reloaded ({choice})", pending.mod_id)))
+        };
+        finish_hot_reload(&app, &pending.mod_id, outcome);
+    });
+    Ok(())
+}
+
+/// Sends `request` over the session's control socket and waits for the
+/// runtime's `event` answer.
+fn ask_control(app: &AppHandle, session_id: u64, request: &serde_json::Value, event: &'static str) -> Result<serde_json::Value, String> {
+    let (tx, rx) = mpsc::channel();
+    {
+        let debug_state = app.state::<DebugState>();
+        let mut guard = debug_state.0.lock().unwrap();
+        let session = guard.as_mut().filter(|s| s.id == session_id).ok_or("the game exited")?;
+        let control = session.control.as_mut().ok_or("control socket is gone")?;
+        send_control(control, request).map_err(|e| format!("writing to the control socket: {e}"))?;
+        session.reply_waiter = Some((event, tx));
+    }
+    match rx.recv_timeout(HOT_RELOAD_TIMEOUT) {
+        Ok(v) => Ok(v),
+        Err(mpsc::RecvTimeoutError::Timeout) => Err(format!("the game didn't answer within {}s", HOT_RELOAD_TIMEOUT.as_secs())),
+        Err(mpsc::RecvTimeoutError::Disconnected) => Err("the game exited before answering".to_string()),
+    }
 }
 
 fn run_hot_reload(
@@ -779,11 +858,43 @@ fn run_hot_reload(
     mod_id: &str,
     session_id: u64,
     debug_mode: bool,
-) -> Result<(), String> {
+) -> Outcome {
+    match build_and_check(app, root, mod_id, session_id, debug_mode) {
+        Err(e) => Outcome::Done(Err(e)),
+        Ok((yog_path, changes)) if changes.is_empty() => Outcome::Done(apply_reload(app, mod_id, session_id, &yog_path)),
+        Ok((yog_path, changes)) => {
+            *PENDING_RELOAD.lock().unwrap() = Some(PendingReload { mod_id: mod_id.to_string(), session_id, yog_path });
+            let n = changes.added.len() + changes.removed.len() + changes.changed.len();
+            let _ = app.emit(crate::events::OUTPUT_BUILD, format!("hot reload: {n} change(s) only a restart applies"));
+            let _ = app.emit(
+                crate::events::HOT_RELOAD,
+                HotReloadEvent {
+                    stage: "confirm",
+                    mod_id: mod_id.to_string(),
+                    ok: None,
+                    message: format!("{n} change(s) need a restart"),
+                    changes: Some(changes),
+                },
+            );
+            Outcome::Waiting
+        }
+    }
+}
+
+/// Builds the mod for hot reload (`yog build [debug] --dev`) and asks the
+/// game what of it only a restart applies.
+fn build_and_check(
+    app: &AppHandle,
+    root: &Path,
+    mod_id: &str,
+    session_id: u64,
+    debug_mode: bool,
+) -> Result<(PathBuf, RegistrationChanges), String> {
     let mut args = vec!["build"];
     if debug_mode {
         args.push("debug");
     }
+    args.push("--dev");
     emit_hot_reload(
         app,
         "building",
@@ -838,51 +949,34 @@ fn run_hot_reload(
         .canonicalize()
         .map_err(|e| format!("{}: {e}", yog_path.display()))?;
 
-    let (tx, rx) = mpsc::channel();
-    {
-        let debug_state = app.state::<DebugState>();
-        let mut guard = debug_state.0.lock().unwrap();
-        let session = guard
-            .as_mut()
-            .filter(|s| s.id == session_id)
-            .ok_or("the game exited during the build")?;
-        let control = session.control.as_mut().ok_or("control socket is gone")?;
-        let request = serde_json::json!({
-            "cmd": "hot_reload",
-            "mod_id": mod_id,
-            "yog_path": yog_path.to_string_lossy(),
-        });
-        send_control(control, &request)
-            .map_err(|e| format!("writing to the control socket: {e}"))?;
-        session.hot_reload_waiter = Some(tx);
-    }
-    emit_hot_reload(
+    let check = ask_control(
         app,
-        "reloading",
-        mod_id,
-        None,
-        format!("sent {} to the game", yog_path.display()),
-    );
-
-    let ok = match rx.recv_timeout(HOT_RELOAD_TIMEOUT) {
-        Ok(ok) => ok,
-        Err(mpsc::RecvTimeoutError::Timeout) => {
-            return Err(format!(
-                "the game didn't answer within {}s",
-                HOT_RELOAD_TIMEOUT.as_secs()
-            ));
-        }
-        Err(mpsc::RecvTimeoutError::Disconnected) => {
-            return Err("the game exited before answering".to_string());
-        }
+        session_id,
+        &serde_json::json!({ "cmd": "hot_reload_check", "mod_id": mod_id, "yog_path": yog_path.to_string_lossy() }),
+        "hot-reload-check",
+    )?;
+    let list = |key: &str| -> Vec<String> {
+        check.get(key).and_then(|v| v.as_array()).into_iter().flatten().filter_map(|v| v.as_str().map(str::to_string)).collect()
     };
-    if !ok {
+    Ok((yog_path, RegistrationChanges { added: list("added"), removed: list("removed"), changed: list("changed") }))
+}
+
+/// Swaps the built `.yog` into the game: its code, then the game rereads
+/// its resources and data (F3+T, `/reload`).
+fn apply_reload(app: &AppHandle, mod_id: &str, session_id: u64, yog_path: &Path) -> Result<(), String> {
+    emit_hot_reload(app, "reloading", mod_id, None, format!("sent {} to the game", yog_path.display()));
+    let done = ask_control(
+        app,
+        session_id,
+        &serde_json::json!({ "cmd": "hot_reload", "mod_id": mod_id, "yog_path": yog_path.to_string_lossy(), "resources": true }),
+        "hot-reload-done",
+    )?;
+    if !done.get("ok").and_then(|v| v.as_bool()).unwrap_or(false) {
         return Err(format!(
             "the game rejected the new build of {mod_id} (see the game log — most often an ABI version mismatch, \
              which needs a full restart)"
         ));
     }
-
     let debug_state = app.state::<DebugState>();
     let mut guard = debug_state.0.lock().unwrap();
     if let Some(session) = guard.as_mut().filter(|s| s.id == session_id) {
