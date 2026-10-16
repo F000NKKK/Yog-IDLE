@@ -133,8 +133,8 @@
 .tag-members-section > header,
 .loot-editor-section > header {
   display: flex;
-  flex-direction: column;
-  gap: 3px;
+  align-items: center;
+  gap: 8px;
   color: var(--sp-text-muted);
   font-size: 12px;
   line-height: 1.4;
@@ -145,6 +145,19 @@
   color: var(--sp-text);
   font-size: 13px;
   font-weight: 600;
+}
+
+.designer-info {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  color: var(--sp-text-muted);
+  cursor: help;
+}
+
+.designer-info:hover {
+  color: var(--sp-text);
 }
 
 /* An advancement's criteria in the inspector. */

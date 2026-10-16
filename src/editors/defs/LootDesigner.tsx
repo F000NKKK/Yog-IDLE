@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { useT, type PropertyDescriptor } from "substrate-platform-ui";
+import { Icon, useT, type PropertyDescriptor } from "substrate-platform-ui";
 import { refId, refProblem, refSuggestions, useContentRefs } from "../../data/contentRefs";
 import { inspectorRows, refMessage } from "../inspector";
 import { ItemList } from "../ItemList";
@@ -76,7 +76,9 @@ export function LootDesigner({ path, file, update, readOnly, kindLabel }: DefPro
           <section className="loot-editor-section">
             <header>
               <strong>{t("Tables")}</strong>
-              <span>{t("The loot tables it changes: chests, block drops, mobs (@loot_table:minecraft:chests/simple_dungeon).")}</span>
+              <span className="designer-info" title={t("The loot tables it changes: chests, block drops, mobs (@loot_table:minecraft:chests/simple_dungeon).")} aria-label={t("The loot tables it changes: chests, block drops, mobs (@loot_table:minecraft:chests/simple_dungeon).")}>
+                <Icon name="info" size={14} />
+              </span>
             </header>
             <ItemList
               items={asList<string>(file.tables)}
@@ -91,7 +93,9 @@ export function LootDesigner({ path, file, update, readOnly, kindLabel }: DefPro
         <section className="loot-editor-section">
           <header>
             <strong>{t("Items")}</strong>
-            <span>{t("Items this table gives, with their count range, chance, and optional registered loot function.")}</span>
+            <span className="designer-info" title={t("Items this table gives, with their count range and chance. Function ID is a Rust callback registered with registry.loot_function(...), run on each added stack.")} aria-label={t("Items this table gives, with their count range and chance. Function ID is a Rust callback registered with registry.loot_function(...), run on each added stack.")}>
+              <Icon name="info" size={14} />
+            </span>
           </header>
           <RowsEditor<LootAddRow>
             rows={addRows}
@@ -103,7 +107,7 @@ export function LootDesigner({ path, file, update, readOnly, kindLabel }: DefPro
               { key: "min", label: t("Min"), kind: "number", min: -64, max: 64, int: true },
               { key: "max", label: t("Max"), kind: "number", min: -64, max: 64, int: true },
               { key: "chance", label: t("Chance"), kind: "number", min: 0, max: 1 },
-              { key: "function", label: t("Loot Function"), kind: "text" },
+              { key: "function", label: t("Function ID"), kind: "text" },
             ]}
           />
         </section>
@@ -111,7 +115,9 @@ export function LootDesigner({ path, file, update, readOnly, kindLabel }: DefPro
           <section className="loot-editor-section">
             <header>
               <strong>{t("Scaled")}</strong>
-              <span>{t("Items whose stack counts are multiplied after the additions.")}</span>
+              <span className="designer-info" title={t("Scale existing stacks in the selected tables before additions: count × factor, rounded down; stacks reduced to zero are removed.")} aria-label={t("Scale existing stacks in the selected tables before additions: count × factor, rounded down; stacks reduced to zero are removed.")}>
+                <Icon name="info" size={14} />
+              </span>
             </header>
             <RowsEditor<LootScaleRow>
               rows={scaleRows}

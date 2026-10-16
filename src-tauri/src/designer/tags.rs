@@ -23,11 +23,79 @@ const DIRS: [&str; 2] = ["item", "items"];
 /// The mod's item tags, as the CLI listed them (`yog content check` / `yog build`).
 fn mod_tags(root: Option<&Path>) -> BTreeMap<String, Vec<String>> {
     let Some(root) = root else { return BTreeMap::new() };
-    std::fs::read(root.join(".yog-build/generated/tags.json"))
+    let mut tags = std::fs::read(root.join(".yog-build/generated/tags.json"))
         .ok()
         .and_then(|b| serde_json::from_slice::<BTreeMap<String, BTreeMap<String, Vec<String>>>>(&b).ok())
         .and_then(|mut kinds| kinds.remove("item"))
-        .unwrap_or_default()
+        .unwrap_or_default();
+    let Some(ns) = crate::manifest::read_mod_field(root, "id") else { return tags };
+    for ext in ["yblock", "yitem", "ydef"] {
+        for file in source_files(&root.join("content"), ext) {
+            let Ok(text) = std::fs::read_to_string(&file) else { continue };
+            let Some(doc) = crate::data::read_object(&text) else { continue };
+            let value = Value::Object(doc);
+            if ext == "ydef" {
+                if value.get("kind").and_then(Value::as_str) != Some("tag") || value.get("of").and_then(Value::as_str) != Some("item") {
+                    continue;
+                }
+                let Some(raw_id) = value.get("id").and_then(Value::as_str) else { continue };
+                let tag = qualify(&ns, raw_id);
+                let entries = tags.entry(tag).or_default();
+                for values in ["values", "optional"].into_iter().filter_map(|k| value.get(k).and_then(Value::as_array)) {
+                    for entry in values.iter().filter_map(Value::as_str).map(|v| tag_entry(&ns, v)) {
+                        if !entries.contains(&entry) {
+                            entries.push(entry);
+                        }
+                    }
+                }
+            } else {
+                let Some(raw_id) = value.get("id").and_then(Value::as_str).or_else(|| file.file_stem().and_then(|s| s.to_str())) else { continue };
+                let item_id = qualify(&ns, raw_id);
+                for raw_tag in value.get("tags").and_then(Value::as_array).into_iter().flatten().filter_map(Value::as_str) {
+                    let entries = tags.entry(qualify(&ns, raw_tag.trim_start_matches('#'))).or_default();
+                    if !entries.contains(&item_id) {
+                        entries.push(item_id.clone());
+                    }
+                }
+            }
+        }
+    }
+    tags
+}
+
+fn source_files(dir: &Path, ext: &str) -> Vec<PathBuf> {
+    let mut out = Vec::new();
+    let mut pending = vec![dir.to_path_buf()];
+    while let Some(dir) = pending.pop() {
+        let Ok(entries) = std::fs::read_dir(dir) else { continue };
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_dir() {
+                pending.push(path);
+            } else if path.extension().is_some_and(|e| e == ext) {
+                out.push(path);
+            }
+        }
+    }
+    out
+}
+
+fn qualify(ns: &str, id: &str) -> String {
+    if id.contains(':') { id.to_owned() } else { format!("{ns}:{id}") }
+}
+
+fn tag_entry(ns: &str, value: &str) -> String {
+    let tag = value.strip_prefix("@tag:item:").or_else(|| value.strip_prefix("@tag:block:"));
+    if let Some(tag) = tag {
+        return format!("#{}", qualify(ns, tag));
+    }
+    if let Some(tag) = value.strip_prefix('#') {
+        return format!("#{}", qualify(ns, tag));
+    }
+    value
+        .strip_prefix("@item:")
+        .or_else(|| value.strip_prefix("@block:"))
+        .map_or_else(|| qualify(ns, value), |id| qualify(ns, id))
 }
 
 /// Tag `tag`'s entries: the mod's, then the game's from the newest version with it.

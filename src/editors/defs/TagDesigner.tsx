@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { ToolbarGroup, ToolbarSelect, useT, type PropertyDescriptor } from "substrate-platform-ui";
+import { Icon, ToolbarGroup, ToolbarSelect, useT, type PropertyDescriptor } from "substrate-platform-ui";
 import { refProblem, refSuggestions, useContentRefs } from "../../data/contentRefs";
 import { inspectorRows, refMessage } from "../inspector";
 import { ItemList } from "../ItemList";
@@ -56,7 +56,9 @@ export function TagDesigner({ path, file, update, readOnly, kindLabel }: DefProp
         <section className="tag-members-section">
           <header>
             <strong>{t("Members")}</strong>
-            <span>{t("What's in it: @<kind>:<id>, checked to exist, or a tag of the kind (@tag:<kind>:<id>).")}</span>
+            <span className="designer-info" title={t("What's in it: @<kind>:<id>, checked to exist, or a tag of the kind (@tag:<kind>:<id>).")} aria-label={t("What's in it: @<kind>:<id>, checked to exist, or a tag of the kind (@tag:<kind>:<id>).")}>
+              <Icon name="info" size={14} />
+            </span>
           </header>
           <ItemList
             items={values}
@@ -70,7 +72,9 @@ export function TagDesigner({ path, file, update, readOnly, kindLabel }: DefProp
         <section className="tag-members-section">
           <header>
             <strong>{t("If Present")}</strong>
-            <span>{t("In it if it's there — another mod's content (@entity:create:seat), not checked.")}</span>
+            <span className="designer-info" title={t("In it if it's there — another mod's content (@entity:create:seat), not checked.")} aria-label={t("In it if it's there — another mod's content (@entity:create:seat), not checked.")}>
+              <Icon name="info" size={14} />
+            </span>
           </header>
           <ItemList
             items={optional}
