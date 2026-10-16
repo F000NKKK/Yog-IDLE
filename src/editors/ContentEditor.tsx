@@ -39,6 +39,7 @@ import { useOpenFiles } from "../OpenFilesContext";
 import { reportError } from "../reportError";
 import { refMessage } from "./inspector";
 import { refProblem, refSuggestions, useContentRefs } from "../data/contentRefs";
+import { RowsEditor } from "./RowsEditor";
 import {
   ANGLES,
   autoUv,
@@ -129,6 +130,12 @@ interface BuiltInBlockKind {
   name: string;
   takes: string[];
   occludes?: boolean;
+}
+
+interface PotionEffectRow extends Record<string, unknown> {
+  effect?: string;
+  duration?: number;
+  amplifier?: number;
 }
 
 
@@ -339,6 +346,7 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
   const rootRef = useRef<HTMLDivElement>(null);
   const blockRefs = useContentRefs(path, "block");
   const entityRefs = useContentRefs(path, "entity");
+  const effectRefs = useContentRefs(path, "effect");
 
   useEffect(() => {
     let live = true;
@@ -1488,6 +1496,51 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
           optionLabel: (o) => (o ? t(o) : ""),
           description: t("Worn in this slot without being armor (a monocle, a crown): right-click and dispensers put it on."),
         }),
+        {
+          id: "potion",
+          name: t("Potion"),
+          category: c,
+          value: !!it.potion,
+          kind: "bool",
+          readOnly: ro,
+          description: t("This .yitem defines a potion registry entry, not an extra bottle item. Brewing recipes are .yrecipe files."),
+          onCommit: (v) => setI((x) => {
+            if (v) x.potion ??= { effects: [] };
+            else delete x.potion;
+          }),
+        },
+        ...(it.potion
+          ? [
+              text("potion_name", t("Potion Name"), c, it.potion.name, (v) => setI((x) => {
+                if (!x.potion) return;
+                if (v) x.potion.name = v;
+                else delete x.potion.name;
+              }), { description: t("The translation suffix for item.minecraft.potion.effect.<name>. Defaults to this .yitem id's path.") }),
+              {
+                id: "potion_effects",
+                name: "",
+                category: t("Potion Effects"),
+                value: null,
+                kind: "custom",
+                description: t("The mob effects this potion gives, in ticks (20 per second) and levels (0 is I)."),
+                render: () => (
+                  <RowsEditor<PotionEffectRow>
+                    rows={it.potion?.effects ?? []}
+                    readOnly={ro}
+                    blank={() => ({ effect: "@effect:minecraft:speed", duration: 3600, amplifier: 0 })}
+                    onChange={(effects) => setI((x) => {
+                      if (x.potion) x.potion.effects = effects as NonNullable<ContentFile["item"]>["potion"]["effects"];
+                    })}
+                    columns={[
+                      { key: "effect", label: t("Effect"), kind: "text", grow: 3, suggestions: refSuggestions(effectRefs, "effect"), validate: (v) => refMessage(t, refProblem(v, "effect", effectRefs), "effect") },
+                      { key: "duration", label: t("Ticks"), kind: "number", min: 1, int: true },
+                      { key: "amplifier", label: t("Level"), kind: "number", min: 0, int: true, placeholder: "0" },
+                    ]}
+                  />
+                ),
+              } satisfies PropertyDescriptor,
+            ]
+          : []),
         text("hangs_entity", t("Hanging Entity"), c, it.hangs?.entity, (v) =>
           setI((x) => {
             if (!v) delete x.hangs;
@@ -1887,7 +1940,7 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
     return out;
     // `t` and the helpers read fresh state each render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [file, kind, model, resolved, mainResolved, shownImages, choices, blockKinds, blockRefs, entityRefs, displaySlot, selEl, sel, face, readOnly, effectiveKey, modelKind, modelKey, pickedState, stateProps]);
+  }, [file, kind, model, resolved, mainResolved, shownImages, choices, blockKinds, blockRefs, entityRefs, effectRefs, displaySlot, selEl, sel, face, readOnly, effectiveKey, modelKind, modelKey, pickedState, stateProps]);
 
   // ── Layout ────────────────────────────────────────────────────────────────
 

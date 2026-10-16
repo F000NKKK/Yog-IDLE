@@ -8,7 +8,6 @@ describe(".ydef visual designer registry", () => {
       "effect",
       "loot_modifier",
       "loot_table",
-      "potion",
       "tag",
     ]);
     expect(DEF_DESIGNERS.loot_table?.component).toBe(DEF_DESIGNERS.loot_modifier?.component);

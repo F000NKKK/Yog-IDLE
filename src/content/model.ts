@@ -94,6 +94,7 @@ export interface ItemProps {
   tool?: { kind: string; material: string; attack_damage?: number; attack_speed?: number };
   armor?: { slot: ArmorSlot; material: string };
   wearable?: ArmorSlot;
+  potion?: { name?: string; effects: { effect: string; duration: number; amplifier?: number }[] };
   hangs?: { entity: string; size?: [number, number] };
 }
 

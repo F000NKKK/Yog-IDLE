@@ -18,11 +18,12 @@ use crate::manifest::{self, mod_root};
 
 /// Kinds of content defined by files of their own, by extension; any other
 /// kind is the `.ydef`s of that `kind`.
-const FILE_KINDS: [(&str, &[&str]); 4] = [
+const FILE_KINDS: [(&str, &[&str]); 5] = [
     ("item", &["yitem", "yblock"]),
     ("block", &["yblock"]),
     ("entity", &["yentity"]),
     ("recipe", &["yrecipe"]),
+    ("potion", &["yitem"]),
 ];
 
 /// Body files (`.ymodel`, `.yanim`): named by their path under `content/`
@@ -30,7 +31,13 @@ const FILE_KINDS: [(&str, &[&str]); 4] = [
 const BODY_FORMATS: [&str; 2] = ["ymodel", "yanim"];
 
 /// What `[external.<namespace>]` lists each kind under.
-const EXTERNAL_KEYS: [(&str, &str); 4] = [("item", "items"), ("block", "blocks"), ("entity", "entities"), ("recipe", "recipes")];
+const EXTERNAL_KEYS: [(&str, &str); 5] = [
+    ("item", "items"),
+    ("block", "blocks"),
+    ("entity", "entities"),
+    ("recipe", "recipes"),
+    ("potion", "potions"),
+];
 
 /// Where the game's ids of a kind are in its client jar: translation keys
 /// of its `en_us` lang (`entity.minecraft.pig` → `pig`; `dotted`: the rest
@@ -163,6 +170,12 @@ fn own(root: &Path, kind: &str) -> Vec<OwnRef> {
     if let Some((_, exts)) = FILE_KINDS.iter().find(|(k, _)| *k == kind) {
         for ext in *exts {
             for f in files(root, ext) {
+                if kind == "item" && read(&f).and_then(|d| d.get("item").and_then(|i| i.get("potion")).cloned()).is_some() {
+                    continue;
+                }
+                if kind == "potion" && read(&f).and_then(|d| d.get("item").and_then(|i| i.get("potion")).cloned()).is_none() {
+                    continue;
+                }
                 let given = read(&f).and_then(|d| d.get("id").and_then(Value::as_str).map(str::to_string));
                 let id = given.unwrap_or_else(|| f.file_stem().unwrap_or_default().to_string_lossy().into_owned());
                 out.push(OwnRef { id: qualified(&id, &ns), file: f.to_string_lossy().into_owned() });
@@ -253,6 +266,12 @@ fn game(root: Option<&Path>, kind: &str) -> Vec<String> {
     };
     out.sort();
     out.dedup();
+    if kind == "potion" {
+        out = out
+            .into_iter()
+            .map(|id| id.strip_prefix("minecraft:").map_or(id.clone(), |path| format!("yog:{path}")))
+            .collect();
+    }
     if let Ok(mut c) = CACHE.get_or_init(Default::default).lock() {
         c.insert(key, out.clone());
     }

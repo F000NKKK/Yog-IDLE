@@ -3,7 +3,7 @@ import { useT, type EditorProps } from "substrate-platform-ui";
 import { clone } from "../../content/model";
 import { DataEditor } from "../DataEditor";
 import { AdvancementDesigner } from "./AdvancementDesigner";
-import { EffectDesigner, PotionDesigner } from "./EffectDesigner";
+import { EffectDesigner } from "./EffectDesigner";
 import { LootDesigner } from "./LootDesigner";
 import { TagDesigner } from "./TagDesigner";
 import type { DefProps } from "./DefLayout";
@@ -21,7 +21,6 @@ export const DEF_DESIGNERS: Partial<Record<string, { label: string; component: C
   loot_table: { label: "Loot Table", component: LootDesigner },
   loot_modifier: { label: "Loot Modifier", component: LootDesigner },
   effect: { label: "Effect", component: EffectDesigner },
-  potion: { label: "Potion", component: PotionDesigner },
   tag: { label: "Tag", component: TagDesigner },
 };
 

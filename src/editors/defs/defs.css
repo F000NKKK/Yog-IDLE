@@ -202,19 +202,11 @@
   border: calc(var(--k) * 0.5px) solid #000;
 }
 
-.effect-tooltip,
-.potion-tooltip {
+.effect-tooltip {
   position: absolute;
   white-space: normal;
 }
 
 .effect-tooltip {
   width: calc(var(--k) * 160px);
-}
-
-.potion-bottles,
-.potion-brew {
-  position: absolute;
-  display: flex;
-  align-items: center;
 }
