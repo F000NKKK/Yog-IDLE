@@ -189,8 +189,13 @@ export function AdvancementDesigner({ path, file, update, readOnly, kindLabel }:
                 const n = tab.find((x) => x.id === hover);
                 const p = at.get(hover);
                 if (!n || !p) return null;
+                const tipWidth = Math.min(160, width - PAD * 2);
+                const tipHeight = 96;
+                const right = PAD + p.x * CELL_W + 28;
+                const left = right + tipWidth <= width - PAD ? right : Math.max(PAD, PAD + p.x * CELL_W - tipWidth - 4);
+                const top = Math.min(TITLE + PAD + p.y * CELL_H, height - tipHeight - PAD);
                 return (
-                  <div className="game-tooltip adv-tooltip" style={{ left: (PAD + p.x * CELL_W + 28) * k, top: (TITLE + PAD + p.y * CELL_H) * k, maxWidth: 160 * k }}>
+                  <div className="game-tooltip adv-tooltip" style={{ left: left * k, top: top * k, width: tipWidth * k }}>
                     <div>{text(n.value.title) || n.id}</div>
                     {typeof n.value.description === "string" && <div className="is-muted adv-desc">{text(n.value.description)}</div>}
                     {!n.file && <div className="is-muted">{t("Not the mod's: {id}", { id: n.id })}</div>}
