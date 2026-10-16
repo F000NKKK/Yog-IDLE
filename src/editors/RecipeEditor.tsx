@@ -5,7 +5,6 @@ import { Toolbar, ToolbarButton, ToolbarGroup, ToolbarInput, ToolbarLabel, Toolb
 import { DataEditor } from "./DataEditor";
 import { parseDataValue } from "../data/yogData";
 import { useContentRefs } from "../data/contentRefs";
-import { refMessage } from "./inspector";
 import { iconSource, imagePreview, imageSources, imageSourcesVersion, ingredientItems, subscribeImageSources } from "../designer/imageSources";
 import { openFile } from "../fileOpenBus";
 import { useFsChanged } from "../fsWatch";
@@ -157,8 +156,12 @@ export function RecipeEditor({ path, content, onChange, readOnly }: EditorProps)
     };
   }, [path, recipe.type, t]);
   useEffect(() => {
-    if (recipe.type !== "brewing") return;
-    const timer = window.setInterval(() => setBrewTick((n) => (n + 1) % 400), 50);
+    if (recipe.type !== "brewing") {
+      setBrewTick(0);
+      return;
+    }
+    setBrewTick(0);
+    const timer = window.setInterval(() => setBrewTick((n) => (n === 400 ? 0 : n + 1)), 50);
     return () => window.clearInterval(timer);
   }, [recipe.type, path]);
   const [stageEl, setStageEl] = useState<HTMLDivElement | null>(null);
@@ -518,7 +521,7 @@ export function RecipeEditor({ path, content, onChange, readOnly }: EditorProps)
       validate: (v) => (Number(v) >= 1 && Number(v) <= 64 ? null : t("1 to 64")),
       readOnly: ro,
       onCommit: (v) => (custom ? updateCustom((r) => (r.count = clampCount(Number(v)))) : updateGame((r) => (r.count = clampCount(Number(v))))),
-    }]),
+    } satisfies PropertyDescriptor]),
   ];
   if (!custom && isCooking(recipe.type)) {
     inspected.push(

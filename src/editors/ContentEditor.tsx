@@ -1529,7 +1529,11 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
                     readOnly={ro}
                     blank={() => ({ effect: "@effect:minecraft:speed", duration: 3600, amplifier: 0 })}
                     onChange={(effects) => setI((x) => {
-                      if (x.potion) x.potion.effects = effects as NonNullable<ContentFile["item"]>["potion"]["effects"];
+                      if (x.potion) {
+                        x.potion.effects = effects.flatMap(({ effect, duration, amplifier }) =>
+                          effect ? [{ effect, duration: duration ?? 3600, ...(amplifier === undefined ? {} : { amplifier }) }] : [],
+                        );
+                      }
                     })}
                     columns={[
                       { key: "effect", label: t("Effect"), kind: "text", grow: 3, suggestions: refSuggestions(effectRefs, "effect"), validate: (v) => refMessage(t, refProblem(v, "effect", effectRefs), "effect") },
