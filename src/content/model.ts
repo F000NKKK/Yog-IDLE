@@ -163,6 +163,20 @@ export interface Template {
   sprite?: boolean;
 }
 
+export interface ItemModelPreset {
+  id: string;
+  label: string;
+  parent: string;
+}
+
+/** Minecraft's standard item model families, resolved from the game assets. */
+export const ITEM_MODEL_PRESETS: ItemModelPreset[] = [
+  { id: "generated", label: "Layered Item", parent: "minecraft:item/generated" },
+  { id: "handheld", label: "Handheld Item", parent: "minecraft:item/handheld" },
+  { id: "potion", label: "Potion Bottle", parent: "minecraft:item/potion" },
+  { id: "cube", label: "3D Cube Item", parent: "minecraft:block/cube_all" },
+];
+
 export const TEMPLATES: Template[] = [
   { name: "cube_all", slots: ["all"] },
   { name: "cube_column", slots: ["end", "side"] },

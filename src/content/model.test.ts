@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { contentText } from "../bench/fixtures";
-import { clone, parseContent, patchContent } from "./model";
+import { clone, ITEM_MODEL_PRESETS, parseContent, patchContent } from "./model";
 import { renameProperty } from "./states";
 
 function parsed(text: string): unknown {
@@ -26,6 +26,17 @@ describe("parseContent", () => {
     expect(file.model.textures.note).toBe("a // not a comment, ]");
     expect(file.model.elements).toHaveLength(20);
     expect(Object.keys(file.model.elements[19].faces)).toEqual(["north", "south", "up"]);
+  });
+});
+
+describe("item model presets", () => {
+  it("uses Minecraft's model parents for layered, potion, handheld and 3D items", () => {
+    expect(ITEM_MODEL_PRESETS.map(({ id, parent }) => [id, parent])).toEqual([
+      ["generated", "minecraft:item/generated"],
+      ["handheld", "minecraft:item/handheld"],
+      ["potion", "minecraft:item/potion"],
+      ["cube", "minecraft:block/cube_all"],
+    ]);
   });
 });
 

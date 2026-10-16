@@ -61,6 +61,7 @@ import {
   ARMOR_SLOTS,
   FACINGS,
   FACING_LABELS,
+  ITEM_MODEL_PRESETS,
   PLACEMENTS,
   type ArmorSlot,
   type Axis,
@@ -1972,6 +1973,16 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
     setSelected(null);
     setFace(null);
   };
+  const applyItemPreset = (id: string) => {
+    const preset = ITEM_MODEL_PRESETS.find((p) => p.id === id);
+    if (!preset || kind !== "item") return;
+    setModelKey("model");
+    setSelected(null);
+    setFace(null);
+    update((d) => {
+      d.model = { parent: preset.parent };
+    });
+  };
 
   const faceData = selEl && face ? selEl.faces[face] : undefined;
   const faceTexture = faceData ? resolved.textures[faceData.texture.replace(/^#/, "")] : undefined;
@@ -2308,6 +2319,18 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
             ]}
           />
         </ToolbarGroup>
+        {kind === "item" && (
+          <ToolbarGroup>
+            <ToolbarSelect
+              value=""
+              options={[
+                { value: "", label: t("Model Preset…") },
+                ...ITEM_MODEL_PRESETS.map((preset) => ({ value: preset.id, label: t(preset.label) })),
+              ]}
+              onChange={applyItemPreset}
+            />
+          </ToolbarGroup>
+        )}
         <ToolbarGroup>
           <ToolbarCheck label="Shading" checked={shading} onChange={setShading} />
           <ToolbarCheck label="Grid" checked={grid} onChange={setGrid} />
