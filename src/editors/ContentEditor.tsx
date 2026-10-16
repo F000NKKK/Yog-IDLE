@@ -1148,6 +1148,20 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
           description: t("A yes/no property of its states a comparator reads: 15 while it's on."),
         })
       );
+      // Its item form: how it stacks, survives fire, burns.
+      const ic = t("Item");
+      const bi = file.item ?? {};
+      const setBI = (edit: (i: NonNullable<ContentFile["item"]>) => void) =>
+        update((d) => {
+          d.item ??= {};
+          edit(d.item);
+          if (prune(d.item as Record<string, unknown>)) delete d.item;
+        });
+      out.push(
+        num("item_stack_size", t("Stack Size"), ic, bi.stack_size, (v) => setBI((x) => void (x.stack_size = v)), { min: 1, max: 99, int: true, description: t("How many of its item stack (64 by default).") }),
+        flag("item_fire_resistant", t("Fire Resistant"), ic, bi.fire_resistant, (v) => setBI((x) => void (x.fire_resistant = v)), false),
+        num("item_fuel_ticks", t("Fuel Ticks"), ic, bi.fuel_ticks, (v) => setBI((x) => void (x.fuel_ticks = v)), { min: 1, int: true, description: t("Burn time in a furnace (coal: 1600).") })
+      );
     } else {
       const c = t("Item");
       const it = file.item ?? {};
