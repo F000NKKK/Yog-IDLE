@@ -203,7 +203,7 @@ pub fn source_size(source: &str) -> Option<(f32, f32)> {
             .map(|s| s.size(has_atlas()))
             .map(|size| (size.x, size.y)),
         ImageSource::Texture(id) if id.ends_with(".svg") => svg_document(&id).and_then(|d| svg_size(&d)),
-        ImageSource::Texture(id) => texture(&id).map(|i| (i.w as f32, i.h as f32)),
+        ImageSource::Texture(id) => texture(&id).map(|i| (i.width as f32, i.height as f32)),
         ImageSource::ModPath(_) => None,
     }
 }

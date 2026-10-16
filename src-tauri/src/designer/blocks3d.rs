@@ -353,10 +353,10 @@ mod tests {
         let shape = shape_of(&elements, &mut |v: &str| (v == "#all").then(|| img.clone()));
         assert_eq!(shape.len(), 1);
         let up = shape[0].faces[0].as_ref().unwrap();
-        assert_eq!((up.w, up.h), (6, 6), "the uv's part");
+        assert_eq!((up.width, up.height), (6, 6), "the uv's part");
         assert_eq!(up.pixel(0, 0), img.pixel(5, 5));
         let north = shape[0].faces[2].as_ref().unwrap();
-        assert_eq!((north.w, north.h), (6, 6), "no uv: the box's own part");
+        assert_eq!((north.width, north.height), (6, 6), "no uv: the box's own part");
         assert!(shape[0].faces[1].is_none(), "a face the model leaves out isn't drawn");
 
         let small = opaque(shape);
