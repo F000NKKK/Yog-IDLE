@@ -62,6 +62,65 @@
   color: #3f3f3f;
 }
 
+.recipe-brewing-flow {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.recipe-brewing-flow section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.recipe-brewing-label {
+  color: var(--sp-text-muted);
+  font-size: 12px;
+}
+
+.recipe-brewing-gui {
+  position: relative;
+  width: 352px;
+  height: 332px;
+  flex: none;
+  background-color: #c6c6c6;
+  background-size: 512px 512px;
+  background-repeat: no-repeat;
+  border: 2px solid;
+  border-color: #ffffff #555555 #555555 #ffffff;
+  outline: 2px solid #000000;
+  image-rendering: pixelated;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+}
+
+.recipe-brewing-gui .recipe-spot {
+  position: absolute;
+}
+
+.recipe-brewing-fuel {
+  position: absolute;
+  left: 112px;
+  top: 34px;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.recipe-brewing-fuel img {
+  width: 32px;
+  height: 32px;
+  image-rendering: pixelated;
+}
+
+.recipe-brewing-arrow {
+  color: var(--sp-text-muted);
+  font-size: 24px;
+}
+
 .recipe-layout-image {
   position: absolute;
   inset: 0;

@@ -4,6 +4,8 @@ import { ItemHeader, ItemIcons } from "../designer/ItemIcons";
 import { Toolbar, ToolbarButton, ToolbarGroup, ToolbarInput, ToolbarLabel, ToolbarSelect, usePropertyContext, useT, type EditorProps, type PropertyDescriptor, type PropertySet, type PropertyValue, fileTypeOf } from "substrate-platform-ui";
 import { DataEditor } from "./DataEditor";
 import { parseDataValue } from "../data/yogData";
+import { useContentRefs } from "../data/contentRefs";
+import { refMessage } from "./inspector";
 import { iconSource, imagePreview, imageSources, imageSourcesVersion, ingredientItems, subscribeImageSources } from "../designer/imageSources";
 import { openFile } from "../fileOpenBus";
 import { useFsChanged } from "../fsWatch";
@@ -97,6 +99,7 @@ const GAME_LABELS: Record<string, string> = {
   campfire_cooking: "Campfire Cooking",
   stonecutting: "Stonecutting",
   smithing: "Smithing",
+  brewing: "Brewing",
 };
 
 /** A smithing recipe's places as the inspector names and explains them. */
@@ -110,6 +113,7 @@ export function RecipeEditor({ path, content, onChange, readOnly }: EditorProps)
   const t = useT();
   useSyncExternalStore(subscribeImageSources, imageSourcesVersion);
   const [kinds, reloadKinds] = useRecipeKinds(path);
+  const potionRefs = useContentRefs(path, "potion");
   const game = useMemo(() => parseRecipe(content), [content]);
   const custom = useMemo(() => parseCustomRecipe(content), [content]);
   const recipe = game ?? emptyRecipe();
@@ -118,17 +122,33 @@ export function RecipeEditor({ path, content, onChange, readOnly }: EditorProps)
   const [target, setTarget] = useState<Target>("g:0");
   const [newKind, setNewKind] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [brewingTexture, setBrewingTexture] = useState<string | null>(null);
   // Slots with several possible items (tags, alternatives) show the next each second.
   const [cycleTick, setCycleTick] = useState(0);
   useEffect(() => {
     const h = window.setInterval(() => setCycleTick((n) => n + 1), 1000);
     return () => window.clearInterval(h);
   }, []);
+  useEffect(() => {
+    if (recipe.type !== "brewing") {
+      setBrewingTexture(null);
+      return;
+    }
+    let live = true;
+    invoke<{ url: string }>("content_texture", { path, texture: "minecraft:gui/container/brewing_stand" }).then(
+      (x) => live && setBrewingTexture(x.url),
+      (e) => live && setError(t("Can't load the brewing stand image: {error}", { error: String(e) })),
+    );
+    return () => {
+      live = false;
+    };
+  }, [path, recipe.type, t]);
   const [stageEl, setStageEl] = useState<HTMLDivElement | null>(null);
   const [stageW, stageH] = useSize(stageEl);
 
   const valueAt = (at: Target): string => {
     if (at === "result") return (custom ?? recipe).result;
+    if (at === "from") return recipe.from;
     if (at.startsWith("s:") && custom) {
       const [, slot, i] = at.split(":");
       return custom.slots[slot]?.[Number(i)] ?? "";
@@ -143,6 +163,10 @@ export function RecipeEditor({ path, content, onChange, readOnly }: EditorProps)
       if (!readOnly && text !== content) onChange(text);
     },
     [content, onChange, readOnly]
+  );
+  const potions = useMemo(
+    () => [...potionRefs.own.map((p) => p.id), ...potionRefs.external, ...potionRefs.game].filter((id, i, all) => all.indexOf(id) === i),
+    [potionRefs]
   );
   const updateGame = (change: (r: Recipe) => void) => {
     const next: Recipe = { ...recipe, cells: [...recipe.cells], extra: { ...recipe.extra } };
@@ -176,6 +200,7 @@ export function RecipeEditor({ path, content, onChange, readOnly }: EditorProps)
     } else {
       updateGame((r) => {
         if (at === "result") r.result = v;
+        else if (at === "from") r.from = v;
         else if (at.startsWith("g:")) r.cells[Number(at.slice(2))] = v || null;
       });
     }
@@ -227,8 +252,9 @@ export function RecipeEditor({ path, content, onChange, readOnly }: EditorProps)
     }
     const next = game && !custom ? { ...recipe } : { ...emptyRecipe(), result: from.result, count: from.count };
     next.type = type as RecipeType;
+    next.from = type === "brewing" ? "yog:awkward" : "";
     write(serializeRecipe(next));
-    setTarget("g:0");
+    setTarget(type === "brewing" ? "from" : "g:0");
   };
 
   const createKind = async (name: string) => {
@@ -292,17 +318,18 @@ export function RecipeEditor({ path, content, onChange, readOnly }: EditorProps)
       return "";
     });
 
-  const cell = (at: Target, style: CSSProperties, size: number) => {
+  const cell = (at: Target, style: CSSProperties, size: number, key = at) => {
     const value = valueAt(at) || null;
     const shown = value ? cycled(value) : null;
-    const icon = shown ? imagePreview(path, iconSource(shown)) : null;
+    const potionCell = !custom && recipe.type === "brewing" && (at === "from" || at === "result");
+    const icon = potionCell ? imagePreview(path, iconSource("minecraft:potion")) : shown ? imagePreview(path, iconSource(shown)) : null;
     return (
       <button
-        key={at}
+        key={key}
         type="button"
         className={`recipe-spot${target === at ? " selected" : ""}`}
         style={{ ...style, width: size, height: size }}
-        title={value ? (shown && shown !== value ? `${value} — ${shown}` : value) : t("Empty — click, then pick an item")}
+        title={potionCell ? t("Potion") : value ? (shown && shown !== value ? `${value} — ${shown}` : value) : t("Empty — click, then pick an item")}
         onClick={() => {
           setTarget(at);
         }}
@@ -312,7 +339,7 @@ export function RecipeEditor({ path, content, onChange, readOnly }: EditorProps)
           put(at, "");
         }}
       >
-        {icon ? <img src={icon} alt="" /> : value ? <span className="recipe-cell-text">{value.split(":").pop()}</span> : null}
+        {icon ? <img src={icon} alt="" /> : potionCell && value ? <span className="recipe-cell-text">{t("Potion")}</span> : value ? <span className="recipe-cell-text">{value.split(":").pop()}</span> : null}
       </button>
     );
   };
@@ -324,7 +351,27 @@ export function RecipeEditor({ path, content, onChange, readOnly }: EditorProps)
     ? Math.max(2, Math.min(6, Math.floor(Math.min((stageW - 64) / (layout.size[0] + 8), (stageH - 64) / (layout.size[1] + 8)))))
     : 3;
   const count = custom ? custom.count : recipe.count;
-  const stage = layout ? (
+  const stage = !custom && recipe.type === "brewing" ? (
+    <div className="recipe-brewing-flow">
+      <section>
+        <div className="recipe-brewing-label">{t("Before")}</div>
+        <div className="recipe-brewing-gui" style={{ backgroundImage: brewingTexture ? `url(${brewingTexture})` : undefined }}>
+          <div className="recipe-brewing-fuel">
+            {imagePreview(path, iconSource("minecraft:blaze_powder")) && <img src={imagePreview(path, iconSource("minecraft:blaze_powder"))!} alt="" />}
+          </div>
+          {cell(gameTarget("input", 0), { left: 158, top: 34, width: 32, height: 32 }, 32)}
+          {Array.from({ length: 3 }, (_, i) => cell("from", { left: 112 + i * 46, top: 116, width: 32, height: 32 }, 32, `from-${i}`))}
+        </div>
+      </section>
+      <span className="recipe-brewing-arrow">→</span>
+      <section>
+        <div className="recipe-brewing-label">{t("After")}</div>
+        <div className="recipe-brewing-gui" style={{ backgroundImage: brewingTexture ? `url(${brewingTexture})` : undefined }}>
+          {Array.from({ length: 3 }, (_, i) => cell("result", { left: 112 + i * 46, top: 116, width: 32, height: 32 }, 32, `result-${i}`))}
+        </div>
+      </section>
+    </div>
+  ) : layout ? (
     <div className="recipe-panel" style={{ width: layout.size[0] * k, height: layout.size[1] * k, padding: 4 * k }}>
       <div className="recipe-panel-inner" style={{ width: layout.size[0] * k, height: layout.size[1] * k }}>
         {layout.image && <img className="recipe-layout-image" src={layout.image} alt="" />}
@@ -367,17 +414,24 @@ export function RecipeEditor({ path, content, onChange, readOnly }: EditorProps)
 
   // A smithing recipe's place: which part it is.
   const smithingPart = !custom && recipe.type === "smithing" && target.startsWith("g:") ? SMITHING_PARTS[SMITHING[Number(target.slice(2))]] : undefined;
-  const placeHint = t("An item, a tag (#c:dusts), or alternatives joined by |. Right-click a place to empty it.");
+  const placeHint = target === "from"
+    ? t("The potion already in the bottle; choose a Yog default potion or another defined potion.")
+    : t("An item, a tag (#c:dusts), or alternatives joined by |. Right-click a place to empty it.");
   const placeDescription = smithingPart ? `${t(smithingPart.description)} ${placeHint}` : placeHint;
   const targetLabel =
     target === "result"
       ? t("Result")
+      : target === "from"
+        ? t("Potion Input")
       : smithingPart
         ? t(smithingPart.label)
         : target.startsWith("s:")
           ? `${target.split(":")[1]} ${Number(target.split(":")[2]) + 1}`
           : t("Ingredient {n}", { n: Number(target.slice(2)) + 1 });
   const targetIcon = (() => {
+    if (!custom && recipe.type === "brewing" && (target === "from" || target === "result")) {
+      return imagePreview(path, iconSource("minecraft:potion"));
+    }
     const shown = current ? cycled(current) : null;
     return shown ? imagePreview(path, iconSource(shown)) : null;
   })();
@@ -391,7 +445,7 @@ export function RecipeEditor({ path, content, onChange, readOnly }: EditorProps)
       name: target === "result" ? t("Result") : t("Ingredient"),
       value: current,
       image: targetIcon ?? undefined,
-      suggestions: items,
+      suggestions: target === "from" || (!custom && recipe.type === "brewing" && target === "result") ? potions : items,
       description: placeDescription,
       readOnly: ro,
       onCommit: (v) => put(target, String(v)),
@@ -417,13 +471,13 @@ export function RecipeEditor({ path, content, onChange, readOnly }: EditorProps)
             name: t("Item"),
             value: valueAt("result"),
             image: valueAt("result") ? (imagePreview(path, iconSource(valueAt("result"))) ?? undefined) : undefined,
-            suggestions: items,
+            suggestions: !custom && recipe.type === "brewing" ? potions : items,
             readOnly: ro,
             onCommit: (v: PropertyValue) => put("result", String(v)),
           } satisfies PropertyDescriptor,
         ]
       : []),
-    {
+    ...(!custom && recipe.type === "brewing" ? [] : [{
       id: "count",
       category: t("Result"),
       name: t("Count"),
@@ -431,7 +485,7 @@ export function RecipeEditor({ path, content, onChange, readOnly }: EditorProps)
       validate: (v) => (Number(v) >= 1 && Number(v) <= 64 ? null : t("1 to 64")),
       readOnly: ro,
       onCommit: (v) => (custom ? updateCustom((r) => (r.count = clampCount(Number(v)))) : updateGame((r) => (r.count = clampCount(Number(v))))),
-    },
+    }]),
   ];
   if (!custom && isCooking(recipe.type)) {
     inspected.push(
