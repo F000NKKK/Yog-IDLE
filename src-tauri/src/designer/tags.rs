@@ -163,6 +163,26 @@ mod tests {
     use super::*;
 
     #[test]
+    fn opens_mod_tags_from_source_without_a_prior_build() {
+        let root = std::env::temp_dir().join(format!("idle-tags-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        std::fs::create_dir_all(root.join("content/blocks")).unwrap();
+        std::fs::create_dir_all(root.join("content/tags")).unwrap();
+        std::fs::create_dir_all(root.join("content/recipes")).unwrap();
+        std::fs::write(root.join("yog.toml"), "[mod]\nid = \"mymod\"\n").unwrap();
+        std::fs::write(root.join("content/blocks/wood.yblock"), r#"{ tags: ["planks"] }"#).unwrap();
+        std::fs::write(
+            root.join("content/tags/all_wood.ydef"),
+            r#"{ kind: "tag", of: "item", id: "all_wood", values: ["@tag:item:mymod:planks"] }"#,
+        )
+        .unwrap();
+
+        let items = item_tag(&root.join("content/recipes/test.yrecipe"), "mymod:all_wood");
+        assert_eq!(items, ["mymod:wood"]);
+        let _ = std::fs::remove_dir_all(root);
+    }
+
+    #[test]
     fn yog_tags_open_into_the_tags_they_stand_for() {
         let items = item_tag(Path::new("/nowhere/r.yrecipe"), "#yog:ingots/iron");
         assert!(items.iter().any(|i| i == "minecraft:iron_ingot"), "{items:?}");
