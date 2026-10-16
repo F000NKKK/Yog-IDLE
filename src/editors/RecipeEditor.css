@@ -115,11 +115,141 @@
   width: 32px;
   height: 32px;
   image-rendering: pixelated;
+  animation: brewing-fuel-consume 4s steps(1, end) infinite;
 }
 
-.recipe-brewing-arrow {
+.recipe-brewing-process {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
   color: var(--sp-text-muted);
-  font-size: 24px;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.recipe-brewing-progress {
+  position: relative;
+  width: 72px;
+  height: 5px;
+  background: #555555;
+  border: 1px solid #1d1d1d;
+}
+
+.recipe-brewing-progress::before {
+  content: "→";
+  position: absolute;
+  left: 50%;
+  bottom: 6px;
+  transform: translateX(-50%);
+  color: var(--sp-text-primary);
+  font-size: 20px;
+}
+
+.recipe-brewing-progress span {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: #f1c40f;
+  transform: scaleX(0);
+  transform-origin: left;
+  animation: brewing-progress 4s linear infinite;
+}
+
+.recipe-brewing-bubbles {
+  position: absolute;
+  left: 144px;
+  top: 68px;
+  width: 72px;
+  height: 30px;
+  pointer-events: none;
+}
+
+.recipe-brewing-bubbles i {
+  position: absolute;
+  bottom: 0;
+  width: 4px;
+  height: 4px;
+  background: #eeeeee;
+  border: 1px solid #777777;
+  border-radius: 50%;
+  opacity: 0;
+  animation: brewing-bubble 1.4s ease-in infinite;
+}
+
+.recipe-brewing-bubbles i:nth-child(1) {
+  left: 12px;
+}
+
+.recipe-brewing-bubbles i:nth-child(2) {
+  left: 34px;
+  animation-delay: 0.45s;
+}
+
+.recipe-brewing-bubbles i:nth-child(3) {
+  left: 56px;
+  animation-delay: 0.9s;
+}
+
+.recipe-brewing-flow section:nth-of-type(2) .recipe-spot img {
+  animation: brewing-result 4s ease-in-out infinite;
+}
+
+@keyframes brewing-fuel-consume {
+  0%, 65%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  75%, 95% {
+    opacity: 0.12;
+    transform: scale(0.65);
+  }
+}
+
+@keyframes brewing-progress {
+  0%, 8% {
+    transform: scaleX(0);
+  }
+  88%, 100% {
+    transform: scaleX(1);
+  }
+}
+
+@keyframes brewing-bubble {
+  0% {
+    opacity: 0;
+    transform: translateY(0) scale(0.5);
+  }
+  25% {
+    opacity: 0.8;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-24px) scale(1);
+  }
+}
+
+@keyframes brewing-result {
+  0%, 78% {
+    opacity: 0.45;
+    filter: brightness(0.7);
+  }
+  92%, 100% {
+    opacity: 1;
+    filter: brightness(1.2);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .recipe-brewing-fuel img,
+  .recipe-brewing-progress span,
+  .recipe-brewing-bubbles i,
+  .recipe-brewing-flow section:nth-of-type(2) .recipe-spot img {
+    animation: none;
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
 }
 
 .recipe-layout-image {
