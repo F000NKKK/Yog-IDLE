@@ -18,11 +18,85 @@ pub enum Look {
     Head(Faces),
 }
 
+/// A mod potion uses Minecraft's bottle model; its liquid tint comes from
+/// the potion effects declared by its `.yitem`.
+fn mod_potion_color(res: &Resources, id: &str) -> Option<u32> {
+    use std::path::{Path, PathBuf};
+
+    fn files(dir: &Path, extension: &str, out: &mut Vec<PathBuf>) {
+        let Ok(entries) = std::fs::read_dir(dir) else {
+            return;
+        };
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_dir() {
+                files(&path, extension, out);
+            } else if path.extension().is_some_and(|ext| ext == extension) {
+                out.push(path);
+            }
+        }
+    }
+
+    fn content_file(root: &Path, directory: &str, extension: &str, id: &str) -> Option<(PathBuf, Value)> {
+        let mut candidates = Vec::new();
+        files(&root.join("content").join(directory), extension, &mut candidates);
+        candidates.sort();
+        for path in candidates {
+            let text = std::fs::read(&path).ok()?;
+            let value: Value = serde_json::from_slice(&text).ok()?;
+            let file_id = value.get("id").and_then(Value::as_str)
+                .or_else(|| path.file_stem().and_then(|stem| stem.to_str()))?;
+            if file_id.split_once(':').map_or(file_id, |(_, path)| path) == id {
+                return Some((path, value));
+            }
+        }
+        None
+    }
+
+    let (ns, path) = split_id(id);
+    let root = res.mod_root.as_deref()?;
+    let (item_file, item) = content_file(root, "items", "yitem", path)?;
+    if split_id(item.get("id").and_then(Value::as_str).unwrap_or(path)).0 != ns {
+        return None;
+    }
+    let effects = item.pointer("/item/potion/effects")?.as_array()?;
+    if effects.is_empty() {
+        return Some(WATER);
+    }
+
+    let mut colors = Vec::with_capacity(effects.len());
+    for effect in effects {
+        let effect_id = effect.get("effect").and_then(Value::as_str)?.strip_prefix("@effect:")?;
+        let (effect_ns, effect_path) = split_id(effect_id);
+        let (effect_file, definition) = content_file(root, "effects", "ydef", effect_path)?;
+        if split_id(definition.get("id").and_then(Value::as_str).unwrap_or(effect_path)).0 != effect_ns {
+            return None;
+        }
+        let color = definition.get("color")?.as_u64()? as u32 & 0x00FF_FFFF;
+        colors.push(color);
+        let _ = effect_file;
+    }
+
+    if colors.is_empty() {
+        return Some(WATER);
+    }
+    let count = colors.len() as u32;
+    let channel = |shift| colors.iter().map(|color| (color >> shift) & 0xFF).sum::<u32>() / count;
+    Some((channel(16) << 16) | (channel(8) << 8) | channel(0))
+}
+
 /// `id`'s look from its item model; `None` when it has no model this
 /// understands (callers then guess its texture by name).
 pub fn look(res: &Resources, id: &str) -> Option<Look> {
     let (ns, path) = split_id(id);
-    let (parents, textures) = model_chain(res, &format!("{ns}:item/{path}"));
+    let potion_color = mod_potion_color(res, id);
+    let vanilla_potion_alias = ns == "yog" && path.starts_with("potion/");
+    let model_id = if potion_color.is_some() || vanilla_potion_alias {
+        "minecraft:item/potion".to_string()
+    } else {
+        format!("{ns}:item/{path}")
+    };
+    let (parents, textures) = model_chain(res, &model_id);
     let is = |p: &str| parents.iter().any(|x| split_id(x).1 == p);
     if (is("item/template_skull") || is("builtin/entity"))
         && let Some(tex) = HEADS.iter().find(|(name, _)| *name == path).map(|(_, t)| *t)
@@ -41,6 +115,10 @@ pub fn look(res: &Resources, id: &str) -> Option<Look> {
     let tints: Vec<Option<u32>> = if is("item/template_spawn_egg") {
         let (a, b) = EGGS.iter().find(|(n, ..)| path.strip_suffix("_spawn_egg") == Some(n)).map(|(_, a, b)| (*a, *b))?;
         vec![Some(a), Some(b)]
+    } else if let Some(color) = potion_color {
+        vec![Some(color), None]
+    } else if vanilla_potion_alias {
+        vec![Some(WATER), None]
     } else {
         match path {
             "potion" | "splash_potion" | "lingering_potion" | "tipped_arrow" => vec![Some(WATER)],
@@ -158,6 +236,37 @@ const HEADS: &[(&str, &str)] = &[
 const WATER: u32 = 0x385DC6;
 /// Undyed leather's color.
 const LEATHER: u32 = 0xA06540;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+
+    #[test]
+    fn mod_potion_uses_average_of_declared_effect_colors() {
+        static NEXT: AtomicUsize = AtomicUsize::new(0);
+        let root = std::env::temp_dir().join(format!(
+            "yog-idle-potion-preview-{}-{}",
+            std::process::id(),
+            NEXT.fetch_add(1, Ordering::Relaxed)
+        ));
+        let items = root.join("content/items");
+        let effects = root.join("content/effects");
+        std::fs::create_dir_all(&items).unwrap();
+        std::fs::create_dir_all(&effects).unwrap();
+        std::fs::write(
+            items.join("mix.yitem"),
+            r#"{"id":"test:mix","item":{"potion":{"effects":[{"effect":"@effect:test:red","duration":20},{"effect":"@effect:test:blue","duration":20}]}}}"#,
+        )
+        .unwrap();
+        std::fs::write(effects.join("red.ydef"), r#"{"kind":"effect","id":"red","color":16711680}"#).unwrap();
+        std::fs::write(effects.join("blue.ydef"), r#"{"kind":"effect","id":"blue","color":255}"#).unwrap();
+
+        let res = Resources { mod_root: Some(root.clone()), vanilla: None };
+        assert_eq!(mod_potion_color(&res, "test:mix"), Some(0x7F007F));
+        std::fs::remove_dir_all(root).unwrap();
+    }
+}
 
 /// Spawn eggs' colors (`SpawnEggItem`: base, spots), 1.20.1–1.21.1.
 const EGGS: &[(&str, u32, u32)] = &[
