@@ -26,6 +26,7 @@ import {
   type Page,
 } from "./bookModel";
 import "./BookEditor.css";
+import { modRootOf } from "../paths";
 
 /** The code view of a `.ybook` (registered in `editors/index.tsx`). */
 export const BOOK_SOURCE_VIEW = "yog.book.source";
@@ -443,12 +444,6 @@ export function BookEditor({ path, content, onChange, readOnly }: EditorProps) {
       </div>
     </div>
   );
-}
-
-/** The mod a content file belongs to: the folder holding its `content/`. */
-function modRootOf(path: string): string | null {
-  const m = /^(.*)[\\/]content[\\/]/.exec(path);
-  return m ? m[1] : null;
 }
 
 /** A text as the book shows it: `@Set.key` from the .yres files, `@item:`/`@block:` as a name. */

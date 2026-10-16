@@ -59,6 +59,17 @@ const GAME_IDS: [(&str, GameIds); 13] = [
     ("sound", GameIds::Keys("minecraft/sounds.json")),
 ];
 
+/// Where the game's tags of a kind of content are (`tag:<kind>`): its data
+/// folders under `data/minecraft/tags/` — 1.21's singular, 1.20's plural.
+const GAME_TAG_DIRS: [(&str, &[&str]); 6] = [
+    ("item", &["item", "items"]),
+    ("block", &["block", "blocks"]),
+    ("entity", &["entity_type", "entity_types"]),
+    ("fluid", &["fluid", "fluids"]),
+    ("biome", &["worldgen/biome"]),
+    ("damage_type", &["damage_type"]),
+];
+
 /// One of the mod's own: its id and the file that defines it.
 #[derive(Serialize, Debug, Clone, PartialEq)]
 pub struct OwnRef {
@@ -116,7 +127,8 @@ fn read(file: &Path) -> Option<serde_json::Map<String, Value>> {
 }
 
 /// The choices for `@<kind>:` in the file at `file` (`kind` may also be a
-/// body format, `ymodel`/`yanim`).
+/// body format, `ymodel`/`yanim`, or `tag:<kind>` — the tags of a kind:
+/// the mod's own `.ydef` tags of it, the game's).
 pub fn refs(file: &Path, kind: &str) -> RefChoices {
     let mut out = RefChoices::default();
     if let Some(root) = mod_root(file) {
@@ -132,6 +144,14 @@ pub fn refs(file: &Path, kind: &str) -> RefChoices {
 fn own(root: &Path, kind: &str) -> Vec<OwnRef> {
     let ns = mod_id(root).unwrap_or_else(|| "minecraft".into());
     let mut out = Vec::new();
+    if let Some(of) = kind.strip_prefix("tag:") {
+        for d in defs(root, "tag") {
+            if d.value.get("of").and_then(Value::as_str) == Some(of) {
+                out.push(OwnRef { id: d.id, file: d.file });
+            }
+        }
+        return out;
+    }
     if BODY_FORMATS.contains(&kind) {
         let content = root.join("content");
         for f in files(root, kind) {
@@ -190,7 +210,11 @@ fn external(root: &Path, kind: &str) -> Vec<String> {
 
 /// The game's ids of `kind`, from the client jar (cached per jar).
 fn game(root: Option<&Path>, kind: &str) -> Vec<String> {
-    let Some((_, how)) = GAME_IDS.iter().find(|(k, _)| *k == kind) else { return Vec::new() };
+    let tags = kind.strip_prefix("tag:").and_then(|of| GAME_TAG_DIRS.iter().find(|(k, _)| *k == of)).map(|(_, dirs)| *dirs);
+    let how = GAME_IDS.iter().find(|(k, _)| *k == kind).map(|(_, h)| h);
+    if tags.is_none() && how.is_none() {
+        return Vec::new();
+    }
     let Some(vanilla) = Resources::for_mod(root).vanilla else { return Vec::new() };
     type Cache = Mutex<HashMap<(PathBuf, String), Vec<String>>>;
     static CACHE: OnceLock<Cache> = OnceLock::new();
@@ -205,8 +229,14 @@ fn game(root: Option<&Path>, kind: &str) -> Vec<String> {
             .find_map(|b| serde_json::from_slice::<serde_json::Map<String, Value>>(&b).ok())
             .unwrap_or_default()
     };
-    let mut out: Vec<String> = match how {
-        GameIds::Lang { prefixes, dotted } => {
+    let mut out: Vec<String> = match (tags, how) {
+        (Some(dirs), _) => dirs
+            .iter()
+            .flat_map(|d| vanilla.names_under(&format!("data/minecraft/tags/{d}/")))
+            .filter_map(|n| n.strip_suffix(".json").map(|p| format!("minecraft:{p}")))
+            .collect(),
+        (None, None) => Vec::new(),
+        (None, Some(GameIds::Lang { prefixes, dotted })) => {
             keys("minecraft/lang/en_us.json")
                 .keys()
                 .filter_map(|k| prefixes.iter().find_map(|p| k.strip_prefix(p)))
@@ -214,12 +244,12 @@ fn game(root: Option<&Path>, kind: &str) -> Vec<String> {
                 .map(|rest| format!("minecraft:{rest}"))
                 .collect()
         }
-        GameIds::Data(dirs) => dirs
+        (None, Some(GameIds::Data(dirs))) => dirs
             .iter()
             .flat_map(|d| vanilla.names_under(d))
             .filter_map(|n| n.strip_suffix(".json").map(|p| format!("minecraft:{p}")))
             .collect(),
-        GameIds::Keys(asset) => keys(asset).keys().map(|k| format!("minecraft:{k}")).collect(),
+        (None, Some(GameIds::Keys(asset))) => keys(asset).keys().map(|k| format!("minecraft:{k}")).collect(),
     };
     out.sort();
     out.dedup();
@@ -258,6 +288,7 @@ mod tests {
         write(&dir, "content/body/wisp.ymodel", "{ texture: \"\", bones: [] }");
         write(&dir, "content/fx/glow.ydef", "{ kind: \"effect\", id: \"glow\", category: \"beneficial\", color: 255 }");
         write(&dir, "content/fx/dim.ydef", "{ kind: \"attribute\", id: \"dim\", default: 1, min: 0, max: 2 }");
+        write(&dir, "content/tags/plants.ydef", "{ kind: \"tag\", of: \"block\", id: \"plants\", values: [] }");
         let probe = dir.join("content/items/wand.yitem");
         let ids = |kind: &str| refs(&probe, kind).own.into_iter().map(|r| r.id).collect::<Vec<_>>();
         assert_eq!(ids("item"), ["mymod:glow_lamp", "mymod:wand"], "an item, and a block's item form");
@@ -266,6 +297,8 @@ mod tests {
         assert_eq!(ids("ymodel"), ["mymod:body/wisp"]);
         assert_eq!(ids("effect"), ["mymod:glow"]);
         assert_eq!(refs(&probe, "entity").external, ["create:seat"]);
+        assert_eq!(ids("tag:block"), ["mymod:plants"]);
+        assert!(ids("tag:item").is_empty());
         let effects = own_defs(&probe, "effect");
         assert_eq!(effects.len(), 1);
         assert_eq!(effects[0].value["color"], 255);

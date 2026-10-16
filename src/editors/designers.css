@@ -105,3 +105,67 @@
   color: var(--sp-danger);
   font-size: 12px;
 }
+
+/* Objects edited as rows in the inspector (RowsEditor). */
+.rows-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+}
+
+.rows-row {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.rows-row.is-head {
+  color: var(--sp-text-muted);
+  font-size: 11px;
+}
+
+.rows-cell {
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rows-cell .sp-textfield,
+.rows-cell select {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.rows-cell .is-invalid {
+  border-color: var(--sp-danger);
+}
+
+.rows-lead {
+  display: inline-flex;
+  flex: none;
+  width: 18px;
+  justify-content: center;
+}
+
+.rows-lead img {
+  width: 16px;
+  height: 16px;
+  image-rendering: pixelated;
+}
+
+.rows-trail {
+  flex: none;
+  min-width: 34px;
+  color: var(--sp-text-muted);
+  font-size: 11px;
+  text-align: right;
+}
+
+.rows-remove {
+  flex: none;
+  width: 22px;
+}

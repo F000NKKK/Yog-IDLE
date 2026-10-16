@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { KeyHints, Toolbar, ToolbarButton, ToolbarCheck, ToolbarGroup, ToolbarSelect, usePropertyContext, useT, type EditorProps, type KeyHint, type PropertyDescriptor } from "substrate-platform-ui";
 import { ModelViewport, type ViewOverlay } from "../body/ModelViewport";
-import { SpawnEgg } from "../body/SpawnEgg";
+import { SpawnEgg } from "../designer/TintedItem";
 import { ownNamespace, useBody } from "../body/useBody";
 import { samplePose } from "../body/yanim";
 import {

@@ -8,6 +8,7 @@ import { findComponent, type ComponentInfo, type ComponentsSnapshot } from "./co
 import { AXES, formatLength, gridDefs, parseLength, shiftCells, withGridDefs, type Axis } from "./grid";
 import { editDefinitions } from "./GridAdorner";
 import { colorRefs, designColor, designText, extractColor } from "../lang/designResources";
+import { modRootOf } from "../paths";
 
 type AttrKind = "text" | "number" | "units" | "color" | "bool" | "enum" | "padding" | "uv" | "image" | "tracks" | "index" | "span";
 
@@ -288,12 +289,6 @@ export function widgetProperties(
     rows.push(row);
   }
   return rows;
-}
-
-/** The mod a file in it belongs to: the folder above its `src/` (or `resources/`). */
-function modRootOf(path: string): string | null {
-  const m = /^(.*?)[/\\](?:src|resources)[/\\]/.exec(path);
-  return m ? m[1] : null;
 }
 
 /** What Properties needs to edit grids: whether the selection is in one, and a way to rewrite the selected nodes. */

@@ -72,6 +72,7 @@ import { cellAttrs, cellOf, gridDefs } from "./grid";
 import { designText, useDesignResources, withDesignResources } from "../lang/designResources";
 import "./ScreenDesigner.css";
 import { BookPagePreview, isBookPage } from "./BookPagePreview";
+import { modRootOf } from "../paths";
 
 /**
  * The XAML pane of the split view, as the designer sees it (`YuiSplitEditor`):
@@ -250,12 +251,6 @@ const round = (v: number) => formatNumber(Math.round(v));
 /** The screen's name as an identifier (`Main Menu.yui` → `main_menu`). */
 function screenIdOf(path: string): string {
   return stemOf(path).replace(/[^a-z0-9_]/gi, "_").toLowerCase() || "screen";
-}
-
-/** The mod a file belongs to: the folder holding the `src/` it's in. */
-function modRootOf(path: string): string | null {
-  const m = /^(.*)[\\/]src[\\/]/.exec(path);
-  return m ? m[1] : null;
 }
 
 function nodeLabel(n: YuiNode): string {

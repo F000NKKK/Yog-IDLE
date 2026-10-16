@@ -2,7 +2,10 @@ import { useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 
 /** The game's spawn egg: its base, tinted by the first colour, and its spots, by the second (item layers 0 and 1). */
-const LAYERS = ["minecraft:item/spawn_egg", "minecraft:item/spawn_egg_overlay"] as const;
+const SPAWN_EGG = ["minecraft:item/spawn_egg", "minecraft:item/spawn_egg_overlay"] as const;
+
+/** Its colour that leaves a layer as it is. */
+export const NO_TINT = 0xffffff;
 
 function loadImage(url: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
@@ -13,23 +16,30 @@ function loadImage(url: string): Promise<HTMLImageElement> {
   });
 }
 
-/**
- * A spawn egg as the game draws it: each layer's pixels multiplied by its
- * colour (`0xRRGGBB`), pixelated at `size`. Nothing without a client jar
- * to take the textures from.
- */
+/** A spawn egg as the game draws it, in its two colours. */
 export function SpawnEgg({ path, colors, size = 48 }: { path: string; colors: readonly [number, number]; size?: number }) {
+  return <TintedItem path={path} layers={SPAWN_EGG} colors={colors} size={size} />;
+}
+
+/**
+ * An item drawn as the game draws a tinted one: its layers (texture ids)
+ * one over another, each one's pixels multiplied by its colour
+ * (`0xRRGGBB`), pixelated at `size`. Nothing while the textures can't be
+ * read (no client jar for the game's).
+ */
+export function TintedItem({ path, layers: ids, colors, size = 48, title }: { path: string; layers: readonly string[]; colors: readonly number[]; size?: number; title?: string }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const [layers, setLayers] = useState<HTMLImageElement[] | null>(null);
   useEffect(() => {
     let live = true;
-    Promise.all(LAYERS.map((id) => invoke<{ url: string }>("content_texture", { path, texture: id }).then((t) => loadImage(t.url))))
+    Promise.all(ids.map((id) => invoke<{ url: string }>("content_texture", { path, texture: id }).then((t) => loadImage(t.url))))
       .then((imgs) => live && setLayers(imgs))
       .catch(() => live && setLayers(null));
     return () => {
       live = false;
     };
-  }, [path]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [path, ids.join()]);
   useEffect(() => {
     const c = canvas.current;
     if (!c || !layers) return;
@@ -45,7 +55,8 @@ export function SpawnEgg({ path, colors, size = 48 }: { path: string; colors: re
       scratch.clearRect(0, 0, w, h);
       scratch.drawImage(img, 0, 0);
       const px = scratch.getImageData(0, 0, w, h).data;
-      const tint = [(colors[i] >> 16) & 255, (colors[i] >> 8) & 255, colors[i] & 255];
+      const c = colors[i] ?? NO_TINT;
+      const tint = [(c >> 16) & 255, (c >> 8) & 255, c & 255];
       for (let p = 0; p < px.length; p += 4) {
         const a = px[p + 3] / 255;
         if (!a) continue;
@@ -54,7 +65,8 @@ export function SpawnEgg({ path, colors, size = 48 }: { path: string; colors: re
       }
     });
     g.putImageData(out, 0, 0);
-  }, [layers, colors]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [layers, colors.join()]);
   if (!layers) return null;
-  return <canvas ref={canvas} className="spawn-egg" style={{ width: size, height: size, imageRendering: "pixelated" }} />;
+  return <canvas ref={canvas} className="tinted-item" title={title} style={{ width: size, height: size, imageRendering: "pixelated" }} />;
 }

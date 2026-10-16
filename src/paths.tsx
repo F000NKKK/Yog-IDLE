@@ -8,6 +8,12 @@ export function isWithin(path: string, ancestor: string): boolean {
   return path.startsWith(`${base}/`) || path.startsWith(`${base}\\`);
 }
 
+/** The mod a file in it belongs to: the folder holding the `src/`, `resources/` or `content/` it's in. */
+export function modRootOf(path: string): string | null {
+  const m = /^(.*)[\\/](?:src|resources|content)[\\/]/.exec(path);
+  return m ? m[1] : null;
+}
+
 /** The folder `path` sits in. */
 export function parentOf(path: string): string {
   return path.replace(/[/\\][^/\\]*$/, "");

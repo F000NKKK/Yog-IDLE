@@ -1,0 +1,188 @@
+/* The definition designers' own pieces, in GUI pixels × --k. */
+
+/* ── Advancements: a tab of the game's advancements screen ─────────────── */
+.adv-tab {
+  position: relative;
+  background-color: #3a3a3a;
+  image-rendering: pixelated;
+}
+
+.adv-title {
+  position: absolute;
+  inset: 0 0 auto 0;
+  display: flex;
+  align-items: center;
+  background: #c6c6c6;
+  color: #404040;
+  border-bottom: calc(var(--k) * 1px) solid #555;
+  z-index: 2;
+}
+
+.adv-lines {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.adv-node {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  box-sizing: border-box;
+  border: calc(var(--k) * 2px) solid #1b1b1b;
+  background: #8a8a8a;
+  box-shadow: inset calc(var(--k) * 1px) calc(var(--k) * 1px) 0 #c0c0c0, inset calc(var(--k) * -1px) calc(var(--k) * -1px) 0 #555;
+  cursor: pointer;
+  z-index: 1;
+}
+
+.adv-node.frame-goal {
+  border-radius: 40%;
+}
+
+.adv-node.frame-challenge {
+  clip-path: polygon(50% 0, 64% 14%, 86% 14%, 86% 36%, 100% 50%, 86% 64%, 86% 86%, 64% 86%, 50% 100%, 36% 86%, 14% 86%, 14% 64%, 0 50%, 14% 36%, 14% 14%, 36% 14%);
+  border-width: 0;
+}
+
+.adv-node.is-this {
+  background: #e6b33a;
+  box-shadow: inset calc(var(--k) * 1px) calc(var(--k) * 1px) 0 #ffe08a, inset calc(var(--k) * -1px) calc(var(--k) * -1px) 0 #8a6414;
+}
+
+.adv-node.is-outside {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.adv-node:hover:not(.is-this):not(.is-outside) {
+  filter: brightness(1.2);
+}
+
+.adv-tooltip {
+  position: absolute;
+  z-index: 5;
+  white-space: normal;
+  pointer-events: none;
+}
+
+.adv-desc {
+  margin-top: calc(var(--k) * 2px);
+}
+
+/* An advancement's criteria in the inspector. */
+.crit-row {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.crit-row .sp-textfield {
+  flex: 1;
+  min-width: 0;
+}
+
+.crit-row .is-invalid {
+  border-color: var(--sp-danger);
+}
+
+/* ── Tags: members as an inventory ───────────────────────────────────── */
+.tag-grid {
+  position: absolute;
+  display: grid;
+}
+
+.tag-text {
+  overflow: hidden;
+  max-width: 100%;
+  font-size: calc(var(--k) * 4px);
+  line-height: 1;
+  color: #fff;
+  word-break: break-all;
+  text-align: center;
+}
+
+/* ── Loot: what a table gives, with its odds ─────────────────────────── */
+.loot-row {
+  position: absolute;
+  left: calc(var(--k) * 7px);
+  right: calc(var(--k) * 7px);
+  display: flex;
+  align-items: center;
+  gap: calc(var(--k) * 4px);
+  cursor: pointer;
+}
+
+.loot-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.loot-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.loot-bar {
+  height: calc(var(--k) * 3px);
+  margin-top: calc(var(--k) * 2px);
+  background: #555;
+  border: calc(var(--k) * 0.5px) solid #373737;
+}
+
+.loot-bar span {
+  display: block;
+  height: 100%;
+  background: #80c71f;
+}
+
+.loot-odds {
+  flex: none;
+  min-width: calc(var(--k) * 30px);
+  text-align: right;
+}
+
+.loot-avg {
+  color: #707070;
+}
+
+/* ── Effects and potions ─────────────────────────────────────────────── */
+.effect-box {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  gap: calc(var(--k) * 6px);
+  padding: 0 calc(var(--k) * 7px);
+  box-sizing: border-box;
+  background: #555;
+  border: calc(var(--k) * 1px) solid;
+  border-color: #8b8b8b #2b2b2b #2b2b2b #8b8b8b;
+  border-radius: calc(var(--k) * 2px);
+}
+
+.effect-swatch {
+  flex: none;
+  display: block;
+}
+
+.effect-dot {
+  margin-left: auto;
+  border-radius: 50%;
+  border: calc(var(--k) * 0.5px) solid #000;
+}
+
+.effect-tooltip,
+.potion-tooltip {
+  position: absolute;
+  white-space: normal;
+}
+
+.potion-bottles,
+.potion-brew {
+  position: absolute;
+  display: flex;
+  align-items: center;
+}

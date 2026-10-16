@@ -8,6 +8,9 @@ import { BOOK_SOURCE_VIEW, BookEditor } from "./BookEditor";
 import { RECIPE_SOURCE_VIEW, RecipeEditor } from "./RecipeEditor";
 import { YRES_SOURCE_VIEW, YresEditor } from "./YresEditor";
 import { DataEditor } from "./DataEditor";
+import { DEF_SOURCE_VIEW, DefEditor } from "./defs/DefEditor";
+
+const LAYOUT_SOURCE_VIEW = "yog.ylayout.source";
 import { YdataViewer } from "./YdataViewer";
 import { MODEL_SOURCE_VIEW, ModelEditor } from "./ModelEditor";
 import { ENTITY_SOURCE_VIEW, EntityEditor } from "./EntityEditor";
@@ -162,36 +165,54 @@ registerEditorProvider({
     strict: true,
 });
 
-// Formats without a designer of their own — `.ydef` definitions, `.ylayout`
-// recipe layouts: a property grid generated from the build's schema, the
-// code a click away.
-for (const [format, name] of [
-  ["ydef", "Definition"],
-  ["ylayout", "Recipe Layout"],
-] as const) {
-  const sourceView = `yog.${format}.source`;
-  registerEditorProvider({
-    id: `yog.${format}`,
-    label: "Properties",
-    name: `${name} Editor`,
-    icon: "table",
-    fileTypes: [`yog.${format}`],
-    component: (props: EditorProps) => <DataEditor {...props} format={format} sourceView={sourceView} />,
-    priority: 20,
-    kind: "designer",
-  });
-  registerEditorProvider({
-    id: sourceView,
-    label: "Code",
-    name: `${name} Source Editor`,
-    fileTypes: [`yog.${format}`],
-    component: JsonEditor,
-    priority: 0,
-    kind: "text",
-    // The JSON/XAML of this format only — other files have the general editors.
-    strict: true,
-  });
-}
+// `.ydef` definitions: each kind's designer (an advancement's tab, a loot
+// table's odds, a tag's members…), the schema's property grid for kinds
+// without one; the code a click away.
+registerEditorProvider({
+  id: "yog.ydef",
+  label: "Designer",
+  name: "Definition Editor",
+  icon: "yogDef",
+  fileTypes: ["yog.ydef"],
+  component: DefEditor,
+  priority: 20,
+  kind: "designer",
+});
+
+registerEditorProvider({
+  id: DEF_SOURCE_VIEW,
+  label: "Code",
+  name: "Definition Source Editor",
+  fileTypes: ["yog.ydef"],
+  component: JsonEditor,
+  priority: 0,
+  kind: "text",
+  strict: true,
+});
+
+// `.ylayout` recipe layouts: a property grid generated from the build's
+// schema, the code a click away.
+registerEditorProvider({
+  id: "yog.ylayout",
+  label: "Properties",
+  name: "Recipe Layout Editor",
+  icon: "table",
+  fileTypes: ["yog.ylayout"],
+  component: (props: EditorProps) => <DataEditor {...props} format="ylayout" sourceView={LAYOUT_SOURCE_VIEW} />,
+  priority: 20,
+  kind: "designer",
+});
+
+registerEditorProvider({
+  id: LAYOUT_SOURCE_VIEW,
+  label: "Code",
+  name: "Recipe Layout Source Editor",
+  fileTypes: ["yog.ylayout"],
+  component: JsonEditor,
+  priority: 0,
+  kind: "text",
+  strict: true,
+});
 
 // `.ydata` — binary Yog Data the build compiles formats to: shown as text,
 // read only (it's made, not written).

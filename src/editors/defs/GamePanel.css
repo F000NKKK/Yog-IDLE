@@ -1,0 +1,130 @@
+/* The game's look for the definition designers: a stage centring the
+   content as big as fits, a light bevelled GUI window (or a dark screen),
+   slots, item icons, tooltips. Sizes are GUI pixels × --k. */
+.game-stage {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: auto;
+}
+
+.game-panel {
+  position: relative;
+  box-sizing: content-box;
+  flex: none;
+  background: #c6c6c6;
+  border: 2px solid;
+  border-color: #ffffff #555555 #555555 #ffffff;
+  outline: 2px solid #000000;
+  border-radius: 2px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  color: #404040;
+}
+
+.game-screen {
+  position: relative;
+  flex: none;
+  outline: 2px solid #000;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  color: #fff;
+  overflow: hidden;
+}
+
+.game-panel-inner {
+  position: relative;
+  line-height: 1.15;
+  image-rendering: pixelated;
+}
+
+.game-title {
+  position: absolute;
+  white-space: nowrap;
+  color: #404040;
+}
+
+.game-icon {
+  display: block;
+  image-rendering: pixelated;
+  pointer-events: none;
+}
+
+.game-icon.is-missing {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  color: #555;
+  background: rgba(0, 0, 0, 0.08);
+  word-break: break-all;
+  text-align: center;
+  line-height: 1;
+}
+
+.game-slot {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  box-sizing: border-box;
+  border-style: solid;
+  border-color: #373737 #ffffff #ffffff #373737;
+  background: #8b8b8b;
+  cursor: pointer;
+}
+
+.game-slot:hover {
+  background: #a0a0a0;
+}
+
+.game-slot.is-picked {
+  outline: calc(var(--k) * 1px) solid var(--sp-accent-strong);
+  outline-offset: calc(var(--k) * 1px);
+  z-index: 1;
+}
+
+/* A count over a slot's corner, as the game draws a stack's. */
+.game-slot-label {
+  position: absolute;
+  right: 1px;
+  bottom: 0;
+  color: #fff;
+  text-shadow: calc(var(--k) * 1px) calc(var(--k) * 1px) 0 #3f3f3f;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* A tooltip box, as the game draws one: near-black, a purple-blue rim. */
+.game-tooltip {
+  padding: calc(var(--k) * 3px) calc(var(--k) * 4px);
+  background: rgba(16, 0, 16, 0.94);
+  border: calc(var(--k) * 1px) solid #2a0a5e;
+  border-radius: calc(var(--k) * 1px);
+  color: #fff;
+  white-space: nowrap;
+}
+
+.game-tooltip .is-muted {
+  color: #a8a8a8;
+}
+
+.game-text-blue {
+  color: #5555ff;
+}
+
+.game-text-red {
+  color: #ff5555;
+}
+
+.game-text-gray {
+  color: #aaaaaa;
+}
+
+.game-text-shadow {
+  text-shadow: calc(var(--k) * 1px) calc(var(--k) * 1px) 0 #3f3f3f;
+}
