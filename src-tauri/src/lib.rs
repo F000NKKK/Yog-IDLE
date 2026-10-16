@@ -812,6 +812,18 @@ async fn content_parent_model(
         .map_err(|e| e.to_string())?
 }
 
+/// The preview tint implied by a potion item's effect definitions.
+#[tauri::command]
+async fn content_item_potion_color(
+    state: State<'_, AppState>,
+    path: String,
+) -> Result<Option<u32>, String> {
+    validate_within_roots(&state, Path::new(&path))?;
+    tauri::async_runtime::spawn_blocking(move || content::item_potion_color(Path::new(&path)))
+        .await
+        .map_err(|e| e.to_string())
+}
+
 /// `yog import resourcepack|bbmodel` into the mod of `path`.
 #[tauri::command]
 async fn content_import(
@@ -1866,6 +1878,7 @@ pub fn run() {
         content_defs,
         content_block_kinds,
         content_parent_model,
+        content_item_potion_color,
         content_import,
         yui_designer_render,
         book_designer_render,
