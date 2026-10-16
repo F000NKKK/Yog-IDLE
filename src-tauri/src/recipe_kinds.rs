@@ -246,7 +246,7 @@ mod tests {
         assert!(l.spots.iter().any(|s| matches!(s, Spot::Text { text, .. } if text == "{time} ticks")));
         assert!(l.file.ends_with("crusher_layout.yui"));
         let game = game_kinds(&dir);
-        assert_eq!(game.iter().map(|k| k.id.as_str()).collect::<Vec<_>>(), ["shaped", "shapeless", "smelting"]);
+        assert_eq!(game.iter().map(|k| k.id.as_str()).collect::<Vec<_>>(), ["shaped", "shapeless", "smelting", "blasting", "smoking", "campfire_cooking", "stonecutting"]);
         let shaped = game[0].layout.as_ref().unwrap();
         assert_eq!(shaped.spots.iter().filter(|s| matches!(s, Spot::Slot { slot, .. } if slot == "grid")).count(), 9, "the crafting table's own picture");
         // What the recipe editor reads (recipeModel.ts `RecipeKind`).

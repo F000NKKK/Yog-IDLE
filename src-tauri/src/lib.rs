@@ -26,14 +26,7 @@ mod symbols;
 mod worldgen;
 mod yui;
 
-#[cfg(target_os = "linux")]
 mod debugger;
-// Same command surface (`debug_*`) as the Linux debugger, minus the
-// debugger itself — see `plain_run.rs`.
-#[cfg(not(target_os = "linux"))]
-mod plain_run;
-#[cfg(not(target_os = "linux"))]
-use plain_run as debugger;
 
 /// Every path a `dir_*`/`file_*` command may touch — and every project root a
 /// workflow/`mod_*`/`publish_*` command reads from or runs a process in —
@@ -1301,12 +1294,10 @@ fn mod_run_targets(
 
 /// Runs a `[run.<name>]` target via `yog run <name>` — `mode` is
 /// Yog-IDLE's own vocabulary (`"release"` | `"debug"`), opaque to
-/// `RunBar`/the generic run-target machinery. On Linux this always
-/// connects `yog-runtime`'s control socket for live status, and — for
-/// `mode == "debug"` — attaches `yog-debugger` the moment it reports the
-/// real pid (see `debugger::run_with_mode`). Other platforms get a plain,
-/// still stoppable run (`plain_run::run`) — the control socket and the
-/// debugger stack (`ptrace`) are Linux-only so far.
+/// `RunBar`/the generic run-target machinery. It connects `yog-runtime`'s
+/// control channel for live status and hot reload (a Debug run is the one
+/// built for it), and on Linux a Debug run also attaches `yog-debugger` the
+/// moment the game reports its real pid (see `debugger::run_with_mode`).
 #[tauri::command]
 fn mod_run(
     app: AppHandle,
@@ -1316,15 +1307,7 @@ fn mod_run(
     mode: String,
 ) -> Result<(), String> {
     validate_within_roots(&state, Path::new(&project_root))?;
-    #[cfg(target_os = "linux")]
-    {
-        debugger::run_with_mode(app, project_root, name, mode)
-    }
-    #[cfg(not(target_os = "linux"))]
-    {
-        let _ = mode;
-        plain_run::run(app, project_root, name)
-    }
+    debugger::run_with_mode(app, project_root, name, mode)
 }
 
 /// Whether the Debug run mode (and everything behind it) is available on
@@ -1338,20 +1321,12 @@ fn debug_supported() -> bool {
 /// dialog the `confirm` stage opens): `"apply"`, `"restart"` or `"cancel"`.
 #[tauri::command]
 fn mod_hot_reload_decide(app: AppHandle, choice: String) -> Result<(), String> {
-    #[cfg(target_os = "linux")]
-    {
-        debugger::decide_hot_reload(app, choice)
-    }
-    #[cfg(not(target_os = "linux"))]
-    {
-        let _ = (app, choice);
-        Err("hot reload needs the control socket, Linux only so far".into())
-    }
+    debugger::decide_hot_reload(app, choice)
 }
 
 /// The toolbar's Hot Reload: rebuilds the project and swaps the new build
-/// into the running game over `yog-runtime`'s control socket — see
-/// `debugger::hot_reload`. That socket is only wired up on Linux so far.
+/// into the running game over `yog-runtime`'s control channel — see
+/// `debugger::hot_reload`.
 #[tauri::command]
 fn mod_hot_reload(
     app: AppHandle,
@@ -1359,15 +1334,7 @@ fn mod_hot_reload(
     project_root: String,
 ) -> Result<(), String> {
     validate_within_roots(&state, Path::new(&project_root))?;
-    #[cfg(target_os = "linux")]
-    {
-        debugger::hot_reload(app, project_root)
-    }
-    #[cfg(not(target_os = "linux"))]
-    {
-        let _ = (app, project_root);
-        Err("hot reload is only supported on Linux for now".to_string())
-    }
+    debugger::hot_reload(app, project_root)
 }
 
 /// A one-step `yog <args>` workflow run the way Tools > Options >
