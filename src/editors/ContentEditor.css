@@ -363,3 +363,20 @@
   display: flex;
   padding: 0 var(--sp-space-sm) var(--sp-space-sm);
 }
+
+/* A property the host makes (facing, face, waterlogged): shown, set elsewhere. */
+.content-elements li.content-state-builtin {
+  color: var(--sp-text-muted);
+}
+
+.content-elements li.content-state-builtin:hover {
+  background: none;
+}
+
+/* A state row's values or models: cut, the name keeps its room. */
+.content-state-values {
+  max-width: 55%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

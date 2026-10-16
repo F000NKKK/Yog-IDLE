@@ -5,6 +5,9 @@ import { invoke } from "@tauri-apps/api/core";
 import {
   Button,
   confirmDialog,
+  ContextMenu,
+  type ContextMenuItem,
+  useContextMenu,
   Icon,
   IconButton,
   notify,
@@ -31,6 +34,7 @@ import {
   stemOf,
   Spacer,
 } from "substrate-platform-ui";
+import { belowButton } from "../git/dropdown";
 import { useOpenFiles } from "../OpenFilesContext";
 import { reportError } from "../reportError";
 import {
@@ -42,6 +46,7 @@ import {
   DISPLAY_SLOTS,
   kindOf,
   parseContent,
+  patchContent,
   RENDER_LAYERS,
   serializeContent,
   templateElements,
@@ -66,6 +71,39 @@ import {
   type Uv,
   type Vec3,
 } from "../content/model";
+import {
+  defaultState,
+  freeName,
+  isWord,
+  modelNames,
+  modelNamesValue,
+  moveVariant,
+  newVariantKey,
+  parseVariantKey,
+  PROPERTY_KIND_LABELS,
+  PROPERTY_KINDS,
+  propertyKind,
+  propertyNameProblem,
+  rangeValues,
+  removeModel,
+  removeProperty,
+  renameModel,
+  renameProperty,
+  setVariantKey,
+  stateCount,
+  stateModelFrom,
+  stateProperties,
+  statesShowing,
+  valuesProblem,
+  variantKey,
+  variantOf,
+  variantProblems,
+  withDefault,
+  YES_NO,
+  type BlockState,
+  type PropertyKind,
+  type States,
+} from "../content/states";
 import { UvEditor } from "../content/UvEditor";
 import { Viewport, type GizmoMode, type PaintHit, type Part, type TextureSource, type ViewName } from "../content/Viewport";
 import { PaintCanvas, type PaintModifiers, type PaintPhase } from "../content/paint/PaintCanvas";
@@ -88,8 +126,13 @@ const NO_CHOICES: Choices = { textures: [], strings: [], sounds: [], tags: [], t
 
 export const CONTENT_SOURCE_VIEW = "yog.content.source";
 
-/** Which model of the file is being edited. */
-type ModelKey = "model" | "item_model" | "arm";
+/** Which model of the file is being edited: the block's or item's, its item form's, the connection arm, or a state model (`states.models`). */
+type ModelKey = "model" | "item_model" | "arm" | `state:${string}`;
+
+const STATE_MODEL = "state:";
+const stateModelKey = (name: string): ModelKey => `${STATE_MODEL}${name}`;
+/** The state model's name a key stands for, if it's one. */
+const stateModelOf = (key: ModelKey): string | null => (key.startsWith(STATE_MODEL) ? key.slice(STATE_MODEL.length) : null);
 
 /** A raw parent model (`content_parent_model`), parents flattened. */
 interface ParentModel {
@@ -117,7 +160,9 @@ const isSpriteParent = (p?: string) => !!p && /(^|[:/])(generated|handheld)$|bui
 
 function modelOf(f: ContentFile, key: ModelKey): Model | undefined {
   if (key === "arm") return f.states?.connect?.arm;
-  return f[key];
+  const state = stateModelOf(key);
+  if (state !== null) return f.states?.models?.[state];
+  return f[key as "model" | "item_model"];
 }
 
 function ensureModel(f: ContentFile, key: ModelKey): Model {
@@ -126,8 +171,17 @@ function ensureModel(f: ContentFile, key: ModelKey): Model {
     f.states.connect ??= { arm: {} };
     return f.states.connect.arm;
   }
-  return (f[key] ??= {});
+  const state = stateModelOf(key);
+  if (state !== null) {
+    f.states ??= {};
+    f.states.models ??= {};
+    return (f.states.models[state] ??= {});
+  }
+  return (f[key as "model" | "item_model"] ??= {});
 }
+
+/** Every model of the file: the block's or item's, the item form's, the arm, the state models. */
+const allModels = (f: ContentFile): (Model | undefined)[] => [f.model, f.item_model, f.states?.connect?.arm, ...Object.values(f.states?.models ?? {})];
 
 function resolve(model: Model | undefined, kind: "block" | "item", parents: Record<string, ParentModel | null>): Resolved {
   const m = model ?? {};
@@ -166,6 +220,16 @@ function resolve(model: Model | undefined, kind: "block" | "item", parents: Reco
   return { elements: [], textures: resolved, slots, own: !parent, display };
 }
 
+/** What's picked in the outliner's States. */
+interface StateSel {
+  kind: "property" | "model" | "variant";
+  /** The property's, model's name; the variant's key. */
+  key: string;
+}
+
+/** What the picked item is, for Properties' object line (translated). */
+const STATE_SEL_TYPES: Record<StateSel["kind"], string> = { property: "State Property", model: "State Model", variant: "Variant" };
+
 /** A texture as loaded: its image, and whether it's the mod's own file (paintable in place). */
 type LoadedTexture = TextureSource & { writable: boolean };
 
@@ -186,7 +250,7 @@ const layerIndex = (slot: string) => Number(LAYER.exec(slot)?.[1] ?? -1);
 /** Every texture value the file's models name. */
 function namedTextures(f: ContentFile): Set<string> {
   const out = new Set<string>();
-  for (const m of [f.model, f.item_model, f.states?.connect?.arm]) for (const v of Object.values(m?.textures ?? {})) out.add(v);
+  for (const m of allModels(f)) for (const v of Object.values(m?.textures ?? {})) out.add(v);
   return out;
 }
 
@@ -232,9 +296,12 @@ const ARM_TEMPLATE = (texture: string): Model => ({
  * Blender-like view (Viewport), an outliner of its elements, its properties
  * (the block/item metadata, the model, the selected element and face, display
  * transforms, block states) in a Properties grid, and a UV editor for the
- * selected face. Every edit rewrites the file (formatted) through `onChange`
- * — dirty state, Save and external reload as for any file; undo/redo steps
- * over the file's text; F7 opens the JSON.
+ * selected face. A block's states — its own properties, its state models and
+ * the variants picking them — are listed under the elements; the toolbar's
+ * State picks the state the view shows (its model, turned as it stands).
+ * Every edit patches the file's text through `onChange` (what didn't change,
+ * comments too, stays as written) — dirty state, Save and external reload as
+ * for any file; undo/redo steps over the file's text; F7 opens the JSON.
  */
 export function ContentEditor({ path, content, onChange, readOnly, contentVersion }: EditorProps) {
   const t = useT();
@@ -251,6 +318,11 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
   const [grid, setGrid] = useState(true);
   const [displaySlot, setDisplaySlot] = useState<DisplaySlot | "">("");
   const [variant, setVariant] = useState(0);
+  /** The block state the view shows (`null`: the model as it is, unturned) — its values over the default state's. */
+  const [previewState, setPreviewState] = useState<BlockState | null>(null);
+  /** What's picked in the outliner's States: a property, a state model or a variant. */
+  const [stateSel, setStateSel] = useState<StateSel | null>(null);
+  const stateMenu = useContextMenu<void>();
   const [viewRequest, setViewRequest] = useState<{ view: ViewName; key: number } | null>(null);
   const [images, setImages] = useState<Record<string, LoadedTexture | undefined>>({});
   const [parents, setParents] = useState<Record<string, ParentModel | null>>({});
@@ -286,6 +358,26 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
   const sel = selected !== null && selected < elements.length ? selected : null;
   const selEl = sel !== null ? elements[sel] : undefined;
 
+  // Block states: every property, the state shown, what's picked.
+  const states = file.states;
+  const stateProps = useMemo(() => (kind === "block" ? stateProperties(states) : []), [kind, states]);
+  const shownState = useMemo<BlockState | null>(() => {
+    if (!previewState || !stateProps.length) return null;
+    const st = defaultState(stateProps);
+    for (const p of stateProps) if (previewState[p.name] !== undefined && p.values.includes(previewState[p.name])) st[p.name] = previewState[p.name];
+    return st;
+  }, [previewState, stateProps]);
+  const shownVariant = useMemo(() => (shownState ? variantOf(states, shownState) : null), [shownState, states]);
+  /** The model a variant's first model name is (the block's own when it names none or one that isn't there). */
+  const variantModelKey = (models: string[]): ModelKey => (models[0] && states?.models?.[models[0]] ? stateModelKey(models[0]) : "model");
+  const pickedState: StateSel | null =
+    stateSel &&
+    ((stateSel.kind === "property" && states?.properties?.[stateSel.key]) ||
+      (stateSel.kind === "model" && states?.models?.[stateSel.key]) ||
+      (stateSel.kind === "variant" && states?.variants && stateSel.key in states.variants))
+      ? stateSel
+      : null;
+
   // ── Edits — Undo/Redo are the platform's (`documentHistory`): the file's
   // text is recorded as it changes, painted pixels and animations as steps.
 
@@ -315,7 +407,7 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
       if (readOnly || !parsed.ok) return;
       const draft = clone(parsed.file);
       edit(draft);
-      const text = serializeContent(draft);
+      const text = patchContent(contentRef.current, draft);
       if (text === contentRef.current) return;
       onChange(text);
     },
@@ -385,7 +477,7 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
 
   const rawParents = useMemo(() => {
     const ids = new Set<string>();
-    for (const m of [file.model, file.item_model, file.states?.connect?.arm]) if (m?.parent && !templateOf(m.parent)) ids.add(m.parent);
+    for (const m of allModels(file)) if (m?.parent && !templateOf(m.parent)) ids.add(m.parent);
     return [...ids];
   }, [file]);
   useEffect(() => {
@@ -509,7 +601,8 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
   // ── What the view draws ───────────────────────────────────────────────────
 
   const rotations = file.states?.rotations ?? [];
-  const rot = effectiveKey === "model" ? rotations[variant] : undefined;
+  const turnsWithState = effectiveKey === "model" || stateModelOf(effectiveKey) !== null;
+  const rot = shownVariant && turnsWithState ? shownVariant : effectiveKey === "model" ? rotations[variant] : undefined;
   const parts = useMemo<Part[]>(() => {
     const own: Part = {
       elements: resolved.elements,
@@ -532,6 +625,7 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
   const onSelect = useCallback((el: number | null, f: Dir | null) => {
     setSelected(el);
     setFace(f);
+    if (el !== null) setStateSel(null);
   }, []);
 
   const onTransform = useCallback(
@@ -580,8 +674,9 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
   const newTexturePath = (slot: string): string => {
     const stem = (stemOf(path) || "texture").toLowerCase().replace(/[^a-z0-9_.-]/g, "_");
     const folder = modelKind === "item" || resolved.sprite ? "item" : "block";
-    const several = paintSlots.length > 1 || effectiveKey === "arm";
-    const base = `${folder}/${stem}${several ? `_${slot}` : ""}`;
+    const state = stateModelOf(effectiveKey);
+    const several = paintSlots.length > 1 || effectiveKey === "arm" || state !== null;
+    const base = `${folder}/${stem}${state !== null ? `_${state}` : ""}${several ? `_${slot}` : ""}`;
     const taken = new Set([...choices.textures, ...Object.keys(editedRef.current), ...named]);
     let value = `${base}.png`;
     for (let n = 2; taken.has(value); n++) value = `${base}_${n}.png`;
@@ -595,7 +690,7 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
       const draft = clone(file);
       const m = ensureModel(draft, effectiveKey);
       m.textures = { ...(m.textures ?? {}), [slot]: key };
-      onChange(serializeContent(draft));
+      onChange(patchContent(contentRef.current, draft));
       setEditedImages({ [key]: img });
       pixelStep(key, null, img);
     });
@@ -840,6 +935,109 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
     if (slot) update((d) => void (ensureModel(d, effectiveKey).textures = { ...(ensureModel(d, effectiveKey).textures ?? {}), [slot]: "minecraft:block/stone" }));
   };
 
+  // ── Block states ──────────────────────────────────────────────────────────
+
+  /** Edits `states` (made if missing; emptied parts and an empty `states` removed). */
+  const editStates = (edit: (st: States, d: ContentFile) => void) =>
+    update((d) => {
+      d.states ??= {};
+      edit(d.states, d);
+      for (const k of ["properties", "models", "variants"] as const) if (d.states[k] && !Object.keys(d.states[k]!).length) delete d.states[k];
+      if (d.block && !Object.values(d.block).some((x) => x !== undefined)) delete d.block;
+      if (!Object.values(d.states).some((x) => x !== undefined)) delete d.states;
+    });
+
+  /** Shows state `st` (`null`: the model as it is) and edits the model it shows. */
+  const showState = (st: BlockState | null) => {
+    setPreviewState(st);
+    if (!st) return;
+    const key = variantModelKey(variantOf(states, { ...defaultState(stateProps), ...st }).models);
+    if (key !== effectiveKey) {
+      setModelKey(key);
+      setSelected(null);
+      setFace(null);
+    }
+  };
+
+  const pickState = (picked: StateSel) => {
+    setStateSel(picked);
+    setSelected(null);
+    setFace(null);
+    if (picked.kind === "model") {
+      setModelKey(stateModelKey(picked.key));
+      if (shownVariant && variantModelKey(shownVariant.models) !== stateModelKey(picked.key)) setPreviewState(null);
+    } else if (picked.kind === "variant") {
+      // The state it's for: its conditions over the default state.
+      showState(Object.fromEntries(parseVariantKey(picked.key)));
+    }
+  };
+
+  const stateModelNames = Object.keys(states?.models ?? {});
+
+  const addStateProperty = async () => {
+    const name = await promptDialog({
+      title: t("Add State Property"),
+      message: t("A property of the block's states, yes/no to start with — make it a number range or a list of values in Properties."),
+      label: t("Name"),
+      defaultValue: freeName("powered", stateProps.map((p) => p.name)),
+      confirmLabel: t("Add"),
+      validate: (v) => {
+        const problem = propertyNameProblem(v, stateProps.map((p) => p.name));
+        return problem && t(problem);
+      },
+    });
+    if (!name) return;
+    editStates((st) => void (st.properties = { ...(st.properties ?? {}), [name]: [...YES_NO] }));
+    pickState({ kind: "property", key: name });
+  };
+
+  /** A new state model, a copy of the block's model; edited in the view next. */
+  const addStateModel = async () => {
+    const name = await promptDialog({
+      title: t("Add State Model"),
+      message: t("Another model of the block, for the states its variants pick. It starts as a copy of the block's model."),
+      label: t("Name"),
+      defaultValue: freeName("variant", stateModelNames),
+      confirmLabel: t("Add"),
+      validate: (v) => (!isWord(v) ? t("Lowercase letters, digits and _.") : stateModelNames.includes(v) ? t("The block already has a model of this name.") : null),
+    });
+    if (!name) return;
+    editStates((st) => void (st.models = { ...(st.models ?? {}), [name]: stateModelFrom(file.model) }));
+    pickState({ kind: "model", key: name });
+  };
+
+  /** A new variant for the first condition none has yet; a state model made for it if there's none. */
+  const addVariant = () => {
+    const key = newVariantKey(states ?? {});
+    if (key === null) {
+      notify({ level: "info", message: t("Every property's value already has a variant — edit their conditions in Properties.") });
+      return;
+    }
+    const current = stateModelOf(effectiveKey);
+    const name = current ?? stateModelNames[0] ?? "variant";
+    editStates((st) => {
+      if (!st.models?.[name]) st.models = { ...(st.models ?? {}), [name]: stateModelFrom(file.model) };
+      st.variants = { ...(st.variants ?? {}), [key]: name };
+    });
+    setStateSel({ kind: "variant", key });
+    setPreviewState(Object.fromEntries(parseVariantKey(key)));
+    setModelKey(stateModelKey(name));
+    setSelected(null);
+    setFace(null);
+  };
+
+  const removeStateItem = (picked: StateSel) => {
+    editStates((st, d) => {
+      if (picked.kind === "property") removeProperty(st, d.block, picked.key);
+      else if (picked.kind === "model") removeModel(st, picked.key);
+      else if (st.variants) delete st.variants[picked.key];
+    });
+    if (picked.kind === "model" && effectiveKey === stateModelKey(picked.key)) setModelKey("model");
+    setStateSel(null);
+  };
+
+  const moveStateVariant = (key: string, by: -1 | 1) => editStates((st) => moveVariant(st, key, by));
+
   const viewCode = () => {
     const tab = tabs.find((x) => x.path === path);
     if (tab) void setView(tab.id, CONTENT_SOURCE_VIEW);
@@ -877,9 +1075,11 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
       setFace(null);
     });
   };
-  const commands = useRef({ deleteElement, duplicateElement, copyElement, pasteElement, sel, elements });
-  commands.current = { deleteElement, duplicateElement, copyElement, pasteElement, sel, elements };
-  useKeybinding("Delete", () => commands.current.deleteElement(), { when: editable });
+  /** Deletes the picked element, else the picked property, state model or variant. */
+  const deleteSelected = () => (sel === null && pickedState ? removeStateItem(pickedState) : deleteElement());
+  const commands = useRef({ deleteElement, deleteSelected, duplicateElement, copyElement, pasteElement, sel, elements });
+  commands.current = { deleteElement, deleteSelected, duplicateElement, copyElement, pasteElement, sel, elements };
+  useKeybinding("Delete", () => commands.current.deleteSelected(), { when: editable });
   useKeybinding("Ctrl+C", () => void commands.current.copyElement(), { when: editable });
   useKeybinding("Ctrl+X", () => void commands.current.copyElement().then((ok) => ok && commands.current.deleteElement()), { when: editable });
   useKeybinding("Ctrl+V", () => void commands.current.pasteElement(), { when: editable });
@@ -1308,6 +1508,168 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
       );
     }
 
+    // The property, state model or variant picked in the outliner.
+    if (kind === "block" && pickedState && states) {
+      const key = pickedState.key;
+      if (pickedState.kind === "property") {
+        const c = `${t("State Property")}: ${key}`;
+        const values = states.properties![key];
+        const pk = propertyKind(values);
+        const setValues = (next: string[]) => editStates((st) => void (st.properties![key] = next));
+        const nums = values.map(Number);
+        const min = Math.min(...nums);
+        const max = Math.max(...nums);
+        out.push(
+          text("sp.name", t("Name"), c, key, (v) => {
+            if (!v || v === key) return;
+            editStates((st, d) => renameProperty(st, d.block, key, v));
+            setStateSel({ kind: "property", key: v });
+          }, {
+            validate: (v) => {
+              const name = String(v).trim();
+              const problem = name === key ? null : propertyNameProblem(name, stateProps.map((p) => p.name));
+              return problem && t(problem);
+            },
+            description: t("Renaming it renames it in the variants and in Powered/Comparator Property too."),
+          }),
+          {
+            id: "sp.kind",
+            name: t("Kind"),
+            category: c,
+            value: pk,
+            kind: "enum",
+            options: PROPERTY_KINDS,
+            optionLabel: (o) => t(PROPERTY_KIND_LABELS[o as PropertyKind]),
+            readOnly: ro,
+            description: t("Yes/No: false, true. Number Range: whole numbers from one to another. Values: names of your own."),
+            onCommit: (v) => {
+              if (v === pk) return;
+              if (v === "bool") setValues([...YES_NO]);
+              else if (v === "range") setValues(rangeValues(0, Math.max(1, values.length - 1)));
+              else setValues(pk === "bool" ? ["off", "on"] : values.map((x) => `n${x}`));
+            },
+          }
+        );
+        if (pk === "range") {
+          out.push(
+            num("sp.min", t("Minimum"), c, min, (v) => v !== undefined && v < max && setValues(rangeValues(v, max, values[0])), { min: 0, max: max - 1, int: true }),
+            num("sp.max", t("Maximum"), c, max, (v) => v !== undefined && v > min && setValues(rangeValues(min, v, values[0])), { min: min + 1, int: true })
+          );
+        } else if (pk === "values") {
+          out.push(
+            text("sp.values", t("Values"), c, values.join(", "), (v) => {
+              const next = (v ?? "").split(",").map((x) => x.trim()).filter(Boolean);
+              if (!valuesProblem(next)) setValues(next);
+            }, {
+              validate: (v) => {
+                const problem = valuesProblem(String(v).split(",").map((x) => x.trim()).filter(Boolean));
+                return problem && t(problem);
+              },
+              description: t("Its values, comma-separated: lowercase letters, digits and _. The first is the default."),
+            })
+          );
+        }
+        out.push({
+          id: "sp.default",
+          name: t("Default"),
+          category: c,
+          value: values[0],
+          kind: "enum",
+          options: pk === "range" ? [...values].sort((a, b) => Number(a) - Number(b)) : values,
+          readOnly: ro,
+          description: pk === "bool" ? t("The value a placed block starts with. Powered and Comparator Property need false.") : t("The value a placed block starts with."),
+          onCommit: (v) => setValues(withDefault(values, String(v))),
+        });
+      } else if (pickedState.kind === "model") {
+        const c = `${t("State Model")}: ${key}`;
+        const users = Object.entries(states.variants ?? {})
+          .filter(([, v]) => modelNames(v).includes(key))
+          .map(([k]) => k || t("Every state"));
+        out.push(
+          text("sm.name", t("Name"), c, key, (v) => {
+            if (!v || v === key) return;
+            editStates((st) => renameModel(st, key, v));
+            setStateSel({ kind: "model", key: v });
+            if (effectiveKey === stateModelKey(key)) setModelKey(stateModelKey(v));
+          }, {
+            validate: (v) => {
+              const name = String(v).trim();
+              if (name === key) return null;
+              return !isWord(name) ? t("Lowercase letters, digits and _.") : stateModelNames.includes(name) ? t("The block already has a model of this name.") : null;
+            },
+            description: t("Renaming it renames it in the variants too."),
+          }),
+          {
+            id: "sm.users",
+            name: t("Used By"),
+            category: c,
+            value: users.join("; ") || t("No variant — add one that picks it."),
+            kind: "string",
+            readOnly: true,
+          }
+        );
+      } else {
+        const c = t("Variant");
+        const when = Object.fromEntries(parseVariantKey(key));
+        const problems = variantProblems(states, key);
+        const setWhen = (name: string, value: string | undefined): string | void => {
+          const next = variantKey({ ...when, [name]: value ?? "" }, stateProps);
+          if (next === key) return;
+          if (states.variants && next in states.variants) return t("Another variant has these conditions.");
+          editStates((st) => void setVariantKey(st, key, next));
+          setStateSel({ kind: "variant", key: next });
+          setPreviewState(Object.fromEntries(parseVariantKey(next)));
+        };
+        for (const p of stateProps) {
+          out.push({
+            id: `sv.when.${p.name}`,
+            name: p.name,
+            category: c,
+            value: when[p.name] ?? "",
+            kind: "enum",
+            options: ["", ...p.values],
+            optionLabel: (o) => (o ? o : t("Any")),
+            readOnly: ro,
+            description: t("The value the state must have for this variant to show — Any: whatever it is."),
+            onCommit: (v) => setWhen(p.name, String(v) || undefined),
+          });
+        }
+        out.push(
+          list("sv.models", t("Models"), c, modelNames(states.variants![key]), (v) => {
+            if (v?.length) editStates((st) => void (st.variants![key] = modelNamesValue(v)));
+          }, {
+            suggestions: stateModelNames,
+            validate: (v) => {
+              const names = String(v).split(",").map((x) => x.trim()).filter(Boolean);
+              if (!names.length) return t("A model name, or a list of them.");
+              const missing = names.find((n) => !states.models?.[n]);
+              return missing ? t("{name}: not in the state models", { name: missing }) : null;
+            },
+            description: t("The state model it shows; several, comma-separated, are picked at random per position. Turning for Facing and Attaches is added."),
+          }),
+          {
+            id: "sv.shown",
+            name: t("Shown For"),
+            category: c,
+            value: t("{n} of {total} states", { n: statesShowing(states, key), total: stateCount(stateProps) }),
+            kind: "string",
+            readOnly: true,
+            description: t("The states it's the first match for — a variant above it that matches too wins."),
+          }
+        );
+        if (problems.length) {
+          out.push({
+            id: "sv.problems",
+            name: t("Problems"),
+            category: c,
+            value: problems.map((x) => t(x.message, x.params)).join("; "),
+            kind: "string",
+            readOnly: true,
+          });
+        }
+      }
+    }
+
     // The model.
     const mc = t("Model");
     const setM = (edit: (m: Model) => void) => update((d) => edit(ensureModel(d, effectiveKey)));
@@ -1434,10 +1796,15 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
         );
       }
     }
+    // A picked property, state model or variant is the object shown: its rows (a model's with its model's).
+    if (kind === "block" && pickedState && states) {
+      const file = new Set([t("General"), t("Block"), t("Item"), t("States")]);
+      return out.filter((r) => !file.has(r.category ?? "") && (pickedState.kind === "model" || /^s[pmv]\./.test(r.id)));
+    }
     return out;
     // `t` and the helpers read fresh state each render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [file, kind, model, resolved, mainResolved, shownImages, choices, displaySlot, selEl, sel, face, readOnly, effectiveKey, modelKind, modelKey]);
+  }, [file, kind, model, resolved, mainResolved, shownImages, choices, displaySlot, selEl, sel, face, readOnly, effectiveKey, modelKind, modelKey, pickedState, stateProps]);
 
   // ── Layout ────────────────────────────────────────────────────────────────
 
@@ -1455,7 +1822,11 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
     modelChoices.push({ value: "item_model", label: file.item_model ? t("Item Model") : t("Item Model (add)") });
     if (file.states?.connect) modelChoices.push({ value: "arm", label: t("Connection Arm") });
   }
+  for (const n of kind === "block" ? stateModelNames : []) modelChoices.push({ value: stateModelKey(n), label: t("State Model: {name}", { name: n }) });
   const pickModel = (v: ModelKey) => {
+    if (shownVariant && variantModelKey(shownVariant.models) !== v) setPreviewState(null);
+    const state = stateModelOf(v);
+    setStateSel(state !== null ? { kind: "model", key: state } : null);
     if (v === "item_model" && !file.item_model) update((d) => void (d.item_model = { parent: "generated", textures: { layer0: mainResolved.textures[mainResolved.slots[0]] ?? "minecraft:item/apple" } }));
     setModelKey(v);
     setSelected(null);
@@ -1603,6 +1974,125 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
     </>
   );
 
+  // The block's states: its properties, its other models, which state shows which.
+  const builtInOption: Record<string, string> = { facing: t("Facing"), face: t("Attaches"), waterlogged: t("Waterloggable") };
+  const isPicked = (what: StateSel["kind"], key: string) => pickedState?.kind === what && pickedState.key === key;
+  const pickedVariant = pickedState?.kind === "variant" ? pickedState.key : null;
+  const variantKeys = Object.keys(states?.variants ?? {});
+  const statesPanel = kind === "block" && (
+    <>
+      <div className="content-pane-header">
+        <span>{t("State Properties")}</span>
+        <Spacer />
+        <IconButton title={t("Add State Property")} disabled={readOnly} onClick={() => void addStateProperty()}>
+          <Icon name="plus" />
+        </IconButton>
+        <IconButton title={t("Remove State Property")} disabled={readOnly || pickedState?.kind !== "property"} onClick={() => pickedState && removeStateItem(pickedState)}>
+          <Icon name="trash" />
+        </IconButton>
+      </div>
+      <ul className="content-elements" role="listbox" aria-label={t("State Properties")}>
+        {stateProps.map((p) => {
+          const pk = propertyKind(p.values);
+          const summary = pk === "bool" ? t("yes/no") : pk === "range" ? `${Math.min(...p.values.map(Number))}–${Math.max(...p.values.map(Number))}` : p.values.join(", ");
+          return p.own ? (
+            <li key={p.name} role="option" aria-selected={isPicked("property", p.name)} className={isPicked("property", p.name) ? "selected" : undefined} title={p.values.join(", ")} onClick={() => pickState({ kind: "property", key: p.name })}>
+              <Icon name="list" size={13} />
+              <span className="content-element-name">{p.name}</span>
+              <span className="content-element-size content-state-values">{summary}</span>
+            </li>
+          ) : (
+            <li key={p.name} className="content-state-builtin" title={t("Made by {option} — set it in Properties.", { option: builtInOption[p.name] })}>
+              <Icon name="settings" size={13} />
+              <span className="content-element-name">{p.name}</span>
+              <span className="content-element-size content-state-values">{summary}</span>
+            </li>
+          );
+        })}
+      </ul>
+      {!stateProps.length && <p className="content-note">{t("One state only. Set Facing, Attaches or Waterloggable in Properties, or add a property of the block's own.")}</p>}
+      <div className="content-pane-header">
+        <span>{t("State Models")}</span>
+        <Spacer />
+        <IconButton title={t("Add State Model")} disabled={readOnly} onClick={() => void addStateModel()}>
+          <Icon name="plus" />
+        </IconButton>
+        <IconButton title={t("Remove State Model")} disabled={readOnly || pickedState?.kind !== "model"} onClick={() => pickedState && removeStateItem(pickedState)}>
+          <Icon name="trash" />
+        </IconButton>
+      </div>
+      <ul className="content-elements" role="listbox" aria-label={t("State Models")}>
+        {stateModelNames.map((n) => (
+          <li key={n} role="option" aria-selected={isPicked("model", n)} className={isPicked("model", n) ? "selected" : undefined} onClick={() => pickState({ kind: "model", key: n })}>
+            <Icon name={effectiveKey === stateModelKey(n) ? "check" : "grid"} size={13} />
+            <span className="content-element-name">{n}</span>
+          </li>
+        ))}
+      </ul>
+      <div className="content-pane-header">
+        <span>{t("Variants")}</span>
+        <Spacer />
+        <IconButton title={t("Add Variant")} disabled={readOnly || !stateProps.length} onClick={addVariant}>
+          <Icon name="plus" />
+        </IconButton>
+        <IconButton title={t("Move Up")} disabled={readOnly || !pickedVariant || variantKeys.indexOf(pickedVariant) <= 0} onClick={() => pickedVariant !== null && moveStateVariant(pickedVariant, -1)}>
+          <Icon name="arrowUp" />
+        </IconButton>
+        <IconButton
+          title={t("Move Down")}
+          disabled={readOnly || pickedVariant === null || variantKeys.indexOf(pickedVariant) >= variantKeys.length - 1}
+          onClick={() => pickedVariant !== null && moveStateVariant(pickedVariant, 1)}
+        >
+          <Icon name="arrowDown" />
+        </IconButton>
+        <IconButton title={t("Remove Variant")} disabled={readOnly || pickedVariant === null} onClick={() => pickedState && removeStateItem(pickedState)}>
+          <Icon name="trash" />
+        </IconButton>
+      </div>
+      <ul className="content-elements" role="listbox" aria-label={t("Variants")}>
+        {variantKeys.map((k) => {
+          const problems = variantProblems(states!, k).map((x) => t(x.message, x.params));
+          if (!problems.length && !statesShowing(states!, k)) problems.push(t("Never shown: a variant above it matches every state it would."));
+          return (
+            <li
+              key={k}
+              role="option"
+              aria-selected={isPicked("variant", k)}
+              className={isPicked("variant", k) ? "selected" : undefined}
+              title={problems.length ? problems.join("\n") : undefined}
+              onClick={() => pickState({ kind: "variant", key: k })}
+            >
+              <Icon name={problems.length ? "warning" : shownVariant?.key === k ? "preview" : "split"} size={13} />
+              <span className="content-element-name">{k || t("Every state")}</span>
+              <span className="content-element-size content-state-values">{modelNames(states!.variants![k]).join(", ")}</span>
+            </li>
+          );
+        })}
+      </ul>
+      {stateProps.length > 0 && !variantKeys.length && <p className="content-note">{t("Every state shows the block's model. Add a variant to show another model in some states.")}</p>}
+    </>
+  );
+
+  // The state the view shows: each property's value, and what that shows.
+  const shownModel = shownVariant ? (shownVariant.models.length ? shownVariant.models.join(" | ") : t("the block's model")) : "";
+  const stateLabel = shownState ? `${t("State")}: ${stateProps.map((p) => `${p.name}=${shownState[p.name]}`).join(", ")}` : t("No State");
+  const stateMenuItems: ContextMenuItem[] = [
+    { label: t("No State — the Model Unturned"), checked: !shownState, onSelect: () => showState(null) },
+    { label: t("Default State"), onSelect: () => showState(defaultState(stateProps)) },
+    ...stateProps.map((p, i) => ({
+      label: shownState ? `${p.name} = ${shownState[p.name]}` : p.name,
+      separatorBefore: i === 0,
+      submenu: p.values.map((v) => ({
+        label: v,
+        checked: shownState?.[p.name] === v,
+        onSelect: () => showState({ ...(shownState ?? defaultState(stateProps)), [p.name]: v }),
+      })),
+    })),
+    ...(shownVariant
+      ? [{ label: t("Shows {model}, turned x {x}° y {y}°", { model: shownModel, x: shownVariant.x, y: shownVariant.y }), disabled: true, separatorBefore: true }]
+      : []),
+  ];
+
   // What Properties shows while this editor is active: the selected
   // element (or the file's own fields), the face's UV under them.
   const uvRow: PropertyDescriptor | null =
@@ -1635,10 +2125,15 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
         }
       : null;
   usePropertyContext(path, {
-    order: "sorted",
-    objectName: selEl ? (selEl.name ?? `${t("Element")} ${(sel ?? 0) + 1}`) : (file.name ?? path.split(/[\\/]/).pop()),
-    objectType: selEl ? t("Element") : kind === "block" ? t("Block") : t("Item"),
-    objectKey: `${effectiveKey}:${sel ?? "-"}:${face ?? "-"}`,
+    // A picked property's or variant's rows as declared: name, kind, values; conditions, models.
+    order: pickedState && !selEl ? "declared" : "sorted",
+    objectName: selEl
+      ? (selEl.name ?? `${t("Element")} ${(sel ?? 0) + 1}`)
+      : pickedState
+        ? pickedState.key || t("Every state")
+        : (file.name ?? path.split(/[\\/]/).pop()),
+    objectType: selEl ? t("Element") : pickedState ? t(STATE_SEL_TYPES[pickedState.kind]) : kind === "block" ? t("Block") : t("Item"),
+    objectKey: `${effectiveKey}:${sel ?? "-"}:${face ?? "-"}:${pickedState ? `${pickedState.kind}:${pickedState.key}` : "-"}`,
     properties: uvRow ? [...properties, uvRow] : properties,
   });
 
@@ -1648,6 +2143,19 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
         <ToolbarGroup>
           <ToolbarSelect value={effectiveKey} options={modelChoices} onChange={(v) => pickModel(v as ModelKey)} />
         </ToolbarGroup>
+        {stateProps.length > 0 && (
+          <ToolbarGroup>
+            <ToolbarButton
+              icon="preview"
+              label={stateLabel.length > 48 ? `${stateLabel.slice(0, 47)}…` : stateLabel}
+              tooltip={shownVariant ? `${stateLabel}\n${t("Shows {model}, turned x {x}° y {y}°", { model: shownModel, x: shownVariant.x, y: shownVariant.y })}` : t("The block state the view shows: the model its variant picks, turned as the block stands")}
+              showLabel
+              dropdown
+              onClick={(e) => stateMenu.openAtPoint(undefined, belowButton(e))}
+            />
+            <ContextMenu target={stateMenu.target} items={stateMenuItems} onClose={stateMenu.close} />
+          </ToolbarGroup>
+        )}
         <ToolbarGroup>
           <ToolbarModes
             showLabels
@@ -1705,6 +2213,7 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
           {paintPanel}
           {layersPanel}
           {elementsPanel}
+          {statesPanel}
         </div>
         <div className="content-center">
           {paintOn && (

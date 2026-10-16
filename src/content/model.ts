@@ -2,7 +2,7 @@
 // editor sees it: types, Minecraft's constraints, the templates' geometry,
 // face UVs, display defaults, and the file's text form.
 
-import { DataSyntaxError, parseDataValue } from "../data/yogData";
+import { DataSyntaxError, parseDataValue, patchDataText } from "../data/yogData";
 
 export type Dir = "down" | "up" | "north" | "south" | "west" | "east";
 export const DIRS: Dir[] = ["down", "up", "north", "south", "west", "east"];
@@ -124,6 +124,10 @@ export interface ContentFile {
     uvlock?: boolean;
     /** Its own properties: name → values, the first the default. */
     properties?: Record<string, string[]>;
+    /** More models, by name, for `variants`. */
+    models?: Record<string, Model>;
+    /** Conditions (`"energized=true,facing=up"`) → a name in `models`, or several picked at random; the first that matches wins. */
+    variants?: Record<string, string | string[]>;
   };
   [key: string]: unknown;
 }
@@ -303,6 +307,16 @@ const round = (n: number) => Math.round(n * 10000) / 10000;
 
 /** The file's text: two-space indent, short arrays/objects of scalars on one line (`"uv": [0, 0, 16, 16]`). */
 export function serializeContent(file: ContentFile): string {
+  return `${formatContentValue(file, 0)}\n`;
+}
+
+/** `text` holding `file`: what changed rewritten as `serializeContent` writes it, the rest — comments too — as it was. */
+export function patchContent(text: string, file: ContentFile): string {
+  return patchDataText(text, file, formatContentValue);
+}
+
+/** A value as the file's text writes it at indent `level` (two spaces each). */
+function formatContentValue(value: unknown, level: number): string {
   const scalar = (v: unknown): string | null => {
     if (v === null) return "null";
     if (typeof v === "number") return String(round(v));
@@ -341,7 +355,7 @@ export function serializeContent(file: ContentFile): string {
     const entries = Object.entries(v as object).filter(([, x]) => x !== undefined);
     return `{\n${entries.map(([k, x]) => `${pad}${JSON.stringify(k)}: ${write(x, indent + 1)}`).join(",\n")}\n${end}}`;
   };
-  return `${write(file, 0)}\n`;
+  return write(value, level);
 }
 
 /** A deep copy (files are plain JSON). */
