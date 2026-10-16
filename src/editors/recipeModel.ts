@@ -17,7 +17,7 @@ export const isCooking = (type: string): type is CookingType => type in COOKING;
 export const SMITHING = ["template", "base", "addition"] as const;
 export type SmithingPart = (typeof SMITHING)[number];
 
-export type RecipeType = "shaped" | "shapeless" | CookingType | "stonecutting" | "smithing";
+export type RecipeType = "shaped" | "shapeless" | CookingType | "stonecutting" | "smithing" | "brewing";
 
 export interface Recipe {
   type: RecipeType;
@@ -28,16 +28,18 @@ export interface Recipe {
   /** Cooking only. */
   experience: number;
   cookTime: number;
+  /** Brewing only: potion already in the bottle. */
+  from: string;
   /** Keys the editor doesn't know (`id`, `$schema`, ...), written back as they were. */
   extra: Record<string, unknown>;
 }
 
 export const GRID = 9;
 const DEFAULT_EXPERIENCE = 0.1;
-const KNOWN = new Set(["type", "pattern", "key", "ingredients", "ingredient", "result", "count", "experience", "cook_time", ...SMITHING]);
+const KNOWN = new Set(["type", "pattern", "key", "ingredients", "ingredient", "result", "from", "count", "experience", "cook_time", ...SMITHING]);
 
 export function emptyRecipe(): Recipe {
-  return { type: "shaped", cells: Array(GRID).fill(null), result: "", count: 1, experience: DEFAULT_EXPERIENCE, cookTime: COOKING.smelting, extra: {} };
+  return { type: "shaped", cells: Array(GRID).fill(null), result: "", count: 1, experience: DEFAULT_EXPERIENCE, cookTime: COOKING.smelting, from: "", extra: {} };
 }
 
 const str = (v: unknown) => (typeof v === "string" ? v : null);
@@ -46,8 +48,7 @@ const num = (v: unknown, fallback: number) => (typeof v === "number" && Number.i
 /** A reference as the editor shows it: `@item:x` → `x`, `@tag:item:x` → `#x`. */
 export function fromRef(s: string): string {
   if (s.startsWith("@tag:item:")) return `#${s.slice("@tag:item:".length)}`;
-  if (s.startsWith("@item:")) return s.slice("@item:".length);
-  if (s.startsWith("@block:")) return s.slice("@block:".length);
+  if (s.startsWith("@item:") || s.startsWith("@block:") || s.startsWith("@potion:")) return s.slice(s.indexOf(":") + 1);
   return s;
 }
 
@@ -55,6 +56,11 @@ export function fromRef(s: string): string {
 export function toRef(s: string): string {
   if (s.startsWith("#")) return `@tag:item:${s.slice(1)}`;
   return s.startsWith("@") ? s : `@item:${s}`;
+}
+
+/** A potion id as a Yog Data reference. */
+export function toPotionRef(s: string): string {
+  return s.startsWith("@potion:") ? s : `@potion:${s}`;
 }
 
 /** An ingredient (a reference or a list of them) as a cell: ids joined by ` | `. */
@@ -70,7 +76,7 @@ function ingredientOf(cell: string): string | string[] {
 }
 
 /** The recipe types the editor lays out; other kinds are edited as code. */
-export const EDITED_TYPES: readonly string[] = ["shaped", "shapeless", ...Object.keys(COOKING), "stonecutting", "smithing"];
+export const EDITED_TYPES: readonly string[] = ["shaped", "shapeless", ...Object.keys(COOKING), "stonecutting", "smithing", "brewing"];
 
 /** The cell the `index`-th place of a game kind's slot (`grid`, `input`, `template`…) is: the grid's by position, smithing's by part, else cell 0. */
 export function slotCell(slot: string, index: number): number {
@@ -93,6 +99,7 @@ export function parseRecipe(text: string): Recipe | null {
   const r = emptyRecipe();
   r.type = typeof o.type === "string" && EDITED_TYPES.includes(o.type) ? (o.type as RecipeType) : "shaped";
   r.result = fromRef(str(o.result) ?? "");
+  r.from = fromRef(str(o.from) ?? "");
   r.count = Math.max(1, Math.min(64, Math.round(num(o.count, 1))));
   r.experience = num(o.experience, DEFAULT_EXPERIENCE);
   r.cookTime = Math.round(num(o.cook_time, isCooking(r.type) ? COOKING[r.type] : COOKING.smelting));
@@ -164,7 +171,8 @@ export function serializeRecipe(r: Recipe): string {
   } else {
     out.ingredient = r.cells[0] ? ingredientOf(r.cells[0]) : "";
   }
-  out.result = r.result ? toRef(r.result) : "";
+  out.result = r.result ? (r.type === "brewing" ? toPotionRef(r.result) : toRef(r.result)) : "";
+  if (r.type === "brewing") out.from = r.from ? toPotionRef(r.from) : "";
   if (r.count !== 1) out.count = r.count;
   if (isCooking(r.type)) {
     if (r.experience !== DEFAULT_EXPERIENCE) out.experience = r.experience;
