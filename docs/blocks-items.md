@@ -293,8 +293,8 @@ fine). Items are references — `@item:minecraft:paper`, a tag
 how to write it. `yog build` checks every item a recipe names — the mod's
 own, Minecraft's on every version Yog supports, other mods' ids declared
 in `yog.toml` — and registers every recipe, no code needed. IDLE lays out
-shaped, shapeless and smelting recipes as a crafting table; other kinds
-open as code.
+the game's kinds (crafting, cooking, stonecutting, smithing) on their
+built-in layouts and the mod's own on theirs; other kinds open as a form.
 
 ### Recipe layouts (`.ylayout`)
 

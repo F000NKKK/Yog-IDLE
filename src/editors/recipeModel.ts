@@ -13,11 +13,15 @@ export const COOKING = { smelting: 200, blasting: 100, smoking: 100, campfire_co
 export type CookingType = keyof typeof COOKING;
 export const isCooking = (type: string): type is CookingType => type in COOKING;
 
-export type RecipeType = "shaped" | "shapeless" | CookingType | "stonecutting";
+/** A smithing recipe's ingredients, as the file names them, in the order its cells hold them. */
+export const SMITHING = ["template", "base", "addition"] as const;
+export type SmithingPart = (typeof SMITHING)[number];
+
+export type RecipeType = "shaped" | "shapeless" | CookingType | "stonecutting" | "smithing";
 
 export interface Recipe {
   type: RecipeType;
-  /** Shaped: the 3×3 grid, row by row (null = empty). Shapeless: up to 9 ingredients, in order. Cooking, stonecutting: cell 0. */
+  /** Shaped: the 3×3 grid, row by row (null = empty). Shapeless: up to 9 ingredients, in order. Cooking, stonecutting: cell 0. Smithing: cells 0–2, in `SMITHING`'s order. */
   cells: (string | null)[];
   result: string;
   count: number;
@@ -30,7 +34,7 @@ export interface Recipe {
 
 export const GRID = 9;
 const DEFAULT_EXPERIENCE = 0.1;
-const KNOWN = new Set(["type", "pattern", "key", "ingredients", "ingredient", "result", "count", "experience", "cook_time"]);
+const KNOWN = new Set(["type", "pattern", "key", "ingredients", "ingredient", "result", "count", "experience", "cook_time", ...SMITHING]);
 
 export function emptyRecipe(): Recipe {
   return { type: "shaped", cells: Array(GRID).fill(null), result: "", count: 1, experience: DEFAULT_EXPERIENCE, cookTime: COOKING.smelting, extra: {} };
@@ -66,7 +70,14 @@ function ingredientOf(cell: string): string | string[] {
 }
 
 /** The recipe types the editor lays out; other kinds are edited as code. */
-export const EDITED_TYPES: readonly string[] = ["shaped", "shapeless", ...Object.keys(COOKING), "stonecutting"];
+export const EDITED_TYPES: readonly string[] = ["shaped", "shapeless", ...Object.keys(COOKING), "stonecutting", "smithing"];
+
+/** The cell the `index`-th place of a game kind's slot (`grid`, `input`, `template`…) is: the grid's by position, smithing's by part, else cell 0. */
+export function slotCell(slot: string, index: number): number {
+  if (slot === "grid") return index;
+  const part = SMITHING.indexOf(slot as SmithingPart);
+  return part >= 0 ? part : 0;
+}
 
 /** The recipe in `text`, or `null` when it isn't one the editor lays out (not an object, another kind). */
 export function parseRecipe(text: string): Recipe | null {
@@ -97,6 +108,8 @@ export function parseRecipe(text: string): Recipe | null {
   } else if (r.type === "shapeless") {
     const list = Array.isArray(o.ingredients) ? o.ingredients.map(cellOf).filter((s): s is string => !!s) : [];
     list.slice(0, GRID).forEach((s, i) => (r.cells[i] = s));
+  } else if (r.type === "smithing") {
+    SMITHING.forEach((part, i) => (r.cells[i] = cellOf(o[part])));
   } else {
     r.cells[0] = cellOf(o.ingredient);
   }
@@ -143,6 +156,11 @@ export function serializeRecipe(r: Recipe): string {
     out.key = Object.fromEntries([...letters].map(([item, l]) => [l, ingredientOf(item)]));
   } else if (r.type === "shapeless") {
     out.ingredients = r.cells.filter((c): c is string => !!c).map(ingredientOf);
+  } else if (r.type === "smithing") {
+    SMITHING.forEach((part, i) => {
+      const c = r.cells[i];
+      out[part] = c ? ingredientOf(c) : "";
+    });
   } else {
     out.ingredient = r.cells[0] ? ingredientOf(r.cells[0]) : "";
   }

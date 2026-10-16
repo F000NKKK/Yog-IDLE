@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { customFrom, parseCustomRecipe, parseRecipe, serializeCustomRecipe, serializeRecipe, type RecipeKind } from "./recipeModel";
+import { customFrom, emptyRecipe, parseCustomRecipe, parseRecipe, serializeCustomRecipe, serializeRecipe, slotCell, type RecipeKind } from "./recipeModel";
 
 describe("recipeModel", () => {
   it("reads a shaped pattern into the grid and writes it back trimmed", () => {
@@ -38,7 +38,7 @@ describe("recipeModel", () => {
   it("isn't a recipe", () => {
     expect(parseRecipe("[1]")).toBeNull();
     expect(parseRecipe("{")).toBeNull();
-    expect(parseRecipe('{ type: "smithing" }'), "another kind: edited as code, never overwritten").toBeNull();
+    expect(parseRecipe('{ type: "brewing" }'), "another kind: edited as code, never overwritten").toBeNull();
   });
 
   it("reads and writes Yog Data references, alternatives kept", () => {
@@ -95,5 +95,59 @@ describe("the game's single-input kinds", () => {
     // Its own default time, not a furnace's — and not written back.
     expect(blast.cookTime).toBe(100);
     expect(serializeRecipe(blast)).not.toContain("cook_time");
+  });
+});
+
+describe("smithing", () => {
+  const text = `{
+    type: "smithing",
+    template: "@item:minecraft:netherite_upgrade_smithing_template",
+    base: "@item:minecraft:diamond_sword",
+    addition: ["@item:minecraft:netherite_ingot", "@tag:item:c:ingots/netherite"],
+    result: "@item:minecraft:netherite_sword",
+    id: "mymod:netherite_sword", group: "netherite", category: "equipment", requires: ["pehkui"],
+  }`;
+
+  it("reads template, base and addition into their cells, every other field kept", () => {
+    const r = parseRecipe(text)!;
+    expect(r.type).toBe("smithing");
+    expect(r.cells.slice(0, 3)).toEqual(["minecraft:netherite_upgrade_smithing_template", "minecraft:diamond_sword", "minecraft:netherite_ingot | #c:ingots/netherite"]);
+    expect(r.result).toBe("minecraft:netherite_sword");
+    const j = JSON.parse(serializeRecipe(r));
+    expect(j).toEqual({
+      id: "mymod:netherite_sword",
+      group: "netherite",
+      category: "equipment",
+      requires: ["pehkui"],
+      type: "smithing",
+      template: "@item:minecraft:netherite_upgrade_smithing_template",
+      base: "@item:minecraft:diamond_sword",
+      addition: ["@item:minecraft:netherite_ingot", "@tag:item:c:ingots/netherite"],
+      result: "@item:minecraft:netherite_sword",
+    });
+    expect(parseRecipe(serializeRecipe(r))).toEqual(r);
+  });
+
+  it("an edited part, a count and an emptied part go back to the file", () => {
+    const r = parseRecipe(text)!;
+    r.cells[slotCell("base", 0)] = "minecraft:diamond_axe";
+    r.cells[slotCell("template", 0)] = null;
+    r.count = 2;
+    const j = JSON.parse(serializeRecipe(r));
+    expect(j).toMatchObject({ template: "", base: "@item:minecraft:diamond_axe", count: 2 });
+    expect(j.ingredient).toBeUndefined();
+    expect(j.experience).toBeUndefined();
+  });
+
+  it("a new one from another kind keeps the result and starts empty", () => {
+    const r = { ...emptyRecipe(), type: "smithing" as const, result: "mymod:ruby_sword" };
+    const j = JSON.parse(serializeRecipe(r));
+    expect(j).toEqual({ type: "smithing", template: "", base: "", addition: "", result: "@item:mymod:ruby_sword" });
+    expect(j.pattern).toBeUndefined();
+  });
+
+  it("maps the game kinds' slots to cells", () => {
+    expect([slotCell("template", 0), slotCell("base", 0), slotCell("addition", 0)]).toEqual([0, 1, 2]);
+    expect([slotCell("grid", 4), slotCell("input", 0)]).toEqual([4, 0]);
   });
 });

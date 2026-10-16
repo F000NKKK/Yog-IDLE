@@ -80,26 +80,30 @@ fn ydefs(dir: &Path, out: &mut Vec<PathBuf>) {
 
 /// The game's kinds the recipe editor lays out — as books show them (their
 /// built-in layouts, or the mod's own `recipe_layout` for them): the
-/// crafting grid's 9 places (`grid`), a furnace's or a stonecutter's input.
+/// crafting grid's 9 places (`grid`), a furnace's or a stonecutter's input,
+/// a smithing table's template, base and addition.
 pub fn game_kinds(root: &Path) -> Vec<Kind> {
+    const GRID: &[(&str, u32)] = &[("grid", 9)];
+    const INPUT: &[(&str, u32)] = &[("input", 1)];
     let layouts = crate::mod_ui::recipe_layouts(root);
     let own: Vec<yog_book::layout::RecipeLayout> = layouts.iter().map(|(_, l)| l.clone()).collect();
     [
-        ("shaped", "grid", 9),
-        ("shapeless", "grid", 9),
-        ("smelting", "input", 1),
-        ("blasting", "input", 1),
-        ("smoking", "input", 1),
-        ("campfire_cooking", "input", 1),
-        ("stonecutting", "input", 1),
+        ("shaped", GRID),
+        ("shapeless", GRID),
+        ("smelting", INPUT),
+        ("blasting", INPUT),
+        ("smoking", INPUT),
+        ("campfire_cooking", INPUT),
+        ("stonecutting", INPUT),
+        ("smithing", &[("template", 1), ("base", 1), ("addition", 1)]),
     ]
         .into_iter()
-        .map(|(id, slot, max)| {
+        .map(|(id, slots)| {
             let file = layouts.iter().find(|(_, l)| l.kinds.iter().any(|k| k == id)).map(|(f, _)| f.clone()).unwrap_or_default();
             Kind {
                 id: id.to_string(),
                 file: String::new(),
-                slots: vec![Slot { name: slot.to_string(), max, required: true }],
+                slots: slots.iter().map(|&(name, max)| Slot { name: name.to_string(), max, required: true }).collect(),
                 values: Vec::new(),
                 layout: yog_book::layout::find(&own, id).map(|l| layout(root, &file, l.size, &l.parts)),
             }
@@ -246,9 +250,14 @@ mod tests {
         assert!(l.spots.iter().any(|s| matches!(s, Spot::Text { text, .. } if text == "{time} ticks")));
         assert!(l.file.ends_with("crusher_layout.yui"));
         let game = game_kinds(&dir);
-        assert_eq!(game.iter().map(|k| k.id.as_str()).collect::<Vec<_>>(), ["shaped", "shapeless", "smelting", "blasting", "smoking", "campfire_cooking", "stonecutting"]);
+        assert_eq!(game.iter().map(|k| k.id.as_str()).collect::<Vec<_>>(), ["shaped", "shapeless", "smelting", "blasting", "smoking", "campfire_cooking", "stonecutting", "smithing"]);
         let shaped = game[0].layout.as_ref().unwrap();
         assert_eq!(shaped.spots.iter().filter(|s| matches!(s, Spot::Slot { slot, .. } if slot == "grid")).count(), 9, "the crafting table's own picture");
+        let smithing = game[7].layout.as_ref().unwrap();
+        let parts: Vec<&str> = smithing.spots.iter().filter_map(|s| if let Spot::Slot { slot, .. } = s { Some(slot.as_str()) } else { None }).collect();
+        assert_eq!(parts, ["base", "addition", "template"], "Patchouli's smithing strip");
+        assert!(smithing.spots.iter().any(|s| matches!(s, Spot::Result { .. })));
+        assert!(smithing.image.is_some());
         // What the recipe editor reads (recipeModel.ts `RecipeKind`).
         let json = serde_json::to_value(&l.spots).unwrap();
         let types: Vec<&str> = json.as_array().unwrap().iter().map(|s| s["type"].as_str().unwrap()).collect();

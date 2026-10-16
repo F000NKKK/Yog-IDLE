@@ -14,10 +14,13 @@ import {
   parseRecipe,
   serializeCustomRecipe,
   serializeRecipe,
+  slotCell,
+  SMITHING,
   type CustomRecipe,
   type Recipe,
   type RecipeKind,
   type RecipeType,
+  type SmithingPart,
   isCooking,
 } from "./recipeModel";
 import "./RecipeEditor.css";
@@ -76,7 +79,8 @@ function useSize(el: HTMLElement | null): [number, number] {
 
 /**
  * `.yrecipe` files, every kind drawn the same way: as books show it — the
- * game's kinds by their built-in layouts (the crafting table, the furnace),
+ * game's kinds by their built-in layouts (the crafting table, the furnace,
+ * the smithing table),
  * the mod's (`.ydef` `recipe_kind`) by their `.yui` layout — on a GUI
  * panel scaled to the editor. Click a place, then pick its item in the
  * inspector — typed with its namespace (`minecraft:paper`) or a tag
@@ -92,6 +96,14 @@ const GAME_LABELS: Record<string, string> = {
   smoking: "Smoking",
   campfire_cooking: "Campfire Cooking",
   stonecutting: "Stonecutting",
+  smithing: "Smithing",
+};
+
+/** A smithing recipe's places as the inspector names and explains them. */
+const SMITHING_PARTS: Record<SmithingPart, { label: string; description: string }> = {
+  template: { label: "Template", description: "The smithing template, used up (minecraft:netherite_upgrade_smithing_template)." },
+  base: { label: "Base", description: "The item upgraded: its enchantments and name carry over to the result." },
+  addition: { label: "Addition", description: "What the base is upgraded with (minecraft:netherite_ingot)." },
 };
 
 export function RecipeEditor({ path, content, onChange, readOnly }: EditorProps) {
@@ -190,7 +202,7 @@ export function RecipeEditor({ path, content, onChange, readOnly }: EditorProps)
     }
     // Not an object, or broken text: fixed in the Code view, never overwritten from here.
     if (!typed) return <div className="recipe-editor recipe-error">{t("This isn't a recipe (a JSON object) — fix it in the Code view.")}</div>;
-    // One of the game's kinds the editor doesn't lay out (blasting, smithing…): its fields, from the schema.
+    // A kind the editor doesn't lay out (not one of the game's, nor `ns:kind`): its fields, from the schema.
     return <DataEditor path={path} content={content} onChange={onChange} readOnly={readOnly} format="yrecipe" sourceView={RECIPE_SOURCE_VIEW} />;
   }
   // What Properties shows while the recipe is active (set once it's drawn, below).
@@ -270,8 +282,8 @@ export function RecipeEditor({ path, content, onChange, readOnly }: EditorProps)
     return items.length ? items[cycleTick % items.length] : null;
   };
 
-  /** The `n`-th place of game slot `slot` (`grid`, `input`) as a target. */
-  const gameTarget = (slot: string, index: number) => (slot === "grid" ? `g:${index}` : `g:0`);
+  /** The `n`-th place of game slot `slot` (`grid`, `input`, `template`…) as a target. */
+  const gameTarget = (slot: string, index: number) => `g:${slotCell(slot, index)}`;
   const words = (text: string) =>
     text.replace(/\{(\w+)\}/g, (_, name: string) => {
       if (custom) return String(custom.values[name] ?? "");
@@ -353,12 +365,18 @@ export function RecipeEditor({ path, content, onChange, readOnly }: EditorProps)
     </div>
   );
 
+  // A smithing recipe's place: which part it is.
+  const smithingPart = !custom && recipe.type === "smithing" && target.startsWith("g:") ? SMITHING_PARTS[SMITHING[Number(target.slice(2))]] : undefined;
+  const placeHint = t("An item, a tag (#c:dusts), or alternatives joined by |. Right-click a place to empty it.");
+  const placeDescription = smithingPart ? `${t(smithingPart.description)} ${placeHint}` : placeHint;
   const targetLabel =
     target === "result"
       ? t("Result")
-      : target.startsWith("s:")
-        ? `${target.split(":")[1]} ${Number(target.split(":")[2]) + 1}`
-        : t("Ingredient {n}", { n: Number(target.slice(2)) + 1 });
+      : smithingPart
+        ? t(smithingPart.label)
+        : target.startsWith("s:")
+          ? `${target.split(":")[1]} ${Number(target.split(":")[2]) + 1}`
+          : t("Ingredient {n}", { n: Number(target.slice(2)) + 1 });
   const targetIcon = (() => {
     const shown = current ? cycled(current) : null;
     return shown ? imagePreview(path, iconSource(shown)) : null;
@@ -374,7 +392,7 @@ export function RecipeEditor({ path, content, onChange, readOnly }: EditorProps)
       value: current,
       image: targetIcon ?? undefined,
       suggestions: items,
-      description: t("An item, a tag (#c:dusts), or alternatives joined by |. Right-click a place to empty it."),
+      description: placeDescription,
       readOnly: ro,
       onCommit: (v) => put(target, String(v)),
     },
@@ -442,7 +460,7 @@ export function RecipeEditor({ path, content, onChange, readOnly }: EditorProps)
     objectName: targetLabel,
     objectType: t("Recipe"),
     objectKey: target,
-    objectDescription: t("An item, a tag (#c:dusts), or alternatives joined by |. Right-click a place to empty it."),
+    objectDescription: placeDescription,
     properties: inspected,
   };
 
