@@ -37,6 +37,8 @@ import {
 import { belowButton } from "../git/dropdown";
 import { useOpenFiles } from "../OpenFilesContext";
 import { reportError } from "../reportError";
+import { refMessage } from "./inspector";
+import { refProblem, refSuggestions, useContentRefs } from "../data/contentRefs";
 import {
   ANGLES,
   autoUv,
@@ -122,6 +124,12 @@ interface Choices {
   armorMaterials: string[];
 }
 const NO_CHOICES: Choices = { textures: [], strings: [], sounds: [], tags: [], toolMaterials: [], armorMaterials: [] };
+
+interface BuiltInBlockKind {
+  name: string;
+  takes: string[];
+  occludes?: boolean;
+}
 
 
 export const CONTENT_SOURCE_VIEW = "yog.content.source";
@@ -327,7 +335,20 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
   const [images, setImages] = useState<Record<string, LoadedTexture | undefined>>({});
   const [parents, setParents] = useState<Record<string, ParentModel | null>>({});
   const [choices, setChoices] = useState<Choices>(NO_CHOICES);
+  const [blockKinds, setBlockKinds] = useState<BuiltInBlockKind[]>([]);
   const rootRef = useRef<HTMLDivElement>(null);
+  const blockRefs = useContentRefs(path, "block");
+  const entityRefs = useContentRefs(path, "entity");
+
+  useEffect(() => {
+    let live = true;
+    invoke<BuiltInBlockKind[]>("content_block_kinds")
+      .then((kinds) => live && setBlockKinds(kinds))
+      .catch((e) => live && reportError(t("Can't load built-in block kinds: {error}", { error: String(e) })));
+    return () => {
+      live = false;
+    };
+  }, [t]);
 
   // Paint mode: the textures' pixels, decoded from disk (`decoded`), painted
   // (`edited`), and as last saved (`saved`).
@@ -1248,6 +1269,7 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
     if (kind === "block") {
       const c = t("Block");
       const b = file.block ?? {};
+      const blockKind = blockKinds.find((candidate) => candidate.name === file.kind);
       const setB = (edit: (b: NonNullable<ContentFile["block"]>) => void) =>
         update((d) => {
           d.block ??= {};
@@ -1257,6 +1279,21 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
       const drops = typeof b.drops === "object" ? (b.drops.item ?? "").replace(/^@item:/, "") : (b.drops ?? "");
       const tools = Array.isArray(b.tool) ? b.tool.join(", ") : b.tool;
       out.push(
+        choice("block_kind", t("Block Kind"), c, file.kind, [...new Set([...blockKinds.map((candidate) => candidate.name), ...(file.kind ? [file.kind] : [])])], (v) =>
+          update((d) => {
+            if (v) d.kind = v;
+            else delete d.kind;
+            const takes = blockKinds.find((candidate) => candidate.name === v)?.takes ?? [];
+            if (d.block) {
+              for (const field of ["base", "set", "press_ticks", "triggered_by"] as const) {
+                if (!takes.includes(field)) delete d.block[field];
+              }
+              if (prune(d.block as Record<string, unknown>)) delete d.block;
+            }
+          }), {
+          optionLabel: (name) => t(name),
+          description: t("Use a built-in block class (stairs, slabs, doors, buttons and related blocks); its states, models and item form come from the game."),
+        }),
         num("hardness", t("Hardness"), c, b.hardness, (v) => setB((x) => void (x.hardness = v)), { min: -1, description: t("Mining time factor (stone 1.5, -1 unbreakable).") }),
         num("resistance", t("Blast Resistance"), c, b.resistance, (v) => setB((x) => void (x.resistance = v)), { min: 0 }),
         text("sound", t("Sound"), c, b.sound, (v) => setB((x) => void (x.sound = v || undefined)), {
@@ -1346,7 +1383,36 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
         text("comparator", t("Comparator Property"), c, b.comparator, (v) => setB((x) => void (x.comparator = v)), {
           suggestions: yesNoProperties,
           description: t("A yes/no property of its states a comparator reads: 15 while it's on."),
-        })
+        }),
+        flag("occludes", t("Occludes"), c, b.occludes, (v) => setB((x) => void (x.occludes = v)), blockKind?.occludes ?? true, {
+          description: t("Hides block faces behind it and blocks light. The selected block kind supplies the default."),
+        }),
+        ...(blockKind?.takes.includes("base")
+          ? [text("kind_base", t("Kind Base Block"), c, b.base, (v) => setB((x) => void (x.base = v)), {
+              suggestions: refSuggestions(blockRefs, "block"),
+              validate: (v) => refMessage(t, refProblem(String(v), "block", blockRefs), "block"),
+              description: t("The block this kind is based on, as @block:namespace:id (for example, a stair or slab's material block)."),
+            })]
+          : []),
+        ...(blockKind?.takes.includes("set")
+          ? [text("kind_set", t("Kind Set"), c, b.set, (v) => setB((x) => void (x.set = v)), {
+              description: t("The registered block set, such as oak, dark_oak, iron or stone. The game's set names are open-ended."),
+            })]
+          : []),
+        ...(blockKind?.takes.includes("press_ticks")
+          ? [num("press_ticks", t("Press Ticks"), c, b.press_ticks, (v) => setB((x) => void (x.press_ticks = v)), {
+              min: 1,
+              int: true,
+              description: t("How long a pressed button stays active, in ticks (30 by default)."),
+            })]
+          : []),
+        ...(blockKind?.takes.includes("triggered_by")
+          ? [choice("triggered_by", t("Triggered By"), c, b.triggered_by, ["everything", "mobs"], (v) =>
+              setB((x) => void (x.triggered_by = v as NonNullable<ContentFile["block"]>["triggered_by"])), {
+              optionLabel: (value) => t(value === "mobs" ? "Mobs Only" : "Everything"),
+              description: t("What can trigger a button or pressure plate: everything includes items and arrows; mobs means living entities only."),
+            })]
+          : [])
       );
       // Its item form: how it stacks, survives fire, burns.
       const ic = t("Item");
@@ -1421,7 +1487,24 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
         choice("wearable", t("Wearable"), c, it.wearable, ARMOR_SLOTS, (v) => setI((x) => void (x.wearable = v as ArmorSlot | undefined)), {
           optionLabel: (o) => (o ? t(o) : ""),
           description: t("Worn in this slot without being armor (a monocle, a crown): right-click and dispensers put it on."),
-        })
+        }),
+        text("hangs_entity", t("Hanging Entity"), c, it.hangs?.entity, (v) =>
+          setI((x) => {
+            if (!v) delete x.hangs;
+            else x.hangs = { ...(x.hangs ?? {}), entity: v };
+          }), {
+          suggestions: refSuggestions(entityRefs, "entity"),
+          validate: (v) => refMessage(t, refProblem(String(v), "entity", entityRefs), "entity"),
+          description: t("A hanging entity this item places, as @entity:namespace:id; it must have kind: hanging."),
+        }),
+        ...(it.hangs
+          ? [vec("hangs_size", t("Hanging Size"), c, it.hangs.size, 2, (v) =>
+              setI((x) => {
+                if (!x.hangs) return;
+                if (v) x.hangs.size = [v[0], v[1]];
+                else delete x.hangs.size;
+              }), 1, 4_294_967_295, true)]
+          : [])
       );
     }
 
@@ -1804,7 +1887,7 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
     return out;
     // `t` and the helpers read fresh state each render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [file, kind, model, resolved, mainResolved, shownImages, choices, displaySlot, selEl, sel, face, readOnly, effectiveKey, modelKind, modelKey, pickedState, stateProps]);
+  }, [file, kind, model, resolved, mainResolved, shownImages, choices, blockKinds, blockRefs, entityRefs, displaySlot, selEl, sel, face, readOnly, effectiveKey, modelKind, modelKey, pickedState, stateProps]);
 
   // ── Layout ────────────────────────────────────────────────────────────────
 

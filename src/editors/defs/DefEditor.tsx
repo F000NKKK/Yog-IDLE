@@ -3,6 +3,9 @@ import { useT, type EditorProps } from "substrate-platform-ui";
 import { clone } from "../../content/model";
 import { DataEditor } from "../DataEditor";
 import { AdvancementDesigner } from "./AdvancementDesigner";
+import { EffectDesigner, PotionDesigner } from "./EffectDesigner";
+import { LootDesigner } from "./LootDesigner";
+import { TagDesigner } from "./TagDesigner";
 import type { DefProps } from "./DefLayout";
 import { parseDef, patchDef, type DefFile } from "./defModel";
 
@@ -10,11 +13,16 @@ export const DEF_SOURCE_VIEW = "yog.ydef.source";
 
 /**
  * The `.ydef` kinds with a designer of their own, and their names — the one
- * list of them; a kind not here (a mod's table, an ore, a dimension…) is
- * edited as the property grid its schema makes.
+ * list of them; a kind not here is edited as the property grid its schema
+ * makes.
  */
 export const DEF_DESIGNERS: Partial<Record<string, { label: string; component: ComponentType<DefProps> }>> = {
   advancement: { label: "Advancement", component: AdvancementDesigner },
+  loot_table: { label: "Loot Table", component: LootDesigner },
+  loot_modifier: { label: "Loot Modifier", component: LootDesigner },
+  effect: { label: "Effect", component: EffectDesigner },
+  potion: { label: "Potion", component: PotionDesigner },
+  tag: { label: "Tag", component: TagDesigner },
 };
 
 /** A `.ydef`: its kind's designer, else the schema's property grid. */

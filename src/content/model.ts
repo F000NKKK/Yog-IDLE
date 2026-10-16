@@ -78,6 +78,11 @@ export interface BlockProps {
   /** A yes/no property a comparator reads. */
   comparator?: string;
   accepts_items?: boolean;
+  occludes?: boolean;
+  base?: string;
+  set?: string;
+  press_ticks?: number;
+  triggered_by?: "everything" | "mobs";
 }
 
 export interface ItemProps {
@@ -89,6 +94,7 @@ export interface ItemProps {
   tool?: { kind: string; material: string; attack_damage?: number; attack_speed?: number };
   armor?: { slot: ArmorSlot; material: string };
   wearable?: ArmorSlot;
+  hangs?: { entity: string; size?: [number, number] };
 }
 
 export const ARMOR_SLOTS = ["head", "chest", "legs", "feet"] as const;
@@ -106,6 +112,7 @@ export interface ContentFile {
   name?: string;
   tooltip?: string;
   register?: "auto" | "manual";
+  kind?: string;
   block?: BlockProps;
   item?: ItemProps;
   model?: Model;
