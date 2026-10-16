@@ -109,6 +109,44 @@
   margin-top: calc(var(--k) * 2px);
 }
 
+/* Full-width data editors belong in the work area, not squeezed into Properties. */
+.tag-members-editor,
+.loot-editor {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  padding: 16px;
+}
+
+.tag-members-section,
+.loot-editor-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.tag-members-section > header,
+.loot-editor-section > header {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  color: var(--sp-text-muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.tag-members-section > header strong,
+.loot-editor-section > header strong {
+  color: var(--sp-text);
+  font-size: 13px;
+  font-weight: 600;
+}
+
 /* An advancement's criteria in the inspector. */
 .crit-row {
   display: flex;
@@ -123,67 +161,6 @@
 
 .crit-row .is-invalid {
   border-color: var(--sp-danger);
-}
-
-/* ── Tags: members as an inventory ───────────────────────────────────── */
-.tag-grid {
-  position: absolute;
-  display: grid;
-}
-
-.tag-text {
-  overflow: hidden;
-  max-width: 100%;
-  font-size: calc(var(--k) * 4px);
-  line-height: 1;
-  color: #fff;
-  word-break: break-all;
-  text-align: center;
-}
-
-/* ── Loot: what a table gives, with its odds ─────────────────────────── */
-.loot-row {
-  position: absolute;
-  left: calc(var(--k) * 7px);
-  right: calc(var(--k) * 7px);
-  display: flex;
-  align-items: center;
-  gap: calc(var(--k) * 4px);
-  cursor: pointer;
-}
-
-.loot-text {
-  flex: 1;
-  min-width: 0;
-}
-
-.loot-name {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.loot-bar {
-  height: calc(var(--k) * 3px);
-  margin-top: calc(var(--k) * 2px);
-  background: #555;
-  border: calc(var(--k) * 0.5px) solid #373737;
-}
-
-.loot-bar span {
-  display: block;
-  height: 100%;
-  background: #80c71f;
-}
-
-.loot-odds {
-  flex: none;
-  min-width: calc(var(--k) * 30px);
-  text-align: right;
-}
-
-.loot-avg {
-  color: #707070;
 }
 
 /* ── Effects and potions ─────────────────────────────────────────────── */

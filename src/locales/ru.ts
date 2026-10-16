@@ -762,6 +762,8 @@ registerTranslations("ru", {
   "Its id, the mod's (random_scroll).": "Идентификатор мода (random_scroll).",
   Tables: "Таблицы",
   "The loot tables it changes: chests, block drops, mobs (@loot_table:minecraft:chests/simple_dungeon).": "Таблицы добычи, которые оно изменяет: сундуки, дроп блоков и мобов (@loot_table:minecraft:chests/simple_dungeon).",
+  "Items this table gives, with their count range, chance, and optional registered loot function.": "Предметы, количество, шанс выпадения и необязательная функция добычи.",
+  "Items whose stack counts are multiplied after the additions.": "Предметы, количество которых масштабируется после добавления.",
   "Item Added": "Добавляемый предмет",
   "How many: from the first to the second, evenly; below 1 adds none.": "Количество: равномерно от первого числа до второго; значение меньше 1 ничего не добавляет.",
   Chance: "Шанс",

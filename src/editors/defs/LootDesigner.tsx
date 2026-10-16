@@ -100,8 +100,8 @@ export function LootDesigner({ path, file, update, readOnly, kindLabel }: DefPro
             onChange={setAddRows}
             columns={[
               { key: "item", label: t("Item"), kind: "text", grow: 3, suggestions: refSuggestions(items, "item"), validate: (v) => refMessage(t, refProblem(v, "item", items), "item") },
-              { key: "min", label: t("Min"), kind: "number", min: 0, int: true },
-              { key: "max", label: t("Max"), kind: "number", min: 0, int: true },
+              { key: "min", label: t("Min"), kind: "number", min: -64, max: 64, int: true },
+              { key: "max", label: t("Max"), kind: "number", min: -64, max: 64, int: true },
               { key: "chance", label: t("Chance"), kind: "number", min: 0, max: 1 },
               { key: "function", label: t("Loot Function"), kind: "text" },
             ]}
