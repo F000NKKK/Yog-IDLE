@@ -18,12 +18,11 @@ use crate::manifest::{self, mod_root};
 
 /// Kinds of content defined by files of their own, by extension; any other
 /// kind is the `.ydef`s of that `kind`.
-const FILE_KINDS: [(&str, &[&str]); 5] = [
+const FILE_KINDS: [(&str, &[&str]); 4] = [
     ("item", &["yitem", "yblock"]),
     ("block", &["yblock"]),
     ("entity", &["yentity"]),
     ("recipe", &["yrecipe"]),
-    ("potion", &["yitem"]),
 ];
 
 /// Body files (`.ymodel`, `.yanim`): named by their path under `content/`
@@ -31,12 +30,11 @@ const FILE_KINDS: [(&str, &[&str]); 5] = [
 const BODY_FORMATS: [&str; 2] = ["ymodel", "yanim"];
 
 /// What `[external.<namespace>]` lists each kind under.
-const EXTERNAL_KEYS: [(&str, &str); 5] = [
+const EXTERNAL_KEYS: [(&str, &str); 4] = [
     ("item", "items"),
     ("block", "blocks"),
     ("entity", "entities"),
     ("recipe", "recipes"),
-    ("potion", "potions"),
 ];
 
 /// Where the game's ids of a kind are in its client jar: translation keys
@@ -54,7 +52,6 @@ const GAME_IDS: [(&str, GameIds); 13] = [
     ("block", GameIds::Lang { prefixes: &["block.minecraft."], dotted: false }),
     ("entity", GameIds::Lang { prefixes: &["entity.minecraft."], dotted: false }),
     ("effect", GameIds::Lang { prefixes: &["effect.minecraft."], dotted: false }),
-    ("potion", GameIds::Lang { prefixes: &["item.minecraft.potion.effect."], dotted: false }),
     ("attribute", GameIds::Lang { prefixes: &["attribute.name."], dotted: true }),
     ("biome", GameIds::Lang { prefixes: &["biome.minecraft."], dotted: false }),
     ("enchantment", GameIds::Lang { prefixes: &["enchantment.minecraft."], dotted: false }),
@@ -170,12 +167,6 @@ fn own(root: &Path, kind: &str) -> Vec<OwnRef> {
     if let Some((_, exts)) = FILE_KINDS.iter().find(|(k, _)| *k == kind) {
         for ext in *exts {
             for f in files(root, ext) {
-                if kind == "item" && read(&f).and_then(|d| d.get("item").and_then(|i| i.get("potion")).cloned()).is_some() {
-                    continue;
-                }
-                if kind == "potion" && read(&f).and_then(|d| d.get("item").and_then(|i| i.get("potion")).cloned()).is_none() {
-                    continue;
-                }
                 let given = read(&f).and_then(|d| d.get("id").and_then(Value::as_str).map(str::to_string));
                 let id = given.unwrap_or_else(|| f.file_stem().unwrap_or_default().to_string_lossy().into_owned());
                 out.push(OwnRef { id: qualified(&id, &ns), file: f.to_string_lossy().into_owned() });
@@ -253,8 +244,15 @@ fn game(root: Option<&Path>, kind: &str) -> Vec<String> {
             keys("minecraft/lang/en_us.json")
                 .keys()
                 .filter_map(|k| prefixes.iter().find_map(|p| k.strip_prefix(p)))
-                .filter(|rest| *dotted || !rest.contains('.'))
-                .map(|rest| format!("minecraft:{rest}"))
+                .filter(|rest| rest.starts_with("potion.effect.") || *dotted || !rest.contains('.'))
+                .map(|rest| {
+                    if kind == "item" {
+                        rest.strip_prefix("potion.effect.")
+                            .map_or_else(|| format!("minecraft:{rest}"), |name| format!("yog:potion/{name}"))
+                    } else {
+                        format!("minecraft:{rest}")
+                    }
+                })
                 .collect()
         }
         (None, Some(GameIds::Data(dirs))) => dirs
@@ -266,12 +264,6 @@ fn game(root: Option<&Path>, kind: &str) -> Vec<String> {
     };
     out.sort();
     out.dedup();
-    if kind == "potion" {
-        out = out
-            .into_iter()
-            .map(|id| id.strip_prefix("minecraft:").map_or(id.clone(), |path| format!("yog:{path}")))
-            .collect();
-    }
     if let Ok(mut c) = CACHE.get_or_init(Default::default).lock() {
         c.insert(key, out.clone());
     }
@@ -302,6 +294,7 @@ mod tests {
         let _ = std::fs::remove_dir_all(&dir);
         write(&dir, "yog.toml", "[mod]\nid = \"mymod\"\n\n[external.create]\nentities = [\"seat\"]\n");
         write(&dir, "content/items/wand.yitem", "{ name: \"Wand\" }");
+        write(&dir, "content/items/potion.yitem", "{ item: { potion: { effects: [] } } }");
         write(&dir, "content/blocks/lamp.yblock", "// a lamp\n{ id: \"glow_lamp\" }");
         write(&dir, "content/mobs/wisp.yentity", "{ kind: \"mob\", width: 0.5, height: 0.5 }");
         write(&dir, "content/body/wisp.ymodel", "{ texture: \"\", bones: [] }");
@@ -310,7 +303,7 @@ mod tests {
         write(&dir, "content/tags/plants.ydef", "{ kind: \"tag\", of: \"block\", id: \"plants\", values: [] }");
         let probe = dir.join("content/items/wand.yitem");
         let ids = |kind: &str| refs(&probe, kind).own.into_iter().map(|r| r.id).collect::<Vec<_>>();
-        assert_eq!(ids("item"), ["mymod:glow_lamp", "mymod:wand"], "an item, and a block's item form");
+        assert_eq!(ids("item"), ["mymod:glow_lamp", "mymod:potion", "mymod:wand"], "items include potion-only .yitems and a block's item form");
         assert_eq!(ids("block"), ["mymod:glow_lamp"]);
         assert_eq!(ids("entity"), ["mymod:wisp"]);
         assert_eq!(ids("ymodel"), ["mymod:body/wisp"]);

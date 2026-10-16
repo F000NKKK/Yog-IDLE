@@ -113,7 +113,7 @@ export function RecipeEditor({ path, content, onChange, readOnly }: EditorProps)
   const t = useT();
   useSyncExternalStore(subscribeImageSources, imageSourcesVersion);
   const [kinds, reloadKinds] = useRecipeKinds(path);
-  const potionRefs = useContentRefs(path, "potion");
+  const itemRefs = useContentRefs(path, "item");
   const game = useMemo(() => parseRecipe(content), [content]);
   const custom = useMemo(() => parseCustomRecipe(content), [content]);
   const recipe = game ?? emptyRecipe();
@@ -164,9 +164,9 @@ export function RecipeEditor({ path, content, onChange, readOnly }: EditorProps)
     },
     [content, onChange, readOnly]
   );
-  const potions = useMemo(
-    () => [...potionRefs.own.map((p) => p.id), ...potionRefs.external, ...potionRefs.game].filter((id, i, all) => all.indexOf(id) === i),
-    [potionRefs]
+  const brewingItems = useMemo(
+    () => [...itemRefs.own.map((p) => p.id), ...itemRefs.external, ...itemRefs.game].filter((id, i, all) => all.indexOf(id) === i),
+    [itemRefs]
   );
   const updateGame = (change: (r: Recipe) => void) => {
     const next: Recipe = { ...recipe, cells: [...recipe.cells], extra: { ...recipe.extra } };
@@ -252,7 +252,7 @@ export function RecipeEditor({ path, content, onChange, readOnly }: EditorProps)
     }
     const next = game && !custom ? { ...recipe } : { ...emptyRecipe(), result: from.result, count: from.count };
     next.type = type as RecipeType;
-    next.from = type === "brewing" ? "yog:awkward" : "";
+    next.from = type === "brewing" ? "yog:potion/awkward" : "";
     write(serializeRecipe(next));
     setTarget(type === "brewing" ? "from" : "g:0");
   };
@@ -449,7 +449,7 @@ export function RecipeEditor({ path, content, onChange, readOnly }: EditorProps)
       name: target === "result" ? t("Result") : t("Ingredient"),
       value: current,
       image: targetIcon ?? undefined,
-      suggestions: target === "from" || (!custom && recipe.type === "brewing" && target === "result") ? potions : items,
+      suggestions: !custom && recipe.type === "brewing" ? brewingItems : items,
       description: placeDescription,
       readOnly: ro,
       onCommit: (v) => put(target, String(v)),
@@ -475,7 +475,7 @@ export function RecipeEditor({ path, content, onChange, readOnly }: EditorProps)
             name: t("Item"),
             value: valueAt("result"),
             image: valueAt("result") ? (imagePreview(path, iconSource(valueAt("result"))) ?? undefined) : undefined,
-            suggestions: !custom && recipe.type === "brewing" ? potions : items,
+            suggestions: !custom && recipe.type === "brewing" ? brewingItems : items,
             readOnly: ro,
             onCommit: (v: PropertyValue) => put("result", String(v)),
           } satisfies PropertyDescriptor,

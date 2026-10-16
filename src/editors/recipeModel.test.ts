@@ -100,16 +100,16 @@ describe("the game's single-input kinds", () => {
   it("reads and writes brewing with stable potion references", () => {
     const r = parseRecipe(`{
       type: "brewing",
-      from: "@potion:yog:awkward",
+      from: "@item:yog:potion/awkward",
       ingredient: "@item:hexcasting:amethyst_dust",
-      result: "@potion:hexcasting:enlarge_grid",
+      result: "@item:hexcasting:enlarge_grid",
     }`)!;
     expect([r.from, r.cells[0], r.result]).toEqual(["yog:awkward", "hexcasting:amethyst_dust", "hexcasting:enlarge_grid"]);
     expect(JSON.parse(serializeRecipe(r))).toMatchObject({
       type: "brewing",
-      from: "@potion:yog:awkward",
+      from: "@item:yog:potion/awkward",
       ingredient: "@item:hexcasting:amethyst_dust",
-      result: "@potion:hexcasting:enlarge_grid",
+      result: "@item:hexcasting:enlarge_grid",
     });
     expect(parseRecipe(serializeRecipe(r))).toEqual(r);
   });

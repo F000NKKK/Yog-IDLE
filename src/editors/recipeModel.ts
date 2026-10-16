@@ -48,7 +48,7 @@ const num = (v: unknown, fallback: number) => (typeof v === "number" && Number.i
 /** A reference as the editor shows it: `@item:x` → `x`, `@tag:item:x` → `#x`. */
 export function fromRef(s: string): string {
   if (s.startsWith("@tag:item:")) return `#${s.slice("@tag:item:".length)}`;
-  if (s.startsWith("@item:") || s.startsWith("@block:") || s.startsWith("@potion:")) return s.slice(s.indexOf(":") + 1);
+  if (s.startsWith("@item:") || s.startsWith("@block:")) return s.slice(s.indexOf(":") + 1);
   return s;
 }
 
@@ -56,11 +56,6 @@ export function fromRef(s: string): string {
 export function toRef(s: string): string {
   if (s.startsWith("#")) return `@tag:item:${s.slice(1)}`;
   return s.startsWith("@") ? s : `@item:${s}`;
-}
-
-/** A potion id as a Yog Data reference. */
-export function toPotionRef(s: string): string {
-  return s.startsWith("@potion:") ? s : `@potion:${s}`;
 }
 
 /** An ingredient (a reference or a list of them) as a cell: ids joined by ` | `. */
@@ -171,8 +166,8 @@ export function serializeRecipe(r: Recipe): string {
   } else {
     out.ingredient = r.cells[0] ? ingredientOf(r.cells[0]) : "";
   }
-  out.result = r.result ? (r.type === "brewing" ? toPotionRef(r.result) : toRef(r.result)) : "";
-  if (r.type === "brewing") out.from = r.from ? toPotionRef(r.from) : "";
+  out.result = r.result ? toRef(r.result) : "";
+  if (r.type === "brewing") out.from = r.from ? toRef(r.from) : "";
   if (r.count !== 1) out.count = r.count;
   if (isCooking(r.type)) {
     if (r.experience !== DEFAULT_EXPERIENCE) out.experience = r.experience;
