@@ -339,8 +339,8 @@ fn bitmap(res: &Resources, p: &Value) -> Option<BitmapProvider> {
     if cols == 0 || rows.is_empty() {
         return None;
     }
-    let cell_w = image.w / cols;
-    let cell_h = image.h / rows.len() as u32;
+    let cell_w = image.width / cols;
+    let cell_h = image.height / rows.len() as u32;
     let height = p.get("height").and_then(Value::as_f64).unwrap_or(8.0) as f32;
     let mut chars = HashMap::new();
     for (r, row) in rows.iter().enumerate() {
@@ -367,12 +367,12 @@ impl BitmapProvider {
         // Trimmed width: the rightmost column with any visible texel.
         let actual = (0..self.cell_w)
             .rev()
-            .find(|&x| (0..self.cell_h).any(|y| self.image.pixel(x0 + x, y0 + y)[3] != 0))
+            .find(|&x| (0..self.cell_h).any(|y| self.image.pixel(x0 + x, y0 + y).a() != 0))
             .map_or(0, |x| x + 1);
         let mut rgba = Vec::with_capacity((self.cell_w * self.cell_h * 4) as usize);
         for y in 0..self.cell_h {
             for x in 0..self.cell_w {
-                rgba.extend_from_slice(&self.image.pixel(x0 + x, y0 + y));
+                rgba.extend_from_slice(&self.image.pixel(x0 + x, y0 + y).to_rgba8());
             }
         }
         Some(Glyph {

@@ -218,7 +218,7 @@ impl<'r> Canvas<'r> {
                 if !(0.0..1.0).contains(&u) || !(0.0..1.0).contains(&v) {
                     continue;
                 }
-                let t = img.pixel((u * img.w as f32) as u32, (v * img.w.min(img.h) as f32) as u32);
+                let t = img.pixel((u * img.width as f32) as u32, (v * img.width.min(img.height) as f32) as u32).to_rgba8();
                 if t[3] == 0 {
                     continue;
                 }
@@ -272,17 +272,17 @@ impl<'r> Canvas<'r> {
         let [u0, v0, u1, v1] = uv;
         for py in ya..yb {
             let fy = ((py as f32 + 0.5) / self.scale - y) / h;
-            let ty = ((v0 + (v1 - v0) * fy) * img.h as f32).floor() as i64;
-            if ty < 0 || ty >= img.h as i64 {
+            let ty = ((v0 + (v1 - v0) * fy) * img.height as f32).floor() as i64;
+            if ty < 0 || ty >= img.height as i64 {
                 continue;
             }
             for px in xa..xb {
                 let fx = ((px as f32 + 0.5) / self.scale - x) / w;
-                let tx = ((u0 + (u1 - u0) * fx) * img.w as f32).floor() as i64;
-                if tx < 0 || tx >= img.w as i64 {
+                let tx = ((u0 + (u1 - u0) * fx) * img.width as f32).floor() as i64;
+                if tx < 0 || tx >= img.width as i64 {
                     continue;
                 }
-                let t = img.pixel(tx as u32, ty as u32);
+                let t = img.pixel(tx as u32, ty as u32).to_rgba8();
                 let c = [0, 1, 2, 3].map(|i| t[i] as f32 / 255.0 * tint[i]);
                 blend(self.px(px, py), c);
             }
@@ -292,8 +292,8 @@ impl<'r> Canvas<'r> {
     fn glyph(&mut self, g: &Glyph, x: f32, y: f32, k: f32, color: u32) {
         let Some(b) = &g.bitmap else { return };
         let img = Image {
-            w: b.w,
-            h: b.h,
+            width: b.w,
+            height: b.h,
             rgba: b.rgba.clone(),
         };
         self.blit(

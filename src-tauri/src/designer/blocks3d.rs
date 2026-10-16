@@ -332,7 +332,7 @@ mod tests {
     use super::*;
 
     fn solid(w: u32, h: u32) -> Image {
-        Image { w, h, rgba: (0..w * h).flat_map(|i| [i as u8, 0, 0, 255]).collect() }
+        Image { width: w, height: h, rgba: (0..w * h).flat_map(|i| [i as u8, 0, 0, 255]).collect() }
     }
 
     fn opaque(shape: Shape) -> usize {
