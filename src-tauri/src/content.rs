@@ -268,6 +268,14 @@ fn potion_effect_color(root: &Path, item: &Value) -> Option<u32> {
     })
 }
 
+/// The color of the potion effect(s) defined by this `.yitem`.
+pub fn item_potion_color(file: &Path) -> Option<u32> {
+    let root = mod_root(file)?;
+    let text = std::fs::read_to_string(file).ok()?;
+    let item = Value::Object(crate::data::read_object(&text)?);
+    potion_effect_color(&root, &item)
+}
+
 fn content_effect_color(root: &Path, reference: &str) -> Option<u32> {
     let mod_ns = mod_id(root)?;
     let id = reference.strip_prefix("@effect:").unwrap_or(reference);
