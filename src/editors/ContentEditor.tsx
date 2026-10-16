@@ -349,6 +349,8 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
   const entityRefs = useContentRefs(path, "entity");
   const effectRefs = useContentRefs(path, "effect");
 
+  useEffect(() => setPaintSlot(null), [path]);
+
   useEffect(() => {
     let live = true;
     invoke<BuiltInBlockKind[]>("content_block_kinds")
@@ -384,6 +386,31 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
   const modelKind = effectiveKey === "item_model" || kind === "item" ? "item" : "block";
   const resolved = useMemo(() => resolve(model, modelKind, parents), [model, modelKind, parents]);
   const mainResolved = useMemo(() => resolve(file.model, kind, parents), [file.model, kind, parents]);
+  useEffect(() => {
+    const firstLayer = resolved.sprite?.[0]?.slot;
+    if (firstLayer && !resolved.slots.includes(paintSlot ?? "")) setPaintSlot(firstLayer);
+  }, [resolved, paintSlot]);
+  const potionEffects = JSON.stringify(file.item?.potion?.effects ?? []);
+  const [potionTint, setPotionTint] = useState<string>();
+  useEffect(() => {
+    if (kind !== "item" || !file.item?.potion) {
+      setPotionTint(undefined);
+      return;
+    }
+    let live = true;
+    void invoke<number | null>("content_item_potion_color", { path })
+      .then((color) => {
+        if (live) setPotionTint(color == null ? undefined : `#${color.toString(16).padStart(6, "0")}`);
+      })
+      .catch((e) => live && reportError(t("Can't load the potion's effect color: {error}", { error: String(e) })));
+    return () => {
+      live = false;
+    };
+  }, [path, kind, contentVersion, potionEffects, t]);
+  const previewTints = useMemo(
+    () => (potionTint ? { 0: potionTint, ...tints } : tints),
+    [potionTint, tints],
+  );
   const elements = resolved.elements;
   const sel = selected !== null && selected < elements.length ? selected : null;
   const selEl = sel !== null ? elements[sel] : undefined;
@@ -638,14 +665,14 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
       elements: resolved.elements,
       textures: resolved.textures,
       sprite: resolved.sprite,
-      tints,
+      tints: previewTints,
       editable: true,
       x: rot?.x,
       y: rot?.y,
     };
     if (effectiveKey !== "arm") return [own];
     return [{ elements: mainResolved.elements, textures: mainResolved.textures, sprite: mainResolved.sprite, ghost: true }, own];
-  }, [resolved, mainResolved, effectiveKey, rot, tints]);
+  }, [resolved, mainResolved, effectiveKey, rot, previewTints]);
 
   const display = useMemo(() => {
     if (!displaySlot) return null;

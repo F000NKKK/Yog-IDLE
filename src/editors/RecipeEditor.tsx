@@ -342,15 +342,15 @@ export function RecipeEditor({ path, content, onChange, readOnly }: EditorProps)
   const cell = (at: Target, style: CSSProperties, size: number, key = at) => {
     const value = valueAt(at) || null;
     const shown = value ? cycled(value) : null;
-    const potionCell = !custom && recipe.type === "brewing" && (at === "from" || at === "result");
-    const icon = potionCell ? imagePreview(path, iconSource("minecraft:potion")) : shown ? imagePreview(path, iconSource(shown)) : null;
+    const potionInput = !custom && recipe.type === "brewing" && at === "from";
+    const icon = potionInput ? imagePreview(path, iconSource("minecraft:potion")) : shown ? imagePreview(path, iconSource(shown)) : null;
     return (
       <button
         key={key}
         type="button"
         className={`recipe-spot${target === at ? " selected" : ""}`}
         style={{ ...style, width: size, height: size }}
-        title={potionCell ? t("Potion") : value ? (shown && shown !== value ? `${value} — ${shown}` : value) : t("Empty — click, then pick an item")}
+        title={potionInput ? t("Potion") : value ? (shown && shown !== value ? `${value} — ${shown}` : value) : t("Empty — click, then pick an item")}
         onClick={() => {
           setTarget(at);
         }}
@@ -360,7 +360,7 @@ export function RecipeEditor({ path, content, onChange, readOnly }: EditorProps)
           put(at, "");
         }}
       >
-        {icon ? <img src={icon} alt="" /> : potionCell && value ? <span className="recipe-cell-text">{t("Potion")}</span> : value ? <span className="recipe-cell-text">{value.split(":").pop()}</span> : null}
+        {icon ? <img src={icon} alt="" /> : potionInput && value ? <span className="recipe-cell-text">{t("Potion")}</span> : value ? <span className="recipe-cell-text">{value.split(":").pop()}</span> : null}
       </button>
     );
   };
@@ -465,7 +465,7 @@ export function RecipeEditor({ path, content, onChange, readOnly }: EditorProps)
           ? `${target.split(":")[1]} ${Number(target.split(":")[2]) + 1}`
           : t("Ingredient {n}", { n: Number(target.slice(2)) + 1 });
   const targetIcon = (() => {
-    if (!custom && recipe.type === "brewing" && (target === "from" || target === "result")) {
+    if (!custom && recipe.type === "brewing" && target === "from") {
       return imagePreview(path, iconSource("minecraft:potion"));
     }
     const shown = current ? cycled(current) : null;
