@@ -10,6 +10,7 @@ import { YRES_SOURCE_VIEW, YresEditor } from "./YresEditor";
 import { DataEditor } from "./DataEditor";
 import { YdataViewer } from "./YdataViewer";
 import { MODEL_SOURCE_VIEW, ModelEditor } from "./ModelEditor";
+import { ENTITY_SOURCE_VIEW, EntityEditor } from "./EntityEditor";
 import type { EditorProps } from "substrate-platform-ui";
 
 // Yog-specific editors, on top of the platform's built-in ones — imported
@@ -221,6 +222,30 @@ registerEditorProvider({
   label: "Code",
   name: "Body Model Source Editor",
   fileTypes: ["yog.ymodel"],
+  component: JsonEditor,
+  priority: 0,
+  kind: "text",
+  strict: true,
+});
+
+// `.yentity` entity types: the entity in 3D (its model, clips, hitbox) by
+// default, the code a click away.
+registerEditorProvider({
+  id: "yog.yentity",
+  label: "Entity",
+  name: "Entity Designer",
+  icon: "yogEntity",
+  fileTypes: ["yog.yentity"],
+  component: EntityEditor,
+  priority: 20,
+  kind: "designer",
+});
+
+registerEditorProvider({
+  id: ENTITY_SOURCE_VIEW,
+  label: "Code",
+  name: "Entity Source Editor",
+  fileTypes: ["yog.yentity"],
   component: JsonEditor,
   priority: 0,
   kind: "text",

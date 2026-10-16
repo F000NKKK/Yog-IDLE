@@ -2,7 +2,7 @@
 // editor sees it: types, Minecraft's constraints, the templates' geometry,
 // face UVs, display defaults, and the file's text form.
 
-import { DataSyntaxError, parseDataValue, patchDataText } from "../data/yogData";
+import { DataSyntaxError, formatData, parseDataValue, patchDataText } from "../data/yogData";
 
 export type Dir = "down" | "up" | "north" | "south" | "west" | "east";
 export const DIRS: Dir[] = ["down", "up", "north", "south", "west", "east"];
@@ -303,59 +303,14 @@ export function parseContent(text: string): Parsed {
   }
 }
 
-const round = (n: number) => Math.round(n * 10000) / 10000;
-
 /** The file's text: two-space indent, short arrays/objects of scalars on one line (`"uv": [0, 0, 16, 16]`). */
 export function serializeContent(file: ContentFile): string {
-  return `${formatContentValue(file, 0)}\n`;
+  return `${formatData(file, 0)}\n`;
 }
 
 /** `text` holding `file`: what changed rewritten as `serializeContent` writes it, the rest — comments too — as it was. */
 export function patchContent(text: string, file: ContentFile): string {
-  return patchDataText(text, file, formatContentValue);
-}
-
-/** A value as the file's text writes it at indent `level` (two spaces each). */
-function formatContentValue(value: unknown, level: number): string {
-  const scalar = (v: unknown): string | null => {
-    if (v === null) return "null";
-    if (typeof v === "number") return String(round(v));
-    if (typeof v === "boolean") return String(v);
-    if (typeof v === "string") return JSON.stringify(v);
-    return null;
-  };
-  const inline = (v: unknown): string | null => {
-    const s = scalar(v);
-    if (s !== null) return s;
-    let out: string;
-    if (Array.isArray(v)) {
-      if (v.length === 0) return "[]";
-      if (!v.every((x) => typeof x === "number" || typeof x === "boolean")) return null;
-      out = `[${v.map((x) => scalar(x)).join(", ")}]`;
-    } else if (v && typeof v === "object") {
-      const entries = Object.entries(v).filter(([, x]) => x !== undefined);
-      if (entries.length === 0) return "{}";
-      const parts: string[] = [];
-      for (const [k, x] of entries) {
-        if (x && typeof x === "object" && !Array.isArray(x)) return null;
-        const s2 = inline(x);
-        if (s2 === null) return null;
-        parts.push(`${JSON.stringify(k)}: ${s2}`);
-      }
-      out = `{ ${parts.join(", ")} }`;
-    } else return null;
-    return out.length <= 72 ? out : null;
-  };
-  const write = (v: unknown, indent: number): string => {
-    const one = inline(v);
-    if (one !== null) return one;
-    const pad = "  ".repeat(indent + 1);
-    const end = "  ".repeat(indent);
-    if (Array.isArray(v)) return `[\n${v.map((x) => pad + write(x, indent + 1)).join(",\n")}\n${end}]`;
-    const entries = Object.entries(v as object).filter(([, x]) => x !== undefined);
-    return `{\n${entries.map(([k, x]) => `${pad}${JSON.stringify(k)}: ${write(x, indent + 1)}`).join(",\n")}\n${end}}`;
-  };
-  return write(value, level);
+  return patchDataText(text, file, formatData);
 }
 
 /** A deep copy (files are plain JSON). */

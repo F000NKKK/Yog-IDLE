@@ -25,6 +25,16 @@ export type GizmoMode = "translate" | "rotate" | "scale";
 /** A pose to show on top of the rest (animation preview): per bone, radians, pixels, factor. */
 export type PoseOverride = Record<string, { rotation: Vec3; position: Vec3; scale: Vec3 }>;
 
+/**
+ * What's drawn around the model, in blocks (16 px): an entity's hitbox
+ * standing on the feet (its eye height a line across it), and a hanging
+ * thing's wall — `width`×`height` whole blocks behind it.
+ */
+export interface ViewOverlay {
+  hitbox?: { width: number; height: number; eye?: number };
+  wall?: { width: number; height: number };
+}
+
 export interface ModelViewportProps {
   model: ModelFile;
   /** The texture as a data URL (none: a checkerboard). */
@@ -41,12 +51,18 @@ export interface ModelViewportProps {
   snap: { move: number; turn: number };
   showGrid: boolean;
   pose?: PoseOverride | null;
+  overlay?: ViewOverlay;
   style?: CSSProperties;
   className?: string;
 }
 
 const ACCENT = 0x3b8eea;
+const HITBOX = 0xffffff;
+const EYE = 0xff4040;
+const WALL = 0x8a7a64;
 const FEET = 24;
+/** Pixels a block. */
+const BLOCK = 16;
 const deg = THREE.MathUtils.degToRad;
 const rad2deg = THREE.MathUtils.radToDeg;
 
@@ -116,7 +132,8 @@ interface Three {
 }
 
 export function ModelViewport(props: ModelViewportProps) {
-  const { model, texture, selection, mode, onMode, snap, showGrid, pose } = props;
+  const { model, texture, selection, mode, onMode, snap, showGrid, pose, overlay } = props;
+  const posed = !!pose;
   const hostRef = useRef<HTMLDivElement>(null);
   const [three, setThree] = useState<Three | null>(null);
   const propsRef = useRef(props);
@@ -244,10 +261,8 @@ export function ModelViewport(props: ModelViewportProps) {
       const i = pending.findIndex((b) => !b.parent || t.bones.has(b.parent) || !model.bones.some((o) => o.name === b.parent));
       const b = pending.splice(i < 0 ? 0 : i, 1)[0];
       const g = new THREE.Group();
-      const extra = pose?.[b.name];
-      g.position.set(b.pivot[0] + (extra?.position[0] ?? 0), b.pivot[1] + (extra?.position[1] ?? 0), b.pivot[2] + (extra?.position[2] ?? 0));
-      g.rotation.set(deg(b.rotation[0]) + (extra?.rotation[0] ?? 0), deg(b.rotation[1]) + (extra?.rotation[1] ?? 0), deg(b.rotation[2]) + (extra?.rotation[2] ?? 0), "ZYX");
-      if (extra) g.scale.set(...extra.scale);
+      g.position.set(...b.pivot);
+      g.rotation.set(deg(b.rotation[0]), deg(b.rotation[1]), deg(b.rotation[2]), "ZYX");
       g.userData = { bone: b.name };
       (b.parent && t.bones.get(b.parent) ? t.bones.get(b.parent)! : t.root).add(g);
       t.bones.set(b.name, g);
@@ -291,10 +306,39 @@ export function ModelViewport(props: ModelViewportProps) {
       }
     }
 
+    // The hitbox on the feet, the eyes across it; a hanging thing's wall behind.
+    if (overlay?.hitbox) {
+      const { width, height, eye } = overlay.hitbox;
+      const w = (width * BLOCK) / 2;
+      const top = FEET - height * BLOCK;
+      const box = new THREE.Box3Helper(new THREE.Box3(new THREE.Vector3(-w, top, -w), new THREE.Vector3(w, FEET, w)), HITBOX);
+      t.root.add(box);
+      disposables.push(box.geometry, box.material as THREE.Material);
+      if (eye !== undefined) {
+        const y = FEET - eye * BLOCK;
+        const geo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(-w, y, -w), new THREE.Vector3(w, y, -w), new THREE.Vector3(w, y, w), new THREE.Vector3(-w, y, w), new THREE.Vector3(-w, y, -w)]);
+        const line = new THREE.Line(geo, new THREE.LineBasicMaterial({ color: EYE }));
+        t.root.add(line);
+        disposables.push(geo, line.material as THREE.Material);
+      }
+    }
+    if (overlay?.wall) {
+      const { width, height } = overlay.wall;
+      const [w, h] = [width * BLOCK, height * BLOCK];
+      // Its front looks to −z, as the model's: the wall is just behind.
+      const geo = new THREE.PlaneGeometry(w, h, Math.max(1, width), Math.max(1, height));
+      const wall = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: WALL, side: THREE.DoubleSide, transparent: true, opacity: 0.35 }));
+      wall.position.set(0, FEET - h / 2, 1);
+      const cells = new THREE.LineSegments(new THREE.WireframeGeometry(geo), new THREE.LineBasicMaterial({ color: WALL }));
+      wall.add(cells);
+      t.root.add(wall);
+      disposables.push(geo, wall.material as THREE.Material, cells.geometry, cells.material as THREE.Material);
+    }
+
     // The gizmo: on the bone itself, or on a proxy at the cube/locator.
     t.gizmo.detach();
     t.target = null;
-    if (selection && !pose) {
+    if (selection && !posed) {
       const g = t.bones.get(selection.bone);
       if (g) {
         if (selection.kind === "bone") {
@@ -318,7 +362,22 @@ export function ModelViewport(props: ModelViewportProps) {
     return () => {
       for (const d of disposables) d.dispose();
     };
-  }, [three, material, model, selection, showGrid, pose]);
+  }, [three, material, model, selection, showGrid, posed, overlay]);
+
+  // The pose on top of each bone's rest — every frame of a clip, without
+  // building the model again.
+  useEffect(() => {
+    if (!three) return;
+    for (const b of model.bones) {
+      const g = three.bones.get(b.name);
+      if (!g) continue;
+      const extra = pose?.[b.name];
+      g.position.set(b.pivot[0] + (extra?.position[0] ?? 0), b.pivot[1] + (extra?.position[1] ?? 0), b.pivot[2] + (extra?.position[2] ?? 0));
+      g.rotation.set(deg(b.rotation[0]) + (extra?.rotation[0] ?? 0), deg(b.rotation[1]) + (extra?.rotation[1] ?? 0), deg(b.rotation[2]) + (extra?.rotation[2] ?? 0), "ZYX");
+      g.scale.set(...(extra?.scale ?? [1, 1, 1]));
+    }
+    draw.current();
+  }, [three, material, model, selection, showGrid, posed, overlay, pose]);
 
   // ── Gizmo mode and snapping ─────────────────────────────────────────────
 

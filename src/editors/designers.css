@@ -1,0 +1,107 @@
+/* What the Yog format designers share: a toolbar over the content, the
+   content filling the rest (a 3D view, a game panel, a timeline), lists in
+   the inspector. */
+.designer {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  background: var(--sp-surface-0);
+}
+
+.designer-body {
+  position: relative;
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.designer-error {
+  padding: var(--sp-space-md);
+  color: var(--sp-text-muted);
+}
+
+/* A note over the content's corner (what's missing, what's shown). */
+.designer-note {
+  position: absolute;
+  left: var(--sp-space-sm);
+  bottom: var(--sp-space-sm);
+  max-width: 60%;
+  padding: 4px 8px;
+  border-radius: var(--sp-radius-sm);
+  background: rgba(0, 0, 0, 0.55);
+  color: #ddd;
+  font-size: 12px;
+  pointer-events: none;
+}
+
+/* Lists in the inspector. */
+.item-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  padding: 2px 0;
+}
+
+.item-list-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 22px;
+  padding: 0 2px;
+  border-radius: var(--sp-radius-sm);
+}
+
+.item-list-row:hover {
+  background: var(--sp-surface-2);
+}
+
+.item-list-row.is-pickable {
+  cursor: pointer;
+}
+
+.item-list-row.is-picked {
+  background: var(--sp-accent-soft);
+}
+
+.item-list-lead {
+  display: inline-flex;
+  flex: none;
+  width: 18px;
+  height: 18px;
+  align-items: center;
+  justify-content: center;
+}
+
+.item-list-lead img {
+  width: 16px;
+  height: 16px;
+  image-rendering: pixelated;
+}
+
+.item-list-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--sp-font-mono);
+  font-size: 12px;
+}
+
+.item-list-add {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.item-list-add .sp-textfield {
+  flex: 1;
+  min-width: 0;
+}
+
+.item-list-error {
+  color: var(--sp-danger);
+  font-size: 12px;
+}

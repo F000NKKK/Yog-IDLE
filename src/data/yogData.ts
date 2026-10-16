@@ -287,6 +287,27 @@ export function toPlain(node: DataNode): unknown {
   }
 }
 
+/**
+ * `node` as a JS value with its maps as `Map`s, in file order — for a map
+ * whose keys JS objects would reorder (times: `"0"`, `"0.25"`, `"1"`).
+ * `patchDataText` and `formatData` take `Map`s as maps.
+ */
+export function toOrdered(node: DataNode): unknown {
+  switch (node.t) {
+    case "null":
+      return null;
+    case "list":
+      return node.items.map(toOrdered);
+    case "map":
+      return new Map(node.entries.map((e) => [e.key, toOrdered(e.value)]));
+    default:
+      return node.v;
+  }
+}
+
+/** A map's entries — a `Map`'s in its order, an object's as JS orders them. */
+export const entriesOf = (v: object): [string, unknown][] => (v instanceof Map ? [...v.entries()] : Object.entries(v));
+
 /** Parses Yog Data text to a plain JS value, like `JSON.parse` for the wider syntax; throws `DataSyntaxError`. */
 export function parseDataValue(text: string): unknown {
   return toPlain(parseData(text));
@@ -297,8 +318,60 @@ export function parseDataValue(text: string): unknown {
 /** How a new or changed value is written: `level` is its line's indent (in steps of two spaces). */
 export type DataFormat = (value: unknown, level: number) => string;
 
-const isObject = (v: unknown): v is Record<string, unknown> => !!v && typeof v === "object" && !Array.isArray(v);
-const sameValue = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
+/**
+ * A value as Yog's editors write it at indent `level` (two spaces each):
+ * short lists of numbers and short objects of scalars on one line
+ * (`"uv": [0, 0, 16, 16]`), the rest one entry a line — what
+ * `patchDataText` writes a changed value with.
+ */
+export const formatData: DataFormat = (value, level) => {
+  const round = (n: number) => Math.round(n * 10000) / 10000;
+  const scalar = (v: unknown): string | null => {
+    if (v === null) return "null";
+    if (typeof v === "number") return String(round(v));
+    if (typeof v === "boolean") return String(v);
+    if (typeof v === "string") return JSON.stringify(v);
+    return null;
+  };
+  const inline = (v: unknown): string | null => {
+    const s = scalar(v);
+    if (s !== null) return s;
+    let out: string;
+    if (Array.isArray(v)) {
+      if (v.length === 0) return "[]";
+      if (!v.every((x) => typeof x === "number" || typeof x === "boolean")) return null;
+      out = `[${v.map((x) => scalar(x)).join(", ")}]`;
+    } else if (v && typeof v === "object") {
+      const entries = entriesOf(v).filter(([, x]) => x !== undefined);
+      if (entries.length === 0) return "{}";
+      const parts: string[] = [];
+      for (const [k, x] of entries) {
+        if (isObject(x)) return null;
+        const s2 = inline(x);
+        if (s2 === null) return null;
+        parts.push(`${JSON.stringify(k)}: ${s2}`);
+      }
+      out = `{ ${parts.join(", ")} }`;
+    } else return null;
+    return out.length <= 72 ? out : null;
+  };
+  const write = (v: unknown, indent: number): string => {
+    const one = inline(v);
+    if (one !== null) return one;
+    const pad = "  ".repeat(indent + 1);
+    const end = "  ".repeat(indent);
+    if (Array.isArray(v)) return `[\n${v.map((x) => pad + write(x, indent + 1)).join(",\n")}\n${end}]`;
+    const entries = entriesOf(v as object).filter(([, x]) => x !== undefined);
+    return `{\n${entries.map(([k, x]) => `${pad}${JSON.stringify(k)}: ${write(x, indent + 1)}`).join(",\n")}\n${end}}`;
+  };
+  return write(value, level);
+};
+
+function isObject(v: unknown): v is Record<string, unknown> | Map<string, unknown> {
+  return !!v && typeof v === "object" && !Array.isArray(v);
+}
+const plainMaps = (_: string, v: unknown) => (v instanceof Map ? Object.fromEntries(v) : v);
+const sameValue = (a: unknown, b: unknown) => JSON.stringify(a, plainMaps) === JSON.stringify(b, plainMaps);
 
 /**
  * `text` (Yog Data) changed to hold `next`, the rest of it as it was: what
@@ -358,11 +431,11 @@ function rewrite(text: string, node: DataNode, next: unknown, format: DataFormat
     const parts = members(text, node, node.entries.map((e) => ({ start: e.keyStart, end: e.value.end })));
     const pad = lineIndent(text, node.entries[0].keyStart);
     const out: Member[] = [];
-    const gone = (i: number) => i < keys.length && !(keys[i] in (next as object) && (next as Record<string, unknown>)[keys[i]] !== undefined);
+    const has = new Map(entriesOf(next).filter(([, v]) => v !== undefined));
+    const gone = (i: number) => i < keys.length && !has.has(keys[i]);
     // The old entry last written: a new key right after it, in the place of one that's gone, is that one renamed.
     let last = -1;
-    for (const [k, v] of Object.entries(next)) {
-      if (v === undefined) continue;
+    for (const [k, v] of has) {
       let i = keys.indexOf(k);
       const renamed = i < 0 && gone(last + 1);
       if (renamed) i = last + 1;

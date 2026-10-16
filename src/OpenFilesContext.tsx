@@ -785,6 +785,11 @@ export function useOpenFiles(): OpenFilesContextValue {
   return ctx;
 }
 
+/** The open files, or `null` outside the shell (an editor alone in a harness page). */
+export function useOpenFilesIfAny(): OpenFilesContextValue | null {
+  return useContext(OpenFilesContext);
+}
+
 /** The open file tab that's the active center-dock tab, if any — for the editor toolbar and Edit menu. Must be used inside the shell. */
 export function useActiveFileTab(): FileTab | null {
   const { tabs } = useOpenFiles();

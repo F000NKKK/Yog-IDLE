@@ -21,6 +21,7 @@ mod mod_ui;
 mod project_properties;
 mod properties;
 pub mod recipe_kinds;
+mod refs;
 mod search;
 mod symbols;
 mod worldgen;
@@ -762,6 +763,31 @@ async fn content_armor_materials(state: State<'_, AppState>, path: String) -> Re
     tauri::async_runtime::spawn_blocking(move || content::armor_materials(Path::new(&path)))
         .await
         .map_err(|e| e.to_string())
+}
+
+/// What `@<kind>:` may name in the file at `path`: the mod's own content,
+/// the other mods' ids it declares and the game's (`refs::refs`).
+#[tauri::command]
+async fn content_refs(state: State<'_, AppState>, path: String, kind: String) -> Result<refs::RefChoices, String> {
+    validate_within_roots(&state, Path::new(&path))?;
+    tauri::async_runtime::spawn_blocking(move || refs::refs(Path::new(&path), &kind))
+        .await
+        .map_err(|e| e.to_string())
+}
+
+/// The mod's `.ydef`s of `kind` with what they say (`refs::own_defs`).
+#[tauri::command]
+async fn content_defs(state: State<'_, AppState>, path: String, kind: String) -> Result<Vec<refs::OwnDef>, String> {
+    validate_within_roots(&state, Path::new(&path))?;
+    tauri::async_runtime::spawn_blocking(move || refs::own_defs(Path::new(&path), &kind))
+        .await
+        .map_err(|e| e.to_string())
+}
+
+/// The game's kinds of block a `.yblock` may be (`refs::block_kinds`).
+#[tauri::command]
+fn content_block_kinds() -> serde_json::Value {
+    refs::block_kinds()
 }
 
 /// The tags of `registry` (`item`, `block`) content of the mod at `path` can join.
@@ -1702,6 +1728,18 @@ pub mod bench {
     pub fn content_armor_materials(path: &Path) -> serde_json::Value {
         serde_json::to_value(crate::content::armor_materials(path)).unwrap_or_default()
     }
+    pub fn content_refs(path: &Path, kind: &str) -> serde_json::Value {
+        serde_json::to_value(crate::refs::refs(path, kind)).unwrap_or_default()
+    }
+    pub fn content_defs(path: &Path, kind: &str) -> serde_json::Value {
+        serde_json::to_value(crate::refs::own_defs(path, kind)).unwrap_or_default()
+    }
+    pub fn content_block_kinds() -> serde_json::Value {
+        crate::refs::block_kinds()
+    }
+    pub fn format_shape(format: &str) -> serde_json::Value {
+        crate::format_shape(format.to_string()).unwrap_or_else(|e| serde_json::json!({ "error": e }))
+    }
     pub fn content_tags(path: &Path, registry: &str) -> serde_json::Value {
         serde_json::to_value(crate::content::tags(path, registry)).unwrap_or_default()
     }
@@ -1824,6 +1862,9 @@ pub fn run() {
         content_tool_materials,
         content_armor_materials,
         content_tags,
+        content_refs,
+        content_defs,
+        content_block_kinds,
         content_parent_model,
         content_import,
         yui_designer_render,

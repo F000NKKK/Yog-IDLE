@@ -18,11 +18,11 @@ registerFileTypes([
   { id: "yog.yitem", name: "Yog Item", extensions: ["yitem"], icon: "yogItem", language: jsonLanguage },
   { id: "yog.yrecipe", name: "Yog Recipe", extensions: ["yrecipe"], language: jsonLanguage },
   { id: "yog.ybook", name: "Yog Book", extensions: ["ybook"], icon: "yogBook", language: jsonLanguage },
-  { id: "yog.ydef", name: "Yog Definition", extensions: ["ydef"], language: jsonLanguage },
+  { id: "yog.ydef", name: "Yog Definition", extensions: ["ydef"], icon: "yogDef", language: jsonLanguage },
   { id: "yog.ylayout", name: "Yog Recipe Layout", extensions: ["ylayout"], language: jsonLanguage },
   { id: "yog.ymodel", name: "Yog Body Model", extensions: ["ymodel"], icon: "yogBlock", language: jsonLanguage },
-  { id: "yog.yanim", name: "Yog Animations", extensions: ["yanim"], language: jsonLanguage },
-  { id: "yog.yentity", name: "Yog Entity", extensions: ["yentity"], language: jsonLanguage },
+  { id: "yog.yanim", name: "Yog Animations", extensions: ["yanim"], icon: "yogAnim", language: jsonLanguage },
+  { id: "yog.yentity", name: "Yog Entity", extensions: ["yentity"], icon: "yogEntity", language: jsonLanguage },
   { id: "yog.ydata", name: "Compiled Yog Data", extensions: ["ydata"] },
 ]);
 
