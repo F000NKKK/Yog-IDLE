@@ -47,7 +47,7 @@ enum GameIds {
     Keys(&'static str),
 }
 
-const GAME_IDS: [(&str, GameIds); 13] = [
+const GAME_IDS: [(&str, GameIds); 12] = [
     ("item", GameIds::Lang { prefixes: &["item.minecraft.", "block.minecraft."], dotted: false }),
     ("block", GameIds::Lang { prefixes: &["block.minecraft."], dotted: false }),
     ("entity", GameIds::Lang { prefixes: &["entity.minecraft."], dotted: false }),
