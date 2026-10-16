@@ -43,16 +43,16 @@ proc-macro2 = { version = "1.0.107", features = ["span-locations"] }
 # The screen designer draws with yog-ui itself — the crate mods render with
 # in game — through a recording `YogGfxApi` (yog-abi/yog-gfx), and reads
 # Minecraft's font/textures from the local client jar (zip, png).
-yog-ui = "0.42"
-yog-gfx = "0.27"
+yog-ui = "0.43"
+yog-gfx = "0.28"
 yog-abi = "0.30"
-yog-book = "0.65"
+yog-book = "0.66"
 # Yog Data: the text syntax of every Yog format.
 yog-data = "0.4"
 # A dimension's terrain, previewed by the code the runtime generates it with.
 yog-worldgen = "0.1"
 # The source formats' schemas, for generated editors.
-yog-formats = "0.7.8"
+yog-formats = "0.8"
 # SVG images and TrueType fonts, drawn the way the game draws them.
 resvg = { version = "0.48", default-features = false }
 fontdue = "0.9"
