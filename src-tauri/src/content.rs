@@ -144,13 +144,36 @@ pub fn content_block_faces(root: &Path, id: &str) -> Option<[Option<Vec<u8>>; 6]
 /// block of the mod, or its model has no elements of its own.
 pub fn content_block_model(root: &Path, id: &str) -> Option<(Vec<Value>, std::collections::HashMap<String, Vec<u8>>)> {
     let (file, doc) = content_file(root, id, &["yblock"])?;
-    let elements = doc.pointer("/model/elements").and_then(Value::as_array)?.clone();
+    let elements = match doc.pointer("/model/elements").and_then(Value::as_array) {
+        Some(elements) => elements.clone(),
+        None if doc.get("kind").and_then(Value::as_str) == Some("stairs") => vec![
+            stair_element([0, 0, 0], [16, 8, 16]),
+            stair_element([0, 8, 8], [16, 16, 16]),
+        ],
+        None => return None,
+    };
     let textures = doc
         .pointer("/model/textures")
         .and_then(Value::as_object)
         .map(|t| t.iter().filter_map(|(k, v)| Some((k.clone(), texture_bytes(&file, v.as_str()?).ok()?))).collect())
         .unwrap_or_default();
     Some((elements, textures))
+}
+
+fn stair_element(from: [u8; 3], to: [u8; 3]) -> Value {
+    let face = |texture: &str| serde_json::json!({ "texture": format!("#{texture}") });
+    serde_json::json!({
+        "from": from,
+        "to": to,
+        "faces": {
+            "up": face("top"),
+            "down": face("bottom"),
+            "north": face("side"),
+            "south": face("side"),
+            "west": face("side"),
+            "east": face("side")
+        }
+    })
 }
 
 /// The icon of the mod's item or block `id` as its `content/` file draws
