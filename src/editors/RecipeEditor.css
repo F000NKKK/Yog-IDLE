@@ -111,11 +111,31 @@
   justify-content: center;
 }
 
+.recipe-brewing-fuel-meter {
+  position: absolute;
+  left: 26px;
+  top: 20px;
+  width: 24px;
+  height: 28px;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.recipe-brewing-fuel-meter span {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, #ff6a00 0%, #ffd12a 58%, #fff1a0 100%);
+  clip-path: polygon(42% 0, 62% 0, 58% 24%, 82% 18%, 100% 47%, 88% 78%, 67% 100%, 29% 100%, 7% 76%, 0 48%, 22% 26%, 42% 30%);
+  transform-origin: bottom;
+  animation: brewing-fuel-level 4s linear infinite;
+}
+
 .recipe-brewing-fuel img {
   width: 32px;
   height: 32px;
   image-rendering: pixelated;
-  animation: brewing-fuel-consume 4s steps(1, end) infinite;
+  filter: drop-shadow(0 0 4px rgba(255, 168, 20, 0.65));
+  animation: brewing-fuel-glow 1s ease-in-out infinite alternate;
 }
 
 .recipe-brewing-process {
@@ -126,6 +146,22 @@
   color: var(--sp-text-muted);
   font-size: 11px;
   white-space: nowrap;
+}
+
+.recipe-brewing-transition {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  color: #3f3f3f;
+  background: #c6c6c6;
+  border: 2px solid;
+  border-color: #ffffff #555555 #555555 #ffffff;
+  outline: 1px solid #000000;
+  font-family: "Minecraft", "Monocraft", var(--sp-font-mono);
+  font-size: 24px;
+  line-height: 1;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
 }
 
 .recipe-brewing-progress {
@@ -165,6 +201,27 @@
   pointer-events: none;
 }
 
+.recipe-brewing-arrow-progress {
+  position: absolute;
+  left: 186px;
+  top: 20px;
+  width: 56px;
+  height: 48px;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.recipe-brewing-arrow-progress::before {
+  content: "";
+  position: absolute;
+  inset: 5px 2px;
+  background: linear-gradient(90deg, rgba(255, 184, 33, 0.1), rgba(255, 184, 33, 0.88));
+  clip-path: polygon(0 28%, 62% 28%, 62% 0, 100% 50%, 62% 100%, 62% 72%, 0 72%);
+  transform: scaleX(0);
+  transform-origin: left;
+  animation: brewing-progress 4s linear infinite;
+}
+
 .recipe-brewing-bubbles i {
   position: absolute;
   bottom: 0;
@@ -195,14 +252,21 @@
   animation: brewing-result 4s ease-in-out infinite;
 }
 
-@keyframes brewing-fuel-consume {
-  0%, 65%, 100% {
-    opacity: 1;
-    transform: scale(1);
+@keyframes brewing-fuel-level {
+  0%, 8% {
+    transform: scaleY(1);
   }
-  75%, 95% {
-    opacity: 0.12;
-    transform: scale(0.65);
+  88%, 100% {
+    transform: scaleY(0.06);
+  }
+}
+
+@keyframes brewing-fuel-glow {
+  from {
+    filter: drop-shadow(0 0 2px rgba(255, 168, 20, 0.35));
+  }
+  to {
+    filter: drop-shadow(0 0 6px rgba(255, 168, 20, 0.9));
   }
 }
 
@@ -242,7 +306,9 @@
 
 @media (prefers-reduced-motion: reduce) {
   .recipe-brewing-fuel img,
+  .recipe-brewing-fuel-meter span,
   .recipe-brewing-progress span,
+  .recipe-brewing-arrow-progress::before,
   .recipe-brewing-bubbles i,
   .recipe-brewing-flow section:nth-of-type(2) .recipe-spot img {
     animation: none;

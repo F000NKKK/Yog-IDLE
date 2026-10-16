@@ -104,7 +104,7 @@ describe("the game's single-input kinds", () => {
       ingredient: "@item:hexcasting:amethyst_dust",
       result: "@item:hexcasting:enlarge_grid",
     }`)!;
-    expect([r.from, r.cells[0], r.result]).toEqual(["yog:awkward", "hexcasting:amethyst_dust", "hexcasting:enlarge_grid"]);
+    expect([r.from, r.cells[0], r.result]).toEqual(["yog:potion/awkward", "hexcasting:amethyst_dust", "hexcasting:enlarge_grid"]);
     expect(JSON.parse(serializeRecipe(r))).toMatchObject({
       type: "brewing",
       from: "@item:yog:potion/awkward",
