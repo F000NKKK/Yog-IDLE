@@ -220,7 +220,7 @@ fn blit_px(c: &mut Canvas, img: &Image, dest: [f32; 4], src: [f32; 4], t: u32) {
     if w <= 0.0 || h <= 0.0 || uw <= 0.0 || vh <= 0.0 {
         return;
     }
-    let (iw, ih) = (img.w as f32, img.h as f32);
+    let (iw, ih) = (img.width as f32, img.height as f32);
     c.blit(
         img,
         x,
@@ -278,15 +278,15 @@ fn sprite(c: &mut Canvas, sp: &Sprite, dest: [f32; 4], t: u32) {
     {
         // Animated sprites stack their frames vertically: the first one.
         let size = sp.size(true);
-        let frame_h = if img.h > img.w && size.y <= size.x {
-            img.w as f32 * size.y / size.x
+        let frame_h = if img.height > img.width && size.y <= size.x {
+            img.width as f32 * size.y / size.x
         } else {
-            img.h as f32
+            img.height as f32
         };
         nine_slice(
             c,
             &img,
-            [0.0, 0.0, img.w as f32, frame_h],
+            [0.0, 0.0, img.width as f32, frame_h],
             sp.border,
             dest,
             t,
@@ -301,7 +301,7 @@ fn sprite(c: &mut Canvas, sp: &Sprite, dest: [f32; 4], t: u32) {
         && let Some(img) = texture(tex)
     {
         // Resource packs may ship the sheet at a higher resolution.
-        let k = img.w as f32 / texture_size.x;
+        let k = img.width as f32 / texture_size.x;
         nine_slice(
             c,
             &img,
@@ -318,7 +318,7 @@ fn sprite(c: &mut Canvas, sp: &Sprite, dest: [f32; 4], t: u32) {
 fn missing(c: &mut Canvas, dest: [f32; 4]) {
     blit_px(
         c,
-        &Image::missing(),
+        &super::assets::missing_image(),
         dest,
         [0.0, 0.0, 16.0, 16.0],
         0xFFFF_FFFF,
@@ -345,7 +345,7 @@ fn svg_image(data: &str, w: u32, h: u32) -> Option<Image> {
             }
         }
     }
-    Some(Image { w, h, rgba })
+    Some(Image { width: w, height: h, rgba })
 }
 
 /// The document of an `.svg` texture id (`ns:textures/x.svg`) of the mod.
@@ -367,7 +367,7 @@ pub fn draw_svg(c: &mut Canvas, data: &str, dest: [f32; 4], t: u32) {
     }
     let side = |v: f32| ((v * SVG_OVERSAMPLE).ceil() as u32).clamp(1, 2048);
     match svg_image(data, side(dest[2]), side(dest[3])) {
-        Some(img) => blit_px(c, &img, dest, [0.0, 0.0, img.w as f32, img.h as f32], t),
+        Some(img) => blit_px(c, &img, dest, [0.0, 0.0, img.width as f32, img.height as f32], t),
         None => missing(c, dest),
     }
 }
@@ -396,7 +396,7 @@ pub fn draw(c: &mut Canvas, source: &str, dest: [f32; 4], region: [f32; 4], t: u
         }
         return;
     }
-    let first_frame = |img: &Image| [0.0, 0.0, img.w as f32, img.w.min(img.h) as f32];
+    let first_frame = |img: &Image| [0.0, 0.0, img.width as f32, img.width.min(img.height) as f32];
     match ImageSource::parse(source) {
         Some(ImageSource::Item(id)) if item_3d(c, &id, dest) => {}
         Some(ImageSource::Item(id)) => match item_texture(&id, false) {
@@ -413,7 +413,7 @@ pub fn draw(c: &mut Canvas, source: &str, dest: [f32; 4], region: [f32; 4], t: u
                 .split_once(':')
                 .and_then(|(ns, p)| texture(&format!("{ns}:textures/gui/sprites/{p}.png")))
             {
-                Some(img) => blit_px(c, &img, dest, [0.0, 0.0, img.w as f32, img.h as f32], t),
+                Some(img) => blit_px(c, &img, dest, [0.0, 0.0, img.width as f32, img.height as f32], t),
                 None => missing(c, dest),
             },
         },
@@ -422,7 +422,7 @@ pub fn draw(c: &mut Canvas, source: &str, dest: [f32; 4], region: [f32; 4], t: u
                 let src = if region[2] > 0.0 && region[3] > 0.0 {
                     region
                 } else {
-                    [0.0, 0.0, img.w as f32, img.h as f32]
+                    [0.0, 0.0, img.width as f32, img.height as f32]
                 };
                 blit_px(c, &img, dest, src, t);
             }

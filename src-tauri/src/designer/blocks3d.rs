@@ -10,7 +10,7 @@ use std::sync::Arc;
 
 use serde_json::Value;
 
-use super::assets::{Image, Resources, decode_png, split_id};
+use super::assets::{Image, Resources, decode_png, missing_image, split_id};
 use super::raster::Canvas;
 
 /// A cube's textures per face: up, down, north, south, west, east.
@@ -31,7 +31,7 @@ pub type Shape = Vec<Cuboid>;
 
 /// A whole-block cube with `faces` (a missing one: the missing texture).
 pub fn cube(faces: Faces) -> Shape {
-    let faces = faces.map(|f| Some(f.unwrap_or_else(|| Arc::new(Image::missing()))));
+    let faces = faces.map(|f| Some(f.unwrap_or_else(|| Arc::new(missing_image()))));
     vec![Cuboid { from: [0.0; 3], to: [16.0; 3], faces }]
 }
 
@@ -51,7 +51,7 @@ fn default_uv(slot: usize, f: [f32; 3], t: [f32; 3]) -> [f32; 4] {
 
 /// `img`'s part `uv` (sixteenths of it; reversed: mirrored).
 fn cut(img: &Image, [u0, v0, u1, v1]: [f32; 4]) -> Image {
-    let (sx, sy) = (img.w as f32 / 16.0, img.w.min(img.h) as f32 / 16.0);
+    let (sx, sy) = (img.width as f32 / 16.0, img.width.min(img.height) as f32 / 16.0);
     let (x0, x1) = ((u0 * sx).round() as i32, (u1 * sx).round() as i32);
     let (y0, y1) = ((v0 * sy).round() as i32, (v1 * sy).round() as i32);
     let (w, h) = ((x1 - x0).unsigned_abs().max(1), (y1 - y0).unsigned_abs().max(1));
@@ -60,11 +60,11 @@ fn cut(img: &Image, [u0, v0, u1, v1]: [f32; 4]) -> Image {
         for x in 0..w as i32 {
             let px = if x1 >= x0 { x0 + x } else { x0 - 1 - x };
             let py = if y1 >= y0 { y0 + y } else { y0 - 1 - y };
-            let (px, py) = (px.clamp(0, img.w as i32 - 1) as u32, py.clamp(0, img.h as i32 - 1) as u32);
-            rgba.extend_from_slice(&img.pixel(px, py));
+            let (px, py) = (px.clamp(0, img.width as i32 - 1) as u32, py.clamp(0, img.height as i32 - 1) as u32);
+            rgba.extend_from_slice(&img.pixel(px, py).to_rgba8());
         }
     }
-    Image { w, h, rgba }
+    Image { width: w, height: h, rgba }
 }
 
 /// A model's `elements` as boxes; `texture("#var" or "var")` gives a face's texture.
@@ -81,7 +81,7 @@ pub fn shape_of(elements: &[Value], texture: &mut dyn FnMut(&str) -> Option<Arc<
             let faces = e.get("faces")?;
             let faces: Faces = std::array::from_fn(|slot| {
                 let face = faces.get(FACE_NAMES[slot])?;
-                let img = face.get("texture").and_then(Value::as_str).and_then(&mut *texture).unwrap_or_else(|| Arc::new(Image::missing()));
+                let img = face.get("texture").and_then(Value::as_str).and_then(&mut *texture).unwrap_or_else(|| Arc::new(missing_image()));
                 let uv = face
                     .get("uv")
                     .and_then(Value::as_array)
@@ -320,7 +320,7 @@ fn draw_with(
     }
     // Back to front.
     quads.sort_by(|a, b| a.0.total_cmp(&b.0));
-    let missing = Arc::new(Image::missing());
+    let missing = Arc::new(missing_image());
     for (_, img, o, a, b, shade) in quads {
         let img = img.unwrap_or_else(|| missing.clone());
         c.quad(&img, o, a, b, shade);

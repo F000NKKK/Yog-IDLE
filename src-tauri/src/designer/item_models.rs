@@ -56,7 +56,7 @@ pub fn look(res: &Resources, id: &str) -> Option<Look> {
         let tint = tints.get(i).copied().flatten();
         match &mut out {
             None => out = Some(tinted(img, tint)),
-            Some(base) if base.w == img.w && base.h == img.h => over(base, &tinted(img, tint)),
+            Some(base) if base.width == img.width && base.height == img.height => over(base, &tinted(img, tint)),
             Some(_) => {}
         }
     }
@@ -92,22 +92,22 @@ fn model_chain(res: &Resources, model: &str) -> (Vec<String>, HashMap<String, St
 
 /// An animated texture's first frame (square, at the top).
 fn first_frame(img: Image) -> Image {
-    if img.h <= img.w {
+    if img.height <= img.width {
         return img;
     }
-    crop(&img, 0, 0, img.w, img.w)
+    crop(&img, 0, 0, img.width, img.width)
 }
 
 fn crop(img: &Image, x: u32, y: u32, w: u32, h: u32) -> Image {
     let mut rgba = Vec::with_capacity((w * h * 4) as usize);
-    for yy in y..(y + h).min(img.h) {
-        for xx in x..(x + w).min(img.w) {
-            rgba.extend_from_slice(&img.pixel(xx, yy));
+    for yy in y..(y + h).min(img.height) {
+        for xx in x..(x + w).min(img.width) {
+            rgba.extend_from_slice(&img.pixel(xx, yy).to_rgba8());
         }
     }
-    let w = w.min(img.w.saturating_sub(x));
-    let h = h.min(img.h.saturating_sub(y));
-    Image { w, h, rgba }
+    let w = w.min(img.width.saturating_sub(x));
+    let h = h.min(img.height.saturating_sub(y));
+    Image { width: w, height: h, rgba }
 }
 
 /// `img` with its colors multiplied by `tint` (`0xRRGGBB`).
@@ -138,7 +138,7 @@ fn over(base: &mut Image, top: &Image) {
 fn head(res: &Resources, tex: &str) -> Option<Faces> {
     let (ns, path) = split_id(tex);
     let img = decode_png(&res.read(ns, &format!("textures/{path}.png"))?)?;
-    let u = img.w / 64;
+    let u = img.width / 64;
     let f = |x: u32, y: u32| Some(Arc::new(crop(&img, x * u, y * u, 8 * u, 8 * u)));
     // up, down, north (the face), south, west, east
     Some([f(8, 0), f(16, 0), f(8, 8), f(24, 8), f(16, 8), f(0, 8)])
