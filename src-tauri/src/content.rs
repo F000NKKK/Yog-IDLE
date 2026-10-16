@@ -214,6 +214,76 @@ fn stair_element(from: [u8; 3], to: [u8; 3]) -> Value {
     })
 }
 
+/// A mod item's definition and, for potions, its effect-derived color.
+pub fn content_item_appearance(root: &Path, id: &str) -> Option<(Value, Option<u32>)> {
+    let ns = mod_id(root)?;
+    let (want_ns, want) = split_id(id);
+    if want_ns != ns {
+        return None;
+    }
+    for file in find(&root.join("content/items"), "yitem") {
+        let Ok(text) = std::fs::read_to_string(&file) else { continue };
+        let Some(doc) = crate::data::read_object(&text) else { continue };
+        let Some(fid) = doc
+            .get("id")
+            .and_then(Value::as_str)
+            .or_else(|| file.file_stem().and_then(|s| s.to_str()))
+        else {
+            continue;
+        };
+        if fid.split_once(':').map_or(fid, |(_, p)| p) != want {
+            continue;
+        }
+        let definition = Value::Object(doc);
+        let color = potion_effect_color(root, &definition);
+        return Some((definition, color));
+    }
+    None
+}
+
+fn potion_effect_color(root: &Path, item: &Value) -> Option<u32> {
+    let effects = item.pointer("/item/potion/effects")?.as_array()?;
+    let mut channels = [0u64; 3];
+    let mut count = 0u64;
+    for effect in effects {
+        let Some(id) = effect.get("effect").and_then(Value::as_str) else { continue };
+        let Some(color) = content_effect_color(root, id) else { continue };
+        channels[0] += u64::from((color >> 16) & 0xFF);
+        channels[1] += u64::from((color >> 8) & 0xFF);
+        channels[2] += u64::from(color & 0xFF);
+        count += 1;
+    }
+    (count > 0).then(|| {
+        (((channels[0] / count) as u32) << 16)
+            | (((channels[1] / count) as u32) << 8)
+            | (channels[2] / count) as u32
+    })
+}
+
+fn content_effect_color(root: &Path, reference: &str) -> Option<u32> {
+    let mod_ns = mod_id(root)?;
+    let id = reference.strip_prefix("@effect:").unwrap_or(reference);
+    let (ns, want) = split_id(id);
+    if ns != mod_ns {
+        return None;
+    }
+    for file in find(&root.join("content/effects"), "ydef") {
+        let Ok(text) = std::fs::read_to_string(&file) else { continue };
+        let Some(doc) = crate::data::read_object(&text) else { continue };
+        let Some(id) = doc
+            .get("id")
+            .and_then(Value::as_str)
+            .or_else(|| file.file_stem().and_then(|s| s.to_str()))
+        else {
+            continue;
+        };
+        if id.split_once(':').map_or(id, |(_, p)| p) == want {
+            return doc.get("color").and_then(Value::as_u64).and_then(|v| u32::try_from(v).ok());
+        }
+    }
+    None
+}
+
 /// The icon of the mod's item or block `id` as its `content/` file draws
 /// it: the model's `layer0` (else its first texture), as png bytes.
 pub fn content_icon(root: &Path, id: &str) -> Option<Vec<u8>> {
@@ -797,6 +867,30 @@ mod tests {
         assert_eq!(texture_target(&file, "/etc/x.png"), None);
         assert_eq!(texture_target(&file, "minecraft:item/apple"), None);
         assert_eq!(texture_target(&file, "#layer0"), None);
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn item_appearance_reads_its_model_and_effect_colors() {
+        let dir = std::env::temp_dir().join(format!("idle-item-appearance-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(dir.join("content/items")).unwrap();
+        std::fs::create_dir_all(dir.join("content/effects")).unwrap();
+        std::fs::write(dir.join("yog.toml"), "[mod]\nid = \"mymod\"\n").unwrap();
+        std::fs::write(
+            dir.join("content/items/potion.yitem"),
+            r#"{ model: { parent: "minecraft:item/potion" }, item: { potion: { effects: [{ effect: "@effect:mymod:glow" }] } } }"#,
+        )
+        .unwrap();
+        std::fs::write(
+            dir.join("content/effects/glow.ydef"),
+            r#"{ kind: "effect", id: "glow", color: 1193046 }"#,
+        )
+        .unwrap();
+
+        let (definition, color) = content_item_appearance(&dir, "mymod:potion").unwrap();
+        assert_eq!(definition.pointer("/model/parent").and_then(Value::as_str), Some("minecraft:item/potion"));
+        assert_eq!(color, Some(0x123456));
         let _ = std::fs::remove_dir_all(dir);
     }
 
