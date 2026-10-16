@@ -917,6 +917,7 @@ mod tests {
             Some("minecraft:item/potion")
         );
         assert_eq!(color, Some(0x123456));
+        assert_eq!(item_potion_color(&dir.join("content/items/potion.yitem")), Some(0x123456));
         let _ = std::fs::remove_dir_all(dir);
     }
 
