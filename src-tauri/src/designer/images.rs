@@ -11,6 +11,7 @@ use std::cell::RefCell;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
+use yog_gfx::{Color, Rect, Vec2};
 use yog_gfx::image::{
     ImageSource, LegacyRegion, SPRITES, Sprite, Stretch, fit, sprite as find_sprite,
 };
@@ -89,6 +90,10 @@ fn uv(v: &str) -> Option<[f32; 4]> {
         .filter(|r| r[2] > 0.0 && r[3] > 0.0)
 }
 
+fn rect([x, y, w, h]: [f32; 4]) -> Rect {
+    Rect::new(x, y, w, h)
+}
+
 /// The widget for an `<Image>` — what the generated code builds: `source`,
 /// `stretch`, `uv`, `tint`.
 pub fn widget(node: &YuiNode) -> Widget {
@@ -99,10 +104,10 @@ pub fn widget(node: &YuiNode) -> Widget {
         w = w.stretch(stretch(s));
     }
     if let Some(r) = a("uv").and_then(uv) {
-        w = w.region(r);
+        w = w.region(rect(r));
     }
     if let Some(t) = a("tint").and_then(color) {
-        w = w.tint(t);
+        w = w.tint(Color(t));
     }
     w
 }
@@ -194,7 +199,9 @@ fn item_3d(c: &mut Canvas, id: &str, [x, y, w, h]: [f32; 4]) -> bool {
 pub fn source_size(source: &str) -> Option<(f32, f32)> {
     match ImageSource::parse(source)? {
         ImageSource::Item(_) | ImageSource::Block(_) => Some((16.0, 16.0)),
-        ImageSource::Sprite(name) => find_sprite(&name).map(|s| s.size(has_atlas())),
+        ImageSource::Sprite(name) => find_sprite(&name)
+            .map(|s| s.size(has_atlas()))
+            .map(|size| (size.x, size.y)),
         ImageSource::Texture(id) if id.ends_with(".svg") => svg_document(&id).and_then(|d| svg_size(&d)),
         ImageSource::Texture(id) => texture(&id).map(|i| (i.w as f32, i.h as f32)),
         ImageSource::ModPath(_) => None,
@@ -270,8 +277,9 @@ fn sprite(c: &mut Canvas, sp: &Sprite, dest: [f32; 4], t: u32) {
         && let Some(img) = texture(&format!("minecraft:textures/gui/sprites/{atlas}.png"))
     {
         // Animated sprites stack their frames vertically: the first one.
-        let frame_h = if img.h > img.w && sp.h <= sp.w {
-            img.w as f32 * sp.h / sp.w
+        let size = sp.size(true);
+        let frame_h = if img.h > img.w && size.y <= size.x {
+            img.w as f32 * size.y / size.x
         } else {
             img.h as f32
         };
@@ -287,21 +295,17 @@ fn sprite(c: &mut Canvas, sp: &Sprite, dest: [f32; 4], t: u32) {
     }
     if let Some(LegacyRegion {
         texture: tex,
-        u,
-        v,
-        w,
-        h,
-        tex_w,
-        ..
+        region,
+        texture_size,
     }) = sp.legacy
         && let Some(img) = texture(tex)
     {
         // Resource packs may ship the sheet at a higher resolution.
-        let k = img.w as f32 / tex_w;
+        let k = img.w as f32 / texture_size.x;
         nine_slice(
             c,
             &img,
-            [u * k, v * k, w * k, h * k],
+            [region.x * k, region.y * k, region.w * k, region.h * k],
             sp.border * k,
             dest,
             t,
@@ -481,7 +485,7 @@ pub fn candidates(path: &Path) -> Vec<Candidate> {
     out.extend(SPRITES.iter().map(|s| Candidate {
         source: format!("sprite:{}", s.name),
         group: "sprite".into(),
-        detail: format!("{} ({}×{})", s.description, s.w, s.h),
+        detail: format!("{} ({}×{})", s.description, s.size.x, s.size.y),
     }));
     let res = Resources::for_mod(root.as_deref());
     if let Some(v) = &res.vanilla {
@@ -525,7 +529,12 @@ fn draw_preview(path: &Path, source: &str, size: u32) -> Option<String> {
     let mut c = Canvas::new(size, size, 1, &res);
     let source = resolve_mod(source);
     let (nw, nh) = source_size(&source).unwrap_or((16.0, 16.0));
-    let ([x, y, w, h], _) = fit(Stretch::Uniform, nw, nh, 0.0, 0.0, size as f32, size as f32);
+    let (dest, _) = fit(
+        Stretch::Uniform,
+        Vec2::new(nw, nh),
+        Rect::new(0.0, 0.0, size as f32, size as f32),
+    );
+    let [x, y, w, h] = [dest.x, dest.y, dest.w, dest.h];
     draw(&mut c, &source, [x, y, w, h], [0.0; 4], 0xFFFF_FFFF);
     let png = c.png().ok()?;
     Some(format!(

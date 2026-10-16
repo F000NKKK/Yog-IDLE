@@ -26,6 +26,7 @@ use std::sync::{Mutex, OnceLock};
 
 use base64::Engine as _;
 use serde::{Deserialize, Serialize};
+use yog_gfx::Vec2;
 use yog_ui::layout::LayoutNode;
 use yog_ui::{ScrollState, UiRoot, Widget};
 
@@ -268,7 +269,7 @@ pub struct EventResult {
 
 /// `hit_test` (yog-ui `layout::hit_test`), answering with the `.yui` uid.
 fn hit<'a>(node: &'a YuiNode, l: &'a LayoutNode, mx: f32, my: f32) -> Option<&'a YuiNode> {
-    if !l.rect.contains(mx, my) {
+    if !l.rect.contains(Vec2::new(mx, my)) {
         return None;
     }
     if markup::is_container(&node.kind) {
@@ -324,7 +325,7 @@ pub fn event(args: &EventArgs) -> EventResult {
         let wheel = args.event.starts_with("scroll:");
         // The wheel goes to the innermost view under the cursor; the rest to every view (each checks its own scrollbar).
         for (n, l) in views.iter().rev() {
-            if wheel && !l.rect.contains(pos.0, pos.1) {
+            if wheel && !l.rect.contains(Vec2::new(pos.0, pos.1)) {
                 continue;
             }
             let s = state.scroll.entry(n.uid.clone()).or_default();

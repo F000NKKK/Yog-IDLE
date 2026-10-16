@@ -5700,6 +5700,7 @@ dependencies = [
  "yog-debugger",
  "yog-formats",
  "yog-gfx",
+ "yog-graphics",
  "yog-hot-reload",
  "yog-symbols",
  "yog-ui",

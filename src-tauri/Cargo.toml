@@ -47,6 +47,7 @@ yog-ui = "0.43"
 yog-gfx = "0.28"
 yog-abi = "0.30"
 yog-book = "0.66"
+yog-graphics = "0.1"
 # Yog Data: the text syntax of every Yog format.
 yog-data = "0.4"
 # A dimension's terrain, previewed by the code the runtime generates it with.

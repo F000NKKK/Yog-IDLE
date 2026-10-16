@@ -6,6 +6,7 @@
 use std::collections::HashMap;
 
 use serde::Deserialize;
+use yog_gfx::Color;
 use yog_ui::widget::{self, Widget};
 use yog_ui::{Align, Dock, FlexDir, FocusStyle, HAlign, Track, Units, VAlign};
 
@@ -402,17 +403,17 @@ pub fn widget(node: &YuiNode, in_canvas: bool, scroll: &HashMap<String, f32>) ->
                 _ => w,
             },
             "bg" => match color(v) {
-                Some(c) => w.bg(c),
+                Some(c) => w.bg(Color(c)),
                 // `sprite:panel`, `mymod:gui/frame`: an image background.
                 None if v.contains(':') => w.bg_image(v.trim()),
                 None => w,
             },
             "color" => match color(v) {
-                Some(c) => w.color(c),
+                Some(c) => w.color(Color(c)),
                 None => w,
             },
             "focus_color" => match color(v) {
-                Some(c) => w.focus_color(c),
+                Some(c) => w.focus_color(Color(c)),
                 None => w,
             },
             "shadow" => w.shadow(v.trim() == "true"),

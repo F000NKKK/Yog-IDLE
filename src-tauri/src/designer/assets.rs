@@ -15,39 +15,25 @@ use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, OnceLock};
 
-/// A decoded RGBA8 image.
-pub struct Image {
-    pub w: u32,
-    pub h: u32,
-    pub rgba: Vec<u8>,
-}
+pub use yog_graphics::Image;
 
-impl Image {
-    pub fn pixel(&self, x: u32, y: u32) -> [u8; 4] {
-        let i = ((y * self.w + x) * 4) as usize;
-        [
-            self.rgba[i],
-            self.rgba[i + 1],
-            self.rgba[i + 2],
-            self.rgba[i + 3],
-        ]
-    }
-
-    /// Minecraft's missing texture: 16×16, magenta/black quarters.
-    pub fn missing() -> Image {
-        let mut rgba = Vec::with_capacity(16 * 16 * 4);
-        for y in 0..16 {
-            for x in 0..16 {
-                let magenta = (x < 8) == (y < 8);
-                rgba.extend_from_slice(if magenta {
-                    &[0xF8, 0x00, 0xF8, 0xFF]
+/// Minecraft's missing texture: 16×16, magenta/black quarters.
+pub fn missing_image() -> Image {
+    let mut image = Image::new(16, 16);
+    for y in 0..16 {
+        for x in 0..16 {
+            image.set_pixel(
+                x,
+                y,
+                if (x < 8) == (y < 8) {
+                    yog_graphics::Color::from_rgba8([0xF8, 0, 0xF8, 0xFF])
                 } else {
-                    &[0, 0, 0, 0xFF]
-                });
-            }
+                    yog_graphics::Color::from_rgba8([0, 0, 0, 0xFF])
+                },
+            );
         }
-        Image { w: 16, h: 16, rgba }
     }
+    image
 }
 
 pub fn decode_png(bytes: &[u8]) -> Option<Image> {
@@ -71,7 +57,7 @@ pub fn decode_png(bytes: &[u8]) -> Option<Image> {
         png::ColorType::Grayscale => buf[..px].iter().flat_map(|&g| [g, g, g, 0xFF]).collect(),
         png::ColorType::Indexed => return None, // EXPAND turns these into RGB(A)
     };
-    Some(Image { w, h, rgba })
+    Some(Image { width: w, height: h, rgba })
 }
 
 /// Where the vanilla resources come from.

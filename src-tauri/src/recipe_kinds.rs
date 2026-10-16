@@ -10,6 +10,7 @@ use base64::Engine as _;
 use serde::Serialize;
 use yog_book::layout::{FRAME_UV, LayoutPart, SHEET};
 use yog_formats::def::{Def, RecipeKindDef, ValueType};
+use yog_gfx::{Color, Rect, Vec2};
 
 use crate::designer::{assets::Resources, gfx, images, raster};
 
@@ -170,11 +171,23 @@ fn layout(root: &Path, file: &Path, size: [f32; 2], parts: &[LayoutPart]) -> Lay
     let (w, h) = (size[0].ceil().max(1.0) as u32, size[1].ceil().max(1.0) as u32);
     let ops = gfx::record(w as i32, h as i32, |ctx| {
         let d = ctx.draw2d();
-        let frame = |[x, y]: [f32; 2]| d.image_region(SHEET, x - 4.0, y - 4.0, FRAME_UV[2], FRAME_UV[3], FRAME_UV, 0xFFFF_FFFF);
+        let frame = |[x, y]: [f32; 2]| {
+            d.image_region(
+                SHEET,
+                Rect::new(x - 4.0, y - 4.0, FRAME_UV[2], FRAME_UV[3]),
+                Some(Rect::new(FRAME_UV[0], FRAME_UV[1], FRAME_UV[2], FRAME_UV[3])),
+                Color::WHITE,
+            )
+        };
         for p in parts {
             match p {
-                LayoutPart::Image { source, uv, at } => d.image_region(source, at[0], at[1], uv[2], uv[3], *uv, 0xFFFF_FFFF),
-                LayoutPart::Item { item, at } => d.item(item, at[0], at[1], 16.0),
+                LayoutPart::Image { source, uv, at } => d.image_region(
+                    source,
+                    Rect::new(at[0], at[1], uv[2], uv[3]),
+                    Some(Rect::new(uv[0], uv[1], uv[2], uv[3])),
+                    Color::WHITE,
+                ),
+                LayoutPart::Item { item, at } => d.item(item, Vec2::new(at[0], at[1]), 16.0),
                 LayoutPart::Slots { at, frame: true, .. } => at.iter().for_each(|a| frame(*a)),
                 LayoutPart::Result { at, frame: true } => frame(*at),
                 _ => {}
