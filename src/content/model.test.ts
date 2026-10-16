@@ -59,4 +59,28 @@ describe("editing a .yblock's text", () => {
     expect(again.ok && again.file).toEqual(file);
     expect(again.ok && again.file.states?.variants).toEqual({ "powered=true": "on" });
   });
+
+  describe("block kinds and hanging items", () => {
+    it("keeps the new loader properties in Yog Data round-trips", () => {
+      const text = `// A built-in stair block.
+  {
+    "kind": "stairs",
+    "block": { "base": "@block:mymod:planks", "occludes": true },
+    "item": { "hangs": { "entity": "@entity:mymod:wall_scroll", "size": [2, 1] } }
+  }
+  `;
+      const parsed = parseContent(text);
+      if (!parsed.ok) throw new Error(parsed.error);
+      expect(patchContent(text, parsed.file)).toBe(text);
+
+      const draft = clone(parsed.file);
+      draft.block!.base = "@block:minecraft:oak_planks";
+      draft.item!.hangs!.size = [3, 2];
+      const output = patchContent(text, draft);
+      expect(output).toContain("// A built-in stair block.");
+      expect(output).toContain('"base": "@block:minecraft:oak_planks"');
+      expect(output).toContain('"size": [3, 2]');
+      expect(parseContent(output)).toMatchObject({ ok: true, file: draft });
+    });
+  });
 });

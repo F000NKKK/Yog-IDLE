@@ -1407,8 +1407,8 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
             })]
           : []),
         ...(blockKind?.takes.includes("triggered_by")
-          ? [choice("triggered_by", t("Triggered By"), c, b.triggered_by, ["everything", "mobs"], (v) =>
-              setB((x) => void (x.triggered_by = v as NonNullable<ContentFile["block"]>["triggered_by"])), {
+          ? [choice("triggered_by", t("Triggered By"), c, b.triggered_by ?? "everything", ["everything", "mobs"], (v) =>
+              setB((x) => void (x.triggered_by = v === "everything" ? undefined : v as NonNullable<ContentFile["block"]>["triggered_by"])), {
               optionLabel: (value) => t(value === "mobs" ? "Mobs Only" : "Everything"),
               description: t("What can trigger a button or pressure plate: everything includes items and arrows; mobs means living entities only."),
             })]
