@@ -55,7 +55,45 @@ fn find(dir: &Path, ext: &str) -> Vec<PathBuf> {
 /// The png bytes of a texture as a content file names it: `@Set.name`,
 /// `path.png` (in `resources/`), or a texture id (`ns:block/x`).
 fn texture_bytes(file: &Path, texture: &str) -> Result<Vec<u8>, String> {
-    texture_file(file, texture, "png")
+    match texture_file(file, texture, "png") {
+        Ok(bytes) => Ok(bytes),
+        Err(original) => {
+            let Some((x, y, w, h)) = brewing_sprite_sheet_region(texture) else {
+                return Err(original);
+            };
+            let sheet = texture_file(file, "minecraft:gui/container/brewing_stand", "png")?;
+            crop_png(&sheet, x, y, w, h).map_err(|e| format!("{original}; brewing sprite fallback: {e}"))
+        }
+    }
+}
+
+fn brewing_sprite_sheet_region(texture: &str) -> Option<(u32, u32, u32, u32)> {
+    match texture {
+        "minecraft:gui/sprites/container/brewing_stand/brew_progress" => Some((176, 0, 9, 28)),
+        "minecraft:gui/sprites/container/brewing_stand/bubbles" => Some((185, 0, 12, 29)),
+        "minecraft:gui/sprites/container/brewing_stand/fuel_length" => Some((176, 29, 18, 4)),
+        _ => None,
+    }
+}
+
+fn crop_png(bytes: &[u8], x: u32, y: u32, width: u32, height: u32) -> Result<Vec<u8>, String> {
+    let image = crate::designer::assets::decode_png(bytes).ok_or("invalid PNG")?;
+    if x + width > image.width || y + height > image.height {
+        return Err(format!("crop {x},{y} {width}x{height} exceeds {}x{}", image.width, image.height));
+    }
+    let mut rgba = Vec::with_capacity((width * height * 4) as usize);
+    for row in y..y + height {
+        let start = ((row * image.width + x) * 4) as usize;
+        rgba.extend_from_slice(&image.rgba[start..start + (width * 4) as usize]);
+    }
+    let mut output = Vec::new();
+    let mut encoder = png::Encoder::new(&mut output, width, height);
+    encoder.set_color(png::ColorType::Rgba);
+    encoder.set_depth(png::BitDepth::Eight);
+    let mut writer = encoder.write_header().map_err(|e| e.to_string())?;
+    writer.write_image_data(&rgba).map_err(|e| e.to_string())?;
+    drop(writer);
+    Ok(output)
 }
 
 /// A file of texture `texture` — its `png`, or the `png.mcmeta` beside it —
