@@ -116,6 +116,15 @@ impl Vanilla {
         Some(bytes)
     }
 
+    /// The jar's file names under `prefix` (`data/minecraft/loot_tables/`), the prefix cut.
+    pub fn names_under(&self, prefix: &str) -> Vec<String> {
+        let Ok(zip) = self.zip.lock() else { return Vec::new() };
+        zip.file_names()
+            .filter_map(|n| Some(n.ok()?.strip_prefix(prefix)?.to_string()))
+            .filter(|n| !n.is_empty() && !n.ends_with('/'))
+            .collect()
+    }
+
     /// The game's item and block texture names (`apple`, `stone`, ...),
     /// sorted — what `item:` / `block:` sources can show in the designer.
     pub fn texture_names(&self) -> (Vec<String>, Vec<String>) {

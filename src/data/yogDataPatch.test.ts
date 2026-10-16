@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseDataValue, patchDataText } from "./yogData";
+import { formatData, parseData, parseDataValue, patchDataText, toOrdered } from "./yogData";
 
 // A stand-in for an editor's formatter: JSON at the given indent.
 const format = (v: unknown, level: number) => JSON.stringify(v, null, 2).replace(/\n/g, `\n${"  ".repeat(level)}`);
@@ -82,5 +82,24 @@ describe("patching yog data text", () => {
 
   it("writes a broken text anew", () => {
     expect(patchDataText("{ oops", { a: 1 }, format)).toBe('{\n  "a": 1\n}\n');
+  });
+
+  it("keeps the order of a Map's keys, numbers among them", () => {
+    const text = '{\n  "rotation": {\n    "0": [0, 0, 0], // rest\n    "0.5": [45, 0, 0],\n    "1": [0, 0, 0]\n  }\n}';
+    const doc = toOrdered(parseData(text)) as Map<string, Map<string, unknown>>;
+    const keys = doc.get("rotation")!;
+    keys.set("0.5", [90, 0, 0]);
+    const out = patchDataText(text, doc, formatData);
+    expect(out).toBe(text.replace("[45, 0, 0]", "[90, 0, 0]"));
+    // A key added between others stays there.
+    const between = new Map([...keys.entries()].flatMap(([k, v]) => (k === "1" ? [["0.75", [10, 0, 0]] as [string, unknown], [k, v]] : [[k, v]])));
+    doc.set("rotation", between as Map<string, unknown>);
+    const out2 = patchDataText(text, doc, formatData);
+    expect(out2.indexOf('"0.75"')).toBeLessThan(out2.indexOf('"1"'));
+    expect(out2).toContain("// rest");
+  });
+
+  it("formats a Map in its order", () => {
+    expect(formatData(new Map([["1", 1], ["0.5", 2]]), 0)).toBe('{ "1": 1, "0.5": 2 }');
   });
 });

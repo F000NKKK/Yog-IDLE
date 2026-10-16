@@ -68,8 +68,53 @@ const IconYogBook = createIcon(
   </>
 );
 
+/** A creature's head (`.yentity`). */
+const IconYogEntity = createIcon(
+  <>
+    <rect x="5" y="5" width="14" height="14" rx="1" />
+    <path d="M8 10h2.5M13.5 10H16" />
+    <path d="M9.5 15h5" />
+  </>
+);
+
+/** A keyframe on a timeline (`.yanim`). */
+const IconYogAnim = createIcon(
+  <>
+    <path d="M3 18h18" />
+    <path d="M8 9l3 3-3 3-3-3z" />
+    <path d="M16 6l3 3-3 3-3-3z" />
+  </>
+);
+
+/** A definition (`.ydef`): a tag with its hole. */
+const IconYogDef = createIcon(
+  <>
+    <path d="M3 12V4h8l10 10-8 8z" />
+    <circle cx="7.5" cy="8.5" r="1.5" />
+  </>
+);
+
+const IconPause = createIcon(
+  <>
+    <path d="M8 5v14M16 5v14" />
+  </>
+);
+
+/** Back to the start. */
+const IconSkipBack = createIcon(
+  <>
+    <path d="M6 5v14" />
+    <path d="M18 5 9 12l9 7z" />
+  </>
+);
+
 registerIcons({
   yogBlock: IconYogBlock,
+  yogEntity: IconYogEntity,
+  yogAnim: IconYogAnim,
+  yogDef: IconYogDef,
+  pause: IconPause,
+  skipBack: IconSkipBack,
   yogBook: IconYogBook,
   yogItem: IconYogItem,
   paintPencil: IconPaintPencil,

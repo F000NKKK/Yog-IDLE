@@ -1,0 +1,281 @@
+//! What a content reference (`@<kind>:<id>`) can name, for the designers'
+//! pickers — the same three sources `yog build` checks references against:
+//! the mod's own content (`content/`), the other mods' ids it declares in
+//! `yog.toml` (`[external.<namespace>]`) and the game's (read from the
+//! client jar on this machine, when there is one). And the mod's own
+//! `.ydef`s of a kind with what they say (an advancement's parent, an
+//! effect's colour), for the designers that draw several at once.
+
+use std::collections::HashMap;
+use std::path::{Path, PathBuf};
+use std::sync::{Mutex, OnceLock};
+
+use serde::Serialize;
+use serde_json::Value;
+
+use crate::designer::assets::Resources;
+use crate::manifest::{self, mod_root};
+
+/// Kinds of content defined by files of their own, by extension; any other
+/// kind is the `.ydef`s of that `kind`.
+const FILE_KINDS: [(&str, &[&str]); 4] = [
+    ("item", &["yitem", "yblock"]),
+    ("block", &["yblock"]),
+    ("entity", &["yentity"]),
+    ("recipe", &["yrecipe"]),
+];
+
+/// Body files (`.ymodel`, `.yanim`): named by their path under `content/`
+/// without the extension (`body/wings`), as an entity's `model` names them.
+const BODY_FORMATS: [&str; 2] = ["ymodel", "yanim"];
+
+/// What `[external.<namespace>]` lists each kind under.
+const EXTERNAL_KEYS: [(&str, &str); 4] = [("item", "items"), ("block", "blocks"), ("entity", "entities"), ("recipe", "recipes")];
+
+/// Where the game's ids of a kind are in its client jar: translation keys
+/// of its `en_us` lang (`entity.minecraft.pig` → `pig`; `dotted`: the rest
+/// may hold dots, `generic.max_health`), files of its data folders, or
+/// the keys of one of its assets (`sounds.json`: sound events).
+enum GameIds {
+    Lang { prefixes: &'static [&'static str], dotted: bool },
+    Data(&'static [&'static str]),
+    Keys(&'static str),
+}
+
+const GAME_IDS: [(&str, GameIds); 13] = [
+    ("item", GameIds::Lang { prefixes: &["item.minecraft.", "block.minecraft."], dotted: false }),
+    ("block", GameIds::Lang { prefixes: &["block.minecraft."], dotted: false }),
+    ("entity", GameIds::Lang { prefixes: &["entity.minecraft."], dotted: false }),
+    ("effect", GameIds::Lang { prefixes: &["effect.minecraft."], dotted: false }),
+    ("potion", GameIds::Lang { prefixes: &["item.minecraft.potion.effect."], dotted: false }),
+    ("attribute", GameIds::Lang { prefixes: &["attribute.name."], dotted: true }),
+    ("biome", GameIds::Lang { prefixes: &["biome.minecraft."], dotted: false }),
+    ("enchantment", GameIds::Lang { prefixes: &["enchantment.minecraft."], dotted: false }),
+    // 1.20 names data folders in the plural, 1.21 in the singular.
+    ("loot_table", GameIds::Data(&["data/minecraft/loot_tables/", "data/minecraft/loot_table/"])),
+    ("advancement", GameIds::Data(&["data/minecraft/advancements/", "data/minecraft/advancement/"])),
+    ("damage_type", GameIds::Data(&["data/minecraft/damage_type/"])),
+    ("recipe", GameIds::Data(&["data/minecraft/recipes/", "data/minecraft/recipe/"])),
+    ("sound", GameIds::Keys("minecraft/sounds.json")),
+];
+
+/// One of the mod's own: its id and the file that defines it.
+#[derive(Serialize, Debug, Clone, PartialEq)]
+pub struct OwnRef {
+    pub id: String,
+    pub file: String,
+}
+
+/// What a reference of one kind may name, ids with their namespace.
+#[derive(Serialize, Debug, Default)]
+pub struct RefChoices {
+    pub own: Vec<OwnRef>,
+    /// Declared in `yog.toml`, another mod's.
+    pub external: Vec<String>,
+    /// The game's (`minecraft:…`); empty without a client jar.
+    pub game: Vec<String>,
+}
+
+/// One of the mod's `.ydef`s: its id, its file and what it says.
+#[derive(Serialize, Debug)]
+pub struct OwnDef {
+    pub id: String,
+    pub file: String,
+    pub value: Value,
+}
+
+fn mod_id(root: &Path) -> Option<String> {
+    manifest::read_mod_field(root, "id")
+}
+
+fn find(dir: &Path, ext: &str, out: &mut Vec<PathBuf>) {
+    for e in std::fs::read_dir(dir).into_iter().flatten().flatten() {
+        let p = e.path();
+        if p.is_dir() {
+            find(&p, ext, out);
+        } else if p.extension().is_some_and(|x| x == ext) {
+            out.push(p);
+        }
+    }
+}
+
+fn files(root: &Path, ext: &str) -> Vec<PathBuf> {
+    let mut out = Vec::new();
+    find(&root.join("content"), ext, &mut out);
+    out.sort();
+    out
+}
+
+/// `id` with the namespace `ns` when it has none.
+fn qualified(id: &str, ns: &str) -> String {
+    if id.contains(':') { id.to_string() } else { format!("{ns}:{id}") }
+}
+
+fn read(file: &Path) -> Option<serde_json::Map<String, Value>> {
+    crate::data::read_object(&std::fs::read_to_string(file).ok()?)
+}
+
+/// The choices for `@<kind>:` in the file at `file` (`kind` may also be a
+/// body format, `ymodel`/`yanim`).
+pub fn refs(file: &Path, kind: &str) -> RefChoices {
+    let mut out = RefChoices::default();
+    if let Some(root) = mod_root(file) {
+        out.own = own(&root, kind);
+        out.external = external(&root, kind);
+    }
+    if !BODY_FORMATS.contains(&kind) {
+        out.game = game(mod_root(file).as_deref(), kind);
+    }
+    out
+}
+
+fn own(root: &Path, kind: &str) -> Vec<OwnRef> {
+    let ns = mod_id(root).unwrap_or_else(|| "minecraft".into());
+    let mut out = Vec::new();
+    if BODY_FORMATS.contains(&kind) {
+        let content = root.join("content");
+        for f in files(root, kind) {
+            let rel = f.strip_prefix(&content).unwrap_or(&f).with_extension("");
+            out.push(OwnRef { id: format!("{ns}:{}", rel.to_string_lossy().replace('\\', "/")), file: f.to_string_lossy().into_owned() });
+        }
+        return out;
+    }
+    if let Some((_, exts)) = FILE_KINDS.iter().find(|(k, _)| *k == kind) {
+        for ext in *exts {
+            for f in files(root, ext) {
+                let given = read(&f).and_then(|d| d.get("id").and_then(Value::as_str).map(str::to_string));
+                let id = given.unwrap_or_else(|| f.file_stem().unwrap_or_default().to_string_lossy().into_owned());
+                out.push(OwnRef { id: qualified(&id, &ns), file: f.to_string_lossy().into_owned() });
+            }
+        }
+    } else {
+        out = defs(root, kind).into_iter().map(|d| OwnRef { id: d.id, file: d.file }).collect();
+    }
+    out.sort_by(|a, b| a.id.cmp(&b.id));
+    out.dedup_by(|a, b| a.id == b.id);
+    out
+}
+
+/// The mod's `.ydef`s of `kind`, in file order.
+fn defs(root: &Path, kind: &str) -> Vec<OwnDef> {
+    let ns = mod_id(root).unwrap_or_else(|| "minecraft".into());
+    let mut out = Vec::new();
+    for f in files(root, "ydef") {
+        let Some(doc) = read(&f) else { continue };
+        if doc.get("kind").and_then(Value::as_str) != Some(kind) {
+            continue;
+        }
+        let Some(id) = doc.get("id").and_then(Value::as_str) else { continue };
+        out.push(OwnDef { id: qualified(id, &ns), file: f.to_string_lossy().into_owned(), value: Value::Object(doc) });
+    }
+    out
+}
+
+/// The mod's `.ydef`s of `kind` beside the file at `file`.
+pub fn own_defs(file: &Path, kind: &str) -> Vec<OwnDef> {
+    mod_root(file).map(|r| defs(&r, kind)).unwrap_or_default()
+}
+
+fn external(root: &Path, kind: &str) -> Vec<String> {
+    let Some(key) = EXTERNAL_KEYS.iter().find(|(k, _)| *k == kind).map(|(_, k)| *k) else { return Vec::new() };
+    let Ok(doc) = std::fs::read_to_string(manifest::path(root)).unwrap_or_default().parse::<toml::Table>() else { return Vec::new() };
+    let mut out = Vec::new();
+    for (ns, section) in doc.get("external").and_then(|e| e.as_table()).into_iter().flatten() {
+        for id in section.get(key).and_then(|v| v.as_array()).into_iter().flatten().filter_map(|v| v.as_str()) {
+            out.push(qualified(id, ns));
+        }
+    }
+    out
+}
+
+/// The game's ids of `kind`, from the client jar (cached per jar).
+fn game(root: Option<&Path>, kind: &str) -> Vec<String> {
+    let Some((_, how)) = GAME_IDS.iter().find(|(k, _)| *k == kind) else { return Vec::new() };
+    let Some(vanilla) = Resources::for_mod(root).vanilla else { return Vec::new() };
+    type Cache = Mutex<HashMap<(PathBuf, String), Vec<String>>>;
+    static CACHE: OnceLock<Cache> = OnceLock::new();
+    let key = (vanilla.jar.clone(), kind.to_string());
+    if let Some(hit) = CACHE.get_or_init(Default::default).lock().ok().and_then(|c| c.get(&key).cloned()) {
+        return hit;
+    }
+    let keys = |asset: &str| {
+        vanilla
+            .read_all(asset)
+            .into_iter()
+            .find_map(|b| serde_json::from_slice::<serde_json::Map<String, Value>>(&b).ok())
+            .unwrap_or_default()
+    };
+    let mut out: Vec<String> = match how {
+        GameIds::Lang { prefixes, dotted } => {
+            keys("minecraft/lang/en_us.json")
+                .keys()
+                .filter_map(|k| prefixes.iter().find_map(|p| k.strip_prefix(p)))
+                .filter(|rest| *dotted || !rest.contains('.'))
+                .map(|rest| format!("minecraft:{rest}"))
+                .collect()
+        }
+        GameIds::Data(dirs) => dirs
+            .iter()
+            .flat_map(|d| vanilla.names_under(d))
+            .filter_map(|n| n.strip_suffix(".json").map(|p| format!("minecraft:{p}")))
+            .collect(),
+        GameIds::Keys(asset) => keys(asset).keys().map(|k| format!("minecraft:{k}")).collect(),
+    };
+    out.sort();
+    out.dedup();
+    if let Ok(mut c) = CACHE.get_or_init(Default::default).lock() {
+        c.insert(key, out.clone());
+    }
+    out
+}
+
+/// The game's kinds of block (`kind: "stairs"` on a `.yblock`): their
+/// names, texture slots, the `block` fields they take and their defaults —
+/// as `yog-formats` has them.
+pub fn block_kinds() -> Value {
+    use yog_data::Schema;
+    Value::Array(yog_formats::content::BlockKind::built_ins().iter().map(|k| crate::data::to_json(&k.write())).collect())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn write(root: &Path, rel: &str, text: &str) {
+        let p = root.join(rel);
+        std::fs::create_dir_all(p.parent().unwrap()).unwrap();
+        std::fs::write(p, text).unwrap();
+    }
+
+    #[test]
+    fn a_mods_own_content_external_ids_and_defs() {
+        let dir = std::env::temp_dir().join(format!("yog-idle-refs-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        write(&dir, "yog.toml", "[mod]\nid = \"mymod\"\n\n[external.create]\nentities = [\"seat\"]\n");
+        write(&dir, "content/items/wand.yitem", "{ name: \"Wand\" }");
+        write(&dir, "content/blocks/lamp.yblock", "// a lamp\n{ id: \"glow_lamp\" }");
+        write(&dir, "content/mobs/wisp.yentity", "{ kind: \"mob\", width: 0.5, height: 0.5 }");
+        write(&dir, "content/body/wisp.ymodel", "{ texture: \"\", bones: [] }");
+        write(&dir, "content/fx/glow.ydef", "{ kind: \"effect\", id: \"glow\", category: \"beneficial\", color: 255 }");
+        write(&dir, "content/fx/dim.ydef", "{ kind: \"attribute\", id: \"dim\", default: 1, min: 0, max: 2 }");
+        let probe = dir.join("content/items/wand.yitem");
+        let ids = |kind: &str| refs(&probe, kind).own.into_iter().map(|r| r.id).collect::<Vec<_>>();
+        assert_eq!(ids("item"), ["mymod:glow_lamp", "mymod:wand"], "an item, and a block's item form");
+        assert_eq!(ids("block"), ["mymod:glow_lamp"]);
+        assert_eq!(ids("entity"), ["mymod:wisp"]);
+        assert_eq!(ids("ymodel"), ["mymod:body/wisp"]);
+        assert_eq!(ids("effect"), ["mymod:glow"]);
+        assert_eq!(refs(&probe, "entity").external, ["create:seat"]);
+        let effects = own_defs(&probe, "effect");
+        assert_eq!(effects.len(), 1);
+        assert_eq!(effects[0].value["color"], 255);
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn the_games_block_kinds_are_listed() {
+        let kinds = block_kinds();
+        let names: Vec<&str> = kinds.as_array().unwrap().iter().filter_map(|k| k["name"].as_str()).collect();
+        assert!(names.contains(&"stairs") && names.contains(&"pressure_plate"), "{names:?}");
+    }
+}
