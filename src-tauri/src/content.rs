@@ -761,4 +761,25 @@ mod tests {
         assert_eq!(texture_target(&file, "#layer0"), None);
         let _ = std::fs::remove_dir_all(dir);
     }
+
+    #[test]
+    fn stairs_without_custom_elements_get_a_step_shape() {
+        let dir = std::env::temp_dir().join(format!("idle-stairs-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(dir.join("content/blocks")).unwrap();
+        std::fs::write(dir.join("yog.toml"), "[mod]\nid = \"mymod\"\n").unwrap();
+        std::fs::write(
+            dir.join("content/blocks/stairs.yblock"),
+            r#"{ kind: "stairs", model: { textures: { top: "block/top.png", bottom: "block/bottom.png", side: "block/side.png" } } }"#,
+        )
+        .unwrap();
+
+        let (elements, _) = content_block_model(&dir, "mymod:stairs").unwrap();
+        assert_eq!(elements.len(), 2);
+        assert_eq!(elements[0]["from"], serde_json::json!([0, 0, 0]));
+        assert_eq!(elements[0]["to"], serde_json::json!([16, 8, 16]));
+        assert_eq!(elements[1]["from"], serde_json::json!([0, 8, 8]));
+        assert_eq!(elements[1]["to"], serde_json::json!([16, 16, 16]));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
 }
