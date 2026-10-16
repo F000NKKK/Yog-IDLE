@@ -18,7 +18,7 @@ pub fn codegen(path: &str) -> Result<Codegen, String> {
         Some("yui") => &["ui", "gen"],
         // Regenerates `.yog-build/generated/resources/<Set>.g.rs` (and checks the set).
         Some("yres") => &["res", "check"],
-        // Regenerates `.yog-build/generated/yog-content.g.rs` (and checks every content file).
+        // Regenerates `.yog-build/generated/yog-content.g.rs` and its parts (and checks every content file).
         Some("yblock" | "yitem") => &["content", "check"],
         _ => return Err(format!("not a .yui, .yres, .yblock or .yitem file: {path}")),
     };
