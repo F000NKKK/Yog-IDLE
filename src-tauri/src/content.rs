@@ -222,8 +222,12 @@ pub fn content_item_appearance(root: &Path, id: &str) -> Option<(Value, Option<u
         return None;
     }
     for file in find(&root.join("content/items"), "yitem") {
-        let Ok(text) = std::fs::read_to_string(&file) else { continue };
-        let Some(doc) = crate::data::read_object(&text) else { continue };
+        let Ok(text) = std::fs::read_to_string(&file) else {
+            continue;
+        };
+        let Some(doc) = crate::data::read_object(&text) else {
+            continue;
+        };
         let Some(fid) = doc
             .get("id")
             .and_then(Value::as_str)
@@ -246,8 +250,12 @@ fn potion_effect_color(root: &Path, item: &Value) -> Option<u32> {
     let mut channels = [0u64; 3];
     let mut count = 0u64;
     for effect in effects {
-        let Some(id) = effect.get("effect").and_then(Value::as_str) else { continue };
-        let Some(color) = content_effect_color(root, id) else { continue };
+        let Some(id) = effect.get("effect").and_then(Value::as_str) else {
+            continue;
+        };
+        let Some(color) = content_effect_color(root, id) else {
+            continue;
+        };
         channels[0] += u64::from((color >> 16) & 0xFF);
         channels[1] += u64::from((color >> 8) & 0xFF);
         channels[2] += u64::from(color & 0xFF);
@@ -268,8 +276,12 @@ fn content_effect_color(root: &Path, reference: &str) -> Option<u32> {
         return None;
     }
     for file in find(&root.join("content/effects"), "ydef") {
-        let Ok(text) = std::fs::read_to_string(&file) else { continue };
-        let Some(doc) = crate::data::read_object(&text) else { continue };
+        let Ok(text) = std::fs::read_to_string(&file) else {
+            continue;
+        };
+        let Some(doc) = crate::data::read_object(&text) else {
+            continue;
+        };
         let Some(id) = doc
             .get("id")
             .and_then(Value::as_str)
@@ -278,7 +290,10 @@ fn content_effect_color(root: &Path, reference: &str) -> Option<u32> {
             continue;
         };
         if id.split_once(':').map_or(id, |(_, p)| p) == want {
-            return doc.get("color").and_then(Value::as_u64).and_then(|v| u32::try_from(v).ok());
+            return doc
+                .get("color")
+                .and_then(Value::as_u64)
+                .and_then(|v| u32::try_from(v).ok());
         }
     }
     None
@@ -889,7 +904,10 @@ mod tests {
         .unwrap();
 
         let (definition, color) = content_item_appearance(&dir, "mymod:potion").unwrap();
-        assert_eq!(definition.pointer("/model/parent").and_then(Value::as_str), Some("minecraft:item/potion"));
+        assert_eq!(
+            definition.pointer("/model/parent").and_then(Value::as_str),
+            Some("minecraft:item/potion")
+        );
         assert_eq!(color, Some(0x123456));
         let _ = std::fs::remove_dir_all(dir);
     }
