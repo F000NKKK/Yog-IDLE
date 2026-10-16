@@ -529,9 +529,17 @@ export function Viewport({
     };
     const ro = new ResizeObserver(() => invalidate.current());
     ro.observe(host);
+    const onFocus = () => invalidate.current();
+    const onVisibilityChange = () => {
+      if (!document.hidden) invalidate.current();
+    };
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVisibilityChange);
     invalidate.current();
     return () => {
       ro.disconnect();
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
       cancelAnimationFrame(three.frame);
       clearTimeout(three.tick);
       three.frame = 0;
