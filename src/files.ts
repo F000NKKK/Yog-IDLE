@@ -25,6 +25,10 @@ export const files = {
   rename: (from: string, to: string) => invoke<void>("dir_rename", { from, to }),
   copy: (from: string, to: string) => invoke<void>("dir_copy", { from, to }),
   remove: (path: string) => invoke<void>("dir_remove", { path }),
+  /** Every file and folder of the project (git-ignored ones, build output and VCS metadata left out) — `search.rs`. */
+  projectItems: (root: string) => invoke<DirEntry[]>("project_items", { root }),
+  /** The project's files whose text contains `pattern` (ignoring case). */
+  filesContaining: (root: string, pattern: string) => invoke<string[]>("project_files_containing", { root, query: { pattern } }),
 };
 
 /** The `[mod] id` of the project at `root` — `null` without a readable `yog.toml`. */

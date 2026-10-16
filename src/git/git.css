@@ -13,9 +13,10 @@
   color: var(--sp-text);
 }
 
-/* Change colors, Visual Studio's (readable on both light and dark surfaces). */
+/* Change colors, Visual Studio's (readable on both light and dark surfaces) — Project Explorer marks changed files with them too. */
 .idle-git-changes,
-.idle-git-repo {
+.idle-git-repo,
+.idle-explorer {
   --idle-git-modified: #3f8fd2;
   --idle-git-added: #4fa64a;
   --idle-git-renamed: #a874d4;

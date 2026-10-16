@@ -1888,6 +1888,8 @@ pub fn run() {
         app_restart,
         debug_supported,
         search::find_in_files,
+        search::project_items,
+        search::project_files_containing,
         search::find_cancel,
         search::replace_in_files,
         symbols::code_search,

@@ -39,7 +39,8 @@ import type { PanelDef, SettingsSection } from "substrate-platform-ui";
 import { EmptyEditorState } from "./panels/EmptyEditorState";
 import { Toolbox } from "./panels/Toolbox";
 import { DocumentOutline } from "./panels/DocumentOutline";
-import { ProjectExplorer } from "./panels/ProjectExplorer";
+import { ProjectExplorer, ProjectExplorerView } from "./panels/ProjectExplorer";
+import { ExplorerKeybindings, PROJECT_EXPLORER_PANEL, PROJECT_EXPLORER_VIEW_PANEL } from "./panels/explorer/explorerBus";
 import { importContent } from "./content/importContent";
 import { ActiveDocumentSelection, Properties } from "./panels/Properties";
 import { RunToolbar } from "./panels/RunToolbar";
@@ -153,7 +154,9 @@ function makeToolWindows() {
       { id: "documentOutline", title: t("Document Outline"), component: DocumentOutline } satisfies PanelDef,
     ],
     right: [
-      { id: "projectExplorer", title: t("Project Explorer"), component: ProjectExplorer } satisfies PanelDef,
+      { id: PROJECT_EXPLORER_PANEL, title: t("Project Explorer"), component: ProjectExplorer } satisfies PanelDef,
+      // Transient, like Visual Studio's New Solution Explorer View: opens floating, dockable anywhere.
+      { id: PROJECT_EXPLORER_VIEW_PANEL, title: t("Project Explorer View"), component: ProjectExplorerView, floatSize: { w: 320, h: 480 } } satisfies PanelDef,
       { id: GIT_CHANGES_PANEL, title: t("Git Changes"), component: GitChangesWindow } satisfies PanelDef,
       { id: "properties", title: t("Properties"), component: Properties } satisfies PanelDef,
     ],
@@ -522,6 +525,7 @@ function ShellChrome({ onOpenSettings, onOpenInstaller, onOpenPublish, run, onRu
       <Menu onOpenSettings={onOpenSettings} onOpenInstaller={onOpenInstaller} onOpenPublish={onOpenPublish} editor={editor} />
       <Toolbar leading={<RunToolbar onRunningChange={onRunningChange} />} sections={[...editorToolbarSections(editor), ...runToolbarSections(run)]} />
       <EditorKeybindings actions={editor} />
+      <ExplorerKeybindings />
       <SearchHost />
       <GitHost />
       <OpenWithPickerHost />

@@ -1,0 +1,42 @@
+/* Project Explorer: toolbar, search box, then the tree filling the rest. */
+
+.idle-explorer {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.idle-explorer-search {
+  flex: none;
+  padding: var(--sp-space-xs) var(--sp-space-xs) 0;
+}
+
+.idle-explorer-search .sp-icon-btn {
+  width: var(--sp-control-height-sm);
+  height: var(--sp-control-height-sm);
+}
+
+.idle-explorer-tree {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: auto;
+  padding: var(--sp-space-xs);
+  box-sizing: border-box;
+}
+
+.idle-explorer-message {
+  padding: var(--sp-space-sm);
+  color: var(--sp-text-muted);
+}
+
+/* A folder with changes somewhere inside — a dot in the change color. */
+.idle-explorer-changed-folder {
+  display: block;
+  width: 6px;
+  height: 6px;
+  margin-right: 3px;
+  border-radius: 50%;
+  background: var(--idle-git-modified);
+  opacity: 0.8;
+}

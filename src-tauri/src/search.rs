@@ -210,11 +210,10 @@ impl FileMask {
     }
 }
 
-/// Every searchable file under `root`, in path order: .gitignore'd files
-/// (whether or not the folder is a git repository), `SKIP_DIRS` and files
-/// outside `mask` are left out. Binary/oversized files are filtered later,
-/// when read.
-pub fn project_files(root: &Path, mask: &FileMask) -> Vec<PathBuf> {
+/// The walk over a project's own files: .gitignore'd entries (whether or
+/// not the folder is a git repository) and `SKIP_DIRS` are left out, in path
+/// order.
+fn project_walk(root: &Path) -> ignore::Walk {
     let mut builder = ignore::WalkBuilder::new(root);
     builder
         .hidden(false)
@@ -231,13 +230,59 @@ pub fn project_files(root: &Path, mask: &FileMask) -> Vec<PathBuf> {
                     .to_str()
                     .is_some_and(|name| SKIP_DIRS.contains(&name)))
         });
-    builder
-        .build()
+    builder.build()
+}
+
+/// Every searchable file under `root`, in path order: what `project_walk`
+/// gives, files outside `mask` left out. Binary/oversized files are filtered
+/// later, when read.
+pub fn project_files(root: &Path, mask: &FileMask) -> Vec<PathBuf> {
+    project_walk(root)
         .filter_map(Result::ok)
         .filter(|entry| entry.file_type().is_some_and(|t| t.is_file()))
         .map(ignore::DirEntry::into_path)
         .filter(|path| mask.matches(&relative(root, path)))
         .collect()
+}
+
+/// A file or folder of the project, as `dir_list` gives one.
+#[derive(Clone, Serialize, Debug, PartialEq)]
+pub struct ProjectEntry {
+    pub name: String,
+    pub path: String,
+    pub kind: &'static str,
+}
+
+/// Every file and folder under `root` (not `root` itself) that `project_walk` keeps.
+pub fn project_entries(root: &Path) -> Vec<ProjectEntry> {
+    project_walk(root)
+        .filter_map(Result::ok)
+        .filter(|entry| entry.depth() > 0)
+        .filter_map(|entry| {
+            let kind = match entry.file_type() {
+                Some(t) if t.is_dir() => "dir",
+                Some(t) if t.is_file() => "file",
+                _ => return None,
+            };
+            Some(ProjectEntry {
+                name: entry.file_name().to_string_lossy().into_owned(),
+                path: entry.path().to_string_lossy().into_owned(),
+                kind,
+            })
+        })
+        .collect()
+}
+
+/// The project files whose text matches `query`, at most `limit` of them.
+pub fn files_containing(root: &Path, query: &SearchQuery, limit: usize) -> Result<Vec<String>, String> {
+    let matcher = Matcher::new(query)?;
+    let mask = FileMask::parse(&query.file_mask)?;
+    Ok(project_files(root, &mask)
+        .into_iter()
+        .filter(|path| read_text(path, false).is_some_and(|text| !matcher.find_all(&text, 1).is_empty()))
+        .take(limit)
+        .map(|path| path.to_string_lossy().into_owned())
+        .collect())
 }
 
 /// Where `yog` generates screen code (`.yui` → `.g.rs`), under the build
@@ -632,6 +677,34 @@ pub async fn find_in_files(
     .map_err(|err| err.to_string())?
 }
 
+/// How many files the explorer's content search lists at most.
+const MAX_CONTAINING_FILES: usize = 5_000;
+
+/// Project Explorer's search and filters: the project's files and folders
+/// (`project_entries`), the ones the lazily listed tree hasn't opened too.
+#[tauri::command]
+pub async fn project_items(state: State<'_, AppState>, root: String) -> Result<Vec<ProjectEntry>, String> {
+    crate::validate_within_roots(&state, Path::new(&root))?;
+    tauri::async_runtime::spawn_blocking(move || project_entries(Path::new(&root)))
+        .await
+        .map_err(|err| err.to_string())
+}
+
+/// Project Explorer's "Search within file contents": the project files
+/// whose text matches. Separate from `find_in_files`, so typing in the
+/// explorer never cancels a Find in Files still running.
+#[tauri::command]
+pub async fn project_files_containing(
+    state: State<'_, AppState>,
+    root: String,
+    query: SearchQuery,
+) -> Result<Vec<String>, String> {
+    crate::validate_within_roots(&state, Path::new(&root))?;
+    tauri::async_runtime::spawn_blocking(move || files_containing(Path::new(&root), &query, MAX_CONTAINING_FILES))
+        .await
+        .map_err(|err| err.to_string())?
+}
+
 /// Stops whatever search is running.
 #[tauri::command]
 pub fn find_cancel(search: State<SearchState>) {
@@ -954,6 +1027,35 @@ mod tests {
                 ".yog-build/generated/screens/menu.g.rs"
             ]
         );
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn project_entries_and_content_matches_skip_what_search_skips() {
+        let dir = temp_project("entries");
+        let rel = |path: &str| relative(&dir, Path::new(path));
+        let entries: Vec<_> = project_entries(&dir)
+            .into_iter()
+            .map(|e| (rel(&e.path), e.kind))
+            .collect();
+        assert_eq!(
+            entries,
+            [
+                (".gitignore".to_string(), "file"),
+                ("blob.bin".to_string(), "file"),
+                ("notes.md".to_string(), "file"),
+                ("src".to_string(), "dir"),
+                ("src/lib.rs".to_string(), "file"),
+                ("src/other.rs".to_string(), "file"),
+            ]
+        );
+        let containing: Vec<_> = files_containing(&dir, &query("needle"), 10)
+            .unwrap()
+            .iter()
+            .map(|p| rel(p))
+            .collect();
+        assert_eq!(containing, ["notes.md", "src/lib.rs"]);
+        assert_eq!(files_containing(&dir, &query("needle"), 1).unwrap().len(), 1);
         let _ = std::fs::remove_dir_all(&dir);
     }
 
