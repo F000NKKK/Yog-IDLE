@@ -99,6 +99,7 @@ export function generatedSource(path: string, content: string): GeneratedSource 
     else if (relPath.includes("/")) source = `src/${relPath}.yui`;
   }
   if (!source) return null;
-  const file = source.includes("*") || source.includes(" ") ? null : [root, ...source.split("/")].join(sep);
+  // Only one file can be opened: not a glob, a list or a directory.
+  const file = source.includes("*") || source.includes(" ") || source.endsWith("/") ? null : [root, ...source.split("/")].join(sep);
   return { source, file };
 }
