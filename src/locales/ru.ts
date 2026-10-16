@@ -1534,4 +1534,12 @@ registerTranslations("ru", {
   "It can stand in water.": "Может стоять в воде.",
   "UV Lock": "Фиксация UV",
   "Its textures stay as they are in the world when it turns.": "Текстуры не поворачиваются вместе с блоком.",
+  "Hot Reload": "Горячая перезагрузка",
+  "New": "Новое",
+  "Changed": "Изменено",
+  "Removed": "Удалено",
+  "{mod} registers what the game only takes when it starts. Restart the game to apply it — or reload the code, resources and data now and leave these as they are.": "{mod} регистрирует то, что игра принимает только при запуске. Перезапустите игру, чтобы применить это, — или перезагрузите сейчас код, ресурсы и данные, а это останется как было.",
+  "Restart Game": "Перезапустить игру",
+  "Reload Code and Resources": "Перезагрузить код и ресурсы",
+  "Cancel": "Отмена",
 });

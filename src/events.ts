@@ -38,10 +38,12 @@ export interface GameStatusEvent {
 }
 
 export interface HotReloadEvent {
-  stage: "building" | "reloading" | "done";
+  stage: "building" | "confirm" | "reloading" | "done";
   modId: string;
   ok: boolean | null;
   message: string;
+  /** `stage == "confirm"`: what the new build registers that only a restart applies (`<kind> <id>`). */
+  changes?: { added: string[]; removed: string[]; changed: string[] };
 }
 
 /** `workflow-exit`'s payload when a Build/Publish run (not a game) ended. */

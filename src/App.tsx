@@ -538,7 +538,7 @@ function Shell({ onOpenSettings, onOpenInstaller, onOpenPublish }: { onOpenSetti
   const { debugging, canRestart, restart, restartWorkflow, stop } = useDebugSessionContext();
   const { project } = useProject();
   const gameStatus = useGameStatus();
-  const hotReload = useHotReload();
+  const hotReload = useHotReload(restart);
   const [running, setRunning] = useState(false);
   const locale = useLocale();
   // eslint-disable-next-line react-hooks/exhaustive-deps

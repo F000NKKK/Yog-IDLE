@@ -1,0 +1,30 @@
+/* The hot reload dialog's list of what only a restart applies. */
+.hot-reload-changes {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-space-sm);
+  max-width: 520px;
+}
+
+.hot-reload-changes p {
+  margin: 0;
+}
+
+.hot-reload-changes h4 {
+  margin: 0 0 var(--sp-space-2xs);
+  font-size: inherit;
+  font-weight: 600;
+  color: var(--sp-text-muted);
+}
+
+.hot-reload-changes ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  max-height: 160px;
+  overflow-y: auto;
+}
+
+.hot-reload-changes code {
+  font-family: var(--sp-font-mono);
+}
