@@ -12,7 +12,7 @@ const MARGIN = 24;
  * `panel`: on a light GUI window (default), or bare (a dark screen of its
  * own, as the advancements screen).
  */
-export function GameStage({ width, height, panel = true, children, onBackground }: { width: number; height: number; panel?: boolean; children: (k: number) => ReactNode; onBackground?: () => void }) {
+export function GameStage({ width, height, panel = true, className, children, onBackground }: { width: number; height: number; panel?: boolean; className?: string; children: (k: number) => ReactNode; onBackground?: () => void }) {
   const ref = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState<[number, number]>([0, 0]);
   useLayoutEffect(() => {
@@ -26,7 +26,7 @@ export function GameStage({ width, height, panel = true, children, onBackground 
   const fit = Math.min((size[0] - MARGIN * 2) / Math.max(width, 1), (size[1] - MARGIN * 2) / Math.max(height, 1));
   const k = Math.max(1, Math.floor(fit * 2) / 2);
   return (
-    <div className="game-stage" ref={ref} onPointerDown={(e) => e.target === e.currentTarget && onBackground?.()}>
+    <div className={`game-stage${className ? ` ${className}` : ""}`} ref={ref} onPointerDown={(e) => e.target === e.currentTarget && onBackground?.()}>
       {size[0] > 0 && (
         <div className={panel ? "game-panel" : "game-screen"} style={{ width: width * k, height: height * k, padding: panel ? 4 * k : 0 }}>
           <div className="game-panel-inner" style={{ width: width * k, height: height * k, fontSize: 8 * k, "--k": k } as CSSProperties}>

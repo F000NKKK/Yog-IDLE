@@ -1,8 +1,9 @@
 import { useMemo, useState } from "react";
-import { ToolbarButton, ToolbarGroup, useT, type PropertyDescriptor } from "substrate-platform-ui";
+import { useT, type PropertyDescriptor } from "substrate-platform-ui";
 import { refId, refProblem, refSuggestions, useContentRefs } from "../../data/contentRefs";
 import { inspectorRows, refMessage } from "../inspector";
 import { ItemList } from "../ItemList";
+import { RowsEditor } from "../RowsEditor";
 import { asList, chanceOf, chanceOfAny, countRange, expectedCount, type LootAdd } from "./defModel";
 import { DefLayout, type DefProps } from "./DefLayout";
 import { GameStage, ItemIcon, Slot } from "./GamePanel";
@@ -12,7 +13,18 @@ interface LootScale {
   by?: number;
 }
 
-type Pick = { list: "add" | "scale"; i: number } | null;
+interface LootAddRow extends Record<string, unknown> {
+  item?: string;
+  min: number;
+  max: number;
+  chance: number;
+  function?: string;
+}
+
+interface LootScaleRow extends Record<string, unknown> {
+  item?: string;
+  by: number;
+}
 
 const ROW = 22;
 const WIDTH = 196;
@@ -32,40 +44,42 @@ export function LootDesigner({ path, file, update, readOnly, kindLabel }: DefPro
   const modifier = file.kind === "loot_modifier";
   const items = useContentRefs(path, "item");
   const tables = useContentRefs(path, "loot_table");
-  const [picked, setPicked] = useState<Pick>(null);
   const add = asList<LootAdd>(file.add);
   const scale = modifier ? asList<LootScale>(file.scale) : [];
-  const pick = picked && (picked.list === "add" ? picked.i < add.length : picked.i < scale.length) ? picked : null;
+  const addRows: LootAddRow[] = add.map((entry) => {
+    const [min, max] = countRange(entry);
+    return { ...entry, min, max, chance: chanceOf(entry) };
+  });
+  const scaleRows: LootScaleRow[] = scale.map((entry) => ({ ...entry, by: entry.by ?? 0.5 }));
 
-  const setEntry = (list: "add" | "scale", i: number, change: (e: Record<string, unknown>) => void) =>
+  const setAddRows = (rows: LootAddRow[]) =>
     update((d) => {
-      const l = asList<Record<string, unknown>>(d[list]).map((e) => ({ ...e }));
-      if (!l[i]) return;
-      change(l[i]);
-      d[list] = l;
+      const previous = asList<Record<string, unknown>>(d.add);
+      d.add = rows.map((row, i) => {
+        const [min, max] = [Math.max(0, Math.round(row.min)), Math.max(0, Math.round(row.max))].sort((a, b) => a - b);
+        return {
+          ...previous[i],
+          item: row.item,
+          count: min === 1 && max === 1 ? undefined : [min, max],
+          chance: row.chance === 1 ? undefined : row.chance,
+          function: row.function || undefined,
+        };
+      });
     });
-  const newEntry = (list: "add" | "scale") => {
-    const blank = list === "add" ? { item: "@item:minecraft:stick" } : { item: "@item:minecraft:stick", by: 0.5 };
-    update((d) => void (d[list] = [...asList(d[list]), blank]));
-    setPicked({ list, i: (list === "add" ? add : scale).length });
-  };
-  const removePicked = () => {
-    if (!pick) return;
+  const setScaleRows = (rows: LootScaleRow[]) =>
     update((d) => {
-      const l = asList(d[pick.list]).filter((_, j) => j !== pick.i);
-      d[pick.list] = l.length || pick.list === "add" ? l : undefined;
+      const previous = asList<Record<string, unknown>>(d.scale);
+      d.scale = rows.map((row, i) => ({ ...previous[i], item: row.item, by: row.by }));
     });
-    setPicked(null);
-  };
 
   const properties = useMemo<PropertyDescriptor[]>(() => {
-    const { text, num, ref } = inspectorRows(t, readOnly, path);
+    const { text } = inspectorRows(t, readOnly, path);
     const c = t(kindLabel);
     const out: PropertyDescriptor[] = [text("id", t("Id"), c, file.id, (v) => update((d) => void (d.id = v)), { description: t("Its id, the mod's (random_scroll).") })];
     if (modifier)
       out.push({
         id: "tables",
-        name: t("Tables"),
+        name: "",
         category: t("Tables"),
         value: null,
         kind: "custom",
@@ -81,45 +95,52 @@ export function LootDesigner({ path, file, update, readOnly, kindLabel }: DefPro
           />
         ),
       });
-    if (pick?.list === "add") {
-      const e = add[pick.i];
-      const ec = t("Item Added");
-      const [lo, hi] = countRange(e);
-      out.push(
-        ref("add.item", t("Item"), ec, e.item, "item", items, (v) => v && setEntry("add", pick.i, (x) => void (x.item = v))),
-        {
-          id: "add.count",
-          name: t("Count"),
-          category: ec,
-          value: [lo, hi],
-          labels: [t("Min"), t("Max")],
-          readOnly,
-          description: t("How many: from the first to the second, evenly; below 1 adds none."),
-          onCommit: (v) => {
-            const [a, b] = (v as number[]).map((n) => Math.round(n));
-            setEntry("add", pick.i, (x) => void (x.count = a === 1 && b === 1 ? undefined : [a, b]));
-          },
-        },
-        num("add.chance", t("Chance"), ec, e.chance, (v) => setEntry("add", pick.i, (x) => void (x.chance = v === 1 ? undefined : v)), {
-          min: 0,
-          max: 1,
-          displayValue: `${pct(chanceOf(e))}${e.chance === undefined ? ` ${t("(default)")}` : ""}`,
-          description: t("The chance it's added at all, 0–1."),
-        }),
-        text("add.function", t("Loot Function"), ec, e.function, (v) => setEntry("add", pick.i, (x) => void (x.function = v)), {
-          description: t("A loot function of the mod's code that finishes the stack (its custom data), by the name it's registered under."),
-        }),
-      );
-    } else if (pick?.list === "scale") {
-      const e = scale[pick.i];
-      const sc = t("Item Scaled");
-      out.push(
-        ref("scale.item", t("Item"), sc, e.item, "item", items, (v) => v && setEntry("scale", pick.i, (x) => void (x.item = v))),
-        num("scale.by", t("Factor"), sc, e.by, (v) => v !== undefined && setEntry("scale", pick.i, (x) => void (x.by = v)), { min: 0, max: 64, description: t("Its count times this, rounded down (0.5: half, at least none).") }),
-      );
-    }
+    out.push({
+      id: "items",
+      name: "",
+      category: t("Items"),
+      value: null,
+      kind: "custom",
+      description: t("Items this table gives, with their count range, chance, and optional registered loot function."),
+      render: () => (
+        <RowsEditor<LootAddRow>
+          rows={addRows}
+          readOnly={readOnly}
+          blank={() => ({ item: "@item:minecraft:stick", min: 1, max: 1, chance: 1 })}
+          onChange={setAddRows}
+          columns={[
+            { key: "item", label: t("Item"), kind: "text", grow: 3, suggestions: refSuggestions(items, "item"), validate: (v) => refMessage(t, refProblem(v, "item", items), "item") },
+            { key: "min", label: t("Min"), kind: "number", min: 0, int: true },
+            { key: "max", label: t("Max"), kind: "number", min: 0, int: true },
+            { key: "chance", label: t("Chance"), kind: "number", min: 0, max: 1 },
+            { key: "function", label: t("Loot Function"), kind: "text" },
+          ]}
+        />
+      ),
+    });
+    if (modifier)
+      out.push({
+        id: "scale",
+        name: "",
+        category: t("Scaled"),
+        value: null,
+        kind: "custom",
+        description: t("Items whose stack counts are multiplied after the additions."),
+        render: () => (
+          <RowsEditor<LootScaleRow>
+            rows={scaleRows}
+            readOnly={readOnly}
+            blank={() => ({ item: "@item:minecraft:stick", by: 0.5 })}
+            onChange={setScaleRows}
+            columns={[
+              { key: "item", label: t("Item"), kind: "text", grow: 3, suggestions: refSuggestions(items, "item"), validate: (v) => refMessage(t, refProblem(v, "item", items), "item") },
+              { key: "by", label: t("Factor"), kind: "number", min: 0, max: 64 },
+            ]}
+          />
+        ),
+      });
     return out;
-  }, [file, modifier, add, scale, pick, items, tables, readOnly, t, path, update, kindLabel]);
+  }, [file, modifier, addRows, scaleRows, items, tables, readOnly, t, path, update, kindLabel]);
 
   const rows = add.length + (scale.length ? scale.length + 1 : 0);
   const height = 20 + Math.max(rows, 1) * ROW + (modifier ? 10 : 0);
@@ -130,16 +151,6 @@ export function LootDesigner({ path, file, update, readOnly, kindLabel }: DefPro
       kindLabel={kindLabel}
       properties={properties}
       objectName={typeof file.id === "string" ? file.id : ""}
-      objectKey={pick ? `${path}#${pick.list}${pick.i}` : path}
-      tools={
-        !readOnly && (
-          <ToolbarGroup>
-            <ToolbarButton icon="plus" label="Add an Item" showLabel onClick={() => newEntry("add")} />
-            {modifier && <ToolbarButton icon="plus" label="Scale an Item" showLabel onClick={() => newEntry("scale")} />}
-            <ToolbarButton icon="trash" label="Remove" disabled={!pick} onClick={removePicked} />
-          </ToolbarGroup>
-        )
-      }
     >
       <GameStage width={WIDTH} height={height} onBackground={() => setPicked(null)}>
         {(k) => (

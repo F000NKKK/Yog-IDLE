@@ -15,10 +15,10 @@ const FRAME_LABELS: Record<(typeof FRAMES)[number], string> = { task: "Task", go
 const CRITERION_LABELS: Record<Criterion, string> = { granted: "Granted by the Mod", has_item: "Has an Item", used_item: "Used an Item" };
 
 /** A cell of the tab, GUI pixels (a frame is 26). */
-const CELL_W = 30;
-const CELL_H = 28;
-const PAD = 10;
-const TITLE = 14;
+const CELL_W = 42;
+const CELL_H = 38;
+const PAD = 16;
+const TITLE = 16;
 
 /** `minecraft:textures/block/calcite.png` → the texture id `minecraft:block/calcite`. */
 const textureId = (s: string) => s.replace(/^([a-z0-9_.-]+:)?textures\//, "$1").replace(/\.png$/, "");
@@ -110,7 +110,7 @@ export function AdvancementDesigner({ path, file, update, readOnly, kindLabel }:
       );
     out.push({
       id: "criteria",
-      name: t("Criteria"),
+      name: "",
       category: t("Criteria"),
       value: null,
       kind: "custom",
@@ -142,7 +142,7 @@ export function AdvancementDesigner({ path, file, update, readOnly, kindLabel }:
         )
       }
     >
-      <GameStage width={width} height={height} panel={false}>
+      <GameStage width={width} height={height} panel={false} className="advancement-stage">
         {(k) => (
           <div className="adv-tab" style={{ width: width * k, height: height * k, backgroundImage: background ? `url(${background})` : undefined, backgroundSize: `${16 * k}px` }}>
             <div className="adv-title" style={{ height: TITLE * k, paddingLeft: PAD * k }}>

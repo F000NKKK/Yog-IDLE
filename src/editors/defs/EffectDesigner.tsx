@@ -99,7 +99,7 @@ export function EffectDesigner({ path, file, update, readOnly, kindLabel }: DefP
 
   return (
     <DefLayout path={path} kindLabel={kindLabel} properties={properties} objectName={id}>
-      <GameStage width={140} height={52 + Math.max(modifiers.length, 1) * 10}>
+      <GameStage width={140} height={76 + Math.max(modifiers.length, 1) * 16}>
         {(k) => (
           <>
             <div className="effect-box" style={{ left: 10 * k, top: 8 * k, width: 120 * k, height: 32 * k }}>

@@ -43,8 +43,44 @@
 }
 
 .adv-node.frame-challenge {
-  clip-path: polygon(50% 0, 64% 14%, 86% 14%, 86% 36%, 100% 50%, 86% 64%, 86% 86%, 64% 86%, 50% 100%, 36% 86%, 14% 86%, 14% 64%, 0 50%, 14% 36%, 14% 14%, 36% 14%);
   border-width: 0;
+  background: #1b1b1b;
+  clip-path: polygon(50% 0, 62% 12%, 83% 7%, 88% 28%, 100% 50%, 88% 62%, 93% 83%, 72% 88%, 50% 100%, 38% 88%, 17% 93%, 12% 72%, 0 50%, 12% 38%, 7% 17%, 28% 12%);
+}
+
+.adv-node.frame-challenge::before,
+.adv-node.frame-challenge::after {
+  content: "";
+  position: absolute;
+  clip-path: polygon(50% 0, 62% 12%, 83% 7%, 88% 28%, 100% 50%, 88% 62%, 93% 83%, 72% 88%, 50% 100%, 38% 88%, 17% 93%, 12% 72%, 0 50%, 12% 38%, 7% 17%, 28% 12%);
+  pointer-events: none;
+}
+
+.adv-node.frame-challenge::before {
+  inset: 2px;
+  background: linear-gradient(135deg, #d7d7d7 0%, #8a8a8a 52%, #555 100%);
+}
+
+.adv-node.frame-challenge::after {
+  inset: 4px;
+  background: #8a8a8a;
+}
+
+.adv-node.frame-challenge.is-this {
+  background: #8a6414;
+}
+
+.adv-node.frame-challenge.is-this::before {
+  background: linear-gradient(135deg, #ffe08a 0%, #e6b33a 52%, #8a6414 100%);
+}
+
+.adv-node.frame-challenge.is-this::after {
+  background: #e6b33a;
+}
+
+.adv-node.frame-challenge .game-icon {
+  position: relative;
+  z-index: 1;
 }
 
 .adv-node.is-this {
@@ -65,6 +101,7 @@
   position: absolute;
   z-index: 5;
   white-space: normal;
+  overflow-wrap: anywhere;
   pointer-events: none;
 }
 
@@ -178,6 +215,10 @@
 .potion-tooltip {
   position: absolute;
   white-space: normal;
+}
+
+.effect-tooltip {
+  width: calc(var(--k) * 160px);
 }
 
 .potion-bottles,
