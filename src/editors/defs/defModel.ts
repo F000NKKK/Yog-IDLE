@@ -151,46 +151,12 @@ export function chanceOfAny(a: LootAdd): number {
   return (chanceOf(a) * positive) / (hi - lo + 1);
 }
 
-// ── Effects and potions ─────────────────────────────────────────────────────
-
-/** Ticks as the game shows a duration: `m:ss` (`**:**` past an hour's worth of minutes is still `m:ss`). */
-export function ticksText(ticks: number): string {
-  const s = Math.floor(Math.max(ticks, 0) / 20);
-  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
-}
-
-/** A level as the game writes it: 0 → I, 1 → II… */
-export function levelText(amplifier: number): string {
-  const n = Math.max(0, Math.floor(amplifier)) + 1;
-  const romans: [number, string][] = [[10, "X"], [9, "IX"], [5, "V"], [4, "IV"], [1, "I"]];
-  if (n > 10) return String(n);
-  let out = "";
-  let r = n;
-  for (const [v, s] of romans) while (r >= v) (out += s), (r -= v);
-  return out;
-}
+// ── Effects ─────────────────────────────────────────────────────────────────
 
 /** A modifier's amount as the game's tooltips write it: `+20%` multiplying, `+0.5` adding. */
 export function modifierText(amount: number, op: Operation): string {
   const v = op === "add" ? Math.round(amount * 100) / 100 : Math.round(amount * 1000) / 10;
   return `${amount >= 0 ? "+" : ""}${v}${op === "add" ? "" : "%"}`;
-}
-
-/** A potion's colour from its effects' (`0xRRGGBB`, each weighted by its level), as the game mixes them; `null` without any. */
-export function mixColors(effects: readonly { color: number; amplifier: number }[]): number | null {
-  if (!effects.length) return null;
-  let r = 0;
-  let g = 0;
-  let b = 0;
-  let w = 0;
-  for (const e of effects) {
-    const k = e.amplifier + 1;
-    r += ((e.color >> 16) & 255) * k;
-    g += ((e.color >> 8) & 255) * k;
-    b += (e.color & 255) * k;
-    w += k;
-  }
-  return (Math.round(r / w) << 16) | (Math.round(g / w) << 8) | Math.round(b / w);
 }
 
 // ── Trees ───────────────────────────────────────────────────────────────────
