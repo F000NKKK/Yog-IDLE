@@ -68,51 +68,55 @@ export function RowsEditor<R extends Record<string, unknown>>({
       {rows.map((r, i) => (
         <div key={i} className="rows-row">
           {lead && <span className="rows-lead">{lead(r, i)}</span>}
-          {columns.map((c) => {
-            const v = r[c.key];
-            const cell = { flexGrow: c.grow ?? 1 };
-            if (c.kind === "enum")
+          <div className="rows-fields">
+            {columns.map((c) => {
+              const v = r[c.key];
+              const cell = { flexGrow: c.grow ?? 1 };
+              if (c.kind === "enum")
+                return (
+                  <span key={c.key} className="rows-cell" style={cell}>
+                    <span className="rows-cell-label">{c.label}</span>
+                    <SelectField value={String(v ?? "")} disabled={readOnly} options={c.options} onChange={(x) => set(i, c.key, x)} aria-label={c.label} />
+                  </span>
+                );
+              const text = v === undefined || v === null ? "" : String(v);
+              const problem =
+                c.kind === "text"
+                  ? (c.validate?.(text) ?? null)
+                  : text !== "" && (Number.isNaN(Number(text)) || (c.min !== undefined && Number(text) < c.min) || (c.max !== undefined && Number(text) > c.max))
+                    ? t("Between {min} and {max}.", { min: c.min ?? "-∞", max: c.max ?? "∞" })
+                    : null;
+              const commit = (s: string) => {
+                const x = s.trim();
+                if (x === text) return;
+                if (c.kind === "text") return set(i, c.key, x || undefined);
+                const n = Number(x);
+                if (x === "") return set(i, c.key, undefined);
+                if (Number.isNaN(n)) return;
+                set(i, c.key, c.int ? Math.round(n) : n);
+              };
               return (
                 <span key={c.key} className="rows-cell" style={cell}>
-                  <SelectField value={String(v ?? "")} disabled={readOnly} options={c.options} onChange={(x) => set(i, c.key, x)} aria-label={c.label} />
+                  <span className="rows-cell-label">{c.label}</span>
+                  <TextField
+                    key={text}
+                    defaultValue={text}
+                    disabled={readOnly}
+                    list={c.kind === "text" && c.suggestions ? `${id}-${c.key}` : undefined}
+                    placeholder={c.kind === "number" ? c.placeholder : undefined}
+                    className={problem ? "is-invalid" : undefined}
+                    title={problem ?? text}
+                    aria-label={c.label}
+                    onBlur={(e) => commit(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                      e.stopPropagation();
+                    }}
+                  />
                 </span>
               );
-            const text = v === undefined || v === null ? "" : String(v);
-            const problem =
-              c.kind === "text"
-                ? (c.validate?.(text) ?? null)
-                : text !== "" && (Number.isNaN(Number(text)) || (c.min !== undefined && Number(text) < c.min) || (c.max !== undefined && Number(text) > c.max))
-                  ? t("Between {min} and {max}.", { min: c.min ?? "-∞", max: c.max ?? "∞" })
-                  : null;
-            const commit = (s: string) => {
-              const x = s.trim();
-              if (x === text) return;
-              if (c.kind === "text") return set(i, c.key, x || undefined);
-              const n = Number(x);
-              if (x === "") return set(i, c.key, undefined);
-              if (Number.isNaN(n)) return;
-              set(i, c.key, c.int ? Math.round(n) : n);
-            };
-            return (
-              <span key={c.key} className="rows-cell" style={cell}>
-                <TextField
-                  key={text}
-                  defaultValue={text}
-                  disabled={readOnly}
-                  list={c.kind === "text" && c.suggestions ? `${id}-${c.key}` : undefined}
-                  placeholder={c.kind === "number" ? c.placeholder : undefined}
-                  className={problem ? "is-invalid" : undefined}
-                  title={problem ?? text}
-                  aria-label={c.label}
-                  onBlur={(e) => commit(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") (e.target as HTMLInputElement).blur();
-                    e.stopPropagation();
-                  }}
-                />
-              </span>
-            );
-          })}
+            })}
+          </div>
           {trail && <span className="rows-trail">{trail(r, i)}</span>}
           {!readOnly && (
             <IconButton size="sm" className="rows-remove" title={t("Remove")} aria-label={t("Remove")} onClick={() => onChange(rows.filter((_, j) => j !== i))}>

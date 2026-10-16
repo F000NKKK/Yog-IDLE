@@ -75,7 +75,7 @@ export function EffectDesigner({ path, file, update, readOnly, kindLabel }: DefP
       colorRow("color", t("Colour"), c, file.color as number | undefined, (v) => v !== undefined && update((d) => void (d.color = v)), { description: t("Its particles' and potions' colour.") }),
       {
         id: "modifiers",
-        name: t("Modifiers"),
+        name: "",
         category: t("Modifiers"),
         value: null,
         kind: "custom",
@@ -175,7 +175,7 @@ export function PotionDesigner({ path, file, update, readOnly, kindLabel }: DefP
       }),
       {
         id: "effects",
-        name: t("Effects"),
+        name: "",
         category: t("Effects"),
         value: null,
         kind: "custom",
@@ -188,7 +188,7 @@ export function PotionDesigner({ path, file, update, readOnly, kindLabel }: DefP
             onChange={(v) => update((d) => void (d.effects = v))}
             trail={(e) => ticksText(e.duration ?? 0)}
             columns={[
-              { key: "effect", label: t("Effect"), kind: "text", grow: 3, suggestions: refSuggestions(effects, "effect"), validate: (v) => refMessage(t, refProblem(v, "effect", effects), "effect") },
+              { key: "effect", label: t("Type"), kind: "text", grow: 3, suggestions: refSuggestions(effects, "effect"), validate: (v) => refMessage(t, refProblem(v, "effect", effects), "effect") },
               { key: "duration", label: t("Ticks"), kind: "number", min: 1, int: true },
               { key: "amplifier", label: t("Level"), kind: "number", min: 0, int: true, placeholder: "0" },
             ]}
@@ -197,7 +197,7 @@ export function PotionDesigner({ path, file, update, readOnly, kindLabel }: DefP
       },
       {
         id: "brewed",
-        name: t("Brewing"),
+        name: "",
         category: t("Brewing"),
         value: null,
         kind: "custom",

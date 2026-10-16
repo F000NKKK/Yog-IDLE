@@ -112,11 +112,19 @@
   flex-direction: column;
   gap: 2px;
   width: 100%;
+  container-type: inline-size;
 }
 
 .rows-row {
   display: flex;
   align-items: center;
+  gap: 3px;
+}
+
+.rows-fields {
+  display: flex;
+  flex: 1;
+  min-width: 0;
   gap: 3px;
 }
 
@@ -128,9 +136,16 @@
 .rows-cell {
   flex: 1 1 0;
   min-width: 0;
+}
+
+.rows-row.is-head .rows-cell {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.rows-cell-label {
+  display: none;
 }
 
 .rows-cell .sp-textfield,
@@ -168,4 +183,34 @@
 .rows-remove {
   flex: none;
   width: 22px;
+}
+
+@container (max-width: 340px) {
+  .rows-row.is-head {
+    display: none;
+  }
+
+  .rows-row:not(.is-head) {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: start;
+    gap: 4px;
+    padding: 4px 0;
+    border-bottom: 1px solid var(--sp-border-subtle, transparent);
+  }
+
+  .rows-fields {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 6px;
+    min-width: 0;
+  }
+
+  .rows-cell-label {
+    display: block;
+    margin-bottom: 2px;
+    color: var(--sp-text-muted);
+    font-size: 11px;
+  }
 }
