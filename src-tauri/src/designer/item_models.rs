@@ -22,7 +22,20 @@ pub enum Look {
 /// understands (callers then guess its texture by name).
 pub fn look(res: &Resources, id: &str) -> Option<Look> {
     let (ns, path) = split_id(id);
-    let (parents, textures) = model_chain(res, &format!("{ns}:item/{path}"));
+    let appearance = res
+        .mod_root
+        .as_deref()
+        .and_then(|root| crate::content::content_item_appearance(root, id));
+    let model = if ns == "yog" && path.starts_with("potion/") {
+        "minecraft:item/potion".to_string()
+    } else {
+        format!("{ns}:item/{path}")
+    };
+    let (parents, textures) = model_chain(
+        res,
+        &model,
+        appearance.as_ref().and_then(|(item, _)| item.get("model")),
+    );
     let is = |p: &str| parents.iter().any(|x| split_id(x).1 == p);
     if (is("item/template_skull") || is("builtin/entity"))
         && let Some(tex) = HEADS.iter().find(|(name, _)| *name == path).map(|(_, t)| *t)
@@ -41,6 +54,8 @@ pub fn look(res: &Resources, id: &str) -> Option<Look> {
     let tints: Vec<Option<u32>> = if is("item/template_spawn_egg") {
         let (a, b) = EGGS.iter().find(|(n, ..)| path.strip_suffix("_spawn_egg") == Some(n)).map(|(_, a, b)| (*a, *b))?;
         vec![Some(a), Some(b)]
+    } else if let Some(color) = appearance.as_ref().and_then(|(_, color)| *color) {
+        vec![Some(color)]
     } else {
         match path {
             "potion" | "splash_potion" | "lingering_potion" | "tipped_arrow" => vec![Some(WATER)],
@@ -64,15 +79,19 @@ pub fn look(res: &Resources, id: &str) -> Option<Look> {
 }
 
 /// A model's parents (itself first) and its textures, the child's winning.
-fn model_chain(res: &Resources, model: &str) -> (Vec<String>, HashMap<String, String>) {
+fn model_chain(res: &Resources, model: &str, content_model: Option<&Value>) -> (Vec<String>, HashMap<String, String>) {
     let mut chain = Vec::new();
     let mut textures = HashMap::new();
     let mut at = model.to_string();
+    let mut pending = content_model.cloned();
     for _ in 0..8 {
         chain.push(at.clone());
         let (ns, path) = split_id(&at);
-        let Some(json) = res.read(ns, &format!("models/{path}.json")).and_then(|b| serde_json::from_slice::<Value>(&b).ok())
-        else {
+        let json = pending.take().or_else(|| {
+            res.read(ns, &format!("models/{path}.json"))
+                .and_then(|b| serde_json::from_slice::<Value>(&b).ok())
+        });
+        let Some(json) = json else {
             break;
         };
         if let Some(t) = json.get("textures").and_then(Value::as_object) {
