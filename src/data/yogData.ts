@@ -291,3 +291,154 @@ export function toPlain(node: DataNode): unknown {
 export function parseDataValue(text: string): unknown {
   return toPlain(parseData(text));
 }
+
+// ── Editing text in place ────────────────────────────────────────────────────
+
+/** How a new or changed value is written: `level` is its line's indent (in steps of two spaces). */
+export type DataFormat = (value: unknown, level: number) => string;
+
+const isObject = (v: unknown): v is Record<string, unknown> => !!v && typeof v === "object" && !Array.isArray(v);
+const sameValue = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
+
+/**
+ * `text` (Yog Data) changed to hold `next`, the rest of it as it was: what
+ * didn't change keeps its text — comments, key order, number spelling,
+ * layout — and what did is written by `format` at its place's indent. Maps
+ * and lists are edited entry by entry (a kept entry keeps the comments
+ * before it; a removed one takes them along). Text that doesn't parse is
+ * written anew.
+ */
+export function patchDataText(text: string, next: unknown, format: DataFormat): string {
+  let root: DataNode;
+  try {
+    root = parseData(text);
+  } catch {
+    return `${format(next, 0)}\n`;
+  }
+  return text.slice(0, root.start) + rewrite(text, root, next, format) + text.slice(root.end);
+}
+
+/** The indent of the line `at` is on: its leading whitespace. */
+function lineIndent(text: string, at: number): string {
+  const start = text.lastIndexOf("\n", at - 1) + 1;
+  return /^[ \t]*/.exec(text.slice(start, at))![0];
+}
+
+const levelOf = (indent: string) => Math.round(indent.replace(/\t/g, "  ").length / 2);
+
+/** Past the key at `i` (quoted or bare). */
+function skipKey(text: string, i: number): number {
+  if (text[i] !== '"') return i + /^[A-Za-z_$][A-Za-z0-9_$]*/.exec(text.slice(i, i + 256))![0].length;
+  for (i++; text[i] !== '"'; i++) if (text[i] === "\\") i++;
+  return i + 1;
+}
+
+/** Past whitespace and comments from `i`. */
+function skipBlank(text: string, i: number): number {
+  for (;;) {
+    const c = text.charCodeAt(i);
+    if (c === 32 || c === 9 || c === 10 || c === 13) i++;
+    else if (c === 47 && text.charCodeAt(i + 1) === 47) {
+      while (i < text.length && text.charCodeAt(i) !== 10) i++;
+    } else if (c === 47 && text.charCodeAt(i + 1) === 42) i = text.indexOf("*/", i + 2) + 2;
+    else return i;
+  }
+}
+
+/** The new text of `node` (its own range) holding `next`. */
+function rewrite(text: string, node: DataNode, next: unknown, format: DataFormat): string {
+  if (sameValue(toPlain(node), next)) return text.slice(node.start, node.end);
+  const level = levelOf(lineIndent(text, node.start));
+  const oneLine = !text.slice(node.start, node.end).includes("\n");
+  const fresh = () => format(next, level);
+  if (oneLine) return fresh();
+  if (node.t === "map" && isObject(next)) {
+    const keys = node.entries.map((e) => e.key);
+    if (new Set(keys).size !== keys.length || !node.entries.length) return fresh();
+    const parts = members(text, node, node.entries.map((e) => ({ start: e.keyStart, end: e.value.end })));
+    const pad = lineIndent(text, node.entries[0].keyStart);
+    const out: Member[] = [];
+    const gone = (i: number) => i < keys.length && !(keys[i] in (next as object) && (next as Record<string, unknown>)[keys[i]] !== undefined);
+    // The old entry last written: a new key right after it, in the place of one that's gone, is that one renamed.
+    let last = -1;
+    for (const [k, v] of Object.entries(next)) {
+      if (v === undefined) continue;
+      let i = keys.indexOf(k);
+      const renamed = i < 0 && gone(last + 1);
+      if (renamed) i = last + 1;
+      if (i < 0) {
+        out.push({ body: `\n${pad}${JSON.stringify(k)}: ${format(v, levelOf(pad))}`, trail: "" });
+        continue;
+      }
+      last = i;
+      const e = node.entries[i];
+      const seg = parts.segments[i];
+      const key = renamed ? `${JSON.stringify(k)}${text.slice(skipKey(text, e.keyStart), e.value.start)}` : text.slice(e.keyStart, e.value.start);
+      out.push({ body: seg.lead + key + rewrite(text, e.value, v, format), trail: seg.trail });
+    }
+    return `{${joinMembers(out, parts.comma)}${parts.tail}}`;
+  }
+  if (node.t === "list" && Array.isArray(next)) {
+    if (!node.items.length) return fresh();
+    const parts = members(text, node, node.items);
+    const pad = lineIndent(text, node.items[0].start);
+    const old = node.items.map(toPlain);
+    const out: Member[] = [];
+    const item = (i: number, v: unknown): Member => ({ body: parts.segments[i].lead + rewrite(text, node.items[i], v, format), trail: parts.segments[i].trail });
+    if (next.length === old.length) next.forEach((v, i) => out.push(item(i, v)));
+    else {
+      // Added or removed items: the others keep their text.
+      let from = 0;
+      for (const v of next) {
+        const i = old.findIndex((o, k) => k >= from && sameValue(o, v));
+        if (i >= 0) {
+          out.push(item(i, v));
+          from = i + 1;
+        } else out.push({ body: `\n${pad}${format(v, levelOf(pad))}`, trail: "" });
+      }
+    }
+    return `[${joinMembers(out, parts.comma)}${parts.tail}]`;
+  }
+  return fresh();
+}
+
+/** A member as rewritten: its text, then what followed it (a comment) — the comma goes between. */
+interface Member {
+  body: string;
+  trail: string;
+}
+
+const joinMembers = (out: Member[], trailingComma: boolean) =>
+  out.map((m, i) => m.body + (i < out.length - 1 || trailingComma ? "," : "") + m.trail).join("");
+
+/**
+ * A map's or list's members as text: each one's `lead` (from the separator
+ * before it — the comments above it) and `trail` (after it, up to its
+ * comma); whether the last has a comma; what's left before the bracket.
+ */
+function members(text: string, node: DataNode, spans: { start: number; end: number }[]) {
+  const segments: { lead: string; trail: string }[] = [];
+  let at = node.start + 1;
+  let comma = false;
+  for (const s of spans) {
+    const lead = text.slice(at, s.start);
+    const after = skipBlank(text, s.end);
+    comma = text[after] === ",";
+    // A comment on the member's own line stays with it; the rest goes to the next one.
+    const eol = text.indexOf("\n", s.end);
+    const end = comma ? after : Math.min(after, eol < 0 ? after : eol);
+    let trail = text.slice(s.end, end);
+    at = comma ? after + 1 : end;
+    if (comma) {
+      // A comment after the comma, on the same line.
+      const eol2 = text.indexOf("\n", at);
+      const rest = text.slice(at, eol2 < 0 ? text.length : eol2);
+      if (rest.trim() && /^[ \t]*(\/\/.*|\/\*.*?\*\/[ \t]*)$/.test(rest) && at + rest.length < node.end) {
+        trail += rest;
+        at += rest.length;
+      }
+    }
+    segments.push({ lead, trail });
+  }
+  return { segments, comma, tail: text.slice(at, node.end - 1) };
+}
