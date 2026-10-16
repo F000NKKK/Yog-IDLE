@@ -41,7 +41,7 @@ export function LootDesigner({ path, file, update, readOnly, kindLabel }: DefPro
 
   const setAddRows = (rows: LootAddRow[]) =>
     update((d) => {
-      d.add = rows.map((row, i) => {
+      d.add = rows.map((row) => {
         const [min, max] = [Math.max(0, Math.round(row.min)), Math.max(0, Math.round(row.max))].sort((a, b) => a - b);
         const { min: _min, max: _max, chance, function: lootFunction, item, ...rest } = row;
         return {
