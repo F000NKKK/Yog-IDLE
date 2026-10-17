@@ -218,9 +218,13 @@ fn stair_element(from: [u8; 3], to: [u8; 3]) -> Value {
 pub fn content_item_appearance(root: &Path, id: &str) -> Option<(Value, Option<u32>)> {
     let ns = mod_id(root)?;
     let (want_ns, want) = split_id(id);
-    if want_ns != ns {
+    let want = if want_ns == "yog" {
+        want.strip_prefix("potion/")?
+    } else if want_ns == ns {
+        want
+    } else {
         return None;
-    }
+    };
     for file in find(&root.join("content/items"), "yitem") {
         let Ok(text) = std::fs::read_to_string(&file) else {
             continue;

@@ -67,6 +67,9 @@ pub fn look(res: &Resources, id: &str) -> Option<Look> {
     } else {
         match path {
             "potion" | "splash_potion" | "lingering_potion" | "tipped_arrow" => vec![Some(WATER)],
+            p if ns == "yog" && p.starts_with("potion/") && appearance.is_none() => {
+                vec![Some(WATER)]
+            }
             p if p.starts_with("leather_") => vec![Some(LEATHER)],
             _ => Vec::new(),
         }
@@ -352,6 +355,10 @@ mod tests {
             look(&res, "yog:potion/awkward"),
             Some(Look::Flat(_))
         ));
+        let Some(Look::Flat(alias)) = look(&res, "yog:potion/enlarge_grid") else {
+            panic!("potion alias should resolve to the configured potion");
+        };
+        assert_eq!(alias.rgba, image.rgba);
         let _ = std::fs::remove_dir_all(dir);
     }
 }
