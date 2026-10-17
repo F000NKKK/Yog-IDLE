@@ -132,7 +132,10 @@ function showFrame(texture: THREE.Texture, anim: TextureAnimation | null, index:
 
 function loadTexture(src: TextureSource, onLoad: () => void): { texture: THREE.Texture; image: Promise<HTMLImageElement> } {
   const hit = textureCache.get(src.url);
-  if (hit) return hit;
+  if (hit) {
+    if (!hit.texture.image) void hit.image.then(onLoad);
+    return hit;
+  }
   const texture = new THREE.Texture();
   texture.magFilter = THREE.NearestFilter;
   texture.minFilter = THREE.NearestFilter;
