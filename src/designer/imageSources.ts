@@ -50,13 +50,30 @@ export function imageSources(path: string): ImageSourceCandidate[] {
     pending.add(key);
     cli<ImageSourceCandidate[]>("yui_image_sources", { path })
       .then((list) => lists.set(path, list))
-      .catch(() => lists.set(path, []))
+      .catch(() => {
+        lists.set(path, []);
+        retryLater(lists, path);
+      })
       .finally(() => {
         pending.delete(key);
         changed();
       });
   }
   return [];
+}
+
+/**
+ * A failed answer is shown (as nothing) this long, then asked again — the
+ * CLI may have been restarting or updating, not unable to draw it.
+ */
+const RETRY_MS = 2000;
+
+/** Forgets `key` of `cache` after a while, so it's asked again. */
+function retryLater(cache: Map<string, unknown>, key: string) {
+  window.setTimeout(() => {
+    cache.delete(key);
+    changed();
+  }, RETRY_MS);
 }
 
 /** The square previews' side, pixels. */
@@ -69,7 +86,10 @@ function preview(path: string, source: string, size = PREVIEW_SIZE): Preview | u
     pending.add(key);
     cli<Preview>("yui_image_preview", { path, source, size })
       .then((p) => previews.set(key, p))
-      .catch(() => previews.set(key, { url: null, alias: null }))
+      .catch(() => {
+        previews.set(key, { url: null, alias: null });
+        retryLater(previews, key);
+      })
       .finally(() => {
         pending.delete(key);
         changed();
@@ -119,7 +139,10 @@ export function tagItems(path: string, tag: string): string[] | undefined {
     pending.add(key);
     cli<string[]>("item_tag_items", { path, tag })
       .then((items) => tags.set(key, items))
-      .catch(() => tags.set(key, []))
+      .catch(() => {
+        tags.set(key, []);
+        retryLater(tags, key);
+      })
       .finally(() => {
         pending.delete(key);
         changed();
