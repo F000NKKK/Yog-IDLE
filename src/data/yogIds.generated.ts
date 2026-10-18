@@ -108,6 +108,12 @@ export const res = {
   MODELS: "models/",
   BLOCKSTATES: "blockstates/",
   ITEM_DIR: "item/",
+  ITEM_DEFINITIONS: "items/",
+  EQUIPMENT: "equipment/",
+  EQUIPMENT_TEXTURES: "entity/equipment/",
+  ARMOR_TEXTURES: "models/armor/",
+  ARMOR_LAYER: "_layer_",
+  SPAWN_EGG_SUFFIX: "_spawn_egg",
   BLOCK_DIR: "block/",
   GUI_SPRITES: "gui/sprites/",
   ATLASES: "atlases/",
@@ -128,6 +134,7 @@ export const yog = {
   PLAYER_INVENTORY: "yog:player_inventory",
   MACHINE_PREFIX: "yog:machine:",
   POTION_ALIAS: "yog:potion/",
+  SPAWN_EGG_MODEL: "yog:item/spawn_egg",
   BOOK_SHEET: "yog:gui/book/book",
   CRAFTING_SHEET: "yog:gui/book/crafting",
   DESIGNER_SCREEN: "yog:designer",
@@ -187,6 +194,22 @@ export const yui = {
   RECIPE_SLOT: "RecipeSlot",
   RECIPE_RESULT: "RecipeResult",
   RECIPE_COUNT: "RecipeCount",
+} as const;
+
+export const itemDef = {
+  MODEL: "model",
+  TYPE: "type",
+  TINTS: "tints",
+  VALUE: "value",
+  PLAIN: "minecraft:model",
+  CONSTANT: "minecraft:constant",
+} as const;
+
+export const equipment = {
+  LAYERS: "layers",
+  TEXTURE: "texture",
+  HUMANOID: "humanoid",
+  HUMANOID_LEGGINGS: "humanoid_leggings",
 } as const;
 
 export const model = {

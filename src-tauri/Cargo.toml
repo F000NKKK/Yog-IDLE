@@ -19,7 +19,7 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 # The front end's copy of the shared names (`src/data/yogIds.generated.ts`).
-yog-ids = "0.1.0"
+yog-ids = "0.2.0"
 
 [dependencies]
 tauri = { version = "2", features = ["protocol-asset"] }
@@ -43,7 +43,7 @@ globset = "0.4.20"
 syn = { version = "3.0.9", default-features = false, features = ["full", "parsing", "visit"] }
 proc-macro2 = { version = "1.0.107", features = ["span-locations"] }
 # Generated TypeScript of Yog's ids, and the one `yog` program name.
-yog-ids = "0.1.0"
+yog-ids = "0.2.0"
 
 [dev-dependencies]
 criterion = { version = "0.8", default-features = false, features = ["cargo_bench_support"] }
