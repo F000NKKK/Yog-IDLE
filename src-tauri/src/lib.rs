@@ -902,6 +902,12 @@ async fn yui_image_preview(
     .map_err(|e| e.to_string())
 }
 
+/// Draws a tab of advancements the way the game's advancements screen does.
+#[tauri::command]
+async fn advancement_render(args: designer::advancements::Args) -> Result<designer::advancements::Rendered, String> {
+    tauri::async_runtime::spawn_blocking(move || designer::advancements::render(&args)).await.map_err(|e| e.to_string())
+}
+
 /// Draws a `.ybook` the way the game does (yog-book's own renderer),
 /// after what the reader did (see `designer::book`).
 #[tauri::command]
@@ -1867,6 +1873,7 @@ pub fn run() {
         content_import,
         yui_designer_render,
         book_designer_render,
+        advancement_render,
         book_designer_close,
         yui_designer_components,
         yui_designer_event,

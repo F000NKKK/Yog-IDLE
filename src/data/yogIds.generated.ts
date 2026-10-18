@@ -125,6 +125,7 @@ export const game = {
   OVERWORLD: "minecraft:overworld",
   THE_NETHER: "minecraft:the_nether",
   THE_END: "minecraft:the_end",
+  MISSING_TEXTURE: "minecraft:missingno",
   WRITTEN_BOOK: "minecraft:written_book",
 } as const;
 

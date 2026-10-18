@@ -6,38 +6,23 @@ import { designText, useDesignResources } from "../../lang/designResources";
 import { openFile } from "../../fileOpenBus";
 import { modRootOf } from "../../paths";
 import { inspectorRows, refMessage } from "../inspector";
-import { asList, CRITERIA, criterionKind, FRAMES, layoutTree, rootOf, tabOf, type AdvNode, type Criterion } from "./defModel";
+import { asList, CRITERIA, criterionKind, FRAMES, rootOf, tabOf, type AdvNode, type Criterion } from "./defModel";
 import { DefLayout, type DefProps } from "./DefLayout";
-import { GameStage, ItemIcon, useIcons } from "./GamePanel";
-import { imageNatural } from "../../designer/imageSources";
+import { GameStage } from "./GamePanel";
+import { GAME_NAMESPACE } from "../../data/yogFormat";
 import "./defs.css";
 
 const FRAME_LABELS: Record<(typeof FRAMES)[number], string> = { task: "Task", goal: "Goal", challenge: "Challenge" };
 const CRITERION_LABELS: Record<Criterion, string> = { granted: "Granted by the Mod", has_item: "Has an Item", used_item: "Used an Item" };
 
-// The game's advancements screen, GUI pixels (`AdvancementsScreen`,
-// `AdvancementTab`, `AdvancementWidget`).
-/** The window and where its tab's view is inside it. */
-const WINDOW = { w: 252, h: 140 };
-const VIEW = { x: 9, y: 18, w: 234, h: 113 };
-/** Where the tab's title is written, and its colour. */
-const TITLE_AT = { x: 8, y: 6 };
-/** A tree position's step: column, row. */
-const STEP = { x: 28, y: 27 };
-/** A frame's side and where it and its icon sit in a widget. */
-const FRAME = 26;
-const FRAME_DX = 3;
-const ICON_AT = { x: 8, y: 5 };
-/** A background tile's side. */
-const TILE = 16;
-/** Where a frame's connector leaves it, and how far it runs before turning. */
-const CONNECT = { mid: 13, out: FRAME + 4 };
-/** The sprites (`yog-gfx/assets/sprites.ydata`). */
-const WINDOW_SPRITE = "sprite:advancement_window";
-const frameSprite = (frame: string, obtained: boolean) => `sprite:advancement/${frame}${obtained ? "_obtained" : ""}`;
-
-/** `minecraft:textures/block/calcite.png` → the texture id `minecraft:block/calcite`. */
-const textureId = (s: string) => s.replace(/^([a-z0-9_.-]+:)?textures\//, "$1").replace(/\.png$/, "");
+/** The screen the backend draws (`designer::advancements::SCREEN`), GUI pixels. */
+interface Rendered {
+  image: string | null;
+  size: [number, number];
+  view: [number, number, number, number];
+  spots: { id: string; rect: [number, number, number, number] }[];
+  drag: [number, number];
+}
 
 interface Shown extends AdvNode {
   file: string | null;
@@ -52,7 +37,6 @@ interface Shown extends AdvNode {
  */
 export function AdvancementDesigner({ path, file, update, readOnly, kindLabel }: DefProps) {
   const t = useT();
-  useIcons();
   useDesignResources(modRootOf(path));
   const defs = useContentDefs(path, "advancement");
   const advancements = useContentRefs(path, "advancement");
@@ -63,7 +47,7 @@ export function AdvancementDesigner({ path, file, update, readOnly, kindLabel }:
     invoke<string[]>("content_strings", { path }).then((s) => setStrings(s ?? []), () => setStrings([]));
   }, [path]);
 
-  const ns = defs[0]?.id.split(":")[0] ?? advancements.own[0]?.id.split(":")[0] ?? "minecraft";
+  const ns = defs[0]?.id.split(":")[0] ?? advancements.own[0]?.id.split(":")[0] ?? GAME_NAMESPACE;
   const thisId = qualify(file.id ?? path.split(/[\\/]/).pop()!.replace(/\.ydef$/, ""), ns);
   const parentOf = (v: Record<string, unknown>) => (typeof v.parent === "string" ? refId(v.parent, "advancement") : null);
 
@@ -82,40 +66,51 @@ export function AdvancementDesigner({ path, file, update, readOnly, kindLabel }:
   }, [defs, file, path, thisId]);
   const root = rootOf(nodes, thisId);
   const tab = tabOf(nodes, root) as Shown[];
-  const at = layoutTree(tab);
-  // Each widget where the game puts it, and the tab's extent (`AdvancementTab.addWidget`).
-  const place = new Map([...at].map(([id, p]) => [id, { x: Math.floor(p.x * STEP.x), y: Math.floor(p.y * STEP.y) }]));
-  const spots = [...place.values()];
-  const minX = Math.min(...spots.map((p) => p.x), 0);
-  const maxX = Math.max(...spots.map((p) => p.x + STEP.x), 0);
-  const minY = Math.min(...spots.map((p) => p.y), 0);
-  const maxY = Math.max(...spots.map((p) => p.y + STEP.y), 0);
-  // The view's first position: the tree centred (`AdvancementTab.drawContents`), then dragged within its extent.
-  const centre = { x: Math.trunc(VIEW.w / 2 - (maxX + minX) / 2), y: Math.trunc(Math.floor(VIEW.h / 2) - (maxY + minY) / 2) };
-  const [drag, setDrag] = useState({ x: 0, y: 0 });
-  const clampScroll = (v: number, extent: number, view: number) => (extent > view ? Math.min(0, Math.max(-(extent - view), v)) : v);
-  const scroll = {
-    x: maxX - minX > VIEW.w ? clampScroll(centre.x + drag.x, maxX, VIEW.w) : centre.x,
-    y: maxY - minY > VIEW.h ? clampScroll(centre.y + drag.y, maxY, VIEW.h) : centre.y,
-  };
   const rootNode = tab.find((n) => n.id === root);
 
-  // The root's background, tiled 16 GUI pixels a block.
-  const [background, setBackground] = useState<string | null>(null);
   const bg = typeof rootNode?.value.background === "string" ? rootNode.value.background : null;
+  const text = (v: unknown) => (typeof v === "string" ? designText(v) : "");
+  const frame = (v: Record<string, unknown>) => (FRAMES.includes(v.frame as never) ? (v.frame as string) : "task");
+
+  // The tab drawn by the backend as the game draws it; dragged and hovered here.
+  const [drag, setDrag] = useState<[number, number]>([0, 0]);
+  const [drawn, setDrawn] = useState<Rendered | null>(null);
+  const icon = (v: unknown) => (typeof v === "string" ? v.replace(/^@(?:item|block):/, "") : null);
+  const args = useMemo(
+    () => ({
+      path,
+      title: text(rootNode?.value.title) || root,
+      background: bg,
+      nodes: tab.map((n) => ({
+        id: n.id,
+        parent: n.parent,
+        icon: icon(n.value.icon),
+        frame: frame(n.value),
+        title: text(n.value.title) || n.id,
+        description: text(n.value.description),
+        obtained: n.id === thisId,
+      })),
+      drag,
+      hover,
+    }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `text` reads the design resources, `tab` is rebuilt each render
+    [path, JSON.stringify(tab.map((n) => [n.id, n.parent, n.value])), bg, drag, hover, thisId, root],
+  );
   useEffect(() => {
-    if (!bg) return setBackground(null);
     let live = true;
-    invoke<{ url: string }>("content_texture", { path, texture: textureId(bg) }).then(
-      (x) => live && setBackground(x.url),
-      () => live && setBackground(null),
+    invoke<Rendered>("advancement_render", { args }).then(
+      (r) => {
+        if (!live) return;
+        setDrawn(r);
+        if (r.drag[0] !== drag[0] || r.drag[1] !== drag[1]) setDrag(r.drag);
+      },
+      () => live && setDrawn(null),
     );
     return () => {
       live = false;
     };
-  }, [bg, path]);
-
-  const text = (v: unknown) => (typeof v === "string" ? designText(v) : "");
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `drag` is in `args`
+  }, [args]);
 
   // ── Properties ────────────────────────────────────────────────────────────
 
@@ -154,8 +149,6 @@ export function AdvancementDesigner({ path, file, update, readOnly, kindLabel }:
     return out;
   }, [file, readOnly, t, path, update, advancements, items, strings, thisId]);
 
-  const frame = (v: Record<string, unknown>) => (FRAMES.includes(v.frame as never) ? (v.frame as string) : "task");
-  const shownTitle = text(rootNode?.value.title) || root;
   return (
     <DefLayout
       path={path}
@@ -176,100 +169,43 @@ export function AdvancementDesigner({ path, file, update, readOnly, kindLabel }:
         )
       }
     >
-      <GameStage width={WINDOW.w} height={WINDOW.h} panel={false} className="advancement-stage">
+      <GameStage width={drawn?.size[0] ?? 1} height={drawn?.size[1] ?? 1} panel={false} className="advancement-stage">
         {(k) => {
-          const sx = Math.floor(scroll.x);
-          const sy = Math.floor(scroll.y);
-          const px = (v: number) => v * k;
-          // `AdvancementWidget.drawConnectivity`: the game's hLine/vLine rectangles, black under white.
-          const lines: { x: number; y: number; w: number; h: number; c: string }[] = [];
-          const hLine = (a: number, b: number, y: number, c: string) => lines.push({ x: Math.min(a, b), y, w: Math.abs(a - b) + 1, h: 1, c });
-          const vLine = (x: number, a: number, b: number, c: string) => lines.push({ x, y: Math.min(a, b) + 1, w: 1, h: Math.max(0, Math.abs(a - b) - 1), c });
-          for (const shadow of [true, false]) {
-            for (const n of tab) {
-              const p = n.parent ? place.get(n.parent) : undefined;
-              const c = place.get(n.id);
-              if (!p || !c || n.parent === n.id) continue;
-              const [i, j, kk, l, m] = [p.x + CONNECT.mid, p.x + CONNECT.out, p.y + CONNECT.mid, c.x + CONNECT.mid, c.y + CONNECT.mid];
-              if (shadow) {
-                const b = "#000";
-                hLine(j, i, kk - 1, b), hLine(j + 1, i, kk, b), hLine(j, i, kk + 1, b);
-                hLine(l, j - 1, m - 1, b), hLine(l, j - 1, m, b), hLine(l, j - 1, m + 1, b);
-                vLine(j - 1, m, kk, b), vLine(j + 1, m, kk, b);
-              } else {
-                const w = "#fff";
-                hLine(j, i, kk, w), hLine(l, j, m, w), vLine(j, m, kk, w);
-              }
-            }
-          }
-          const windowUrl = imageNatural(path, WINDOW_SPRITE);
+          if (!drawn?.image) return null;
+          const gui = (e: { clientX: number; clientY: number; currentTarget: Element }) => {
+            const r = e.currentTarget.getBoundingClientRect();
+            return { x: (e.clientX - r.left) / k, y: (e.clientY - r.top) / k };
+          };
+          const inside = (p: { x: number; y: number }, [x, y, w, h]: number[]) => p.x >= x && p.x <= x + w && p.y >= y && p.y <= y + h;
+          const spotAt = (p: { x: number; y: number }) => drawn.spots.find((s) => inside(p, s.rect))?.id ?? null;
           return (
-            <div className="adv-window" style={{ width: px(WINDOW.w), height: px(WINDOW.h) }}>
-              <div
-                className="adv-view"
-                style={{
-                  left: px(VIEW.x),
-                  top: px(VIEW.y),
-                  width: px(VIEW.w),
-                  height: px(VIEW.h),
-                  backgroundImage: background ? `url(${background})` : undefined,
-                  backgroundSize: px(TILE),
-                  backgroundPosition: `${px(sx % TILE)}px ${px(sy % TILE)}px`,
-                }}
-                onPointerDown={(e) => {
-                  if (e.target !== e.currentTarget) return;
-                  const start = { x: e.clientX, y: e.clientY, from: drag };
-                  const move = (ev: PointerEvent) => setDrag({ x: start.from.x + (ev.clientX - start.x) / k, y: start.from.y + (ev.clientY - start.y) / k });
-                  const up = () => (window.removeEventListener("pointermove", move), window.removeEventListener("pointerup", up));
-                  window.addEventListener("pointermove", move);
-                  window.addEventListener("pointerup", up);
-                }}
-              >
-                <svg className="adv-lines" width={px(VIEW.w)} height={px(VIEW.h)} shapeRendering="crispEdges">
-                  {lines.map((r, i) => (
-                    <rect key={i} x={px(sx + r.x)} y={px(sy + r.y)} width={px(r.w)} height={px(r.h)} fill={r.c} />
-                  ))}
-                </svg>
-                {tab.map((n) => {
-                  const p = place.get(n.id)!;
-                  const mine = n.id === thisId;
-                  const frameUrl = imageNatural(path, frameSprite(frame(n.value), mine));
-                  return (
-                    <button
-                      key={n.id}
-                      type="button"
-                      className={`adv-node${mine ? " is-this" : ""}${n.file ? "" : " is-outside"}`}
-                      style={{ left: px(sx + p.x + FRAME_DX), top: px(sy + p.y), width: px(FRAME), height: px(FRAME) }}
-                      onPointerEnter={() => setHover(n.id)}
-                      onPointerLeave={() => setHover((h) => (h === n.id ? null : h))}
-                      onClick={() => n.file && !mine && openFile({ path: n.file })}
-                    >
-                      {frameUrl && <img className="game-icon" src={frameUrl} alt="" draggable={false} style={{ width: px(FRAME), height: px(FRAME) }} />}
-                      <span className="adv-icon" style={{ left: px(ICON_AT.x - FRAME_DX), top: px(ICON_AT.y) }}>
-                        <ItemIcon path={path} id={n.value.icon as string | undefined} k={k} title="" />
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-              {windowUrl && <img className="adv-frame game-icon" src={windowUrl} alt="" draggable={false} style={{ width: px(WINDOW.w), height: px(WINDOW.h) }} />}
-              <div className="game-title" style={{ left: px(TITLE_AT.x), top: px(TITLE_AT.y) }}>
-                {shownTitle}
-              </div>
-              {hover &&
-                (() => {
-                  const n = tab.find((x) => x.id === hover);
-                  const p = place.get(hover);
-                  if (!n || !p) return null;
-                  return (
-                    <div className="game-tooltip adv-tooltip" style={{ left: px(VIEW.x + sx + p.x + FRAME_DX + FRAME), top: px(VIEW.y + sy + p.y) }}>
-                      <div>{text(n.value.title) || n.id}</div>
-                      {typeof n.value.description === "string" && <div className="is-muted adv-desc">{text(n.value.description)}</div>}
-                      {!n.file && <div className="is-muted">{t("Not the mod's: {id}", { id: n.id })}</div>}
-                    </div>
-                  );
-                })()}
-            </div>
+            <img
+              className="adv-screen game-icon"
+              src={drawn.image}
+              alt=""
+              draggable={false}
+              style={{ width: drawn.size[0] * k, height: drawn.size[1] * k, pointerEvents: "auto" }}
+              onPointerMove={(e) => {
+                const p = gui(e);
+                setHover(inside(p, drawn.view) ? spotAt(p) : null);
+              }}
+              onPointerLeave={() => setHover(null)}
+              onPointerDown={(e) => {
+                const p = gui(e);
+                const id = inside(p, drawn.view) ? spotAt(p) : null;
+                if (id) {
+                  const n = tab.find((x) => x.id === id);
+                  if (n?.file && n.id !== thisId) openFile({ path: n.file });
+                  return;
+                }
+                if (!inside(p, drawn.view)) return;
+                const start = { x: e.clientX, y: e.clientY, from: drag };
+                const move = (ev: PointerEvent) => setDrag([start.from[0] + (ev.clientX - start.x) / k, start.from[1] + (ev.clientY - start.y) / k]);
+                const up = () => (window.removeEventListener("pointermove", move), window.removeEventListener("pointerup", up));
+                window.addEventListener("pointermove", move);
+                window.addEventListener("pointerup", up);
+              }}
+            />
           );
         }}
       </GameStage>

@@ -61,8 +61,6 @@ export function imageSources(path: string): ImageSourceCandidate[] {
 
 /** The square previews' side, pixels. */
 const PREVIEW_SIZE = 32;
-/** The size that asks for an image at its own size (`designer::images::NATURAL_SIZE`). */
-const NATURAL_SIZE = 0;
 
 function preview(path: string, source: string, size = PREVIEW_SIZE): Preview | undefined {
   const key = `${path}\n${source}\n${size}`;
@@ -88,15 +86,6 @@ function preview(path: string, source: string, size = PREVIEW_SIZE): Preview | u
  */
 export function imagePreview(path: string, source: string): string | null | undefined {
   const p = preview(path, source);
-  return p === undefined ? undefined : p.url;
-}
-
-/**
- * Any image reference drawn at its own size, pixel for pixel (a sprite as
- * the game has it) — `undefined` until loaded, `null` if it can't be drawn.
- */
-export function imageNatural(path: string, source: string): string | null | undefined {
-  const p = preview(path, source, NATURAL_SIZE);
   return p === undefined ? undefined : p.url;
 }
 

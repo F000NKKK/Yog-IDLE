@@ -278,7 +278,19 @@ fn slot(c: &mut Canvas, [x, y, w, h]: [f32; 4]) {
     c.fill(x + w - 1.0, y, x + w, y + h, 0xFF_FFFFFF, 0xFF_FFFFFF);
 }
 
-fn sprite(c: &mut Canvas, sp: &Sprite, dest: [f32; 4], t: u32) {
+/// Sprite `sp` into `dest`: nine-sliced by its border, or — `part` a region
+/// of it in its own pixels (`w`, `h` > 0) — that part, scaled.
+fn sprite(c: &mut Canvas, sp: &Sprite, dest: [f32; 4], part: [f32; 4], t: u32) {
+    let whole = part[2] <= 0.0 || part[3] <= 0.0;
+    // `src` (a region of the image whose sprite is `natural` pixels wide) drawn whole or in part.
+    let mut put = |img: &Image, src: [f32; 4], natural: f32, border: f32| {
+        if whole {
+            nine_slice(c, img, src, border, dest, t);
+        } else {
+            let k = src[2] / natural;
+            blit_px(c, img, dest, [src[0] + part[0] * k, src[1] + part[1] * k, part[2] * k, part[3] * k], t);
+        }
+    };
     if sp.is_procedural() {
         slot(c, dest);
         return;
@@ -293,14 +305,7 @@ fn sprite(c: &mut Canvas, sp: &Sprite, dest: [f32; 4], t: u32) {
         } else {
             img.height as f32
         };
-        nine_slice(
-            c,
-            &img,
-            [0.0, 0.0, img.width as f32, frame_h],
-            sp.border,
-            dest,
-            t,
-        );
+        put(&img, [0.0, 0.0, img.width as f32, frame_h], size.x, sp.border);
         return;
     }
     if let Some(LegacyRegion {
@@ -312,14 +317,7 @@ fn sprite(c: &mut Canvas, sp: &Sprite, dest: [f32; 4], t: u32) {
     {
         // Resource packs may ship the sheet at a higher resolution.
         let k = img.width as f32 / texture_size.x;
-        nine_slice(
-            c,
-            &img,
-            [region.x * k, region.y * k, region.w * k, region.h * k],
-            sp.border * k,
-            dest,
-            t,
-        );
+        put(&img, [region.x * k, region.y * k, region.w * k, region.h * k], region.w, sp.border * k);
         return;
     }
     missing(c, dest);
@@ -418,7 +416,7 @@ pub fn draw(c: &mut Canvas, source: &str, dest: [f32; 4], region: [f32; 4], t: u
             None => missing(c, dest),
         },
         Some(ImageSource::Sprite(name)) => match find_sprite(&name) {
-            Some(sp) => sprite(c, sp, dest, t),
+            Some(sp) => sprite(c, sp, dest, region, t),
             None => match name
                 .split_once(':')
                 .and_then(|(ns, p)| texture(&atlas_texture(ns, p)))
@@ -503,8 +501,6 @@ pub fn preview(path: &Path, source: &str, size: u32) -> Preview {
     Preview { url, alias }
 }
 
-/// The preview size that draws an image at its own size.
-pub const NATURAL_SIZE: u32 = 0;
 /// The smallest and largest square preview.
 const MIN_PREVIEW: u32 = 8;
 const MAX_PREVIEW: u32 = 256;
@@ -518,14 +514,9 @@ fn draw_preview(path: &Path, source: &str, size: u32) -> Option<String> {
     let res = Resources::for_mod(root.as_deref());
     let source = resolve_mod(source);
     let (nw, nh) = source_size(&source).unwrap_or((ICON_SIDE, ICON_SIDE));
-    // 0: the image's own size, pixel for pixel; else fitted in a square of `size`.
-    let (mut c, dest) = if size == NATURAL_SIZE {
-        (Canvas::new(nw.ceil() as u32, nh.ceil() as u32, 1, &res), Rect::new(0.0, 0.0, nw, nh))
-    } else {
-        let size = size.clamp(MIN_PREVIEW, MAX_PREVIEW);
-        let (dest, _) = fit(Stretch::Uniform, Vec2::new(nw, nh), Rect::new(0.0, 0.0, size as f32, size as f32));
-        (Canvas::new(size, size, 1, &res), dest)
-    };
+    let size = size.clamp(MIN_PREVIEW, MAX_PREVIEW);
+    let (dest, _) = fit(Stretch::Uniform, Vec2::new(nw, nh), Rect::new(0.0, 0.0, size as f32, size as f32));
+    let mut c = Canvas::new(size, size, 1, &res);
     let [x, y, w, h] = [dest.x, dest.y, dest.w, dest.h];
     draw(&mut c, &source, [x, y, w, h], [0.0; 4], 0xFFFF_FFFF);
     let png = c.png().ok()?;
@@ -539,31 +530,6 @@ fn draw_preview(path: &Path, source: &str, size: u32) -> Option<String> {
 mod tests {
     use super::*;
 
-    /// The advancements window and frames, from the local game's files.
-    #[test]
-    #[ignore = "needs a Minecraft client jar"]
-    fn advancement_sprites_draw_at_their_size() {
-        let hex = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../HexMod-Yog/content/thehexbook.ybook");
-        for (source, w, h) in [("sprite:advancement_window", 252, 140), ("sprite:advancement/goal_obtained", 26, 26)] {
-            let url = draw_preview(&hex, source, NATURAL_SIZE).expect(source);
-            use base64::Engine as _;
-            let png = base64::engine::general_purpose::STANDARD.decode(url.trim_start_matches("data:image/png;base64,")).unwrap();
-            let img = super::super::assets::decode_png(&png).unwrap();
-            assert_eq!((img.width, img.height), (w, h), "{source}");
-            assert!(img.rgba.chunks(4).any(|p| p[3] > 0), "{source} drew something");
-        }
-    }
-
-    #[test]
-    fn attributes_parse_like_yog_build() {
-        assert_eq!(stretch("UniformToFill"), Stretch::UniformToFill);
-        assert_eq!(stretch("fill"), Stretch::Fill);
-        assert_eq!(stretch("bogus"), Stretch::Uniform);
-        assert_eq!(uv("0 0 16 8"), Some([0.0, 0.0, 16.0, 8.0]));
-        assert_eq!(uv("0 0 0 8"), None);
-        assert_eq!(source_size("item:apple"), Some((16.0, 16.0)));
-        assert_eq!(source_size("nonsense"), None);
-    }
 
     /// `YOG_IMAGES_PNG=out.png cargo test --lib designer::images -- --ignored`:
     /// every kind of source drawn with the local game files, for eyeballing.

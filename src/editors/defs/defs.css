@@ -1,65 +1,8 @@
 /* The definition designers' own pieces, in GUI pixels × --k. */
 
-/* ── Advancements: the game's advancements window ─────────────────────── */
-.adv-window {
-  position: relative;
-  image-rendering: pixelated;
-}
-
-/* The tab's view: the root's background tiled (black without one), the tree dragged inside. */
-.adv-view {
-  position: absolute;
-  overflow: hidden;
-  background-color: #000;
-  background-repeat: repeat;
+/* ── Advancements: the game's screen, drawn by the backend ─────────────── */
+.adv-screen {
   cursor: grab;
-}
-
-.adv-lines {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-}
-
-.adv-node {
-  position: absolute;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  cursor: pointer;
-}
-
-.adv-icon {
-  position: absolute;
-  pointer-events: none;
-}
-
-.adv-node.is-outside {
-  opacity: 0.55;
-  cursor: default;
-}
-
-/* The window's frame over the view (its middle is see-through), the title over both. */
-.adv-frame {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-}
-
-.adv-window > .game-title {
-  z-index: 1;
-}
-
-.adv-tooltip {
-  position: absolute;
-  z-index: 5;
-  white-space: normal;
-  overflow-wrap: anywhere;
-  pointer-events: none;
-}
-
-.adv-desc {
-  margin-top: calc(var(--k) * 2px);
 }
 
 /* Full-width data editors belong in the work area, not squeezed into Properties. */

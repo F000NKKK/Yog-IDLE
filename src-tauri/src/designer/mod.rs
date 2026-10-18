@@ -4,6 +4,7 @@
 //! files; a preview mode driving the same tree with real UI events
 //! (`click:X:Y`, `scroll:DY`, scrollbar drags); and code-behind handlers.
 
+pub mod advancements;
 pub mod assets;
 pub mod blocks3d;
 pub mod item_models;

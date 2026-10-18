@@ -35,7 +35,7 @@
 }
 
 .advancement-stage .game-screen {
-  overflow: visible;
+  outline: none;
 }
 
 .game-panel-inner {
