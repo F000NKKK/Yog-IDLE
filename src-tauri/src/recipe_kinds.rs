@@ -1,36 +1,52 @@
-//! The mod's own kinds of recipe (`.ydef` `kind: "recipe_kind"`), for the
-//! recipe editor: their slots and values, and — when a `.yui`
-//! `recipe_layout` shows the kind — its picture (images, the station, slot
-//! frames) drawn as books draw it, with where its slots, result and texts
-//! go on it.
+//! Kinds of recipe for the recipe editor — the game's (`yog_registry`'s
+//! built-in definitions) and the mod's own (`.ydef` `kind: "recipe_kind"`),
+//! all described the same way: their slots (and the `.yrecipe` fields the
+//! game's are written in), their values, and — the layout books show them
+//! by (built in, or a `.yui` `recipe_layout`) — the picture (images, the
+//! station, slot frames) with where slots, result and texts go on it.
 
 use std::path::{Path, PathBuf};
 
 use base64::Engine as _;
 use serde::Serialize;
-use yog_book::layout::{FRAME_UV, LayoutPart, SHEET};
-use yog_formats::def::{Def, RecipeKindDef, ValueType};
+use yog_book::layout::{FRAME_UV, LayoutPart, RecipeLayout, SHEET};
+use yog_data::Schema;
+use yog_formats::def::{Def, RecipeKindDef};
 use yog_gfx::{Color, Rect, Vec2};
+use yog_registry::recipe_kinds::{self, fields};
 
 use crate::designer::{assets::Resources, gfx, images, raster};
 
 /// How much bigger than GUI pixels the picture is drawn.
 const SCALE: u32 = 3;
+/// An item's side in GUI pixels.
+const ITEM_SIZE: f32 = 16.0;
+/// How far a slot frame reaches around its item.
+const FRAME_INSET: f32 = 4.0;
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Slot {
     pub name: String,
+    /// What editors call it; `name` if none.
+    pub label: Option<String>,
+    pub description: Option<String>,
     pub max: u32,
     pub required: bool,
+    /// The game's kinds: the `.yrecipe` field it's written in.
+    pub field: Option<String>,
+    /// Its places are a crafting grid's (`pattern` and `key`).
+    pub grid: bool,
 }
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ValueSpec {
     pub name: String,
-    /// `number`, `text` or `bool`.
-    pub kind: &'static str,
+    /// `number`, `text` or `bool` — the format's word for its type.
+    pub kind: String,
+    /// What it is when a recipe doesn't say.
+    pub default: Option<f64>,
 }
 
 /// Something the editor puts on the picture, in GUI pixels.
@@ -48,7 +64,7 @@ pub enum Spot {
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Layout {
-    /// The `.yui` it's laid out in.
+    /// The `.yui` it's laid out in; empty for a built-in layout.
     pub file: String,
     pub size: [f32; 2],
     /// The picture, `SCALE`× GUI pixels, `data:image/png;base64,…`.
@@ -61,11 +77,58 @@ pub struct Layout {
 #[serde(rename_all = "camelCase")]
 pub struct Kind {
     pub id: String,
-    /// The `.ydef` that declares it.
+    /// What editors call it; the id's path if none.
+    pub label: Option<String>,
+    /// The `.ydef` that declares it; empty for the game's.
     pub file: String,
     pub slots: Vec<Slot>,
     pub values: Vec<ValueSpec>,
     pub layout: Option<Layout>,
+}
+
+/// The fields every `.yrecipe` has, by the names the format gives them
+/// (`yog_registry::recipe_kinds::fields`) — the editor reads and writes
+/// recipes with these.
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Fields {
+    #[serde(rename = "type")]
+    pub kind: &'static str,
+    pub result: &'static str,
+    pub count: &'static str,
+    pub slots: &'static str,
+    pub values: &'static str,
+    pub pattern: &'static str,
+    pub key: &'static str,
+    pub grid_side: usize,
+}
+
+/// Every kind the editor knows for the mod at `root`, and the fields.
+#[derive(Debug, Serialize)]
+pub struct Kinds {
+    pub game: Vec<Kind>,
+    pub own: Vec<Kind>,
+    pub fields: Fields,
+}
+
+pub const FIELDS: Fields = Fields {
+    kind: fields::TYPE,
+    result: fields::RESULT,
+    count: fields::COUNT,
+    slots: fields::SLOTS,
+    values: fields::VALUES,
+    pattern: fields::PATTERN,
+    key: fields::KEY,
+    grid_side: recipe_kinds::GRID_SIDE,
+};
+
+/// The kinds for the mod at `root` (none of the mod's without one).
+pub fn all(root: Option<&Path>) -> Kinds {
+    Kinds {
+        game: root.map(game_kinds).unwrap_or_default(),
+        own: root.map(kinds).unwrap_or_default(),
+        fields: FIELDS,
+    }
 }
 
 fn ydefs(dir: &Path, out: &mut Vec<PathBuf>) {
@@ -79,38 +142,11 @@ fn ydefs(dir: &Path, out: &mut Vec<PathBuf>) {
     }
 }
 
-/// The game's kinds the recipe editor lays out — as books show them (their
-/// built-in layouts, or the mod's own `recipe_layout` for them): the
-/// crafting grid's 9 places (`grid`), a furnace's or a stonecutter's input,
-/// a smithing table's template, base and addition.
+/// The game's kinds, as books show them: their built-in layouts, or the
+/// mod's own `recipe_layout` for one.
 pub fn game_kinds(root: &Path) -> Vec<Kind> {
-    const GRID: &[(&str, u32)] = &[("grid", 9)];
-    const INPUT: &[(&str, u32)] = &[("input", 1)];
     let layouts = crate::mod_ui::recipe_layouts(root);
-    let own: Vec<yog_book::layout::RecipeLayout> = layouts.iter().map(|(_, l)| l.clone()).collect();
-    [
-        ("shaped", GRID),
-        ("shapeless", GRID),
-        ("smelting", INPUT),
-        ("blasting", INPUT),
-        ("smoking", INPUT),
-        ("campfire_cooking", INPUT),
-        ("stonecutting", INPUT),
-        ("brewing", INPUT),
-        ("smithing", &[("template", 1), ("base", 1), ("addition", 1)]),
-    ]
-        .into_iter()
-        .map(|(id, slots)| {
-            let file = layouts.iter().find(|(_, l)| l.kinds.iter().any(|k| k == id)).map(|(f, _)| f.clone()).unwrap_or_default();
-            Kind {
-                id: id.to_string(),
-                file: String::new(),
-                slots: slots.iter().map(|&(name, max)| Slot { name: name.to_string(), max, required: true }).collect(),
-                values: Vec::new(),
-                layout: yog_book::layout::find(&own, id).map(|l| layout(root, &file, l.size, &l.parts)),
-            }
-        })
-        .collect()
+    recipe_kinds::GAME.iter().map(|k| describe(root, k, k.id.clone(), String::new(), &layouts)).collect()
 }
 
 /// The kinds the mod at `root` declares, by id.
@@ -125,32 +161,47 @@ pub fn kinds(root: &Path) -> Vec<Kind> {
         .filter_map(|file| {
             let text = std::fs::read_to_string(file).ok()?;
             let Def::RecipeKind(k) = yog_data::from_text::<Def>(&text).ok()?.value else { return None };
-            Some(kind(root, &ns, file, k, &layouts))
+            let id = if k.id.contains(':') { k.id.clone() } else { format!("{ns}:{}", k.id) };
+            Some(describe(root, &k, id, file.to_string_lossy().into_owned(), &layouts))
         })
         .collect();
     out.sort_by(|a, b| a.id.cmp(&b.id));
     out
 }
 
-fn kind(root: &Path, ns: &str, file: &Path, k: RecipeKindDef, layouts: &[(PathBuf, yog_book::layout::RecipeLayout)]) -> Kind {
-    let id = if k.id.contains(':') { k.id.clone() } else { format!("{ns}:{}", k.id) };
+/// Kind `k` (as `id`, declared in `file`) for the editor: the mod's layout
+/// for it, else a built-in one.
+fn describe(root: &Path, k: &RecipeKindDef, id: String, file: String, layouts: &[(PathBuf, RecipeLayout)]) -> Kind {
+    let own: Vec<RecipeLayout> = layouts.iter().map(|(_, l)| l.clone()).collect();
+    let layout_file = layouts.iter().find(|(_, l)| l.kinds.contains(&id)).map(|(f, _)| f.clone()).unwrap_or_default();
     Kind {
-        file: file.to_string_lossy().into_owned(),
-        slots: k.slots.0.iter().map(|(name, s)| Slot { name: name.clone(), max: s.max, required: s.required }).collect(),
+        label: k.name.clone(),
+        file,
+        slots: k
+            .slots
+            .0
+            .iter()
+            .map(|(name, s)| Slot {
+                name: name.clone(),
+                label: s.name.clone(),
+                description: s.description.clone(),
+                max: s.max,
+                required: s.required,
+                field: s.field.clone(),
+                grid: s.grid,
+            })
+            .collect(),
         values: k
             .values
             .0
             .iter()
             .map(|(name, t)| ValueSpec {
                 name: name.clone(),
-                kind: match t {
-                    ValueType::Number => "number",
-                    ValueType::Text => "text",
-                    ValueType::Bool => "bool",
-                },
+                kind: t.write().as_str().unwrap_or_default().to_string(),
+                default: k.default_of(name),
             })
             .collect(),
-        layout: layouts.iter().find(|(_, l)| l.kinds.contains(&id)).map(|(f, l)| layout(root, f, l.size, &l.parts)),
+        layout: yog_book::layout::find(&own, &id).map(|l| layout(root, &layout_file, l.size, &l.parts)),
         id,
     }
 }
@@ -175,7 +226,7 @@ fn layout(root: &Path, file: &Path, size: [f32; 2], parts: &[LayoutPart]) -> Lay
         let frame = |[x, y]: [f32; 2]| {
             d.image_region(
                 SHEET,
-                Rect::new(x - 4.0, y - 4.0, FRAME_UV[2], FRAME_UV[3]),
+                Rect::new(x - FRAME_INSET, y - FRAME_INSET, FRAME_UV[2], FRAME_UV[3]),
                 Some(Rect::new(FRAME_UV[0], FRAME_UV[1], FRAME_UV[2], FRAME_UV[3])),
                 Color::WHITE,
             )
@@ -188,7 +239,7 @@ fn layout(root: &Path, file: &Path, size: [f32; 2], parts: &[LayoutPart]) -> Lay
                     Some(Rect::new(uv[0], uv[1], uv[2], uv[3])),
                     Color::WHITE,
                 ),
-                LayoutPart::Item { item, at } => d.item(item, Vec2::new(at[0], at[1]), 16.0),
+                LayoutPart::Item { item, at } => d.item(item, Vec2::new(at[0], at[1]), ITEM_SIZE),
                 LayoutPart::Slots { at, frame: true, .. } => at.iter().for_each(|a| frame(*a)),
                 LayoutPart::Result { at, frame: true } => frame(*at),
                 _ => {}
@@ -264,14 +315,17 @@ mod tests {
         assert!(l.spots.iter().any(|s| matches!(s, Spot::Text { text, .. } if text == "{time} ticks")));
         assert!(l.file.ends_with("crusher_layout.yui"));
         let game = game_kinds(&dir);
-        assert_eq!(game.iter().map(|k| k.id.as_str()).collect::<Vec<_>>(), ["shaped", "shapeless", "smelting", "blasting", "smoking", "campfire_cooking", "stonecutting", "brewing", "smithing"]);
+        assert_eq!(game.iter().map(|k| k.id.as_str()).collect::<Vec<_>>(), recipe_kinds::ids::ALL, "the registry's kinds, in its order");
         let shaped = game[0].layout.as_ref().unwrap();
         assert_eq!(shaped.spots.iter().filter(|s| matches!(s, Spot::Slot { slot, .. } if slot == "grid")).count(), 9, "the crafting table's own picture");
-        let smithing = game[7].layout.as_ref().unwrap();
+        let smithing = game.iter().find(|k| k.id == recipe_kinds::ids::SMITHING).unwrap().layout.as_ref().unwrap();
         let parts: Vec<&str> = smithing.spots.iter().filter_map(|s| if let Spot::Slot { slot, .. } = s { Some(slot.as_str()) } else { None }).collect();
         assert_eq!(parts, ["base", "addition", "template"], "Patchouli's smithing strip");
         assert!(smithing.spots.iter().any(|s| matches!(s, Spot::Result { .. })));
         assert!(smithing.image.is_some());
+        let brewing = game.iter().find(|k| k.id == recipe_kinds::ids::BREWING).unwrap();
+        assert_eq!(brewing.slots.iter().map(|s| s.field.as_deref()).collect::<Vec<_>>(), [Some("from"), Some("ingredient")]);
+        assert!(brewing.layout.as_ref().is_some_and(|l| l.image.is_some()), "Yog's own brewing strip");
         // What the recipe editor reads (recipeModel.ts `RecipeKind`).
         let json = serde_json::to_value(&l.spots).unwrap();
         let types: Vec<&str> = json.as_array().unwrap().iter().map(|s| s["type"].as_str().unwrap()).collect();
