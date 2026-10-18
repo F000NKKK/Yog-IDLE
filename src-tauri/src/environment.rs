@@ -603,7 +603,9 @@ pub fn detect_jdks(probe: &dyn Probe, tools: &Path) -> Vec<Jdk> {
     let mut jdks = Vec::new();
     for (home, managed) in jdk_candidates(probe, tools) {
         let home = probe.canonical(&home);
-        if seen.contains(&home) || !probe.is_file(&home.join("bin").join(exe("java"))) {
+        // A JDK: it compiles too (a JRE alone builds nothing).
+        let bin = home.join("bin");
+        if seen.contains(&home) || !probe.is_file(&bin.join(exe("java"))) || !probe.is_file(&bin.join(exe("javac"))) {
             continue;
         }
         let Some((version, vendor)) = probe
@@ -655,21 +657,22 @@ fn find_loader_repo(
     candidates.into_iter().find(|d| is_loader_repo(probe, d))
 }
 
+/// A loader's version files' extension (`versions/1.21.1.properties`).
+const PROPERTIES: &str = "properties";
+
 /// Java majors the loader's MC versions need (`java_version` in each
 /// `<loader>/versions/<mc>.properties`), else 17 and 21.
 fn required_java_majors(probe: &dyn Probe, loader: Option<&Path>) -> Vec<u32> {
     let mut majors: Vec<u32> = Vec::new();
     if let Some(loader) = loader {
+        // Every Minecraft version each loader has (`<loader>/versions/<mc>.properties`).
         for platform in ["fabric", "neoforge", "forge"] {
-            for dir in [loader.join(platform).join("versions")] {
-                for mc in ["1.20.1", "1.21.1"] {
-                    if let Some(major) = probe
-                        .read(&dir.join(format!("{mc}.properties")))
-                        .and_then(|t| parse_java_version_property(&t))
-                        && !majors.contains(&major)
-                    {
-                        majors.push(major);
-                    }
+            let dir = loader.join(platform).join("versions");
+            for file in probe.list_files(&dir).into_iter().filter(|f| f.extension().is_some_and(|e| e == PROPERTIES)) {
+                if let Some(major) = probe.read(&file).and_then(|t| parse_java_version_property(&t))
+                    && !majors.contains(&major)
+                {
+                    majors.push(major);
                 }
             }
         }
@@ -1883,6 +1886,22 @@ mod tests {
         assert!(adoptium_url(17, "freebsd", "x86_64").is_none());
     }
 
+    #[test]
+    fn every_minecraft_version_of_the_loader_asks_for_its_jdk_and_a_jre_isnt_one() {
+        let probe = FakeProbe::default()
+            .file("/l/fabric/versions/1.21.1.properties", "java_version=21\n")
+            .file("/l/fabric/versions/26.2.properties", "gradle_project=modern\njava_version=25\n")
+            .file("/l/forge/versions/1.20.1.properties", "java_version=17\n")
+            .file("/t/jdk/jre-25/bin/".to_string() + &exe("java"), "")
+            .file("/t/jdk/jre-25/release", "JAVA_VERSION=\"25.0.4\"\n")
+            .file("/t/jdk/jdk-21/bin/".to_string() + &exe("java"), "")
+            .file("/t/jdk/jdk-21/bin/".to_string() + &exe("javac"), "")
+            .file("/t/jdk/jdk-21/release", "JAVA_VERSION=\"21.0.5\"\n");
+        assert_eq!(required_java_majors(&probe, Some(Path::new("/l"))), vec![17, 21, 25]);
+        let jdks = detect_jdks(&probe, Path::new("/t"));
+        assert_eq!(jdks.iter().map(|j| j.major).collect::<Vec<_>>(), vec![21], "the JRE isn't a JDK");
+    }
+
     fn settings_with_cargo(cargo_home: &str, tools: &str) -> Settings {
         Settings {
             cargo_home: cargo_home.into(),
@@ -1905,6 +1924,7 @@ mod tests {
                 "",
             )
             .file("/t/jdk/jdk-21.0.5+11/bin/".to_string() + &exe("java"), "")
+            .file("/t/jdk/jdk-21.0.5+11/bin/".to_string() + &exe("javac"), "")
             .file("/t/jdk/jdk-21.0.5+11/release", "JAVA_VERSION=\"21.0.5\"\n")
             .file(
                 "/p/Yog-Mod-Loader/version.properties",

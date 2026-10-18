@@ -229,6 +229,24 @@ export const contentField = {
   COLOR: "color",
 } as const;
 
+export const clientOp = {
+  STATE: "state",
+  DRIVE: "drive",
+  RELEASE: "release",
+  LOOK: "look",
+  ATTACK: "attack",
+  USE: "use",
+  MINE: "mine",
+  PLACE: "place",
+  SLOT: "slot",
+  SCAN: "scan",
+  AREA: "area",
+  ENTITIES: "entities",
+  INVENTORY: "inventory",
+  CLICK: "click",
+  CHAT: "chat",
+} as const;
+
 export const yuiAttr = {
   ID: "id",
   X: "x",
