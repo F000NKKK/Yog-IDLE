@@ -180,19 +180,30 @@ fn content_icon(id: &str) -> Option<Arc<Image>> {
 
 /// A block item as the game shows it in a slot (the block in 3D, turned
 /// 225°, tilted 30°), or a head (its mob's, a little smaller). `false`:
-/// a flat item.
+/// a flat item. As in the game, the item's model decides: one drawn from
+/// texture layers is flat even when there's a block of the same id (a
+/// brewing stand, a door, a cauldron).
 fn item_3d(c: &mut Canvas, id: &str, [x, y, w, h]: [f32; 4]) -> bool {
-    if super::blocks3d::is_block(c.resources(), id) {
-        super::blocks3d::draw(c, &format!("0 0 0 {id}"), [x, y, w, h], 225.0, 30.0);
-        return true;
+    match super::item_models::look(c.resources(), id) {
+        Some(super::item_models::Look::Flat(_)) => false,
+        Some(super::item_models::Look::Head(faces)) => {
+            let m = w.min(h) * HEAD_MARGIN;
+            super::blocks3d::draw_cube(c, faces, [x + m, y + m, w - 2.0 * m, h - 2.0 * m], SLOT_YAW, SLOT_PITCH);
+            true
+        }
+        None if super::blocks3d::is_block(c.resources(), id) => {
+            super::blocks3d::draw(c, &format!("0 0 0 {id}"), [x, y, w, h], SLOT_YAW, SLOT_PITCH);
+            true
+        }
+        None => false,
     }
-    if let Some(super::item_models::Look::Head(faces)) = super::item_models::look(c.resources(), id) {
-        let m = w.min(h) * 0.1;
-        super::blocks3d::draw_cube(c, faces, [x + m, y + m, w - 2.0 * m, h - 2.0 * m], 225.0, 30.0);
-        return true;
-    }
-    false
 }
+
+/// How a block item is turned and tilted in a slot (the game's GUI display).
+const SLOT_YAW: f32 = 225.0;
+const SLOT_PITCH: f32 = 30.0;
+/// How much smaller than the slot a head is, on each side.
+const HEAD_MARGIN: f32 = 0.1;
 
 /// Natural size of `source` in GUI pixels (`image_size`); `None` when it
 /// can't be resolved.
