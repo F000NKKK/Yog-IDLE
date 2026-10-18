@@ -14,22 +14,6 @@ export interface Dependency {
   otherKeys: string[];
 }
 
-/** `project_properties::RunTarget` — one `[run.<id>]`. */
-export interface RunTarget {
-  id: string;
-  name: string;
-  exportDir: string;
-  command: string;
-  args: string[];
-  cwd: string;
-  env: string[];
-}
-
-export interface RunPreset extends RunTarget {
-  javaMajor: number | null;
-  javaMissing: boolean;
-}
-
 export interface ProjectProps {
   manifest: {
     fields: Record<string, string>;
@@ -39,7 +23,6 @@ export interface ProjectProps {
   yogApiVersion: string | null;
   dependencies: Dependency[];
   modDependencies: Dependency[];
-  runTargets: RunTarget[];
   buildTargets: string[];
 }
 
@@ -66,11 +49,8 @@ export const projectApi = {
   setDependency: (projectRoot: string, mods: boolean, original: string | null, dependency: Dependency) =>
     invoke<ProjectProps>("project_dependency_set", { projectRoot, mods, original, dependency }),
   removeDependency: (projectRoot: string, mods: boolean, name: string) => invoke<ProjectProps>("project_dependency_remove", { projectRoot, mods, name }),
-  setRunTarget: (projectRoot: string, original: string | null, target: RunTarget) => invoke<ProjectProps>("project_run_target_set", { projectRoot, original, target }),
-  removeRunTarget: (projectRoot: string, id: string) => invoke<ProjectProps>("project_run_target_remove", { projectRoot, id }),
   setBuildTargets: (projectRoot: string, targets: string[]) => invoke<ProjectProps>("project_build_targets_set", { projectRoot, targets }),
   searchCrates: (query: string, mods: boolean) => invoke<CrateHit[]>("crates_search", { query, mods }),
-  runPresets: (projectRoot: string) => invoke<RunPreset[]>("environment_run_presets", { projectRoot }),
 };
 
 export function emptyDependency(name = ""): Dependency {

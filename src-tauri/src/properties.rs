@@ -99,7 +99,6 @@ pub struct ManifestOut {
     authors: Vec<String>,
     dependencies: usize,
     mod_dependencies: usize,
-    run_configs: usize,
     yog_api_path: Option<String>,
 }
 
@@ -174,7 +173,6 @@ pub(crate) fn summarize(doc: &DocumentMut) -> ManifestOut {
         authors,
         dependencies,
         mod_dependencies: table_len(doc, &["dependencies", "exports"]),
-        run_configs: table_len(doc, &["run"]),
         yog_api_path: doc
             .get("dev")
             .and_then(|d| d.get("yog_api_path"))

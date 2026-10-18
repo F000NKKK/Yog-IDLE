@@ -1,13 +1,10 @@
 //! Backend for Project Properties (Project > Properties, Alt+Enter on the
 //! project): the whole of a mod's `yog.toml` as `yog-cli` reads it —
-//! `[mod]`, `[dev]`, `[dependencies]`, `[dependencies.exports]` and every
-//! `[run.<name>]` — edited in place through `toml_edit`, so comments, key
-//! order and alignment survive. Plus the project's own build platforms
-//! (`.yog-idle/settings.json`, the `YOG_TARGETS` a Build uses) and a
-//! crates.io search for the Dependencies page.
-//!
-//! A run target's id is one TOML key, `[run."forge-1.21.1"]`, as yog-cli
-//! reads it.
+//! `[mod]`, `[dev]`, `[dependencies]` and `[dependencies.exports]` — edited
+//! in place through `toml_edit`, so comments, key order and alignment
+//! survive. Plus the project's own build platforms (`.yog-idle/settings.json`,
+//! the `YOG_TARGETS` a Build uses) and a crates.io search for the
+//! Dependencies page. (Run targets aren't the project's: `yog run --list`.)
 
 use std::path::{Path, PathBuf};
 
@@ -31,21 +28,6 @@ pub struct Dependency {
     pub other_keys: Vec<String>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, Default, PartialEq)]
-#[serde(rename_all = "camelCase", default)]
-pub struct RunTarget {
-    /// The `<name>` of `[run.<name>]` — what `yog run <name>` takes.
-    pub id: String,
-    /// Display name (`name = "..."`).
-    pub name: String,
-    pub export_dir: String,
-    pub command: String,
-    pub args: Vec<String>,
-    pub cwd: String,
-    /// `KEY=VALUE` entries.
-    pub env: Vec<String>,
-}
-
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ProjectProps {
@@ -53,7 +35,6 @@ pub struct ProjectProps {
     pub yog_api_version: Option<String>,
     pub dependencies: Vec<Dependency>,
     pub mod_dependencies: Vec<Dependency>,
-    pub run_targets: Vec<RunTarget>,
     /// Platforms a Build of this project makes (empty: the Environment default).
     pub build_targets: Vec<String>,
 }
@@ -62,16 +43,6 @@ const YOG_API_KEYS: &[&str] = &["yog-api", "yog_api", "yog_api_version"];
 
 fn manifest(root: &Path) -> PathBuf {
     crate::manifest::path(root)
-}
-
-fn str_list(item: Option<&Item>) -> Vec<String> {
-    item.and_then(Item::as_array)
-        .map(|a| {
-            a.iter()
-                .filter_map(|v| v.as_str().map(str::to_string))
-                .collect()
-        })
-        .unwrap_or_default()
 }
 
 fn dependency_of(name: &str, item: &Item) -> Option<Dependency> {
@@ -123,28 +94,7 @@ fn dependencies_in(table: Option<&Item>) -> Vec<Dependency> {
         .collect()
 }
 
-/// Every `[run."<id>"]` table.
-fn collect_run_targets(run: &Table, out: &mut Vec<RunTarget>) {
-    for (id, item) in run.iter() {
-        let Some(table) = item.as_table() else { continue };
-        let text = |key: &str| table.get(key).and_then(Item::as_str).unwrap_or("").to_string();
-        out.push(RunTarget {
-            id: id.to_string(),
-            name: text("name"),
-            export_dir: text("export_dir"),
-            command: text("command"),
-            args: str_list(table.get("args")),
-            cwd: text("cwd"),
-            env: str_list(table.get("env")),
-        });
-    }
-}
-
 fn props_of(doc: &DocumentMut, root: &Path) -> ProjectProps {
-    let mut run_targets = Vec::new();
-    if let Some(run) = doc.get("run").and_then(Item::as_table) {
-        collect_run_targets(run, &mut run_targets);
-    }
     let deps = doc.get("dependencies");
     ProjectProps {
         manifest: properties::summarize(doc),
@@ -155,7 +105,6 @@ fn props_of(doc: &DocumentMut, root: &Path) -> ProjectProps {
         }),
         dependencies: dependencies_in(deps),
         mod_dependencies: dependencies_in(deps.and_then(|d| d.get("exports"))),
-        run_targets,
         build_targets: read_build_targets(root),
     }
 }
@@ -371,120 +320,6 @@ pub fn remove_dependency(root: &Path, mods: bool, name: &str) -> Result<ProjectP
     })
 }
 
-/// A run target's id: one TOML key (`[run."fabric-1.21.1"]`), dots allowed.
-fn check_run_id(id: &str) -> Result<(), String> {
-    if id.is_empty() {
-        return Err("A run target needs an id, like fabric-1.21.1.".into());
-    }
-    if !id.chars().all(|c| c.is_ascii_alphanumeric() || matches!(c, '-' | '_' | '.')) {
-        return Err("Use letters, digits, '-', '_' and '.' only.".into());
-    }
-    Ok(())
-}
-
-fn validate_run_target(target: &RunTarget) -> Result<(), String> {
-    check_run_id(&target.id)?;
-    for entry in &target.env {
-        match entry.split_once('=') {
-            Some((key, _)) if !key.trim().is_empty() => {}
-            _ => return Err(format!("\"{entry}\" isn't KEY=VALUE.")),
-        }
-    }
-    Ok(())
-}
-
-/// The `[run."<id>"]` table, created when missing.
-fn run_table<'a>(doc: &'a mut DocumentMut, id: &str) -> Result<&'a mut Table, String> {
-    check_run_id(id)?;
-    let run = table_mut(doc, "run")?;
-    run.set_implicit(true);
-    if run.get(id).is_none() {
-        run.insert(id, Item::Table(Table::new()));
-    }
-    run[id].as_table_mut().ok_or_else(|| format!("run.\"{id}\" isn't a table"))
-}
-
-/// Removes `[run."<id>"]` and returns it, dropping `[run]` when it's left empty.
-fn take_run_table(doc: &mut DocumentMut, id: &str) -> Option<Table> {
-    let run = doc.get_mut("run")?.as_table_mut()?;
-    let taken = run.remove(id).and_then(|i| i.into_table().ok());
-    if run.is_empty() {
-        doc.remove("run");
-    }
-    taken
-}
-
-const RUN_KEYS: &[&str] = &["name", "export_dir", "command", "args", "cwd", "env"];
-
-/// Adds or updates `[run.<id>]`; `original` is its id before an edit (a rename).
-pub fn set_run_target(
-    root: &Path,
-    original: Option<&str>,
-    target: &RunTarget,
-) -> Result<ProjectProps, String> {
-    validate_run_target(target)?;
-    edit(root, |doc| {
-        let exists = |doc: &DocumentMut, id: &str| {
-            let mut targets = Vec::new();
-            if let Some(run) = doc.get("run").and_then(Item::as_table) {
-                collect_run_targets(run, &mut targets);
-            }
-            targets.iter().any(|t| t.id == id)
-        };
-        if original != Some(target.id.as_str()) && exists(doc, &target.id) {
-            return Err(format!("[run.{}] already exists.", target.id));
-        }
-        // A rename moves the table — same decor and place in the file.
-        let moved = original
-            .filter(|o| *o != target.id)
-            .and_then(|o| take_run_table(doc, o));
-        let is_new = moved.is_none() && !exists(doc, &target.id);
-        let table = run_table(doc, &target.id)?;
-        if let Some(moved) = moved {
-            let position = moved.position();
-            *table.decor_mut() = moved.decor().clone();
-            for (key, item) in moved.into_iter() {
-                table.insert(&key, item);
-            }
-            if let Some(position) = position {
-                table.set_position(Some(position));
-            }
-        }
-        table.set_implicit(false);
-        let values = [
-            text_value(&target.name),
-            text_value(&target.export_dir),
-            text_value(&target.command),
-            list_value(&target.args),
-            text_value(&target.cwd),
-            list_value(&target.env),
-        ];
-        for (key, value) in RUN_KEYS.iter().zip(values) {
-            put(table, key, value);
-        }
-        if is_new {
-            // Line the keys up like the hand-written targets do.
-            let width = table.iter().map(|(k, _)| k.len()).max().unwrap_or(0);
-            let keys: Vec<String> = table.iter().map(|(k, _)| k.to_string()).collect();
-            for key in keys {
-                if let Some(mut k) = table.key_mut(&key) {
-                    k.leaf_decor_mut()
-                        .set_suffix(" ".repeat(width - key.len() + 1));
-                }
-            }
-            table.decor_mut().set_prefix("\n");
-        }
-        Ok(())
-    })
-}
-
-pub fn remove_run_target(root: &Path, id: &str) -> Result<ProjectProps, String> {
-    edit(root, |doc| {
-        take_run_table(doc, id).ok_or_else(|| format!("no [run.{id}] in yog.toml"))?;
-        Ok(())
-    })
-}
-
 // ── Project build platforms (.yog-idle/settings.json) ──────────────────────
 
 fn settings_file(root: &Path) -> PathBuf {
@@ -643,15 +478,6 @@ version     = \"0.1.0\"
 [dependencies]
 serde      = \"*\"
 uuid = { version = \"1\", features = [\"v4\"] }
-
-## `yog run <name>`
-[run.\"forge-1.21.1\"]
-name       = \"Forge 1.21.1\"
-export_dir = \"../loader/forge/run/yog-mods\"
-command    = \"./gradlew\"
-args       = [\"runClient\", \"-Pminecraft_version=1.21.1\"]
-cwd        = \"../loader/forge\"
-env        = [\"JAVA_HOME=/usr/lib/jvm/java-21\"]
 ";
 
     fn project(name: &str) -> PathBuf {
@@ -672,89 +498,28 @@ env        = [\"JAVA_HOME=/usr/lib/jvm/java-21\"]
         let props = read(&dir).unwrap();
         assert_eq!(props.dependencies.len(), 2);
         assert_eq!(props.dependencies[1].features, vec!["v4"]);
-        assert_eq!(props.run_targets.len(), 1);
-        let run = &props.run_targets[0];
-        assert_eq!(run.id, "forge-1.21.1");
-        assert_eq!(run.args, vec!["runClient", "-Pminecraft_version=1.21.1"]);
-        assert_eq!(run.env, vec!["JAVA_HOME=/usr/lib/jvm/java-21"]);
-        std::fs::remove_dir_all(&dir).unwrap();
-    }
-
-    #[test]
-    fn run_targets_round_trip_as_yog_reads_them() {
-        let dir = project("run");
-        let mut target = read(&dir).unwrap().run_targets.remove(0);
-        target.args.push("--offline".into());
-        set_run_target(&dir, Some("forge-1.21.1"), &target).unwrap();
-        assert!(text(&dir).contains(
-            "args       = [\"runClient\", \"-Pminecraft_version=1.21.1\", \"--offline\"]\n"
-        ));
-
-        let new = RunTarget {
-            id: "fabric-1.20.1".into(),
-            name: "Fabric 1.20.1".into(),
-            command: "./gradlew".into(),
-            args: vec!["runClient".into()],
-            ..Default::default()
-        };
-        set_run_target(&dir, None, &new).unwrap();
-        let out = text(&dir);
-        assert!(
-            out.ends_with("\n[run.\"fabric-1.20.1\"]\nname    = \"Fabric 1.20.1\"\ncommand = \"./gradlew\"\nargs    = [\"runClient\"]\n"),
-            "{out}"
-        );
-        assert!(set_run_target(&dir, None, &new).is_err(), "duplicate id");
-
-        // Rename keeps the table where it was.
-        let renamed = RunTarget {
-            id: "forge-1.21".into(),
-            ..target.clone()
-        };
-        set_run_target(&dir, Some("forge-1.21.1"), &renamed).unwrap();
-        let out = text(&dir);
-        assert!(
-            out.contains("## `yog run <name>`\n[run.\"forge-1.21\"]\nname "),
-            "{out}"
-        );
-        assert!(!out.contains("forge-1.21.1"));
-
-        remove_run_target(&dir, "forge-1.21").unwrap();
-        remove_run_target(&dir, "fabric-1.20.1").unwrap();
-        assert!(!text(&dir).contains("[run"));
-        assert!(read(&dir).unwrap().run_targets.is_empty());
         std::fs::remove_dir_all(&dir).unwrap();
     }
 
     #[test]
     fn values_are_real_toml() {
         let dir = project("toml");
-        let quoted = RunTarget {
-            id: "x".into(),
-            command: "say \"hi\"".into(),
-            args: vec!["a,b".into()],
+        let quoted = Dependency {
+            name: "x".into(),
+            path: "say \"hi\"".into(),
+            features: vec!["a,b".into()],
+            default_features: true,
             ..Default::default()
         };
-        set_run_target(&dir, None, &quoted).unwrap();
-        let back = read(&dir).unwrap().run_targets.into_iter().find(|t| t.id == "x").unwrap();
-        assert_eq!((back.command.as_str(), back.args), ("say \"hi\"", vec!["a,b".to_string()]));
+        set_dependency(&dir, false, None, &quoted).unwrap();
+        let back = read(&dir).unwrap().dependencies.into_iter().find(|d| d.name == "x").unwrap();
+        assert_eq!((back.path.as_str(), back.features), ("say \"hi\"", vec!["a,b".to_string()]));
         std::fs::remove_dir_all(&dir).unwrap();
     }
 
     #[test]
     fn rejects_what_yog_cannot_read() {
         let dir = project("reject");
-        let bad_env = RunTarget {
-            id: "x".into(),
-            env: vec!["NOVALUE".into()],
-            ..Default::default()
-        };
-        assert!(set_run_target(&dir, None, &bad_env).is_err());
-        let bad_id = RunTarget {
-            id: "a b".into(),
-            ..Default::default()
-        };
-        assert!(set_run_target(&dir, None, &bad_id).is_err());
-
         let no_version = Dependency {
             name: "rand".into(),
             default_features: true,

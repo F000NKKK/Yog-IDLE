@@ -19,7 +19,7 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 # The front end's copy of the shared names (`src/data/yogIds.generated.ts`).
-yog-ids = "0.2.0"
+yog-ids = "0.2.1"
 
 [dependencies]
 tauri = { version = "2", features = ["protocol-asset"] }
@@ -43,7 +43,9 @@ globset = "0.4.20"
 syn = { version = "3.0.9", default-features = false, features = ["full", "parsing", "visit"] }
 proc-macro2 = { version = "1.0.107", features = ["span-locations"] }
 # Generated TypeScript of Yog's ids, and the one `yog` program name.
-yog-ids = "0.2.0"
+yog-ids = "0.2.1"
+# Yog's home on the machine (~/.yog): where its local patch is.
+yog-home = "0.1.1"
 
 [dev-dependencies]
 criterion = { version = "0.8", default-features = false, features = ["cargo_bench_support"] }
@@ -65,5 +67,6 @@ nix = { version = "0.31", features = ["ptrace", "signal", "process"] }
 [patch.crates-io]
 yog-debugger = { path = "../../Yog-Mod-Loader/rust/crates/yog-debugger" }
 yog-ids = { path = "../../Yog-Mod-Loader/rust/crates/yog-ids" }
+yog-home = { path = "../../Yog-Mod-Loader/rust/crates/yog-home" }
 yog-hot-reload = { path = "../../Yog-Mod-Loader/rust/crates/yog-hot-reload" }
 yog-symbols = { path = "../../Yog-Mod-Loader/rust/crates/yog-symbols" }

@@ -5368,6 +5368,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "yog-data"
+version = "0.6.0"
+dependencies = [
+ "base64 0.22.1",
+ "bumpalo",
+ "serde_spanned 1.1.2",
+ "toml 1.1.8+spec-1.1.0",
+ "yog-data-derive",
+ "yog-ids",
+]
+
+[[package]]
+name = "yog-data-derive"
+version = "0.4.1"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 3.0.9",
+]
+
+[[package]]
 name = "yog-debugger"
 version = "0.9.1"
 dependencies = [
@@ -5376,6 +5397,17 @@ dependencies = [
  "serde_json",
  "yog-hot-reload",
  "yog-symbols",
+]
+
+[[package]]
+name = "yog-home"
+version = "0.1.1"
+dependencies = [
+ "dirs",
+ "serde",
+ "serde_json",
+ "yog-data",
+ "yog-ids",
 ]
 
 [[package]]
@@ -5408,6 +5440,7 @@ dependencies = [
  "toml 1.1.8+spec-1.1.0",
  "toml_edit 0.25.17+spec-1.1.0",
  "yog-debugger",
+ "yog-home",
  "yog-hot-reload",
  "yog-ids",
  "yog-symbols",
@@ -5415,7 +5448,7 @@ dependencies = [
 
 [[package]]
 name = "yog-ids"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "const_format",
 ]

@@ -307,29 +307,6 @@ fn project_dependency_remove(
 }
 
 #[tauri::command]
-fn project_run_target_set(
-    state: State<AppState>,
-    project_root: String,
-    original: Option<String>,
-    target: project_properties::RunTarget,
-) -> Result<project_properties::ProjectProps, String> {
-    let root = PathBuf::from(project_root);
-    validate_within_roots(&state, &root)?;
-    project_properties::set_run_target(&root, original.as_deref(), &target)
-}
-
-#[tauri::command]
-fn project_run_target_remove(
-    state: State<AppState>,
-    project_root: String,
-    id: String,
-) -> Result<project_properties::ProjectProps, String> {
-    let root = PathBuf::from(project_root);
-    validate_within_roots(&state, &root)?;
-    project_properties::remove_run_target(&root, &id)
-}
-
-#[tauri::command]
 fn project_build_targets_set(
     state: State<AppState>,
     project_root: String,
@@ -915,54 +892,51 @@ fn single_step_workflow(
     WorkflowFile { workflow }
 }
 
-#[derive(Clone, Serialize)]
+/// A run target as the Run toolbar's `RunBar` takes it: a loader (`group`)
+/// on a Minecraft version (`variant`), or one of the machine's own.
+#[derive(Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct ModRunTarget {
+    #[serde(alias = "id")]
     name: String,
+    #[serde(alias = "label")]
     display_name: Option<String>,
-    description: Option<String>,
+    group: Option<String>,
+    group_label: Option<String>,
+    variant: Option<String>,
 }
 
-/// Reads `yog.toml`'s `[run."<name>"]` sections — plain named script-invocation
-/// configs (like VS Code's `tasks.json`), not loader/Minecraft-version
-/// settings. `yog run <name>` (yog-cli's own command) does the actual
-/// build+export+launch; this only lists what's available. Read as TOML:
-/// a name with dots is quoted (`[run."forge-1.21.1"]`), and yog-cli
-/// rejects it unquoted.
-fn parse_mod_run_targets(contents: &str) -> Vec<ModRunTarget> {
-    let Ok(doc) = contents.parse::<toml_edit::DocumentMut>() else {
-        return Vec::new();
-    };
-    let Some(run) = doc.get("run").and_then(toml_edit::Item::as_table_like) else {
-        return Vec::new();
-    };
-    let mut targets: Vec<ModRunTarget> = run
-        .iter()
-        .filter_map(|(name, item)| {
-            let table = item.as_table_like()?;
-            let text = |key: &str| table.get(key).and_then(toml_edit::Item::as_str).map(str::to_string);
-            let args: Vec<String> = table
-                .get("args")
-                .and_then(toml_edit::Item::as_array)
-                .map(|a| a.iter().filter_map(|v| v.as_str().map(str::to_string)).collect())
-                .unwrap_or_default();
-            let description = text("command").map(|c| if args.is_empty() { c } else { format!("{c} {}", args.join(" ")) });
-            Some(ModRunTarget { name: name.to_string(), display_name: text("name"), description })
-        })
-        .collect();
-    targets.sort_by(|a, b| a.name.cmp(&b.name));
-    targets
+/// The run targets, the folders they're read from (to watch them), and
+/// the machine's local patch they can be changed in.
+#[derive(Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct ModRunTargets {
+    targets: Vec<ModRunTarget>,
+    sources: Vec<String>,
+    #[serde(default)]
+    local_file: String,
 }
 
+/// The run targets, as `yog run --list --json` gives them — they come
+/// from Yog's home (the loader SDK, `~/.yog/local.toml`), not the project.
 #[tauri::command]
-fn mod_run_targets(
-    state: State<AppState>,
-    project_root: String,
-) -> Result<Vec<ModRunTarget>, String> {
+async fn mod_run_targets(state: State<'_, AppState>, project_root: String) -> Result<ModRunTargets, String> {
     validate_within_roots(&state, Path::new(&project_root))?;
-    let path = manifest::path(Path::new(&project_root));
-    let contents = std::fs::read_to_string(&path).map_err(|e| e.to_string())?;
-    Ok(parse_mod_run_targets(&contents))
+    tauri::async_runtime::spawn_blocking(move || {
+        let out = cli::command()
+            .args(["run", "--list", "--json"])
+            .current_dir(&project_root)
+            .output()
+            .map_err(|e| format!("yog run --list: {e}"))?;
+        if !out.status.success() {
+            return Err(String::from_utf8_lossy(&out.stderr).trim().to_string());
+        }
+        let mut list: ModRunTargets = serde_json::from_slice(&out.stdout).map_err(|e| format!("yog run --list: {e}"))?;
+        list.local_file = yog_home::Home::locate()?.local_file().display().to_string();
+        Ok(list)
+    })
+    .await
+    .map_err(|e| e.to_string())?
 }
 
 /// Runs a `[run.<name>]` target via `yog run <name>` — `mode` is
@@ -1482,7 +1456,6 @@ pub fn run() {
         symbols::code_search,
         environment::environment_detect,
         environment::environment_settings_set,
-        environment::environment_run_presets,
         environment::environment_install,
         environment::environment_cancel,
         project_properties_read,
@@ -1490,8 +1463,6 @@ pub fn run() {
         project_properties_set_yog_api,
         project_dependency_set,
         project_dependency_remove,
-        project_run_target_set,
-        project_run_target_remove,
         project_build_targets_set,
         crates_search,
         git::git_status,
@@ -1529,24 +1500,4 @@ pub fn run() {
                 debugger::detach_on_exit(app);
             }
         });
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn run_targets_read_toml_values() {
-        let text = "[mod]\nname = \"Ruby\"\n\n[run.\"b.1\"]\ncommand = \"cargo\" # build\nargs = [\"run\", \"--features=a,b\"]\n\n[run.a]\nname = \"Client\"\n";
-        let targets = parse_mod_run_targets(text);
-        assert_eq!(targets.len(), 2);
-        assert_eq!(targets[0].name, "a");
-        assert_eq!(targets[0].display_name.as_deref(), Some("Client"));
-        assert_eq!(targets[1].name, "b.1", "the name, not its quotes");
-        assert_eq!(targets[1].display_name, None);
-        assert_eq!(
-            targets[1].description.as_deref(),
-            Some("cargo run --features=a,b")
-        );
-    }
 }

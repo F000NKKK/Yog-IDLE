@@ -49,7 +49,6 @@ interface Manifest {
   authors: string[];
   dependencies: number;
   modDependencies: number;
-  runConfigs: number;
   yogApiPath: string | null;
 }
 
@@ -435,14 +434,6 @@ function manifestProperties(manifest: Manifest, update: (key: string, value: str
       value: manifest.modDependencies,
       readOnly: true,
       description: t("Other Yog mods this mod uses, from [dependencies.exports]."),
-    },
-    {
-      id: "deps.runs",
-      name: t("Run Configurations"),
-      category: t("Dependencies"),
-      value: manifest.runConfigs,
-      readOnly: true,
-      description: t("[run.<name>] launch configurations — the targets in the Run toolbar."),
     },
     {
       id: "deps.apiPath",

@@ -422,7 +422,6 @@ registerTranslations(
     Dependencies: "Зависимости",
     "Mod Dependencies": "Зависимости модов",
     "Crate Dependencies": "Зависимости крейтов",
-    "Run Configurations": "Конфигурации запуска",
     Details: "Подробности",
     "File Name": "Имя файла",
     "Folder Name": "Имя папки",
@@ -476,7 +475,6 @@ registerTranslations(
     "Other Yog mods this mod uses, from [dependencies.exports].": "Другие моды Yog, которые использует этот мод, из [dependencies.exports].",
     "crates.io crates listed under [dependencies] — edit yog.toml to change them.":
       "Крейты crates.io из раздела [dependencies] — чтобы изменить их, отредактируйте yog.toml.",
-    "[run.<name>] launch configurations — the targets in the Run toolbar.": "Конфигурации запуска [run.<name>] — цели на панели запуска.",
     "The open project's folder — reopen it from its new place to rename it.":
       "Папка открытого проекта — чтобы переименовать ее, откройте проект заново из нового места.",
     "The file's name. Renaming it here renames it on disk; open tabs follow it.":
@@ -981,44 +979,14 @@ registerTranslations("ru", {
   "A .yog bundles a native library per platform. Building fewer is faster, but the mod then only loads on those. Saved for this project in .yog-idle/ (YOG_TARGETS); with all of them checked, the Environment option \"Build for this platform only\" decides.":
     "Файл .yog содержит нативную библиотеку для каждой платформы. Чем их меньше, тем быстрее сборка, но мод загрузится только на них. Сохраняется для проекта в .yog-idle/ (YOG_TARGETS); если отмечены все, решает параметр среды \"Собирать только для этой платформы\".",
   "{platform} (this computer)": "{platform} (этот компьютер)",
-  "Run targets — what Start ({keys}) and Start Without Debugging launch. Each builds the mod, copies the .yog into its export folder and runs its command.":
-    "Цели запуска — то, что запускают \"Пуск\" (F5) и \"Запуск без отладки\". Каждая собирает мод, копирует .yog в свою папку экспорта и выполняет свою команду.",
-  "Add Run Target...": "Добавить цель запуска...",
-  "Add Run Target": "Добавление цели запуска",
-  "New Run Target": "Новая цель запуска",
-  "Id (what yog run takes)": "Идентификатор (аргумент yog run)",
-  "[run.{id}] already exists.": "[run.{id}] уже существует.",
-  "Use letters, digits, '-', '_' and '.' only.": "Только буквы, цифры, «-», «_» и «.».",
-  "Remove Run Target": "Удаление цели запуска",
-  "Remove [run.{id}] from yog.toml?": "Удалить [run.{id}] из yog.toml?",
-  "No run targets yet — add one for the loader and Minecraft version to test in.": "Целей запуска пока нет — добавьте цель для загрузчика и версии Minecraft, в которых нужно проверять мод.",
-  "Run targets": "Цели запуска",
-  "Looking for the Yog Mod Loader checkout…": "Поиск копии Yog Mod Loader…",
-  "No Yog Mod Loader checkout found — install it from Tools > Install Components, or set its folder in Tools > Options > Environment.":
-    "Копия Yog Mod Loader не найдена — установите ее через \"Сервис > Установить компоненты\" или укажите папку в \"Сервис > Параметры > Среда\".",
-  "needs JDK {major} — not installed": "нужен JDK {major} — не установлен",
+  "Run targets — what Start ({keys}) launches. Every mod has the same ones: each loader and Minecraft version of the loader SDK, and this machine's own.":
+    "Цели запуска — то, что запускает \"Пуск\" ({keys}). У всех модов они одни и те же: каждый загрузчик и каждая версия Minecraft из SDK загрузчика, плюс цели этого компьютера.",
+  "Open local.toml": "Открыть local.toml",
+  "No run targets — install a loader SDK with Yog Installer, or name a loader checkout in local.toml ([sdk] loader).":
+    "Целей запуска нет — установите SDK загрузчика через Yog Installer или укажите копию загрузчика в local.toml ([sdk] loader).",
+  "local.toml overrides the defaults on this machine: [sdk] loader (a checkout instead of the installed SDK), [java] (a JDK per Java version), [launch] env (e.g. the NVIDIA card), and [run.\"<id>\"] targets of its own.":
+    "local.toml переопределяет значения по умолчанию на этом компьютере: [sdk] loader (копия загрузчика вместо установленного SDK), [java] (JDK для каждой версии Java), [launch] env (например, видеокарта NVIDIA) и собственные цели [run.\"<id>\"].",
   Added: "Добавлено",
-  "Add...": "Добавить...",
-  "Empty Target": "Пустая цель",
-  "Any command — fill in the fields yourself.": "Любая команда — заполните поля сами.",
-  Target: "Цель",
-  "yog run {id}": "yog run {id}",
-  "Shown in the Run toolbar.": "Отображается на панели запуска.",
-  Launch: "Запуск",
-  "Export folder": "Папка экспорта",
-  "Where the built .yog is copied before the command runs — relative to the project.": "Куда копируется собранный .yog перед выполнением команды — относительно проекта.",
-  Command: "Команда",
-  Arguments: "Аргументы",
-  "Add Argument": "Добавить аргумент",
-  "List items can't contain commas (yog splits on them).": "Элементы списка не могут содержать запятые (yog разделяет по ним).",
-  "Working directory": "Рабочий каталог",
-  "The JDK the command runs with — the loader's Gradle build needs the Java version of its Minecraft version.":
-    "JDK, с которым выполняется команда, — сборке Gradle загрузчика нужна версия Java, соответствующая версии Minecraft.",
-  "Not set (system default)": "Не задано (системное значение)",
-  Variables: "Переменные",
-  "KEY=VALUE, one per line.": "КЛЮЧ=ЗНАЧЕНИЕ, по одному в строке.",
-  "Add Variable": "Добавить переменную",
-  "\"{entry}\" isn't KEY=VALUE.": "\"{entry}\" — не КЛЮЧ=ЗНАЧЕНИЕ.",
   "Crates and Yog mods this mod builds against. The yog-api version is on the Build page.": "Крейты и моды Yog, с которыми собирается этот мод. Версия yog-api задается на странице \"Сборка\".",
   "Other Yog mods whose exported API this one calls — [dependencies.exports], resolved to their <mod>_exports crates.":
     "Другие моды Yog, экспортируемый API которых вызывает этот мод, — [dependencies.exports], разрешаются в их крейты <mod>_exports.",

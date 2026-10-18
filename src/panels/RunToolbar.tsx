@@ -13,8 +13,9 @@ export interface RunToolbarProps {
 
 /**
  * Picks the right run-target source for the open project's kind and hands
- * it to the generic `RunBar`: a `yog-mod` project's targets come from its
- * own `yog.toml` (`[run.*]`, executed via `yog run <name>`); anything else
+ * it to the generic `RunBar`: a `yog-mod` project's targets come from Yog's
+ * home (`yog run --list`: a loader and a Minecraft version, picked apart),
+ * executed via `yog run <name>`; anything else
  * falls back to the generic workflow engine, for a project that happens to
  * define its own `workflow.toml`.
  */

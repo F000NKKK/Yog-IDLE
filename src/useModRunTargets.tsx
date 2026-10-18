@@ -2,22 +2,49 @@ import { useCallback, useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import type { RunTarget } from "substrate-platform-ui";
 import { EVENT, listenAll, listenTo } from "./events";
+import { useFsChanged, useWatchedFolders } from "./fsWatch";
+
+/** What `mod_run_targets` gives: `yog run --list --json`, plus where to change it. */
+export interface ModRunTargets {
+  /** A loader (`group`) on a Minecraft version (`variant`), or one of the machine's own. */
+  targets: RunTarget[];
+  /** The folders they're read from: Yog's home, the loader SDK's versions. */
+  sources: string[];
+  /** The machine's local patch (`~/.yog/local.toml`). */
+  localFile: string;
+}
+
+const NONE: ModRunTargets = { targets: [], sources: [], localFile: "" };
 
 /**
- * A mod project's `yog.toml` `[run.<name>]` sections — plain named
- * script-invocation configs (like VS Code's `tasks.json`), not
- * loader/Minecraft-version settings. Shaped like `useWorkflowRunner` so
- * `RunToolbar` can treat either source the same way once it has picked one.
+ * The run targets a `yog-mod` project offers — not the project's: they
+ * come from Yog's home (the loader SDK Yog Installer put there, the
+ * machine's `local.toml`), the same for every mod. Kept fresh while those
+ * files change. Shaped like `useWorkflowRunner` so `RunToolbar` can treat
+ * either source the same way.
  */
 export function useModRunTargets(projectRoot: string) {
-  const [targets, setTargets] = useState<RunTarget[]>([]);
+  const [list, setList] = useState<ModRunTargets>(NONE);
+  const [error, setError] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
 
-  useEffect(() => {
-    invoke<RunTarget[]>("mod_run_targets", { projectRoot })
-      .then(setTargets)
-      .catch(() => setTargets([]));
+  const reload = useCallback(() => {
+    invoke<ModRunTargets>("mod_run_targets", { projectRoot })
+      .then((l) => {
+        setList(l);
+        setError(null);
+      })
+      .catch((err) => {
+        setList(NONE);
+        setError(String(err));
+      });
   }, [projectRoot]);
+
+  useEffect(reload, [reload]);
+  useWatchedFolders("run-targets", list.sources);
+  useFsChanged((paths) => {
+    if (paths.some((p) => list.sources.some((s) => p.startsWith(s)))) reload();
+  });
 
   // Driven by the backend's own lifecycle events rather than only by who
   // called `run` — so a relaunch from anywhere (the toolbar's Restart goes
@@ -44,5 +71,5 @@ export function useModRunTargets(projectRoot: string) {
     [projectRoot],
   );
 
-  return { targets, running, run };
+  return { targets: list.targets, sources: list.sources, localFile: list.localFile, error, running, run };
 }

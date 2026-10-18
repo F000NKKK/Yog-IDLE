@@ -98,6 +98,10 @@ export const project = {
   BUILD: ".yog-build",
 } as const;
 
+export const gameDir = {
+  MODS: "yog-mods",
+} as const;
+
 export const program = {
   CLI: "yog",
   SERVE: "serve",
