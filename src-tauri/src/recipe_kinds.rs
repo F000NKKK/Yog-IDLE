@@ -20,12 +20,11 @@ use crate::designer::{assets::Resources, gfx, images, raster};
 /// How much bigger than GUI pixels the picture is drawn.
 const SCALE: u32 = 3;
 /// An item's side in GUI pixels.
-const ITEM_SIZE: f32 = 16.0;
+const ITEM_SIZE: f32 = yog_book::layout::ICON_PX;
 /// How far a slot frame reaches around its item.
 const FRAME_INSET: f32 = 4.0;
-/// A block station's angle: a block item's in a slot.
-const SLOT_YAW: f32 = 225.0;
-const SLOT_PITCH: f32 = 30.0;
+/// How a block is turned and tilted in a slot (the game's GUI display; the book's).
+use yog_book::renderer::{BLOCK_PITCH as SLOT_PITCH, SLOT_YAW};
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -243,7 +242,7 @@ fn layout(root: &Path, file: &Path, size: [f32; 2], parts: &[LayoutPart]) -> Lay
                     Color::WHITE,
                 ),
                 LayoutPart::Item { item, at } => d.item(item, Vec2::new(at[0], at[1]), ITEM_SIZE),
-                LayoutPart::Block { block, at } => d.blocks(&[((0, 0, 0), block.as_str())], Rect::new(at[0], at[1], ITEM_SIZE, ITEM_SIZE), SLOT_YAW, SLOT_PITCH),
+                LayoutPart::Block { block, at, size } => d.blocks(&[((0, 0, 0), block.as_str())], Rect::new(at[0], at[1], *size, *size), SLOT_YAW, SLOT_PITCH),
                 LayoutPart::Slots { at, frame: true, .. } => at.iter().for_each(|a| frame(*a)),
                 LayoutPart::Result { at, frame: true } => frame(*at),
                 _ => {}

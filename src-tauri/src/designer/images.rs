@@ -199,9 +199,8 @@ fn item_3d(c: &mut Canvas, id: &str, [x, y, w, h]: [f32; 4]) -> bool {
     }
 }
 
-/// How a block item is turned and tilted in a slot (the game's GUI display).
-const SLOT_YAW: f32 = 225.0;
-const SLOT_PITCH: f32 = 30.0;
+/// How a block is turned and tilted in a slot (the game's GUI display; the book's).
+use yog_book::renderer::{BLOCK_PITCH as SLOT_PITCH, SLOT_YAW};
 /// How much smaller than the slot a head is, on each side.
 const HEAD_MARGIN: f32 = 0.1;
 
