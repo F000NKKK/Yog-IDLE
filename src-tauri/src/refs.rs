@@ -6,6 +6,7 @@
 //! `.ydef`s of a kind with what they say (an advancement's parent, an
 //! effect's color), for the designers that draw several at once.
 
+use yog_ids::Format;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::{Mutex, OnceLock};
@@ -18,23 +19,23 @@ use crate::manifest::{self, mod_root};
 
 /// Kinds of content defined by files of their own, by extension; any other
 /// kind is the `.ydef`s of that `kind`.
-const FILE_KINDS: [(&str, &[&str]); 4] = [
-    ("item", &["yitem", "yblock"]),
-    ("block", &["yblock"]),
-    ("entity", &["yentity"]),
-    ("recipe", &["yrecipe"]),
+const FILE_KINDS: [(&str, &[Format]); 4] = [
+    (yog_ids::kind::ITEM, &[Format::Item, Format::Block]),
+    (yog_ids::kind::BLOCK, &[Format::Block]),
+    (yog_ids::kind::ENTITY, &[Format::Entity]),
+    (yog_ids::kind::RECIPE, &[Format::Recipe]),
 ];
 
 /// Body files (`.ymodel`, `.yanim`): named by their path under `content/`
 /// without the extension (`body/wings`), as an entity's `model` names them.
-const BODY_FORMATS: [&str; 2] = ["ymodel", "yanim"];
+const BODY_FORMATS: [Format; 2] = [Format::Model, Format::Anim];
 
 /// What `[external.<namespace>]` lists each kind under.
 const EXTERNAL_KEYS: [(&str, &str); 4] = [
-    ("item", "items"),
-    ("block", "blocks"),
-    ("entity", "entities"),
-    ("recipe", "recipes"),
+    (yog_ids::kind::ITEM, "items"),
+    (yog_ids::kind::BLOCK, "blocks"),
+    (yog_ids::kind::ENTITY, "entities"),
+    (yog_ids::kind::RECIPE, "recipes"),
 ];
 
 /// Where the game's ids of a kind are in its client jar: translation keys
@@ -103,27 +104,8 @@ fn mod_id(root: &Path) -> Option<String> {
     manifest::read_mod_field(root, "id")
 }
 
-fn find(dir: &Path, ext: &str, out: &mut Vec<PathBuf>) {
-    for e in std::fs::read_dir(dir).into_iter().flatten().flatten() {
-        let p = e.path();
-        if p.is_dir() {
-            find(&p, ext, out);
-        } else if p.extension().is_some_and(|x| x == ext) {
-            out.push(p);
-        }
-    }
-}
-
-fn files(root: &Path, ext: &str) -> Vec<PathBuf> {
-    let mut out = Vec::new();
-    find(&root.join("content"), ext, &mut out);
-    out.sort();
-    out
-}
-
-/// `id` with the namespace `ns` when it has none.
-fn qualified(id: &str, ns: &str) -> String {
-    if id.contains(':') { id.to_string() } else { format!("{ns}:{id}") }
+fn files(root: &Path, format: Format) -> Vec<PathBuf> {
+    crate::files::of(&root.join("content"), format)
 }
 
 fn read(file: &Path) -> Option<serde_json::Map<String, Value>> {
@@ -139,37 +121,42 @@ pub fn refs(file: &Path, kind: &str) -> RefChoices {
         out.own = own(&root, kind);
         out.external = external(&root, kind);
     }
-    if !BODY_FORMATS.contains(&kind) {
+    if body_format(kind).is_none() {
         out.game = game(mod_root(file).as_deref(), kind);
     }
     out
 }
 
+/// `kind` as a body format (`ymodel`, `yanim`).
+fn body_format(kind: &str) -> Option<Format> {
+    Format::of(kind).filter(|f| BODY_FORMATS.contains(f))
+}
+
 fn own(root: &Path, kind: &str) -> Vec<OwnRef> {
-    let ns = mod_id(root).unwrap_or_else(|| "minecraft".into());
+    let ns = mod_id(root).unwrap_or_else(|| yog_ids::ns::MINECRAFT.into());
     let mut out = Vec::new();
     if let Some(of) = kind.strip_prefix("tag:") {
-        for d in defs(root, "tag") {
+        for d in defs(root, yog_ids::kind::TAG) {
             if d.value.get("of").and_then(Value::as_str) == Some(of) {
                 out.push(OwnRef { id: d.id, file: d.file });
             }
         }
         return out;
     }
-    if BODY_FORMATS.contains(&kind) {
+    if let Some(format) = body_format(kind) {
         let content = root.join("content");
-        for f in files(root, kind) {
+        for f in files(root, format) {
             let rel = f.strip_prefix(&content).unwrap_or(&f).with_extension("");
             out.push(OwnRef { id: format!("{ns}:{}", rel.to_string_lossy().replace('\\', "/")), file: f.to_string_lossy().into_owned() });
         }
         return out;
     }
     if let Some((_, exts)) = FILE_KINDS.iter().find(|(k, _)| *k == kind) {
-        for ext in *exts {
-            for f in files(root, ext) {
+        for format in *exts {
+            for f in files(root, *format) {
                 let given = read(&f).and_then(|d| d.get("id").and_then(Value::as_str).map(str::to_string));
                 let id = given.unwrap_or_else(|| f.file_stem().unwrap_or_default().to_string_lossy().into_owned());
-                out.push(OwnRef { id: qualified(&id, &ns), file: f.to_string_lossy().into_owned() });
+                out.push(OwnRef { id: yog_ids::qualify_in(&ns, &id), file: f.to_string_lossy().into_owned() });
             }
         }
     } else {
@@ -182,15 +169,15 @@ fn own(root: &Path, kind: &str) -> Vec<OwnRef> {
 
 /// The mod's `.ydef`s of `kind`, in file order.
 fn defs(root: &Path, kind: &str) -> Vec<OwnDef> {
-    let ns = mod_id(root).unwrap_or_else(|| "minecraft".into());
+    let ns = mod_id(root).unwrap_or_else(|| yog_ids::ns::MINECRAFT.into());
     let mut out = Vec::new();
-    for f in files(root, "ydef") {
+    for f in files(root, Format::Def) {
         let Some(doc) = read(&f) else { continue };
         if doc.get("kind").and_then(Value::as_str) != Some(kind) {
             continue;
         }
         let Some(id) = doc.get("id").and_then(Value::as_str) else { continue };
-        out.push(OwnDef { id: qualified(id, &ns), file: f.to_string_lossy().into_owned(), value: Value::Object(doc) });
+        out.push(OwnDef { id: yog_ids::qualify_in(&ns, id), file: f.to_string_lossy().into_owned(), value: Value::Object(doc) });
     }
     out
 }
@@ -206,7 +193,7 @@ fn external(root: &Path, kind: &str) -> Vec<String> {
     let mut out = Vec::new();
     for (ns, section) in doc.get("external").and_then(|e| e.as_table()).into_iter().flatten() {
         for id in section.get(key).and_then(|v| v.as_array()).into_iter().flatten().filter_map(|v| v.as_str()) {
-            out.push(qualified(id, ns));
+            out.push(yog_ids::qualify_in(ns, id));
         }
     }
     out

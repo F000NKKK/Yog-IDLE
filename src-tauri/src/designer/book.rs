@@ -5,6 +5,7 @@
 //! Each open `.ybook` keeps its own reader (the page it's on); an edit
 //! swaps the book under it without losing the place.
 
+use yog_ids::Format;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::{LazyLock, Mutex};
@@ -12,7 +13,8 @@ use std::sync::{LazyLock, Mutex};
 use base64::Engine as _;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use yog_book::{Book, BookRenderer};
+use yog_book::BookRenderer;
+use yog_formats::book::Book;
 
 use super::assets::Resources;
 use super::{gfx, images, raster};
@@ -113,11 +115,8 @@ fn texts(mod_root: Option<&Path>, res: &Resources, locale: Option<&str>) -> Text
     let mut files: Vec<(String, Option<String>, PathBuf)> = Vec::new();
     for f in std::fs::read_dir(root.join("resources")).into_iter().flatten().flatten() {
         let p = f.path();
-        let Some(stem) = p.file_name().and_then(|n| n.to_str()).and_then(|n| n.strip_suffix(".yres")) else { continue };
-        let (set, loc) = match stem.split_once('.') {
-            Some((s, l)) => (s.to_string(), Some(l.to_string())),
-            None => (stem.to_string(), None),
-        };
+        let Some((set, loc)) = p.file_name().and_then(|n| n.to_str()).and_then(yog_formats::yres::split_file_name) else { continue };
+        let (set, loc) = (set.to_string(), loc.map(str::to_string));
         if loc.is_none() || loc.as_deref() == locale {
             files.push((set, loc, p));
         }
@@ -162,8 +161,7 @@ fn locales(mod_root: Option<&Path>) -> Vec<String> {
                 .flatten()
                 .filter_map(|f| {
                     let name = f.file_name().to_string_lossy().into_owned();
-                    let stem = name.strip_suffix(".yres")?;
-                    stem.split_once('.').map(|(_, l)| l.to_string())
+                    yog_formats::yres::split_file_name(&name)?.1.map(str::to_string)
                 })
                 .collect()
         })
@@ -200,7 +198,7 @@ fn recipes(mod_root: &Path) -> Vec<(String, yog_data::Value)> {
                 stack.push(p);
                 continue;
             }
-            if p.extension().is_none_or(|x| x != "yrecipe") {
+            if !Format::Recipe.is(&p) {
                 continue;
             }
             let Some(mut v) = std::fs::read_to_string(&p).ok().and_then(|t| crate::data::read_object(&t)).map(Value::Object) else {
@@ -246,7 +244,7 @@ impl yog_data::Resolve for Reader<'_> {
         Ok(match t {
             yog_data::Text::Literal(s) => s.clone(),
             yog_data::Text::NameOf(r) => {
-                let id = yog_book::refs::bare(&r.id);
+                let id = yog_formats::book::refs::bare(&r.id);
                 let name = match r.kind.as_str() {
                     "entity" => {
                         let (ns, p) = id.split_once(':').unwrap_or(("minecraft", id));
@@ -421,7 +419,7 @@ pub fn render(args: &BookArgs) -> BookRendered {
 }
 
 /// Draws `book` (already read) for `args`: its session's reader, the action.
-fn render_book(args: &BookArgs, book: yog_book::Book, problem: Option<String>, root: Option<&Path>, locales: Vec<String>) -> BookRendered {
+fn render_book(args: &BookArgs, book: yog_formats::book::Book, problem: Option<String>, root: Option<&Path>, locales: Vec<String>) -> BookRendered {
     let (sw, sh) = (args.screen_w.clamp(1, 4096), args.screen_h.clamp(1, 4096));
     let fail = |error: String| BookRendered {
         image: None,
@@ -485,8 +483,8 @@ fn render_book(args: &BookArgs, book: yog_book::Book, problem: Option<String>, r
 
 /// What a page of a mod's kind shows when the designer has no page to read:
 /// a property's default, else a sample of its kind.
-fn sample(p: &yog_book::page_type::PageProperty) -> serde_json::Value {
-    use yog_book::page_type::PropKind;
+fn sample(p: &yog_formats::book::page_type::PageProperty) -> serde_json::Value {
+    use yog_formats::book::page_type::PropKind;
     if let Some(d) = &p.default {
         return yog_data::json::to_json(d);
     }
@@ -509,7 +507,7 @@ pub fn page_preview(args: &BookArgs) -> BookRendered {
     let locales = locales(root.as_deref());
     let fail = |error: String| BookRendered { image: None, scale: args.scale, shown: None, action: None, animated: false, locales: locales.clone(), error: Some(error) };
     let ns = root.as_deref().map(crate::mod_ui::ns).unwrap_or_else(|| "minecraft".into());
-    let kind = match yog_book::ui::parse(&args.text).and_then(|el| yog_book::page_type::compile(&el, &ns)) {
+    let kind = match yog_formats::yui::parse(&args.text).and_then(|el| yog_formats::book::page_type::compile(&el, &ns)) {
         Ok(k) => k,
         Err(e) => return fail(e),
     };

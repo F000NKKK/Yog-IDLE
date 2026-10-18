@@ -35,6 +35,7 @@ import { blankModel, parseModel, type Vec3 } from "../body/ymodel";
 import { inspectorRows } from "./inspector";
 import "./designers.css";
 import "./AnimEditor.css";
+import { formats } from "../yogFileTypes";
 
 export const ANIM_SOURCE_VIEW = "yog.yanim.source";
 
@@ -89,7 +90,7 @@ export function AnimEditor({ path, content, onChange, readOnly }: EditorProps) {
   const rootRef = useRef<HTMLDivElement>(null);
 
   // The model it's previewed on: picked, else the one named like the file (`wisp_anims` → `wisp`).
-  const models = useContentRefs(path, "ymodel").own;
+  const models = useContentRefs(path, formats.model.ext).own;
   const [modelPick, setModelPick] = useState<string | null>(null);
   const stem = path.split(/[\\/]/).pop()!.replace(/\.yanim$/, "");
   const modelRef = modelPick ?? models.find((m) => stem.startsWith(m.file.split(/[\\/]/).pop()!.replace(/\.ymodel$/, "")))?.id ?? models[0]?.id ?? null;

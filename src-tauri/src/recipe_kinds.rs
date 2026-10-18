@@ -5,11 +5,14 @@
 //! by (built in, or a `.yui` `recipe_layout`) — the picture (images, the
 //! station, slot frames) with where slots, result and texts go on it.
 
+use yog_ids::Format;
 use std::path::{Path, PathBuf};
 
 use base64::Engine as _;
 use serde::Serialize;
-use yog_book::layout::{FRAME_UV, LayoutPart, RecipeLayout, SHEET};
+use yog_book::renderer::FRAME_UV;
+use yog_formats::book::layout::{LayoutPart, RecipeLayout};
+use yog_ids::yog::CRAFTING_SHEET;
 use yog_data::Schema;
 use yog_formats::def::{Def, RecipeKindDef};
 use yog_gfx::{Color, Rect, Vec2};
@@ -20,7 +23,7 @@ use crate::designer::{assets::Resources, gfx, images, raster};
 /// How much bigger than GUI pixels the picture is drawn.
 const SCALE: u32 = 3;
 /// An item's side in GUI pixels.
-const ITEM_SIZE: f32 = yog_book::layout::ICON_PX;
+const ITEM_SIZE: f32 = yog_formats::book::layout::ICON_PX;
 /// How far a slot frame reaches around its item.
 const FRAME_INSET: f32 = 4.0;
 /// How a block is turned and tilted in a slot (the game's GUI display; the book's).
@@ -133,17 +136,6 @@ pub fn all(root: Option<&Path>) -> Kinds {
     }
 }
 
-fn ydefs(dir: &Path, out: &mut Vec<PathBuf>) {
-    for e in std::fs::read_dir(dir).into_iter().flatten().flatten() {
-        let p = e.path();
-        if p.is_dir() {
-            ydefs(&p, out);
-        } else if p.extension().is_some_and(|x| x == "ydef") {
-            out.push(p);
-        }
-    }
-}
-
 /// The game's kinds, as books show them: their built-in layouts, or the
 /// mod's own `recipe_layout` for one.
 pub fn game_kinds(root: &Path) -> Vec<Kind> {
@@ -154,9 +146,7 @@ pub fn game_kinds(root: &Path) -> Vec<Kind> {
 /// The kinds the mod at `root` declares, by id.
 pub fn kinds(root: &Path) -> Vec<Kind> {
     let ns = crate::manifest::read_mod_field(root, "id").unwrap_or_default();
-    let mut files = Vec::new();
-    ydefs(&root.join("content"), &mut files);
-    files.sort();
+    let files = crate::files::of(&root.join("content"), Format::Def);
     let layouts = crate::mod_ui::recipe_layouts(root);
     let mut out: Vec<Kind> = files
         .iter()
@@ -203,7 +193,7 @@ fn describe(root: &Path, k: &RecipeKindDef, id: String, file: String, layouts: &
                 default: k.default_of(name),
             })
             .collect(),
-        layout: yog_book::layout::find(&own, &id).map(|l| layout(root, &layout_file, l.size, &l.parts)),
+        layout: yog_formats::book::layout::find(&own, &id).map(|l| layout(root, &layout_file, l.size, &l.parts)),
         id,
     }
 }
@@ -227,7 +217,7 @@ fn layout(root: &Path, file: &Path, size: [f32; 2], parts: &[LayoutPart]) -> Lay
         let d = ctx.draw2d();
         let frame = |[x, y]: [f32; 2]| {
             d.image_region(
-                SHEET,
+                CRAFTING_SHEET,
                 Rect::new(x - FRAME_INSET, y - FRAME_INSET, FRAME_UV[2], FRAME_UV[3]),
                 Some(Rect::new(FRAME_UV[0], FRAME_UV[1], FRAME_UV[2], FRAME_UV[3])),
                 Color::WHITE,

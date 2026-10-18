@@ -11,6 +11,7 @@ import { openFile } from "../fileOpenBus";
 import { useFsChanged } from "../fsWatch";
 import { parseRecipe, recipeType, serializeRecipe, switchKind, type Recipe, type RecipeFields, type RecipeKind, type RecipeSlot } from "./recipeModel";
 import "./RecipeEditor.css";
+import { fileTypeId, formats } from "../yogFileTypes";
 
 /** The code view of a `.yrecipe` (registered in `editors/index.tsx`). */
 export const RECIPE_SOURCE_VIEW = "yog.recipe.source";
@@ -63,7 +64,7 @@ function useRecipeKinds(path: string): [Kinds | null, () => void] {
     };
   }, [path, asked]);
   useFsChanged((paths) => {
-    if (paths.some((p) => ["yog.ydef", "yog.yui"].includes(fileTypeOf(p)?.id ?? ""))) reload();
+    if (paths.some((p) => [fileTypeId(formats.def), fileTypeId(formats.ui)].includes(fileTypeOf(p)?.id ?? ""))) reload();
   });
   return [kinds, reload];
 }
@@ -135,7 +136,7 @@ export function RecipeEditor({ path, content, onChange, readOnly }: EditorProps)
 
   if (!kinds) return <div className="recipe-editor" />;
   // Not a kind this mod knows (another mod's, a typo): its fields, from the schema.
-  if (!kind || !recipe) return <DataEditor path={path} content={content} onChange={onChange} readOnly={readOnly} format="yrecipe" sourceView={RECIPE_SOURCE_VIEW} />;
+  if (!kind || !recipe) return <DataEditor path={path} content={content} onChange={onChange} readOnly={readOnly} format={formats.recipe.ext} sourceView={RECIPE_SOURCE_VIEW} />;
 
   const write = (next: Recipe) => {
     const text = serializeRecipe(content, next, kind, kinds.fields);

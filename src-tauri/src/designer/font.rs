@@ -12,7 +12,7 @@ use std::sync::{Arc, Mutex, OnceLock};
 
 use serde_json::Value;
 
-use super::assets::{Image, Resources, decode_png, split_id};
+use super::assets::{Image, Resources, decode_png};
 
 /// One glyph's metrics and (unless it's blank) its bitmap.
 pub struct Glyph {
@@ -150,7 +150,7 @@ fn unihex(res: &Resources, file: &str, overrides: &[Value]) -> Option<Arc<Unihex
     let glyphs = if let Some(hit) = cache.lock().ok()?.get(file).cloned() {
         hit
     } else {
-        let (ns, path) = split_id(file);
+        let (ns, path) = yog_ids::split(file);
         let bytes = res.read(ns, path)?;
         let mut zip = zip::ZipArchive::new(std::io::Cursor::new(bytes)).ok()?;
         let mut glyphs = HashMap::new();
@@ -215,7 +215,7 @@ fn load_providers(res: &Resources, id: &str, depth: usize, out: &mut Vec<Provide
     if depth > 8 {
         return;
     }
-    let (ns, path) = split_id(id);
+    let (ns, path) = yog_ids::split(id);
     for def in json(res, ns, &format!("font/{path}.json")) {
         let Some(list) = def.get("providers").and_then(Value::as_array) else {
             continue;
@@ -274,7 +274,7 @@ fn load_providers(res: &Resources, id: &str, depth: usize, out: &mut Vec<Provide
 
 fn ttf(res: &Resources, p: &Value) -> Option<TtfProvider> {
     let file = p.get("file")?.as_str()?;
-    let (ns, path) = split_id(file);
+    let (ns, path) = yog_ids::split(file);
     let bytes = res.read(ns, &format!("font/{path}"))?;
     let size = p.get("size").and_then(Value::as_f64).unwrap_or(11.0) as f32;
     let oversample = p.get("oversample").and_then(Value::as_f64).unwrap_or(1.0).max(0.1) as f32;
@@ -327,7 +327,7 @@ impl TtfProvider {
 
 fn bitmap(res: &Resources, p: &Value) -> Option<BitmapProvider> {
     let file = p.get("file")?.as_str()?;
-    let (ns, path) = split_id(file);
+    let (ns, path) = yog_ids::split(file);
     let image = Arc::new(decode_png(&res.read(ns, &format!("textures/{path}"))?)?);
     let rows: Vec<Vec<char>> = p
         .get("chars")?

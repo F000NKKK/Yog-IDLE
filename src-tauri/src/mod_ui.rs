@@ -2,11 +2,12 @@
 //! (`book_page`) and its recipe layouts (`recipe_layout`) — read with
 //! yog-book's own reader and compiler, as `yog build` reads them.
 
+use yog_ids::Format;
 use std::path::{Path, PathBuf};
 
-use yog_book::layout::RecipeLayout;
-use yog_book::page_type::PageType;
-use yog_book::ui::Element;
+use yog_formats::book::layout::RecipeLayout;
+use yog_formats::book::page_type::PageType;
+use yog_formats::yui::Element;
 
 /// Every `src/**/*.yui` of the mod at `root`, parsed (broken ones left out).
 fn trees(root: &Path) -> Vec<(PathBuf, Element)> {
@@ -15,10 +16,10 @@ fn trees(root: &Path) -> Vec<(PathBuf, Element)> {
         .build()
         .flatten()
         .map(|e| e.into_path())
-        .filter(|p| p.is_file() && p.extension().is_some_and(|e| e == "yui"))
+        .filter(|p| p.is_file() && Format::Ui.is(p))
         .filter_map(|p| {
             let text = std::fs::read_to_string(&p).ok()?;
-            Some((p, yog_book::ui::parse(&text).ok()?))
+            Some((p, yog_formats::yui::parse(&text).ok()?))
         })
         .collect();
     out.sort_by(|a, b| a.0.cmp(&b.0));
@@ -34,8 +35,8 @@ pub fn recipe_layouts(root: &Path) -> Vec<(PathBuf, RecipeLayout)> {
     let ns = ns(root);
     trees(root)
         .into_iter()
-        .filter(|(_, el)| yog_book::layout::is_recipe_layout(el))
-        .filter_map(|(p, el)| Some((p, yog_book::layout::compile(&el, &ns).ok()?)))
+        .filter(|(_, el)| yog_formats::book::layout::is_recipe_layout(el))
+        .filter_map(|(p, el)| Some((p, yog_formats::book::layout::compile(&el, &ns).ok()?)))
         .collect()
 }
 
@@ -44,8 +45,8 @@ pub fn page_types(root: &Path) -> Vec<PageType> {
     let ns = ns(root);
     trees(root)
         .into_iter()
-        .filter(|(_, el)| yog_book::page_type::is_book_page(el))
-        .filter_map(|(_, el)| yog_book::page_type::compile(&el, &ns).ok())
+        .filter(|(_, el)| yog_formats::book::page_type::is_book_page(el))
+        .filter_map(|(_, el)| yog_formats::book::page_type::compile(&el, &ns).ok())
         .collect()
 }
 

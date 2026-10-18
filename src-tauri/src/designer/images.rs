@@ -17,7 +17,7 @@ use yog_gfx::image::{
 };
 use yog_ui::widget::{self, Widget};
 
-use super::assets::{Image, Resources, split_id};
+use super::assets::{Image, Resources};
 use super::markup::{YuiNode, color};
 use super::raster::Canvas;
 
@@ -150,7 +150,7 @@ fn item_texture(id: &str, block: bool) -> Option<Arc<Image>> {
     {
         return Some(img);
     }
-    let (ns, name) = split_id(id);
+    let (ns, name) = yog_ids::split(id);
     let item = format!("{ns}:textures/item/{name}.png");
     let blocks =
         ["", "_front", "_side", "_top"].map(|s| format!("{ns}:textures/block/{name}{s}.png"));
@@ -360,7 +360,7 @@ fn svg_image(data: &str, w: u32, h: u32) -> Option<Image> {
 
 /// The document of an `.svg` texture id (`ns:textures/x.svg`) of the mod.
 fn svg_document(id: &str) -> Option<String> {
-    let (ns, path) = split_id(id);
+    let (ns, path) = yog_ids::split(id);
     let bytes = with_doc(|d| d.and_then(|d| d.res.read(ns, path)))?;
     String::from_utf8(bytes).ok()
 }
@@ -385,7 +385,7 @@ pub fn draw_svg(c: &mut Canvas, data: &str, dest: [f32; 4], t: u32) {
 /// `draw2d_entity`: the designer has no entity models — the entity's spawn
 /// egg, in the middle of its box.
 pub fn draw_entity(c: &mut Canvas, entity: &str, [x, y, w, h]: [f32; 4]) {
-    let (ns, path) = split_id(entity);
+    let (ns, path) = yog_ids::split(entity);
     let side = w.min(h).min(32.0);
     let dest = [x + (w - side) / 2.0, y + (h - side) / 2.0, side, side];
     draw(c, &format!("item:{ns}:{path}_spawn_egg"), dest, [0.0; 4], 0xFFFF_FFFF);

@@ -1,5 +1,6 @@
 import { extensionOf } from "substrate-platform-ui";
 import { t } from "substrate-platform-ui";
+import { formats } from "./yogFileTypes";
 
 /** Whether `path` is `ancestor` itself or anywhere beneath it. */
 export function isWithin(path: string, ancestor: string): boolean {
@@ -58,13 +59,13 @@ export function generatedCodePath(root: string, path: string): string | null {
   const base = root.replace(/[/\\]+$/, "");
   const join = (...parts: string[]) => [base, ...GENERATED_DIR.split("/"), ...parts].join(sep).replace(/[/\\]/g, sep);
   const ext = extensionOf(path);
-  if (ext === "yres") {
+  if (ext === formats.res.ext) {
     if (!isWithin(path, `${base}${sep}resources`)) return null;
     const set = /([^/\\]+)\.yres$/i.exec(path)?.[1];
     return set && !set.includes(".") ? join("resources", `${set}.g.rs`) : null;
   }
   const src = `${base}${sep}src`;
-  if (!isWithin(path, src) || ext !== "yui") return null;
+  if (!isWithin(path, src) || ext !== formats.ui.ext) return null;
   const rel = path.slice(src.length + 1).replace(/\.yui$/i, "");
   return join(`${rel}.g.rs`);
 }

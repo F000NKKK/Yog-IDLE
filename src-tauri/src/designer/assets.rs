@@ -320,10 +320,6 @@ pub struct Resources {
     pub vanilla: Option<Arc<Vanilla>>,
 }
 
-/// `"ns:path"` → `("ns", "path")`; a bare path is `minecraft`.
-pub fn split_id(id: &str) -> (&str, &str) {
-    id.split_once(':').unwrap_or(("minecraft", id))
-}
 
 impl Resources {
     pub fn for_mod(mod_root: Option<&Path>) -> Resources {
@@ -363,7 +359,7 @@ impl Resources {
         if let Some(hit) = cache.lock().ok()?.get(&key) {
             return hit.clone();
         }
-        let (ns, path) = split_id(id);
+        let (ns, path) = yog_ids::split(id);
         let image = self
             .read(ns, path)
             .and_then(|b| decode_png(&b))

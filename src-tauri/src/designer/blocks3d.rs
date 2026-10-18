@@ -12,7 +12,7 @@ use std::sync::Arc;
 
 use serde_json::Value;
 
-use super::assets::{Image, Resources, decode_png, missing_image, split_id};
+use super::assets::{Image, Resources, decode_png, missing_image};
 use super::raster::Canvas;
 
 /// A cube's textures per face: up, down, north, south, west, east.
@@ -157,7 +157,7 @@ fn model_elements(res: &Resources, model: &str, depth: usize) -> Option<Vec<Valu
     if depth > 8 {
         return None;
     }
-    let (ns, path) = split_id(model);
+    let (ns, path) = yog_ids::split(model);
     let path = path.strip_prefix("block/").map_or(format!("block/{path}"), |p| format!("block/{p}"));
     let json: Value = serde_json::from_slice(&res.read(ns, &format!("models/{path}.json"))?).ok()?;
     if let Some(e) = json.get("elements").and_then(Value::as_array) {
@@ -172,7 +172,7 @@ fn model_textures(res: &Resources, model: &str, depth: usize) -> HashMap<String,
     if depth > 8 {
         return out;
     }
-    let (ns, path) = split_id(model);
+    let (ns, path) = yog_ids::split(model);
     let path = path.strip_prefix("block/").map_or(format!("block/{path}"), |p| format!("block/{p}"));
     let Some(json) = res.read(ns, &format!("models/{path}.json")).and_then(|b| serde_json::from_slice::<Value>(&b).ok()) else {
         return out;
@@ -234,7 +234,7 @@ fn applied(v: &Value) -> Option<(String, Vec<Turn>)> {
 /// properties it has; the first otherwise), or each multipart part it meets.
 fn block_models(res: &Resources, state: &str) -> Vec<(String, Vec<Turn>)> {
     let (id, props) = split_state(state);
-    let (ns, path) = split_id(id);
+    let (ns, path) = yog_ids::split(id);
     let Some(json) = res.read(ns, &format!("blockstates/{path}.json")).and_then(|b| serde_json::from_slice::<Value>(&b).ok()) else {
         return Vec::new();
     };
@@ -255,7 +255,7 @@ fn block_models(res: &Resources, state: &str) -> Vec<(String, Vec<Turn>)> {
 /// Whether `id` is a block (the game's, or the mod's `.yblock`).
 pub fn is_block(res: &Resources, id: &str) -> bool {
     let id = split_state(id).0;
-    let (ns, path) = split_id(id);
+    let (ns, path) = yog_ids::split(id);
     res.read(ns, &format!("blockstates/{path}.json")).is_some()
         || res.mod_root.as_deref().is_some_and(|root| crate::content::content_block_faces(root, id).is_some())
 }
@@ -292,7 +292,7 @@ fn mod_shape(res: &Resources, id: &str) -> Option<Shape> {
 fn game_shape(res: &Resources, state: &str) -> Shape {
     let mut models = block_models(res, state);
     if models.is_empty() {
-        let (ns, path) = split_id(split_state(state).0);
+        let (ns, path) = yog_ids::split(split_state(state).0);
         models.push((format!("{ns}:block/{path}"), Vec::new()));
     }
     let mut out = Shape::new();
@@ -321,7 +321,7 @@ fn model_shape(res: &Resources, model: &str) -> Shape {
     };
     let load = |tex: Option<String>| -> Option<Arc<Image>> {
         let tex = tex?;
-        let (ns, path) = split_id(&tex);
+        let (ns, path) = yog_ids::split(&tex);
         decode_png(&res.read(ns, &format!("textures/{path}.png"))?).map(Arc::new)
     };
     if let Some(elements) = model_elements(res, model, 0) {

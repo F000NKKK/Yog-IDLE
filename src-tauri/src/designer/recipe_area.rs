@@ -6,7 +6,7 @@
 use std::collections::HashMap;
 use std::path::Path;
 
-use yog_book::layout::RecipeLayout;
+use yog_formats::book::layout::RecipeLayout;
 
 use super::components::INNER;
 use super::markup::YuiNode;
@@ -67,7 +67,7 @@ fn area(a: &mut YuiNode, layouts: &[RecipeLayout], ns: &str, next: &mut usize) {
     a.attrs.insert("w".into(), layout.size[0].to_string());
     a.attrs.insert("h".into(), layout.size[1].to_string());
     let uid = a.uid.clone();
-    let area = yog_book::layout::screen_area(layout, *next);
+    let area = yog_book::recipe_area::screen_area(layout, *next);
     for (i, e) in area.elements.into_iter().enumerate() {
         a.children.push(node(format!("{uid}{INNER}r{i}"), e.kind, &e.attrs));
     }

@@ -5,6 +5,7 @@ import { validateEntryName } from "../paths";
 import { pascalName } from "../designer/components";
 import "./NewItemDialog.css";
 import { files } from "../files";
+import { dotExt, formats } from "../yogFileTypes";
 
 /** One entry of Add > New Item — what file(s) it makes and what goes in them. */
 export interface ItemTemplate {
@@ -42,7 +43,7 @@ const ITEM_TEMPLATES: ItemTemplate[] = [
     category: "Yog",
     name: "Yog UI Screen",
     description: "A screen for the designer (.yui) and its code-behind module (.rs); the code between them is generated into .yog-build on save.",
-    extension: ".yui",
+    extension: dotExt(formats.ui),
     baseName: "screen",
     files: (stem, { modId, srcDir }) => [
       [
@@ -61,7 +62,7 @@ const ITEM_TEMPLATES: ItemTemplate[] = [
     name: "Component (.yui)",
     description:
       "A reusable UI component: a .yui with a <Component> root declaring its properties and events, its body bound to them with {x:Bind name}. It appears in the designer's Toolbox (its name, description, icon and category set on the root); yog build generates its Rust type. Add a code-behind <name>.rs (ui_include!) only if its bindings call code.",
-    extension: ".yui",
+    extension: dotExt(formats.ui),
     baseName: "component",
     files: (stem) => [
       [
@@ -85,7 +86,7 @@ const ITEM_TEMPLATES: ItemTemplate[] = [
     name: "Resources File",
     description:
       "A .yres resource set — texts (translated per language), images, sounds, colors and numbers, opened in the resource editor; yog build compiles it and generates typed accessors (Strings::example()). Goes into resources/.",
-    extension: ".yres",
+    extension: dotExt(formats.res),
     baseName: "Strings",
     unnumbered: true,
     rootFolder: "resources",
@@ -102,7 +103,7 @@ const ITEM_TEMPLATES: ItemTemplate[] = [
     name: "Block",
     description:
       "A block (.yblock): its properties, 3D model, block states and item form in one file, opened in the 3D model editor; yog build turns it into Minecraft's models, blockstates, loot table and tags, and registers it. Goes into content/.",
-    extension: ".yblock",
+    extension: dotExt(formats.block),
     baseName: "block",
     rootFolder: "content",
     files: (stem) => [[`${stem}.yblock`, newBlockFile(titleOf(stem))]],
@@ -112,7 +113,7 @@ const ITEM_TEMPLATES: ItemTemplate[] = [
     category: "Yog",
     name: "Item",
     description: "An item (.yitem): its properties and model (a sprite or 3D), opened in the 3D model editor; yog build registers it. Goes into content/.",
-    extension: ".yitem",
+    extension: dotExt(formats.item),
     baseName: "item",
     rootFolder: "content",
     files: (stem) => [[`${stem}.yitem`, newItemFile(titleOf(stem))]],
@@ -122,7 +123,7 @@ const ITEM_TEMPLATES: ItemTemplate[] = [
     category: "Yog",
     name: "Recipe",
     description: "A recipe (.yrecipe): shaped or shapeless crafting, or smelting, edited as a crafting table; yog build registers it. Goes into content/recipes/.",
-    extension: ".yrecipe",
+    extension: dotExt(formats.recipe),
     baseName: "recipe",
     rootFolder: "content",
     files: (stem) => [[`${stem}.yrecipe`, `{\n  "type": "shaped",\n  "pattern": [],\n  "key": {},\n  "result": ""\n}\n`]],
@@ -132,7 +133,7 @@ const ITEM_TEMPLATES: ItemTemplate[] = [
     category: "Yog",
     name: "Book",
     description: "A guide book (.ybook): categories, entries and pages, edited in a live book designer; yog build registers it. Its id is the item that opens it. Goes into content/.",
-    extension: ".ybook",
+    extension: dotExt(formats.book),
     baseName: "guide",
     rootFolder: "content",
     files: (stem) => [
@@ -147,7 +148,7 @@ const ITEM_TEMPLATES: ItemTemplate[] = [
     category: "Yog",
     name: "Block with Item",
     description: "A block (.yblock) whose item has its own sprite (item_model) instead of the block's 3D model in hand. Goes into content/.",
-    extension: ".yblock",
+    extension: dotExt(formats.block),
     baseName: "block",
     rootFolder: "content",
     files: (stem) => [[`${stem}.yblock`, newBlockWithItemFile(titleOf(stem))]],
@@ -158,7 +159,7 @@ const ITEM_TEMPLATES: ItemTemplate[] = [
     name: "Language File",
     description:
       "The texts of a resource set in another language: <Set>.<locale>.yres next to <Set>.yres (e.g. Strings.ru_ru.yres). The resource editor's All Languages view shows them side by side.",
-    extension: ".yres",
+    extension: dotExt(formats.res),
     baseName: "Strings.ru_ru",
     unnumbered: true,
     rootFolder: "resources",

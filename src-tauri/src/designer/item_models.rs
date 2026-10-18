@@ -7,7 +7,7 @@ use std::sync::Arc;
 
 use serde_json::Value;
 
-use super::assets::{Image, Resources, decode_png, split_id};
+use super::assets::{Image, Resources, decode_png};
 use super::blocks3d::Faces;
 
 /// How an item looks in a slot.
@@ -21,7 +21,7 @@ pub enum Look {
 /// `id`'s look from its item model; `None` when it has no model this
 /// understands (callers then guess its texture by name).
 pub fn look(res: &Resources, id: &str) -> Option<Look> {
-    let (ns, path) = split_id(id);
+    let (ns, path) = yog_ids::split(id);
     let appearance = res
         .mod_root
         .as_deref()
@@ -36,7 +36,7 @@ pub fn look(res: &Resources, id: &str) -> Option<Look> {
         &model,
         appearance.as_ref().and_then(|(item, _)| item.get("model")),
     );
-    let is = |p: &str| parents.iter().any(|x| split_id(x).1 == p);
+    let is = |p: &str| parents.iter().any(|x| yog_ids::split(x).1 == p);
     if (is("item/template_skull") || is("builtin/entity"))
         && let Some(tex) = HEADS
             .iter()
@@ -76,7 +76,7 @@ pub fn look(res: &Resources, id: &str) -> Option<Look> {
     };
     let mut out: Option<Image> = None;
     for (i, layer) in layers.iter().enumerate() {
-        let (lns, lpath) = split_id(layer);
+        let (lns, lpath) = yog_ids::split(layer);
         let Some(img) = res
             .read(lns, &format!("textures/{lpath}.png"))
             .and_then(|b| decode_png(&b))
@@ -108,7 +108,7 @@ fn model_chain(
     let mut pending = content_model.cloned();
     for _ in 0..8 {
         chain.push(at.clone());
-        let (ns, path) = split_id(&at);
+        let (ns, path) = yog_ids::split(&at);
         let json = pending.take().or_else(|| {
             res.read(ns, &format!("models/{path}.json"))
                 .and_then(|b| serde_json::from_slice::<Value>(&b).ok())
@@ -177,7 +177,7 @@ fn over(base: &mut Image, top: &Image) {
 
 /// A head's faces from its mob's texture (the head cube's UVs, 8 px at 64 wide).
 fn head(res: &Resources, tex: &str) -> Option<Faces> {
-    let (ns, path) = split_id(tex);
+    let (ns, path) = yog_ids::split(tex);
     let img = decode_png(&res.read(ns, &format!("textures/{path}.png"))?)?;
     let u = img.width / 64;
     let f = |x: u32, y: u32| Some(Arc::new(crop(&img, x * u, y * u, 8 * u, 8 * u)));

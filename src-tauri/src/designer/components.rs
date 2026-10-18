@@ -7,6 +7,7 @@
 //! (`{x:Bind caption()}`) are *compiled*: the designer host draws those with
 //! the mod's library ([`custom`](super::custom)).
 
+use yog_ids::Format;
 use std::collections::HashMap;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
@@ -350,7 +351,7 @@ fn yui_files(mod_root: &Path) -> Vec<PathBuf> {
         .build()
         .flatten()
         .map(|e| e.into_path())
-        .filter(|p| p.is_file() && p.extension().is_some_and(|e| e == "yui"))
+        .filter(|p| p.is_file() && Format::Ui.is(p))
         .collect();
     out.sort();
     out

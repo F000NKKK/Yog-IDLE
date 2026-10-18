@@ -33,8 +33,8 @@ export function shownOf(ref: string): string {
 
 /** A shown id as a reference: `x` → `@item:x`, `#x` → `@tag:item:x`; a reference as it is. */
 export function refOf(shown: string): string {
-  if (isTag(shown)) return formatTag(KINDS.item, shown.slice(TAG_MARK.length));
-  return shown.startsWith(TYPED) ? shown : formatRef(KINDS.item, shown);
+  if (isTag(shown)) return formatTag(KINDS.ITEM, shown.slice(TAG_MARK.length));
+  return shown.startsWith(TYPED) ? shown : formatRef(KINDS.ITEM, shown);
 }
 
 /** An ingredient as written (a reference or a list of them) as shown; `null` for none. */

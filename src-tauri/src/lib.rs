@@ -15,6 +15,7 @@ mod data;
 mod designer;
 mod environment;
 mod events;
+mod files;
 mod git;
 mod manifest;
 mod mod_ui;
@@ -98,15 +99,10 @@ impl From<substrate_platform::DirEntryInfo> for DirEntryOut {
 }
 
 /// What a Yog format looks like (`yog_data::Shape::describe`) — the editors'
-/// property grids are generated from it: `yblock`, `yitem`, `yrecipe`,
-/// `ydef`, `yres`, `yog.toml`, `ybook`.
+/// property grids are generated from it (`yog_formats::FORMATS`).
 #[tauri::command]
 fn format_shape(format: String) -> Result<serde_json::Value, String> {
-    use yog_data::Schema;
-    let shape = match format.trim_start_matches('.') {
-        "ybook" => yog_book::Book::shape(),
-        other => yog_formats::shape(other).ok_or_else(|| format!("no format `{other}`"))?,
-    };
+    let shape = yog_formats::shape_of(&format).ok_or_else(|| format!("no format `{format}`"))?;
     Ok(data::to_json(&shape.describe()))
 }
 

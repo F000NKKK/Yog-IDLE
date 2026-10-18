@@ -6,6 +6,7 @@ import { shapeProperties, type Described } from "../data/shapeGrid";
 import { useOpenFiles } from "../OpenFilesContext";
 import { TerrainPreview } from "./TerrainPreview";
 import "./DataEditor.css";
+import { formats } from "../yogFileTypes";
 
 const shapes = new Map<string, Promise<Described>>();
 
@@ -21,7 +22,7 @@ export function formatShape(format: string): Promise<Described> {
 
 /**
  * A file of a Yog format as a property grid generated from its schema —
- * for formats without a designer of their own (`.ydef`, `.ylayout`, a
+ * for formats without a designer of their own (`.ydef`, a
  * recipe of a kind the crafting table doesn't lay out). `sourceView` is
  * the code view View Code switches to.
  */
@@ -69,7 +70,7 @@ export function DataEditor({ path, content, onChange, readOnly, format, sourceVi
     );
   }
   // A dimension with a terrain: the ground it makes, beside its properties.
-  const terrain = format === "ydef" && parsed.value.kind === "dimension" && parsed.value.terrain !== undefined;
+  const terrain = format === formats.def.ext && parsed.value.kind === "dimension" && parsed.value.terrain !== undefined;
   return (
     <div className="data-editor">
       <div className="data-editor-body">

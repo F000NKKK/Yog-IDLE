@@ -4,6 +4,7 @@
 //! and the same for `.yres` resource files (`resources/<Set>.g.rs`,
 //! through `yog res check`).
 
+use yog_ids::Format;
 use std::path::PathBuf;
 use std::process::Command;
 
@@ -14,12 +15,12 @@ use std::process::Command;
 /// `Err` only when `yog` couldn't run at all.
 pub fn codegen(path: &str) -> Result<Codegen, String> {
     let file = PathBuf::from(path);
-    let args: &[&str] = match file.extension().and_then(|e| e.to_str()) {
-        Some("yui") => &["ui", "gen"],
+    let args: &[&str] = match Format::of_path(&file) {
+        Some(Format::Ui) => &["ui", "gen"],
         // Regenerates `.yog-build/generated/resources/<Set>.g.rs` (and checks the set).
-        Some("yres") => &["res", "check"],
+        Some(Format::Res) => &["res", "check"],
         // Regenerates `.yog-build/generated/yog-content.g.rs` and its parts (and checks every content file).
-        Some("yblock" | "yitem") => &["content", "check"],
+        Some(Format::Block | Format::Item) => &["content", "check"],
         _ => return Err(format!("not a .yui, .yres, .yblock or .yitem file: {path}")),
     };
     let mut command = Command::new("yog");

@@ -8,6 +8,7 @@ import { LootDesigner } from "./LootDesigner";
 import { TagDesigner } from "./TagDesigner";
 import type { DefProps } from "./DefLayout";
 import { parseDef, patchDef, type DefFile } from "./defModel";
+import { formats } from "../../yogFileTypes";
 
 export const DEF_SOURCE_VIEW = "yog.ydef.source";
 
@@ -43,7 +44,7 @@ export function DefEditor(props: EditorProps) {
   );
   const designer = parsed.ok && typeof parsed.file.kind === "string" ? DEF_DESIGNERS[parsed.file.kind] : undefined;
   if (!parsed.ok) return <div className="designer-error">{t("This file has a mistake: {error}", { error: parsed.error })}</div>;
-  if (!designer) return <DataEditor {...props} format="ydef" sourceView={DEF_SOURCE_VIEW} />;
+  if (!designer) return <DataEditor {...props} format={formats.def.ext} sourceView={DEF_SOURCE_VIEW} />;
   const Designer = designer.component;
   return <Designer path={path} file={parsed.file} update={update} readOnly={!!readOnly} kindLabel={designer.label} />;
 }

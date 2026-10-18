@@ -4,6 +4,7 @@ import { useContentRefs, type OwnRef } from "../data/contentRefs";
 import { parseAnim, type Clip } from "./yanim";
 import { parseModel, type ModelFile } from "./ymodel";
 import { useFileText } from "./useFileText";
+import { formats } from "../yogFileTypes";
 
 /** A `.ymodel`'s texture as a data URL, by the format's rules (`body_texture`), and why not when it can't be. */
 export function useBodyTexture(path: string | null, texture: string | undefined): { url: string | null; error: string | null } {
@@ -45,8 +46,8 @@ export interface Body {
 
 /** The body an entity's `model` and `animations` name, for the file at `path`. */
 export function useBody(path: string, modelRef: string | undefined, animRef: string | undefined): Body {
-  const models = useContentRefs(path, "ymodel").own;
-  const animations = useContentRefs(path, "yanim").own;
+  const models = useContentRefs(path, formats.model.ext).own;
+  const animations = useContentRefs(path, formats.anim.ext).own;
   const modelFile = bodyFile(models, modelRef)?.file ?? null;
   const animFile = bodyFile(animations, animRef)?.file ?? null;
   const modelText = useFileText(modelFile);

@@ -9,6 +9,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { fileTypeOf } from "substrate-platform-ui";
 import { useFsChanged } from "../fsWatch";
 import { classify } from "./yogData";
+import { fileTypeId, formats } from "../yogFileTypes";
 
 /** One of the mod's own: its id and the file that defines it. */
 export interface OwnRef {
@@ -34,7 +35,7 @@ export interface OwnDef {
 export const NO_REFS: RefChoices = { own: [], external: [], game: [] };
 
 /** The file types whose changes can change what's listed. */
-const CONTENT_TYPES = new Set(["yog.yblock", "yog.yitem", "yog.yentity", "yog.ydef", "yog.ymodel", "yog.yanim", "yog.yrecipe"]);
+const CONTENT_TYPES = new Set([fileTypeId(formats.block), fileTypeId(formats.item), fileTypeId(formats.entity), fileTypeId(formats.def), fileTypeId(formats.model), fileTypeId(formats.anim), fileTypeId(formats.recipe)]);
 
 /** Asks again whenever a content file changes on disk. */
 function useContentReload(): [number, () => void] {

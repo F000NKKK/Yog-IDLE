@@ -3,7 +3,8 @@
 //! texture picker's list, vanilla/parent models for preview, and
 //! `yog import`.
 
-use crate::designer::assets::{Resources, split_id};
+use yog_ids::Format;
+use crate::designer::assets::{Resources};
 use crate::manifest::{self, mod_root};
 use base64::Engine as _;
 use serde::Serialize;
@@ -19,7 +20,7 @@ fn mod_id(root: &Path) -> Option<String> {
 /// A `.yres` image entry `@<Set>.<name>` → its png file.
 fn yres_image(root: &Path, reference: &str) -> Option<PathBuf> {
     let (set, name) = reference.split_once('.')?;
-    for file in find(&root.join("resources"), "yres") {
+    for file in crate::files::of(&root.join("resources"), Format::Res) {
         if file.file_stem().and_then(|s| s.to_str()) != Some(set) {
             continue;
         }
@@ -33,23 +34,6 @@ fn yres_image(root: &Path, reference: &str) -> Option<PathBuf> {
         return Some(file.parent()?.join(value));
     }
     None
-}
-
-fn find(dir: &Path, ext: &str) -> Vec<PathBuf> {
-    let mut out = Vec::new();
-    let mut stack = vec![dir.to_path_buf()];
-    while let Some(d) = stack.pop() {
-        for e in std::fs::read_dir(&d).into_iter().flatten().flatten() {
-            let p = e.path();
-            if p.is_dir() {
-                stack.push(p);
-            } else if p.extension().is_some_and(|x| x == ext) {
-                out.push(p);
-            }
-        }
-    }
-    out.sort();
-    out
 }
 
 /// The png bytes of a texture as a content file names it: `@Set.name`,
@@ -119,7 +103,7 @@ fn texture_file(file: &Path, texture: &str, ext: &str) -> Result<Vec<u8>, String
         let p = root.join("resources").join(format!("{rel}.{ext}"));
         return std::fs::read(&p).map_err(|_| format!("resources/{rel}.{ext} doesn't exist"));
     }
-    let (ns, path) = split_id(texture);
+    let (ns, path) = yog_ids::split(texture);
     // A texture `yog build` bundles from `resources/` (`mymod:block/x` = `resources/block/x.png`).
     if let Some(root) = &root
         && mod_id(root).as_deref() == Some(ns)
@@ -134,14 +118,14 @@ fn texture_file(file: &Path, texture: &str, ext: &str) -> Result<Vec<u8>, String
 
 /// The mod's `content/` file defining item or block `id` (`kind`:
 /// `yitem` or `yblock`), parsed.
-fn content_file(root: &Path, id: &str, kinds: &[&str]) -> Option<(PathBuf, Value)> {
+fn content_file(root: &Path, id: &str, formats: &[Format]) -> Option<(PathBuf, Value)> {
     let ns = mod_id(root)?;
-    let (want_ns, want) = split_id(id);
+    let (want_ns, want) = yog_ids::split(id);
     if want_ns != ns {
         return None;
     }
-    for kind in kinds {
-        for file in find(&root.join("content"), kind) {
+    for format in formats {
+        for file in crate::files::of(&root.join("content"), *format) {
             let Some(doc) = std::fs::read_to_string(&file).ok().and_then(|t| crate::data::read_object(&t)).map(Value::Object) else {
                 continue;
             };
@@ -159,7 +143,7 @@ fn content_file(root: &Path, id: &str, kinds: &[&str]) -> Option<(PathBuf, Value
 /// up, down, north, south, west, east — as png bytes. `None`: not a block
 /// of the mod.
 pub fn content_block_faces(root: &Path, id: &str) -> Option<[Option<Vec<u8>>; 6]> {
-    let (file, doc) = content_file(root, id, &["yblock"])?;
+    let (file, doc) = content_file(root, id, &[Format::Block])?;
     let textures = doc.pointer("/model/textures").and_then(Value::as_object)?;
     let pick = |keys: &[&str]| {
         keys.iter()
@@ -181,7 +165,7 @@ pub fn content_block_faces(root: &Path, id: &str) -> Option<[Option<Vec<u8>>; 6]
 /// `elements` and its textures by variable (png bytes). `None`: not a
 /// block of the mod, or its model has no elements of its own.
 pub fn content_block_model(root: &Path, id: &str) -> Option<(Vec<Value>, std::collections::HashMap<String, Vec<u8>>)> {
-    let (file, doc) = content_file(root, id, &["yblock"])?;
+    let (file, doc) = content_file(root, id, &[Format::Block])?;
     let elements = match doc.pointer("/model/elements").and_then(Value::as_array) {
         Some(elements) => elements.clone(),
         None if doc.get("kind").and_then(Value::as_str) == Some("stairs") => vec![
@@ -217,7 +201,7 @@ fn stair_element(from: [u8; 3], to: [u8; 3]) -> Value {
 /// A mod item's definition and, for potions, its effect-derived color.
 pub fn content_item_appearance(root: &Path, id: &str) -> Option<(Value, Option<u32>)> {
     let ns = mod_id(root)?;
-    let (want_ns, want) = split_id(id);
+    let (want_ns, want) = yog_ids::split(id);
     let want = if want_ns == "yog" {
         want.strip_prefix("potion/")?
     } else if want_ns == ns {
@@ -225,7 +209,7 @@ pub fn content_item_appearance(root: &Path, id: &str) -> Option<(Value, Option<u
     } else {
         return None;
     };
-    for file in find(&root.join("content/items"), "yitem") {
+    for file in crate::files::of(&root.join("content/items"), Format::Item) {
         let Ok(text) = std::fs::read_to_string(&file) else {
             continue;
         };
@@ -283,11 +267,11 @@ pub fn item_potion_color(file: &Path) -> Option<u32> {
 fn content_effect_color(root: &Path, reference: &str) -> Option<u32> {
     let mod_ns = mod_id(root)?;
     let id = reference.strip_prefix("@effect:").unwrap_or(reference);
-    let (ns, want) = split_id(id);
+    let (ns, want) = yog_ids::split(id);
     if ns != mod_ns {
         return None;
     }
-    for file in find(&root.join("content/effects"), "ydef") {
+    for file in crate::files::of(&root.join("content/effects"), Format::Def) {
         let Ok(text) = std::fs::read_to_string(&file) else {
             continue;
         };
@@ -315,11 +299,11 @@ fn content_effect_color(root: &Path, reference: &str) -> Option<u32> {
 /// it: the model's `layer0` (else its first texture), as png bytes.
 pub fn content_icon(root: &Path, id: &str) -> Option<Vec<u8>> {
     let ns = mod_id(root)?;
-    let (want_ns, want) = split_id(id);
+    let (want_ns, want) = yog_ids::split(id);
     if want_ns != ns {
         return None;
     }
-    let files = [find(&root.join("content"), "yitem"), find(&root.join("content"), "yblock")].concat();
+    let files = [crate::files::of(&root.join("content"), Format::Item), crate::files::of(&root.join("content"), Format::Block)].concat();
     for file in files {
         let Ok(text) = std::fs::read_to_string(&file) else { continue };
         let Some(doc) = crate::data::read_object(&text).map(Value::Object) else { continue };
@@ -506,7 +490,7 @@ pub fn texture_target(file: &Path, texture: &str) -> Option<PathBuf> {
     if texture.starts_with('#') {
         return None;
     }
-    let (ns, path) = split_id(texture);
+    let (ns, path) = yog_ids::split(texture);
     if mod_id(&root).as_deref() != Some(ns) || !plain_relative(path) {
         return None;
     }
@@ -559,7 +543,7 @@ pub fn strings(file: &Path) -> Vec<String> {
     let Some(root) = mod_root(file) else {
         return out;
     };
-    for p in find(&root.join("resources"), "yres") {
+    for p in crate::files::of(&root.join("resources"), Format::Res) {
         let Some(set) = p.file_stem().and_then(|s| s.to_str()) else {
             continue;
         };
@@ -592,7 +576,7 @@ fn definitions(file: &Path, kind: &str, built_ins: impl IntoIterator<Item = Stri
     };
     let ns = mod_id(&root).unwrap_or_else(|| "minecraft".into());
     let mut own = Vec::new();
-    for p in find(&root.join("content"), "ydef") {
+    for p in crate::files::of(&root.join("content"), Format::Def) {
         let Some(doc) = std::fs::read_to_string(&p).ok().and_then(|t| crate::data::read_object(&t)) else {
             continue;
         };
@@ -647,7 +631,7 @@ pub fn textures(file: &Path) -> Vec<TextureChoice> {
     let root = mod_root(file);
     if let Some(root) = &root {
         let res = root.join("resources");
-        for p in find(&res, "yres") {
+        for p in crate::files::of(&res, Format::Res) {
             let Some(set) = p.file_stem().and_then(|s| s.to_str()) else {
                 continue;
             };
@@ -669,7 +653,7 @@ pub fn textures(file: &Path) -> Vec<TextureChoice> {
                 }
             }
         }
-        for p in find(&res, "png") {
+        for p in crate::files::with_ext(&res, yog_ids::res::PNG.trim_start_matches('.')) {
             if let Ok(rel) = p.strip_prefix(&res) {
                 out.push(TextureChoice {
                     value: rel.to_string_lossy().replace('\\', "/"),
@@ -678,7 +662,7 @@ pub fn textures(file: &Path) -> Vec<TextureChoice> {
             }
         }
         let assets = root.join("assets");
-        for p in find(&assets, "png") {
+        for p in crate::files::with_ext(&assets, yog_ids::res::PNG.trim_start_matches('.')) {
             let Ok(rel) = p.strip_prefix(&assets) else {
                 continue;
             };
@@ -717,7 +701,7 @@ pub fn parent_model(file: &Path, id: &str) -> Result<Value, String> {
     let mut current = id.to_string();
     let mut root_parent: Option<String> = None;
     for _ in 0..16 {
-        let (ns, path) = split_id(&current);
+        let (ns, path) = yog_ids::split(&current);
         let bytes = resources
             .read(ns, &format!("models/{path}.json"))
             .ok_or_else(|| format!("model {ns}:{path} not found"))?;
