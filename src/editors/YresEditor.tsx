@@ -1,10 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
-import { convertFileSrc } from "@tauri-apps/api/core";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import {
   Button,
   DataGrid,
-  Icon,
   SearchField,
   notifyDocumentCommands,
   promptDialog,
@@ -43,8 +41,9 @@ import {
   type YresEntry,
 } from "../lang/yres";
 import "./YresEditor.css";
+import { cli } from "../cli";
+import { MediaValue, IMAGE_EXTENSIONS } from "./MediaValue";
 import { files } from "../files";
-import { useFsChanged, useWatchedFolders } from "../fsWatch";
 
 /** Another file of the same resource set — the neutral one or a culture variant: a column of texts. */
 interface Sibling {
@@ -462,36 +461,23 @@ export function YresEditor({ path, content, onChange, readOnly }: EditorProps) {
     });
   }
 
+  /** A file picked from disk, taken into the entry by the CLI (`media.import`): its `@bytes:` value. */
   async function pickFile(row: Row): Promise<string | null> {
     const filters =
       row.type === "image"
-        ? [{ name: t("PNG Images"), extensions: ["png"] }]
+        ? [{ name: t("Images"), extensions: IMAGE_EXTENSIONS }]
         : row.type === "sound"
           ? [{ name: t("Ogg Vorbis Sounds"), extensions: ["ogg"] }]
           : undefined;
     const picked = await openDialog({ defaultPath: dir, multiple: false, directory: false, filters });
     if (typeof picked !== "string") return null;
-    // Relative to this file's folder, `/`-separated — what `yog build` resolves.
-    const norm = (p: string) => p.replace(/\\/g, "/");
-    const base = norm(dir).replace(/\/+$/, "");
-    const file = norm(picked);
-    return file.startsWith(`${base}/`) ? file.slice(base.length + 1) : file;
+    try {
+      return (await cli<{ value: string }>("media.import", { file: picked })).value;
+    } catch (err) {
+      reportError(String(err));
+      return null;
+    }
   }
-
-  const filePath = (value: string) => (/^([a-zA-Z]:)?[/\\]/.test(value) ? value : `${dir}${sep}${value.replace(/\//g, sep)}`);
-  // An image changed on disk shows anew: its folder is watched, and the
-  // version in its URL (the webview caches by URL) bumped.
-  const [assetVersion, setAssetVersion] = useState(0);
-  const shownFiles = useMemo(
-    () => rows.filter((r) => r.type === "image" || r.type === "file").map((r) => filePath(String(r.value))),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [rows, dir],
-  );
-  useWatchedFolders(`yres:${path}`, shownFiles.map((f) => f.slice(0, Math.max(f.lastIndexOf("/"), f.lastIndexOf("\\")))));
-  useFsChanged((paths) => {
-    if (paths.some((p) => shownFiles.includes(p))) setAssetVersion((v) => v + 1);
-  });
-  const fileUrl = (value: string) => `${convertFileSrc(filePath(value))}?v=${assetVersion}`;
 
   // ── Keyboard and Edit menu ──────────────────────────────────────────────
 
@@ -543,20 +529,9 @@ export function YresEditor({ path, content, onChange, readOnly }: EditorProps) {
           </span>
         );
       case "image":
-        return (
-          <span className="yres-value">
-            {typeof v === "string" && v && <img className="yres-thumb" src={fileUrl(v)} alt="" draggable={false} />}
-            <span>{String(v)}</span>
-          </span>
-        );
-      case "file":
       case "sound":
-        return (
-          <span className="yres-value">
-            <Icon name="file" size={13} />
-            <span>{String(v)}</span>
-          </span>
-        );
+      case "file":
+        return <MediaValue type={row.type} value={String(v)} />;
       case "bool":
         return (
           <input

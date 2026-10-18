@@ -97,6 +97,21 @@
   border-radius: 2px;
 }
 
+.yres-play {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 18px;
+  padding: 0;
+  border: 1px solid var(--sp-border);
+  border-radius: 2px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
 .yres-check {
   margin: 0;
 }
