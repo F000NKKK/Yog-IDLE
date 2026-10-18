@@ -110,6 +110,7 @@ export const res = {
   ITEM_DIR: "item/",
   BLOCK_DIR: "block/",
   GUI_SPRITES: "gui/sprites/",
+  ATLASES: "atlases/",
   LANG: "lang/",
   BUILTIN: "builtin/",
   PNG: ".png",

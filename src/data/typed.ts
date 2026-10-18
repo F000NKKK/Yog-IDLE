@@ -41,12 +41,20 @@ export async function prefetchTyped(values: Iterable<string>): Promise<void> {
   const fresh = [...new Set(values)].filter((v) => v.startsWith(sep.TYPED) && !cache.has(v) && !asked.has(v));
   if (!fresh.length) return;
   fresh.forEach((v) => asked.add(v));
+  let answers: Answer[];
   try {
-    settle(fresh, await cli<Answer[]>("typed.classify", { values: fresh }));
-  } catch (e) {
-    settle(fresh, fresh.map(() => ({ error: String(e) })));
+    answers = await cli<Answer[]>("typed.classify", { values: fresh });
+  } catch {
+    // The CLI didn't answer (restarting, updating): asked again later, nothing kept.
+    fresh.forEach((v) => asked.delete(v));
+    setTimeout(() => void prefetchTyped(fresh), RETRY_MS);
+    return;
   }
+  settle(fresh, answers);
 }
+
+/** How long after the CLI failed to answer it's asked again. */
+const RETRY_MS = 2000;
 
 /** Every string in a value read from a file, all the way down. */
 export function stringsOf(value: unknown, out: string[] = []): string[] {

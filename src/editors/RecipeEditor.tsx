@@ -101,9 +101,7 @@ const RECIPE_FORMAT: DataFormat<Record<string, unknown>> = { read: readObject<Re
  * kind's values.
  */
 export function RecipeEditor({ path, content, onChange, readOnly }: EditorProps) {
-  // Typed values (`@item:…`) classified by the CLI come in: draw again.
-  useTyped();
-  const t = useT();
+    const t = useT();
   useSyncExternalStore(subscribeImageSources, imageSourcesVersion);
   const [kinds, reloadKinds] = useRecipeKinds(path);
   const itemRefs = useContentRefs(path, "item");
@@ -112,7 +110,9 @@ export function RecipeEditor({ path, content, onChange, readOnly }: EditorProps)
   const object = parsed?.ok ? parsed.file : null;
   const typeId = kinds && object ? typeOf(object, kinds.fields) : null;
   const kind = all.find((k) => k.id === typeId);
-  const recipe = useMemo(() => (kind && kinds && object ? recipeOf(object, kind, kinds.fields) : null), [object, kind, kinds]);
+  // Read again when typed values come in (`useTyped` above).
+  const typed = useTyped();
+  const recipe = useMemo(() => (kind && kinds && object ? recipeOf(object, kind, kinds.fields) : null), [object, kind, kinds, typed]);
   const [target, setTarget] = useState<Target>(RESULT);
   const [newKind, setNewKind] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
