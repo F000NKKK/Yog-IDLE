@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties } from "react";
+import { useTyped } from "../data/typed";
 import { cli } from "../cli";
 import { ItemHeader, ItemIcons } from "../designer/ItemIcons";
 import { Toolbar, ToolbarButton, ToolbarGroup, ToolbarInput, ToolbarLabel, ToolbarSelect, usePropertyContext, useT, type EditorProps, type PropertyDescriptor, type PropertySet, type PropertyValue, fileTypeOf } from "substrate-platform-ui";
@@ -100,6 +101,8 @@ const RECIPE_FORMAT: DataFormat<Record<string, unknown>> = { read: readObject<Re
  * kind's values.
  */
 export function RecipeEditor({ path, content, onChange, readOnly }: EditorProps) {
+  // Typed values (`@item:…`) classified by the CLI come in: draw again.
+  useTyped();
   const t = useT();
   useSyncExternalStore(subscribeImageSources, imageSourcesVersion);
   const [kinds, reloadKinds] = useRecipeKinds(path);

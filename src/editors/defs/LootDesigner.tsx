@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { useTyped } from "../../data/typed";
 import { Icon, useT, type PropertyDescriptor } from "substrate-platform-ui";
 import { refId, refProblem, refSuggestions, useContentRefs } from "../../data/contentRefs";
 import { inspectorRows, refMessage } from "../inspector";
@@ -27,6 +28,8 @@ interface LootScaleRow extends Record<string, unknown> {
 
 /** A loot table or modifier, edited in full-width rows rather than a mock preview. */
 export function LootDesigner({ path, file, update, readOnly, kindLabel }: DefProps) {
+  // Typed values (`@item:…`) classified by the CLI come in: draw again.
+  useTyped();
   const t = useT();
   const modifier = file.kind === "loot_modifier";
   const items = useContentRefs(path, "item");

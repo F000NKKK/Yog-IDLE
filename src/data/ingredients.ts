@@ -3,7 +3,7 @@
 // and as Yog Data writes it — a reference (`@item:minecraft:paper`), a tag
 // reference (`@tag:item:c:dusts`) or a list of them.
 
-import { classify } from "./yogData";
+import { classify } from "./typed";
 import { KINDS, TYPED, formatRef, formatTag } from "./yogFormat";
 import { str } from "./values";
 

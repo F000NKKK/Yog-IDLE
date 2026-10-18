@@ -4,7 +4,6 @@
  * Read and written by the CLI service (`yog serve`), never here.
  */
 
-import { sep, typed } from "../data/yogIds.generated";
 import { cli } from "../cli";
 
 export const RESOURCE_TYPES = ["string", "image", "file", "sound", "color", "number", "bool"] as const;
@@ -28,6 +27,10 @@ export interface YresEntry {
   accessor?: string;
   /** Read by the CLI: what's wrong with the name, if anything. */
   nameProblem?: string;
+  /** Read by the CLI: what's wrong with the value for its type, if anything. */
+  valueProblem?: string;
+  /** Read by the CLI: a color's value as ARGB. */
+  argb?: number;
   /** Read by the CLI (a text, the set and mod given): its translation key. */
   translationKey?: string;
 }
@@ -77,32 +80,8 @@ export function yresFileName(set: string, locale: string | null): string {
   return locale ? `${set}.${locale}.yres` : `${set}.yres`;
 }
 
-/** `#RRGGBB` / `#AARRGGBB`. */
-export function isColor(value: string): boolean {
-  return /^#([0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/.test(value);
-}
-
-/** Why `entry`'s value doesn't fit its type, or `undefined`. */
-/** What bytes are written as: `@bytes:<base64>`. */
-const BYTES = `${sep.TYPED}${typed.BYTES}${sep.NAMESPACE}`;
-
-export function valueProblem(entry: YresEntry): string | undefined {
-  const v = entry.value;
-  switch (entry.type) {
-    case "number":
-      return typeof v === "number" && Number.isFinite(v) ? undefined : "a number";
-    case "bool":
-      return typeof v === "boolean" ? undefined : "true or false";
-    case "color":
-      return typeof v === "string" && isColor(v) ? undefined : "a color, #RRGGBB or #AARRGGBB";
-    case "image":
-    case "sound":
-    case "file":
-      return typeof v === "string" && v.startsWith(BYTES) ? undefined : "bytes (@bytes:…)";
-    default:
-      return typeof v === "string" ? undefined : "a text";
-  }
-}
+/** A new color's value. */
+export const DEFAULT_COLOR = "#FFFFFFFF";
 
 /** A value of `type` converted from `value` (when the type of an entry changes, or from typed text). */
 export function coerceValue(type: ResourceType, value: string | number | boolean): string | number | boolean {
@@ -115,7 +94,8 @@ export function coerceValue(type: ResourceType, value: string | number | boolean
     case "bool":
       return typeof value === "boolean" ? value : /^(true|1|yes)$/i.test(String(value).trim());
     case "color":
-      return typeof value === "string" && isColor(value) ? value : "#FFFFFF";
+      // Kept as typed: the CLI says whether it's a color (`valueProblem`).
+      return typeof value === "string" && value.trim() ? value : DEFAULT_COLOR;
     default:
       return typeof value === "string" ? value : String(value);
   }

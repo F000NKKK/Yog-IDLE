@@ -24,7 +24,6 @@ import { useOpenFiles } from "../OpenFilesContext";
 import { reportError } from "../reportError";
 import {
   coerceValue,
-  isColor,
   isLocaleName,
   NEUTRAL_LOCALE,
   parseYres,
@@ -33,7 +32,6 @@ import {
   serializeYres,
   splitYresPath,
   textMap,
-  valueProblem,
   yresFileName,
   type ResourceType,
   type YresEntry,
@@ -63,9 +61,11 @@ interface Row {
   value: string | number | boolean;
   comment: string;
   isNew?: boolean;
-  /** From the CLI: the generated accessor and what's wrong with the name. */
+  /** From the CLI: the generated accessor, what's wrong with the name and the value, a color's ARGB. */
   accessor?: string;
   problem?: string;
+  valueProblem?: string;
+  argb?: number;
 }
 
 const NEW_ROW_ID = "__new__";
@@ -94,16 +94,16 @@ function unescapeCell(text: string): string {
 
 const columnOf = (locale: string | null) => `${CULTURE_COLUMN}${locale ?? ""}`;
 const localeLabel = (locale: string | null) => locale ?? NEUTRAL_LOCALE;
-/** `#RRGGBB` of a `#RRGGBB`/`#AARRGGBB` color — what `<input type="color">` takes. */
-const rgbOf = (color: string) => (isColor(color) ? `#${color.slice(-6)}` : "#ffffff");
-/** CSS for a `#AARRGGBB`/`#RRGGBB` color. */
-function cssColor(color: string): string {
-  if (!isColor(color)) return "transparent";
-  if (color.length === 7) return color;
-  const a = parseInt(color.slice(1, 3), 16) / 255;
-  return `#${color.slice(3)}${Math.round(a * 255)
-    .toString(16)
-    .padStart(2, "0")}`;
+const hex = (n: number, width: number) => n.toString(16).padStart(width, "0");
+const RGB_MASK = 0xffffff;
+const ALPHA_SHIFT = 24;
+const OPAQUE = 0xff;
+/** `#rrggbb` of an ARGB color (as the CLI reads it) — what `<input type="color">` takes. */
+const rgbOf = (argb: number | undefined) => `#${hex((argb ?? RGB_MASK) & RGB_MASK, 6)}`;
+/** CSS for an ARGB color; none: transparent. */
+function cssColor(argb: number | undefined): string {
+  if (argb === undefined) return "transparent";
+  return `${rgbOf(argb)}${hex(argb >>> ALPHA_SHIFT, 2)}`;
 }
 
 /**
@@ -240,7 +240,7 @@ export function YresEditor({ path, content, onChange, readOnly }: EditorProps) {
   }, [entries]);
 
   const rows = useMemo<Row[]>(() => {
-    const all = entries.map((e, index) => ({ id: `r${index}`, index, name: e.name, type: e.type, value: e.value, comment: e.comment ?? "", accessor: e.accessor, problem: e.nameProblem }));
+    const all = entries.map((e, index) => ({ id: `r${index}`, index, name: e.name, type: e.type, value: e.value, comment: e.comment ?? "", accessor: e.accessor, problem: e.nameProblem, valueProblem: e.valueProblem, argb: e.argb }));
     const needle = query.trim().toLowerCase();
     if (!needle) return all;
     return all.filter(
@@ -271,8 +271,8 @@ export function YresEditor({ path, content, onChange, readOnly }: EditorProps) {
   const valueIssue = (row: Row): string | undefined => {
     if (row.isNew) return undefined;
     if (isCulture && row.type !== "string") return t("A language file holds texts only.");
-    const problem = valueProblem({ name: row.name, type: row.type, value: row.value });
-    return problem ? t("Expected {what}.", { what: t(problem) }) : undefined;
+    // The CLI's check — the build's own.
+    return row.valueProblem;
   };
 
   const untranslated = (row: Row, s: Sibling) => !!s.entries && s.locale !== null && row.type === "string" && !s.texts.get(row.name);
@@ -526,7 +526,7 @@ export function YresEditor({ path, content, onChange, readOnly }: EditorProps) {
       case "color":
         return (
           <span className="yres-value">
-            <span className="yres-swatch" style={{ background: cssColor(String(v)) }} />
+            <span className="yres-swatch" style={{ background: cssColor(row.argb) }} />
             <span className="yres-mono">{String(v)}</span>
           </span>
         );
@@ -559,7 +559,7 @@ export function YresEditor({ path, content, onChange, readOnly }: EditorProps) {
       case "bool":
         return <ImmediateCommit run={() => commit(String(row.value !== true))} />;
       case "color":
-        return <ColorEdit value={value} initial={initial} commit={commit} cancel={cancel} />;
+        return <ColorEdit value={value} argb={row.argb} initial={initial} commit={commit} cancel={cancel} />;
       case "image":
       case "file":
       case "sound":
@@ -794,13 +794,15 @@ function CellInput({
 }
 
 /** A `#AARRGGBB` text with a color picker next to it (the picker keeps the alpha). */
-function ColorEdit({ value, initial, commit, cancel }: { value: string; initial?: string; commit: Commit; cancel: () => void }) {
+function ColorEdit({ value, argb, initial, commit, cancel }: { value: string; argb?: number; initial?: string; commit: Commit; cancel: () => void }) {
   const ref = useRef<HTMLInputElement>(null);
   const picking = useRef(false);
   const [text, setText] = useState(initial ?? value);
+  // The color as last read or picked; typed text is checked by the CLI when it's committed.
+  const [shown, setShown] = useState(argb);
   return (
     <span className="yres-cell-edit" onClick={(e) => e.stopPropagation()} onDoubleClick={(e) => e.stopPropagation()}>
-      <span className="yres-swatch" style={{ background: cssColor(text) }} />
+      <span className="yres-swatch" style={{ background: cssColor(shown) }} />
       <input
         ref={ref}
         className="sp-datagrid-cell-editor yres-mono"
@@ -818,13 +820,15 @@ function ColorEdit({ value, initial, commit, cancel }: { value: string; initial?
       <input
         type="color"
         className="yres-color-input"
-        value={rgbOf(text).toLowerCase()}
+        value={rgbOf(shown)}
         onMouseDown={() => {
           picking.current = true;
         }}
         onChange={(e) => {
-          const alpha = isColor(text) && text.length === 9 ? text.slice(1, 3) : "";
-          setText(`#${alpha}${e.target.value.slice(1)}`.toUpperCase());
+          const alpha = shown === undefined ? OPAQUE : shown >>> ALPHA_SHIFT;
+          const next = ((alpha << ALPHA_SHIFT) | parseInt(e.target.value.slice(1), 16)) >>> 0;
+          setShown(next);
+          setText(`#${hex(next, 8)}`.toUpperCase());
         }}
         onBlur={() => {
           picking.current = false;

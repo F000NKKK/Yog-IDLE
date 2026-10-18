@@ -1,4 +1,5 @@
 import { useState, useSyncExternalStore } from "react";
+import { useTyped } from "../data/typed";
 import { SearchField, beginItemDrag, useT } from "substrate-platform-ui";
 import { TOOLBOX_MIME, useActiveDesigner } from "../designer/activeDesigner";
 import { useComponents } from "../designer/components";
@@ -60,6 +61,8 @@ const GLYPHS: Record<string, string> = {
  * double-click it (or press Enter) to add it where the selection is.
  */
 export function Toolbox() {
+  // Typed values (`@item:…`) classified by the CLI come in: draw again.
+  useTyped();
   const t = useT();
   const designer = useActiveDesigner();
   const { project } = useProject();

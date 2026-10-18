@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { coerceValue, parseYres, splitYresPath, textMap, valueProblem, type YresEntry } from "./yres";
+import { coerceValue, DEFAULT_COLOR, parseYres, splitYresPath, textMap, type YresEntry } from "./yres";
 
 describe("yres", () => {
   it("splits paths by set and locale", () => {
@@ -16,18 +16,16 @@ describe("yres", () => {
     expect(p.entries.map((e) => e.translationKey)).toEqual(["item.gm.screen.title", "item.gm.cad.0_x", "x.y", "item.gm.1a"]);
   });
 
-  it("checks and converts values by type", () => {
-    const e = (type: YresEntry["type"], value: YresEntry["value"]): YresEntry => ({ name: "a", type, value });
-    expect(valueProblem(e("color", "#12345678"))).toBeUndefined();
-    expect(valueProblem(e("color", "#123"))).toBeDefined();
-    expect(valueProblem(e("number", Number.NaN))).toBeDefined();
-    expect(valueProblem(e("image", "@bytes:iVBORw0KGgo="))).toBeUndefined();
-    expect(valueProblem(e("image", "a.png"))).toBeDefined();
-    expect(valueProblem(e("file", " "))).toBeDefined();
+  it("checks values by the CLI's rule, and converts them by type", async () => {
+    const p = await parseYres('{ "a": { "type": "color", "value": "#123" }, "b": { "type": "color", "value": "#80FF0000" }, "n": 3 }');
+    if (!p.ok) throw new Error(p.error);
+    expect(p.entries[0].valueProblem).toBeDefined();
+    expect(p.entries[1]).toMatchObject({ argb: 0x80ff0000 });
+    expect(p.entries[1].valueProblem).toBeUndefined();
     expect(coerceValue("number", " 4 ")).toBe(4);
     expect(coerceValue("number", "")).toBe(0);
     expect(coerceValue("bool", "Yes")).toBe(true);
-    expect(coerceValue("color", "red")).toBe("#FFFFFF");
+    expect(coerceValue("color", "")).toBe(DEFAULT_COLOR);
     expect(coerceValue("string", 3)).toBe("3");
   });
 

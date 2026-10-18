@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useTyped } from "../../data/typed";
 import { cli } from "../../cli";
 import { useT, type PropertyDescriptor } from "substrate-platform-ui";
 import { refId, refProblem, refSuggestions, useContentRefs } from "../../data/contentRefs";
@@ -42,6 +43,8 @@ interface Modifier extends Record<string, unknown> {
  * tooltip lists them (+20% Grid Zoom) — blue for the good, red for the bad.
  */
 export function EffectDesigner({ path, file, update, readOnly, kindLabel }: DefProps) {
+  // Typed values (`@item:…`) classified by the CLI come in: draw again.
+  useTyped();
   const t = useT();
   useDesignResources(modRootOf(path));
   const attributes = useContentRefs(path, "attribute");

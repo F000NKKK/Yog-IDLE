@@ -1,4 +1,5 @@
 import { GAME_NAMESPACE, TYPED } from "../data/yogFormat";
+import { useTyped } from "../data/typed";
 import { cli } from "../cli";
 import { kind as KIND, sep } from "../data/yogIds.generated";
 import { cropFrame, pasteFrame, sameAnimation, stillAnimation, type TextureAnimation } from "../content/animation";
@@ -325,6 +326,8 @@ const ARM_TEMPLATE = (texture: string): Model => ({
  * for any file; undo/redo steps over the file's text; F7 opens the JSON.
  */
 export function ContentEditor({ path, content, onChange, readOnly, contentVersion }: EditorProps) {
+  // Typed values (`@item:…`) classified by the CLI come in: draw again.
+  useTyped();
   const t = useT();
   const { tabs, setView, setSideState } = useOpenFiles();
   const kind = kindOf(path) ?? "block";

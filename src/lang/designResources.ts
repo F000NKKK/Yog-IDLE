@@ -7,7 +7,7 @@
  */
 import { cli } from "../cli";
 import { file } from "../data/yogIds.generated";
-import { classify, type Typed } from "../data/yogData";
+import { classify, prefetchTyped, type Typed } from "../data/typed";
 import { useEffect, useSyncExternalStore } from "react";
 import { resolvedLocale, type DirEntry } from "substrate-platform-ui";
 import type { YuiNode } from "../designer/yui";
@@ -70,6 +70,7 @@ async function load(root: string) {
     const { set, locale } = splitYresPath(file.path);
     const parsed = await parseYres(text, { set, mod: modId });
     if (!parsed.ok) continue;
+    await prefetchTyped(parsed.entries.map((e) => String(e.value)));
     const entry = sets.get(set) ?? { relDir: file.rel, neutral: [], cultures: new Map() };
     if (locale === null) {
       entry.neutral = parsed.entries;

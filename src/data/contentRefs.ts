@@ -8,7 +8,7 @@ import { useCallback, useEffect, useState } from "react";
 import { cli } from "../cli";
 import { fileTypeOf } from "substrate-platform-ui";
 import { useFsChanged } from "../fsWatch";
-import { classify } from "./yogData";
+import { classify } from "./typed";
 import { fileTypeId, formats } from "../yogFileTypes";
 
 /** One of the mod's own: its id and the file that defines it. */
@@ -124,6 +124,8 @@ export function refProblem(value: string, kind: string, c: RefChoices, tags = fa
   } catch {
     return { t: "syntax", kind };
   }
+  // Not classified yet: nothing to say until it is.
+  if (v.t === "pending") return null;
   if (tags && v.t === "tag" && v.kind === kind) return null;
   if (v.t !== "ref" || v.kind !== kind) return { t: "syntax", kind };
   if (c === NO_REFS) return null;

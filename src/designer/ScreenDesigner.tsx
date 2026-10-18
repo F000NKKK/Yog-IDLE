@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react";
+import { useTyped } from "../data/typed";
 import { cli } from "../cli";
 import { invoke } from "@tauri-apps/api/core";
 import {
@@ -265,6 +266,8 @@ function nodeLabel(n: YuiNode): string {
  * screen or component on the GUI canvas.
  */
 export function ScreenDesigner(props: ScreenDesignerProps) {
+  // Typed values (`@item:…`) classified by the CLI come in: draw again.
+  useTyped();
   return isBookPage(props.content) ? <BookPagePreview path={props.path} content={props.content} /> : <CanvasDesigner {...props} />;
 }
 

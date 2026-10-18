@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useTyped } from "../data/typed";
 import { cli } from "../cli";
 import { Toolbar, ToolbarButton, ToolbarGroup, ToolbarSelect, pt, usePropertyContext, useT, type EditorProps, type PropertyDescriptor, type PropertySet, type PropertyValue, Spacer } from "substrate-platform-ui";
 import { ItemHeader } from "../designer/ItemIcons";
@@ -62,6 +63,8 @@ interface Rendered {
  * selected in both. Edits show at once.
  */
 export function BookEditor({ path, content, onChange, readOnly }: EditorProps) {
+  // Typed values (`@item:…`) classified by the CLI come in: draw again.
+  useTyped();
   const t = useT();
   useSyncExternalStore(subscribeImageSources, imageSourcesVersion);
   // `@Book.title` texts shown from the mod's .yres files, as the book shows them.

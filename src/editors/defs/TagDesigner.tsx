@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { useTyped } from "../../data/typed";
 import { Icon, ToolbarGroup, ToolbarSelect, useT, type PropertyDescriptor } from "substrate-platform-ui";
 import { refProblem, refSuggestions, useContentRefs } from "../../data/contentRefs";
 import { inspectorRows, refMessage } from "../inspector";
@@ -9,6 +10,8 @@ import { ItemIcon } from "./GamePanel";
 /** Kinds of content drawn as their item's icon. */
 const ICONS = new Set(["item", "block"]);
 export function TagDesigner({ path, file, update, readOnly, kindLabel }: DefProps) {
+  // Typed values (`@item:…`) classified by the CLI come in: draw again.
+  useTyped();
   const t = useT();
   const of = typeof file.of === "string" ? file.of : "item";
   const refs = useContentRefs(path, of);

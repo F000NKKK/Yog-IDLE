@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useTyped } from "../../data/typed";
 import { cli } from "../../cli";
 import { Icon, IconButton, SelectField, TextField, ToolbarCheck, ToolbarGroup, ToolbarSelect, useT, type PropertyDescriptor } from "substrate-platform-ui";
 import { qualify, refId, refProblem, refSuggestions, useContentDefs, useContentRefs, type RefChoices } from "../../data/contentRefs";
@@ -36,6 +37,8 @@ interface Shown extends AdvNode {
  * on another opens its file; hovering one shows its title and description.
  */
 export function AdvancementDesigner({ path, file, update, readOnly, kindLabel }: DefProps) {
+  // Typed values (`@item:…`) classified by the CLI come in: draw again.
+  useTyped();
   const t = useT();
   useDesignResources(modRootOf(path));
   const defs = useContentDefs(path, "advancement");

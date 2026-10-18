@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useTyped } from "../data/typed";
 import { cli } from "../cli";
 import { KeyHints, Toolbar, ToolbarButton, ToolbarCheck, ToolbarGroup, ToolbarSelect, usePropertyContext, useT, type EditorProps, type KeyHint, type PropertyDescriptor } from "substrate-platform-ui";
 import { ModelViewport, type ViewOverlay } from "../body/ModelViewport";
@@ -57,6 +58,8 @@ const attributeName = (id: string) => id.replace(/^minecraft:/, "").replace(/^ge
  * platform's.
  */
 export function EntityEditor({ path, content, onChange, readOnly }: EditorProps) {
+  // Typed values (`@item:…`) classified by the CLI come in: draw again.
+  useTyped();
   const t = useT();
   const { parsed, update } = useDataFile(content, onChange, ENTITY_FORMAT, readOnly);
   const file = useMemo<EntityFile>(() => (parsed?.ok ? parsed.file : {}), [parsed]);
