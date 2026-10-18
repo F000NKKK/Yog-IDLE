@@ -1,21 +1,18 @@
 /* The definition designers' own pieces, in GUI pixels × --k. */
 
-/* ── Advancements: a tab of the game's advancements screen ─────────────── */
-.adv-tab {
+/* ── Advancements: the game's advancements window ─────────────────────── */
+.adv-window {
   position: relative;
-  background-color: #3a3a3a;
   image-rendering: pixelated;
 }
 
-.adv-title {
+/* The tab's view: the root's background tiled (black without one), the tree dragged inside. */
+.adv-view {
   position: absolute;
-  inset: 0 0 auto 0;
-  display: flex;
-  align-items: center;
-  background: #c6c6c6;
-  color: #404040;
-  border-bottom: calc(var(--k) * 1px) solid #555;
-  z-index: 2;
+  overflow: hidden;
+  background-color: #000;
+  background-repeat: repeat;
+  cursor: grab;
 }
 
 .adv-lines {
@@ -26,67 +23,15 @@
 
 .adv-node {
   position: absolute;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   padding: 0;
-  box-sizing: border-box;
-  border: calc(var(--k) * 2px) solid #1b1b1b;
-  background: #8a8a8a;
-  box-shadow: inset calc(var(--k) * 1px) calc(var(--k) * 1px) 0 #c0c0c0, inset calc(var(--k) * -1px) calc(var(--k) * -1px) 0 #555;
-  cursor: pointer;
-  z-index: 1;
-}
-
-.adv-node.frame-goal {
-  border-radius: 40%;
-}
-
-.adv-node.frame-challenge {
   border: 0;
   background: transparent;
-  box-shadow: none;
+  cursor: pointer;
 }
 
-.adv-node.frame-challenge::before,
-.adv-node.frame-challenge::after {
-  content: "";
+.adv-icon {
   position: absolute;
-  clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
   pointer-events: none;
-}
-
-.adv-node.frame-challenge::before {
-  inset: 0;
-  background: #1b1b1b;
-}
-
-.adv-node.frame-challenge::after {
-  inset: calc(var(--k) * 2px);
-  background: #8a8a8a;
-}
-
-.adv-node.frame-challenge.is-this {
-  background: transparent;
-  box-shadow: none;
-}
-
-.adv-node.frame-challenge.is-this::before {
-  background: #8a6414;
-}
-
-.adv-node.frame-challenge.is-this::after {
-  background: #e6b33a;
-}
-
-.adv-node.frame-challenge .game-icon {
-  position: relative;
-  z-index: 1;
-}
-
-.adv-node.is-this {
-  background: #e6b33a;
-  box-shadow: inset calc(var(--k) * 1px) calc(var(--k) * 1px) 0 #ffe08a, inset calc(var(--k) * -1px) calc(var(--k) * -1px) 0 #8a6414;
 }
 
 .adv-node.is-outside {
@@ -94,8 +39,15 @@
   cursor: default;
 }
 
-.adv-node:hover:not(.is-this):not(.is-outside) {
-  filter: brightness(1.2);
+/* The window's frame over the view (its middle is see-through), the title over both. */
+.adv-frame {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.adv-window > .game-title {
+  z-index: 1;
 }
 
 .adv-tooltip {

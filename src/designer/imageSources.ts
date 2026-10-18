@@ -59,12 +59,17 @@ export function imageSources(path: string): ImageSourceCandidate[] {
   return [];
 }
 
-function preview(path: string, source: string): Preview | undefined {
-  const key = `${path}\n${source}`;
+/** The square previews' side, pixels. */
+const PREVIEW_SIZE = 32;
+/** The size that asks for an image at its own size (`designer::images::NATURAL_SIZE`). */
+const NATURAL_SIZE = 0;
+
+function preview(path: string, source: string, size = PREVIEW_SIZE): Preview | undefined {
+  const key = `${path}\n${source}\n${size}`;
   if (previews.has(key)) return previews.get(key);
   if (!pending.has(key)) {
     pending.add(key);
-    invoke<Preview>("yui_image_preview", { path, source, size: 32 })
+    invoke<Preview>("yui_image_preview", { path, source, size })
       .then((p) => previews.set(key, p))
       .catch(() => previews.set(key, { url: null, alias: null }))
       .finally(() => {
@@ -83,6 +88,15 @@ function preview(path: string, source: string): Preview | undefined {
  */
 export function imagePreview(path: string, source: string): string | null | undefined {
   const p = preview(path, source);
+  return p === undefined ? undefined : p.url;
+}
+
+/**
+ * Any image reference drawn at its own size, pixel for pixel (a sprite as
+ * the game has it) — `undefined` until loaded, `null` if it can't be drawn.
+ */
+export function imageNatural(path: string, source: string): string | null | undefined {
+  const p = preview(path, source, NATURAL_SIZE);
   return p === undefined ? undefined : p.url;
 }
 

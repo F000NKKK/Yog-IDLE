@@ -503,20 +503,29 @@ pub fn preview(path: &Path, source: &str, size: u32) -> Preview {
     Preview { url, alias }
 }
 
+/// The preview size that draws an image at its own size.
+pub const NATURAL_SIZE: u32 = 0;
+/// The smallest and largest square preview.
+const MIN_PREVIEW: u32 = 8;
+const MAX_PREVIEW: u32 = 256;
+/// An item icon's side, the size of a source that doesn't say its own.
+const ICON_SIDE: f32 = 16.0;
+
 fn draw_preview(path: &Path, source: &str, size: u32) -> Option<String> {
     use base64::Engine as _;
     let root = super::mod_root(path);
     set_document(root.as_deref());
-    let size = size.clamp(8, 256);
     let res = Resources::for_mod(root.as_deref());
-    let mut c = Canvas::new(size, size, 1, &res);
     let source = resolve_mod(source);
-    let (nw, nh) = source_size(&source).unwrap_or((16.0, 16.0));
-    let (dest, _) = fit(
-        Stretch::Uniform,
-        Vec2::new(nw, nh),
-        Rect::new(0.0, 0.0, size as f32, size as f32),
-    );
+    let (nw, nh) = source_size(&source).unwrap_or((ICON_SIDE, ICON_SIDE));
+    // 0: the image's own size, pixel for pixel; else fitted in a square of `size`.
+    let (mut c, dest) = if size == NATURAL_SIZE {
+        (Canvas::new(nw.ceil() as u32, nh.ceil() as u32, 1, &res), Rect::new(0.0, 0.0, nw, nh))
+    } else {
+        let size = size.clamp(MIN_PREVIEW, MAX_PREVIEW);
+        let (dest, _) = fit(Stretch::Uniform, Vec2::new(nw, nh), Rect::new(0.0, 0.0, size as f32, size as f32));
+        (Canvas::new(size, size, 1, &res), dest)
+    };
     let [x, y, w, h] = [dest.x, dest.y, dest.w, dest.h];
     draw(&mut c, &source, [x, y, w, h], [0.0; 4], 0xFFFF_FFFF);
     let png = c.png().ok()?;
@@ -529,6 +538,21 @@ fn draw_preview(path: &Path, source: &str, size: u32) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The advancements window and frames, from the local game's files.
+    #[test]
+    #[ignore = "needs a Minecraft client jar"]
+    fn advancement_sprites_draw_at_their_size() {
+        let hex = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../HexMod-Yog/content/thehexbook.ybook");
+        for (source, w, h) in [("sprite:advancement_window", 252, 140), ("sprite:advancement/goal_obtained", 26, 26)] {
+            let url = draw_preview(&hex, source, NATURAL_SIZE).expect(source);
+            use base64::Engine as _;
+            let png = base64::engine::general_purpose::STANDARD.decode(url.trim_start_matches("data:image/png;base64,")).unwrap();
+            let img = super::super::assets::decode_png(&png).unwrap();
+            assert_eq!((img.width, img.height), (w, h), "{source}");
+            assert!(img.rgba.chunks(4).any(|p| p[3] > 0), "{source} drew something");
+        }
+    }
 
     #[test]
     fn attributes_parse_like_yog_build() {
