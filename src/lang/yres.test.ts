@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { accessorName, coerceValue, splitYresPath, textMap, translationKey, valueProblem, type YresEntry } from "./yres";
+import { coerceValue, parseYres, splitYresPath, textMap, valueProblem, type YresEntry } from "./yres";
 
 describe("yres", () => {
   it("splits paths by set and locale", () => {
@@ -8,12 +8,12 @@ describe("yres", () => {
     expect(splitYresPath("res/My.Set.yres").set).toBe("My.Set");
   });
 
-  it("names accessors and keys like `yog build`", () => {
-    expect(accessorName("screen.title")).toBe("screen_title");
-    expect(accessorName("ModName")).toBe("mod_name");
-    expect(translationKey("Items", { name: "ruby" }, "gm")).toBe("item.gm.ruby");
-    expect(translationKey("Gui", { name: "title" }, "gm")).toBe("gm.title");
-    expect(translationKey("Items", { name: "ruby", key: "x.y" }, "gm")).toBe("x.y");
+  it("gets names, accessors and keys from the CLI, as `yog build` makes them", async () => {
+    const p = await parseYres('{ "screen.title": "a", "cad.0_x": "b", "ruby": { "type": "string", "value": "c", "key": "x.y" }, "1a": "d" }', { set: "Items", mod: "gm" });
+    if (!p.ok) throw new Error(p.error);
+    expect(p.entries.map((e) => e.accessor)).toEqual(["screen_title", "cad_0_x", "ruby", "1a"]);
+    expect(p.entries.map((e) => !!e.nameProblem)).toEqual([false, false, false, true]);
+    expect(p.entries.map((e) => e.translationKey)).toEqual(["item.gm.screen.title", "item.gm.cad.0_x", "x.y", "item.gm.1a"]);
   });
 
   it("checks and converts values by type", () => {

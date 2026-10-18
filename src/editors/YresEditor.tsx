@@ -23,10 +23,8 @@ import {
 import { useOpenFiles } from "../OpenFilesContext";
 import { reportError } from "../reportError";
 import {
-  accessorName,
   coerceValue,
   isColor,
-  isEntryName,
   isLocaleName,
   NEUTRAL_LOCALE,
   parseYres,
@@ -65,6 +63,9 @@ interface Row {
   value: string | number | boolean;
   comment: string;
   isNew?: boolean;
+  /** From the CLI: the generated accessor and what's wrong with the name. */
+  accessor?: string;
+  problem?: string;
 }
 
 const NEW_ROW_ID = "__new__";
@@ -233,13 +234,13 @@ export function YresEditor({ path, content, onChange, readOnly }: EditorProps) {
     const accessors = new Map<string, number>();
     for (const e of entries) {
       counts.set(e.name, (counts.get(e.name) ?? 0) + 1);
-      accessors.set(accessorName(e.name), (accessors.get(accessorName(e.name)) ?? 0) + 1);
+      if (e.accessor) accessors.set(e.accessor, (accessors.get(e.accessor) ?? 0) + 1);
     }
     return { counts, accessors };
   }, [entries]);
 
   const rows = useMemo<Row[]>(() => {
-    const all = entries.map((e, index) => ({ id: `r${index}`, index, name: e.name, type: e.type, value: e.value, comment: e.comment ?? "" }));
+    const all = entries.map((e, index) => ({ id: `r${index}`, index, name: e.name, type: e.type, value: e.value, comment: e.comment ?? "", accessor: e.accessor, problem: e.nameProblem }));
     const needle = query.trim().toLowerCase();
     if (!needle) return all;
     return all.filter(
@@ -254,13 +255,14 @@ export function YresEditor({ path, content, onChange, readOnly }: EditorProps) {
     [readOnly]
   );
 
-  const nameProblem = (row: Pick<Row, "name" | "isNew">): string | undefined => {
+  const nameProblem = (row: Pick<Row, "name" | "isNew" | "accessor" | "problem">): string | undefined => {
     if (row.isNew) return undefined;
     if (row.name.trim() === "") return t("The name can't be empty.");
-    if (!isEntryName(row.name)) return t("A name is letters, digits and _, optionally dotted (screen.title), not starting with a digit.");
+    // What the CLI found wrong with the name (the build's own rule).
+    if (row.problem) return row.problem;
     if ((nameCounts.counts.get(row.name) ?? 0) > 1) return t("Another resource has the same name.");
-    if ((nameCounts.accessors.get(accessorName(row.name)) ?? 0) > 1)
-      return t("Another resource has the same accessor name ({name}).", { name: accessorName(row.name) });
+    if (row.accessor && (nameCounts.accessors.get(row.accessor) ?? 0) > 1)
+      return t("Another resource has the same accessor name ({name}).", { name: row.accessor });
     if (isCulture && neutral?.entries && !neutral.entries.some((e) => e.name === row.name))
       return t("The neutral file {file} has no resource of this name.", { file: yresFileName(set, null) });
     return undefined;

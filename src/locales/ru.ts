@@ -1106,8 +1106,6 @@ registerTranslations("ru", {
   "Color": "Цвет",
   "Boolean": "Логическое",
   "The name can't be empty.": "Имя не может быть пустым.",
-  "A name is letters, digits and _, optionally dotted (screen.title), not starting with a digit.":
-    "Имя состоит из букв, цифр и _, может содержать точки (screen.title) и не начинается с цифры.",
   "Another resource has the same name.": "Другой ресурс имеет такое же имя.",
   "Another resource has the same accessor name ({name}).": "Другой ресурс имеет такое же имя метода доступа ({name}).",
   "The neutral file {file} has no resource of this name.": "В нейтральном файле {file} нет ресурса с таким именем.",

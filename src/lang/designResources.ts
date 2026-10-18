@@ -11,7 +11,7 @@ import { classify, type Typed } from "../data/yogData";
 import { useEffect, useSyncExternalStore } from "react";
 import { resolvedLocale, type DirEntry } from "substrate-platform-ui";
 import type { YuiNode } from "../designer/yui";
-import { parseYres, serializeYres, splitYresPath, translationKey, type YresEntry } from "./yres";
+import { parseYres, serializeYres, splitYresPath, type YresEntry } from "./yres";
 import { files, readModId } from "../files";
 
 interface ResourceSet {
@@ -67,9 +67,9 @@ async function load(root: string) {
     } catch {
       continue;
     }
-    const parsed = await parseYres(text);
-    if (!parsed.ok) continue;
     const { set, locale } = splitYresPath(file.path);
+    const parsed = await parseYres(text, { set, mod: modId });
+    if (!parsed.ok) continue;
     const entry = sets.get(set) ?? { relDir: file.rel, neutral: [], cultures: new Map() };
     if (locale === null) {
       entry.neutral = parsed.entries;
@@ -138,8 +138,8 @@ function lookup(ref: string): { set: ResourceSet; entry: YresEntry } | undefined
     if (set && entry) return { set, entry };
   }
   // Any translation key: the text entry that has it.
-  for (const [name, set] of loaded.sets) {
-    const entry = set.neutral.find((e) => e.type === "string" && translationKey(name, e, loaded!.modId) === ref);
+  for (const set of loaded.sets.values()) {
+    const entry = set.neutral.find((e) => e.translationKey === ref);
     if (entry) return { set, entry };
   }
   return undefined;
