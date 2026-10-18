@@ -110,6 +110,8 @@ export const res = {
   ITEM_DIR: "item/",
   BLOCK_DIR: "block/",
   GUI_SPRITES: "gui/sprites/",
+  LANG: "lang/",
+  BUILTIN: "builtin/",
   PNG: ".png",
   SVG: ".svg",
   JSON: ".json",
@@ -141,6 +143,15 @@ export const game = {
   THE_END: "minecraft:the_end",
   MISSING_TEXTURE: "minecraft:missingno",
   WRITTEN_BOOK: "minecraft:written_book",
+  BOOK: "minecraft:book",
+  LOCALE: "en_us",
+} as const;
+
+export const external = {
+  ITEMS: "items",
+  BLOCKS: "blocks",
+  ENTITIES: "entities",
+  RECIPES: "recipes",
 } as const;
 
 export const yui = {
