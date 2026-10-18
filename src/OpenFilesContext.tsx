@@ -1,8 +1,8 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ComponentType, type ReactNode } from "react";
+import { cli } from "./cli";
 import { openWithPicker } from "./OpenWithPicker";
 import { invalidateDesignResources } from "./lang/designResources";
 import { setSavedFileDiagnostics } from "./diagnostics/buildDiagnostics";
-import { invoke } from "@tauri-apps/api/core";
 import {
   editorProviderById,
   editorProviderIcon,
@@ -233,7 +233,7 @@ async function askToSave(names: string[]): Promise<string> {
 function regenerateScreen(path: string) {
   const fail = (error: string) =>
     notify({ level: "warn", message: t("Couldn't generate the code for {name}: {error}", { name: fileNameOf(path), error }) });
-  invoke<{ error: string | null; log: string; root: string }>("yui_codegen", { path })
+  cli<{ error: string | null; log: string; root: string }>("yui_codegen", { path })
     .then(({ error, log, root }) => {
       setSavedFileDiagnostics(path, root, log);
       if (error) fail(error);

@@ -27,7 +27,6 @@ use std::time::Duration;
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager, State};
 
-use crate::manifest;
 
 #[cfg(target_os = "linux")]
 mod trace;
@@ -97,7 +96,7 @@ impl DebugStoppedEvent {
 
 /// `[mod] id` of the mod at `root`.
 fn mod_id(root: &Path) -> Result<String, String> {
-    manifest::mod_id(root).ok_or_else(|| format!("{} has no [mod] {}", yog_ids::file::MANIFEST, manifest::MOD_ID))
+    crate::cli::mod_id(root).ok_or_else(|| format!("{} has no mod id", yog_ids::file::MANIFEST))
 }
 
 /// How long a write to the control socket may block.

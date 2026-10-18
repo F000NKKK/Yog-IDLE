@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { invoke } from "@tauri-apps/api/core";
+import { cli } from "../cli";
 import { useT } from "substrate-platform-ui";
 
 /** A `.yui` whose root is a book page component (`<Component … book_page="…">`). */
@@ -31,7 +31,7 @@ export function BookPagePreview({ path, content }: { path: string; content: stri
   useEffect(() => {
     const n = ++seq.current;
     const timer = setTimeout(() => {
-      invoke<Rendered>("book_page_preview", {
+      cli<Rendered>("book_page_preview", {
         args: { path, text: content, screenW: SCREEN_W, screenH: SCREEN_H, scale: SCALE, action: null, locale: null },
       })
         .then((r) => n === seq.current && setRendered(r))
@@ -39,7 +39,7 @@ export function BookPagePreview({ path, content }: { path: string; content: stri
     }, 150);
     return () => clearTimeout(timer);
   }, [path, content]);
-  useEffect(() => () => void invoke("book_designer_close", { path }).catch(() => {}), [path]);
+  useEffect(() => () => void cli("book_designer_close", { path }).catch(() => {}), [path]);
 
   return (
     <div className="book-page-preview">

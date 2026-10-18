@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { invoke } from "@tauri-apps/api/core";
+import { cli } from "../../cli";
 import { useT, type PropertyDescriptor } from "substrate-platform-ui";
 import { refId, refProblem, refSuggestions, useContentRefs } from "../../data/contentRefs";
 import { designText, useDesignResources } from "../../lang/designResources";
@@ -126,7 +126,7 @@ function useTexture(path: string, texture: string): string | null {
   const [url, setUrl] = useState<string | null>(null);
   useEffect(() => {
     let live = true;
-    invoke<{ url: string }>("content_texture", { path, texture }).then(
+    cli<{ url: string }>("content_texture", { path, texture }).then(
       (x) => live && setUrl(x.url),
       () => live && setUrl(null),
     );

@@ -95,6 +95,7 @@ export const project = {
   RESOURCES: "resources",
   CONTENT: "content",
   SRC: "src",
+  BUILD: ".yog-build",
 } as const;
 
 export const program = {

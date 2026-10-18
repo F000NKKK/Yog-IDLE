@@ -11,23 +11,14 @@ use substrate_platform::{
 use tauri::{AppHandle, Emitter, Manager, State};
 
 mod cli;
-mod content;
-mod data;
-mod designer;
 mod environment;
 mod events;
-mod files;
 mod git;
 mod manifest;
-mod mod_ui;
 mod project_properties;
 mod properties;
-pub mod recipe_kinds;
-mod refs;
 mod search;
 mod symbols;
-mod worldgen;
-mod yui;
 
 mod debugger;
 
@@ -97,45 +88,6 @@ impl From<substrate_platform::DirEntryInfo> for DirEntryOut {
             },
         }
     }
-}
-
-/// The kinds of recipe the recipe editor offers for `path`: the game's it
-/// lays out, and the mod's own (`.ydef` `recipe_kind`).
-#[tauri::command]
-async fn recipe_kinds(path: String) -> recipe_kinds::Kinds {
-    tauri::async_runtime::spawn_blocking(move || recipe_kinds::all(designer::mod_root(Path::new(&path)).as_deref()))
-        .await
-        .unwrap_or_else(|_| recipe_kinds::all(None))
-}
-
-/// Makes a new kind of recipe in the mod of `path` — `content/<name>.ydef`
-/// (its slots and values) and `src/ui/<name>_layout.yui` (how it's shown);
-/// the layout's path, to open in the designer.
-#[tauri::command]
-fn recipe_kind_create(path: String, name: String) -> Result<String, String> {
-    let root = designer::mod_root(Path::new(&path)).ok_or("not inside a mod")?;
-    let name = name.trim();
-    if name.is_empty() || !name.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '_') {
-        return Err("a kind's name: a-z, 0-9 and _".into());
-    }
-    let file = root.join("content").join(format!("{name}.ydef"));
-    let layout = root.join("src").join("ui").join(format!("{name}_layout.yui"));
-    for f in [&file, &layout] {
-        if f.exists() {
-            return Err(format!("{} exists", f.display()));
-        }
-    }
-    for (f, text) in [(&file, recipe_kinds::template(name)), (&layout, recipe_kinds::layout_template(name))] {
-        std::fs::create_dir_all(f.parent().unwrap_or(&root)).map_err(|e| e.to_string())?;
-        std::fs::write(f, text).map_err(|e| e.to_string())?;
-    }
-    Ok(layout.to_string_lossy().into_owned())
-}
-
-/// The terrain of a `.ydef` dimension, from above and in a slice.
-#[tauri::command]
-fn worldgen_preview(text: String, size: u32) -> Result<worldgen::Preview, String> {
-    worldgen::render(&text, size)
 }
 
 #[tauri::command]
@@ -627,73 +579,6 @@ async fn format_supported(path: String) -> bool {
     .unwrap_or(false)
 }
 
-/// Regenerates a saved `.yui` screen's generated `.g.rs` (see `yui.rs`).
-#[tauri::command]
-async fn yui_codegen(state: State<'_, AppState>, path: String) -> Result<yui::Codegen, String> {
-    validate_within_roots(&state, Path::new(&path))?;
-    tauri::async_runtime::spawn_blocking(move || yui::codegen(&path))
-        .await
-        .map_err(|e| e.to_string())?
-}
-
-/// A texture as a content file names it, as a data URL.
-#[tauri::command]
-async fn content_texture(
-    state: State<'_, AppState>,
-    path: String,
-    texture: String,
-) -> Result<content::Texture, String> {
-    validate_within_roots(&state, Path::new(&path))?;
-    tauri::async_runtime::spawn_blocking(move || content::texture(Path::new(&path), &texture))
-        .await
-        .map_err(|e| e.to_string())?
-}
-
-/// Writes a painted texture of a content file's mod (`png`: base64 PNG
-/// bytes) as its picture (see `content::write_texture`) — never outside the
-/// mod or the open project. Returns the written path.
-#[tauri::command]
-async fn content_save_texture(
-    state: State<'_, AppState>,
-    path: String,
-    texture: String,
-    png: String,
-) -> Result<String, String> {
-    validate_within_roots(&state, Path::new(&path))?;
-    let (root, _) = content::own_texture(Path::new(&path), &texture)
-        .ok_or_else(|| format!("{texture} isn't a texture of this mod"))?;
-    validate_within_roots(&state, &root)?;
-    use base64::Engine as _;
-    let bytes = base64::engine::general_purpose::STANDARD
-        .decode(png.as_bytes())
-        .map_err(|e| e.to_string())?;
-    tauri::async_runtime::spawn_blocking(move || {
-        content::write_texture(Path::new(&path), &texture, bytes).map(|p| p.to_string_lossy().into_owned())
-    })
-    .await
-    .map_err(|e| e.to_string())?
-}
-
-/// Sets a texture's animation in its `.ytexture` (`None`: still) — never
-/// outside the mod.
-#[tauri::command]
-async fn content_save_texture_animation(
-    state: State<'_, AppState>,
-    path: String,
-    texture: String,
-    animation: Option<content::Animation>,
-) -> Result<String, String> {
-    validate_within_roots(&state, Path::new(&path))?;
-    if let Some((root, _)) = content::own_texture(Path::new(&path), &texture) {
-        validate_within_roots(&state, &root)?;
-    }
-    tauri::async_runtime::spawn_blocking(move || {
-        content::write_animation(Path::new(&path), &texture, animation.as_ref()).map(|p| p.to_string_lossy().into_owned())
-    })
-    .await
-    .map_err(|e| e.to_string())?
-}
-
 /// Calls `method` of the CLI service (`yog serve`) — how the front end reads
 /// and writes every Yog format.
 #[tauri::command]
@@ -701,254 +586,6 @@ async fn cli(method: String, params: serde_json::Value) -> Result<serde_json::Va
     tauri::async_runtime::spawn_blocking(move || cli::call(&method, params))
         .await
         .map_err(|e| serde_json::Value::from(e.to_string()))?
-}
-
-/// The id of the mod a content file is in (its own textures' namespace).
-#[tauri::command]
-fn content_mod_id(path: String) -> Option<String> {
-    designer::mod_root(Path::new(&path)).and_then(|root| cli::mod_id(&root))
-}
-
-/// The texture picker's choices for a content file.
-#[tauri::command]
-async fn content_textures(
-    state: State<'_, AppState>,
-    path: String,
-) -> Result<Vec<content::TextureChoice>, String> {
-    validate_within_roots(&state, Path::new(&path))?;
-    tauri::async_runtime::spawn_blocking(move || content::textures(Path::new(&path)))
-        .await
-        .map_err(|e| e.to_string())
-}
-
-/// The name/tooltip picker's choices for a content file.
-#[tauri::command]
-async fn content_strings(state: State<'_, AppState>, path: String) -> Result<Vec<String>, String> {
-    validate_within_roots(&state, Path::new(&path))?;
-    tauri::async_runtime::spawn_blocking(move || content::strings(Path::new(&path)))
-        .await
-        .map_err(|e| e.to_string())
-}
-
-/// The sound groups a block of the mod at `path` can name.
-#[tauri::command]
-async fn content_sound_groups(state: State<'_, AppState>, path: String) -> Result<Vec<String>, String> {
-    validate_within_roots(&state, Path::new(&path))?;
-    tauri::async_runtime::spawn_blocking(move || content::sound_groups(Path::new(&path)))
-        .await
-        .map_err(|e| e.to_string())
-}
-
-/// The tool materials an item of the mod at `path` can name.
-#[tauri::command]
-async fn content_tool_materials(state: State<'_, AppState>, path: String) -> Result<Vec<String>, String> {
-    validate_within_roots(&state, Path::new(&path))?;
-    tauri::async_runtime::spawn_blocking(move || content::tool_materials(Path::new(&path)))
-        .await
-        .map_err(|e| e.to_string())
-}
-
-/// The armor materials an item of the mod at `path` can name.
-#[tauri::command]
-async fn content_armor_materials(state: State<'_, AppState>, path: String) -> Result<Vec<String>, String> {
-    validate_within_roots(&state, Path::new(&path))?;
-    tauri::async_runtime::spawn_blocking(move || content::armor_materials(Path::new(&path)))
-        .await
-        .map_err(|e| e.to_string())
-}
-
-/// What `@<kind>:` may name in the file at `path`: the mod's own content,
-/// the other mods' ids it declares and the game's (`refs::refs`).
-#[tauri::command]
-async fn content_refs(state: State<'_, AppState>, path: String, kind: String) -> Result<refs::RefChoices, String> {
-    validate_within_roots(&state, Path::new(&path))?;
-    tauri::async_runtime::spawn_blocking(move || refs::refs(Path::new(&path), &kind))
-        .await
-        .map_err(|e| e.to_string())
-}
-
-/// The mod's `.ydef`s of `kind` with what they say (`refs::own_defs`).
-#[tauri::command]
-async fn content_defs(state: State<'_, AppState>, path: String, kind: String) -> Result<Vec<refs::OwnDef>, String> {
-    validate_within_roots(&state, Path::new(&path))?;
-    tauri::async_runtime::spawn_blocking(move || refs::own_defs(Path::new(&path), &kind))
-        .await
-        .map_err(|e| e.to_string())
-}
-
-/// The game's kinds of block a `.yblock` may be (`refs::block_kinds`).
-#[tauri::command]
-fn content_block_kinds() -> serde_json::Value {
-    refs::block_kinds()
-}
-
-/// The tags of `registry` (`item`, `block`) content of the mod at `path` can join.
-#[tauri::command]
-async fn content_tags(state: State<'_, AppState>, path: String, registry: String) -> Result<Vec<String>, String> {
-    validate_within_roots(&state, Path::new(&path))?;
-    tauri::async_runtime::spawn_blocking(move || content::tags(Path::new(&path), &registry))
-        .await
-        .map_err(|e| e.to_string())
-}
-
-/// A model by id with its parents flattened, for previewing a raw parent.
-#[tauri::command]
-async fn content_parent_model(
-    state: State<'_, AppState>,
-    path: String,
-    id: String,
-) -> Result<serde_json::Value, String> {
-    validate_within_roots(&state, Path::new(&path))?;
-    tauri::async_runtime::spawn_blocking(move || content::parent_model(Path::new(&path), &id))
-        .await
-        .map_err(|e| e.to_string())?
-}
-
-/// The preview tint implied by a potion item's effect definitions.
-#[tauri::command]
-async fn content_item_potion_color(
-    state: State<'_, AppState>,
-    path: String,
-) -> Result<Option<u32>, String> {
-    validate_within_roots(&state, Path::new(&path))?;
-    tauri::async_runtime::spawn_blocking(move || content::item_potion_color(Path::new(&path)))
-        .await
-        .map_err(|e| e.to_string())
-}
-
-/// `yog import resourcepack|bbmodel` into the mod of `path`.
-#[tauri::command]
-async fn content_import(
-    state: State<'_, AppState>,
-    path: String,
-    kind: String,
-    source: String,
-    model: Option<String>,
-    force: bool,
-) -> Result<String, String> {
-    validate_within_roots(&state, Path::new(&path))?;
-    tauri::async_runtime::spawn_blocking(move || {
-        content::import(Path::new(&path), &kind, &source, model.as_deref(), force)
-    })
-    .await
-    .map_err(|e| e.to_string())?
-}
-
-/// Draws a `.yui` screen the way the game does (see `designer/`): yog-ui's
-/// layout and render with Minecraft's font and textures; plus every
-/// element's rect for the designer's overlay.
-#[tauri::command]
-async fn yui_designer_render(args: designer::RenderArgs) -> Result<designer::Rendered, String> {
-    tauri::async_runtime::spawn_blocking(move || designer::render(&args))
-        .await
-        .map_err(|e| e.to_string())?
-}
-
-/// One UI event in the designer's preview (see `designer::event`).
-#[tauri::command]
-async fn yui_designer_event(args: designer::EventArgs) -> Result<designer::EventResult, String> {
-    tauri::async_runtime::spawn_blocking(move || designer::event(&args))
-        .await
-        .map_err(|e| e.to_string())
-}
-
-/// What the `<Image source>` picker offers for a `.yui`: the mod's textures,
-/// Yog's sprite names, the game's items and blocks (see `designer::images`).
-#[tauri::command]
-async fn yui_image_sources(path: String) -> Result<Vec<designer::images::Candidate>, String> {
-    tauri::async_runtime::spawn_blocking(move || designer::images::candidates(Path::new(&path)))
-        .await
-        .map_err(|e| e.to_string())
-}
-
-/// A `.yui` book page drawn as the book shows it (`designer::book::page_preview`).
-#[tauri::command]
-async fn book_page_preview(args: designer::book::BookArgs) -> designer::book::BookRendered {
-    tauri::async_runtime::spawn_blocking(move || designer::book::page_preview(&args))
-        .await
-        .unwrap_or_else(|e| designer::book::BookRendered { image: None, scale: 1, shown: None, action: None, animated: false, locales: Vec::new(), error: Some(e.to_string()) })
-}
-
-/// A binary Yog Data file (`.ydata`, what the build compiles a format to)
-/// as Yog Data text, to read.
-#[tauri::command]
-fn ydata_text(path: String) -> Result<String, String> {
-    let bytes = std::fs::read(&path).map_err(|e| e.to_string())?;
-    let value = yog_data::binary::decode(&bytes).map_err(|e| e.to_string())?;
-    Ok(yog_data::text::to_string_pretty(&value))
-}
-
-/// A `.ymodel`'s texture, by the format's rules (`content::body_texture`).
-#[tauri::command]
-async fn body_texture(state: State<'_, AppState>, path: String, texture: String) -> Result<content::Texture, String> {
-    validate_within_roots(&state, Path::new(&path))?;
-    tauri::async_runtime::spawn_blocking(move || content::body_texture(Path::new(&path), &texture))
-        .await
-        .map_err(|e| e.to_string())?
-}
-
-/// The items of an item tag (`#minecraft:planks`), nested tags opened.
-#[tauri::command]
-async fn item_tag_items(path: String, tag: String) -> Result<Vec<String>, String> {
-    tauri::async_runtime::spawn_blocking(move || designer::tags::item_tag(Path::new(&path), &tag))
-        .await
-        .map_err(|e| e.to_string())
-}
-
-/// A Yog image source drawn `size` px square, as a PNG data URL.
-#[tauri::command]
-async fn yui_image_preview(
-    path: String,
-    source: String,
-    size: u32,
-) -> Result<designer::images::Preview, String> {
-    tauri::async_runtime::spawn_blocking(move || {
-        designer::images::preview(Path::new(&path), &source, size)
-    })
-    .await
-    .map_err(|e| e.to_string())
-}
-
-/// Draws a tab of advancements the way the game's advancements screen does.
-#[tauri::command]
-async fn advancement_render(args: designer::advancements::Args) -> Result<designer::advancements::Rendered, String> {
-    tauri::async_runtime::spawn_blocking(move || designer::advancements::render(&args)).await.map_err(|e| e.to_string())
-}
-
-/// Draws a `.ybook` the way the game does (yog-book's own renderer),
-/// after what the reader did (see `designer::book`).
-#[tauri::command]
-async fn book_designer_render(args: designer::book::BookArgs) -> designer::book::BookRendered {
-    tauri::async_runtime::spawn_blocking(move || designer::book::render(&args))
-        .await
-        .unwrap_or_else(|e| designer::book::BookRendered { image: None, scale: 1, shown: None, action: None, animated: false, locales: Vec::new(), error: Some(e.to_string()) })
-}
-
-/// Forgets a closed `.ybook`'s reader.
-#[tauri::command]
-fn book_designer_close(path: String) {
-    designer::book::close(&path);
-}
-
-/// Leaves the preview: scroll positions back to the top.
-#[tauri::command]
-fn yui_designer_reset(path: String) {
-    designer::reset(&path);
-}
-
-/// Double-click on a button: its `on_click` handler in the screen's
-/// code-behind `.rs`, added if missing; where to put the caret.
-#[tauri::command]
-async fn yui_event_handler(
-    state: State<'_, AppState>,
-    path: String,
-    event: String,
-) -> Result<designer::codebehind::HandlerLocation, String> {
-    let yui = PathBuf::from(&path);
-    validate_within_roots(&state, &designer::codebehind::code_behind_path(&yui))?;
-    tauri::async_runtime::spawn_blocking(move || designer::codebehind::ensure_handler(&yui, &event))
-        .await
-        .map_err(|e| e.to_string())?
 }
 
 /// Format Document: pipes `contents` (the editor's text — not necessarily
@@ -1671,84 +1308,17 @@ fn app_restart(app: AppHandle) {
     app.restart();
 }
 
-/// `yog-idle --designer-host`: the screen designer's host process for a
-/// mod's custom components (see `designer::host`) instead of the IDE.
-pub fn designer_host() {
-    designer::host::serve();
-}
-
-/// The mod's custom `.yui` components for the designer's toolbox, and the
-/// designer library's state; (re)builds it when the mod's sources changed
-/// (see `designer::custom`). Polled while a screen is open, and by the
-/// Toolbox for the open project. `path`: a `.yui` file or the mod's root.
-#[tauri::command]
-async fn yui_designer_components(path: String) -> Result<designer::custom::Snapshot, String> {
-    tauri::async_runtime::spawn_blocking(move || {
-        let path = Path::new(&path);
-        let root = if manifest::path(path).is_file() {
-            path.to_path_buf()
-        } else {
-            designer::mod_root(path).ok_or("not inside a mod (no src/ folder)")?
-        };
-        Ok(designer::custom::status(&root))
-    })
-    .await
-    .map_err(|e| e.to_string())?
-}
-
 /// The backend's hot paths for `benches/backend.rs` — not an API.
 #[doc(hidden)]
 pub mod bench {
     use std::path::{Path, PathBuf};
 
-    pub use crate::designer::{EventArgs, RenderArgs, event, mod_root, render, reset};
-    pub use crate::designer::{book, custom, images};
-    pub use crate::recipe_kinds;
     pub use crate::search::OpenDocument;
     pub use crate::symbols::{extract_symbols, fuzzy_match};
 
-    /// What a content file's editor asks for (the designer bridge).
-    pub fn content_texture(path: &Path, texture: &str) -> serde_json::Value {
-        match crate::content::texture(path, texture) {
-            Ok(t) => serde_json::to_value(t).unwrap_or_default(),
-            Err(e) => serde_json::json!({ "error": e }),
-        }
-    }
-    pub fn body_texture(path: &Path, texture: &str) -> serde_json::Value {
-        match crate::content::body_texture(path, texture) {
-            Ok(t) => serde_json::to_value(t).unwrap_or_default(),
-            Err(e) => serde_json::json!({ "error": e }),
-        }
-    }
-    pub fn item_tag(path: &Path, tag: &str) -> serde_json::Value {
-        serde_json::to_value(crate::designer::tags::item_tag(path, tag)).unwrap_or_default()
-    }
-    pub fn content_textures(path: &Path) -> serde_json::Value {
-        serde_json::to_value(crate::content::textures(path)).unwrap_or_default()
-    }
-    pub fn content_strings(path: &Path) -> serde_json::Value {
-        serde_json::to_value(crate::content::strings(path)).unwrap_or_default()
-    }
-    pub fn content_sound_groups(path: &Path) -> serde_json::Value {
-        serde_json::to_value(crate::content::sound_groups(path)).unwrap_or_default()
-    }
-    pub fn content_tool_materials(path: &Path) -> serde_json::Value {
-        serde_json::to_value(crate::content::tool_materials(path)).unwrap_or_default()
-    }
-    pub fn content_armor_materials(path: &Path) -> serde_json::Value {
-        serde_json::to_value(crate::content::armor_materials(path)).unwrap_or_default()
-    }
-    pub fn content_refs(path: &Path, kind: &str) -> serde_json::Value {
-        serde_json::to_value(crate::refs::refs(path, kind)).unwrap_or_default()
-    }
-    pub fn content_defs(path: &Path, kind: &str) -> serde_json::Value {
-        serde_json::to_value(crate::refs::own_defs(path, kind)).unwrap_or_default()
-    }
-    pub fn content_block_kinds() -> serde_json::Value {
-        crate::refs::block_kinds()
-    }
-    pub fn content_tags(path: &Path, registry: &str) -> serde_json::Value {
-        serde_json::to_value(crate::content::tags(path, registry)).unwrap_or_default()
+    /// A call of the CLI service, as the front end makes it.
+    pub fn cli(method: &str, params: serde_json::Value) -> Result<serde_json::Value, serde_json::Value> {
+        crate::cli::call(method, params)
     }
 
     /// The environment report with the settings in `state_file`.
@@ -1850,42 +1420,8 @@ pub fn run() {
     let builder = builder.manage(debugger::DebugState::default());
 
     let builder = builder.invoke_handler(tauri::generate_handler![
-        item_tag_items,
-        body_texture,
-        ydata_text,
-        book_page_preview,
-        worldgen_preview,
-        recipe_kinds,
-        recipe_kind_create,
         fs_watch,
-        yui_codegen,
-        content_texture,
-        content_textures,
-        content_mod_id,
         cli,
-        content_save_texture,
-        content_save_texture_animation,
-        content_strings,
-        content_sound_groups,
-        content_tool_materials,
-        content_armor_materials,
-        content_tags,
-        content_refs,
-        content_defs,
-        content_block_kinds,
-        content_parent_model,
-        content_item_potion_color,
-        content_import,
-        yui_designer_render,
-        book_designer_render,
-        advancement_render,
-        book_designer_close,
-        yui_designer_components,
-        yui_designer_event,
-        yui_image_sources,
-        yui_image_preview,
-        yui_designer_reset,
-        yui_event_handler,
         pty_spawn,
         pty_write,
         pty_resize,

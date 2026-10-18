@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { invoke } from "@tauri-apps/api/core";
+import { cli } from "../cli";
 import { useContentRefs, type OwnRef } from "../data/contentRefs";
 import { parseAnim, type Clip } from "./yanim";
 import { readModel, type ModelFile } from "./ymodel";
@@ -13,7 +13,7 @@ export function useBodyTexture(path: string | null, texture: string | undefined)
   useEffect(() => {
     if (!path || !texture) return setState({ url: null, error: null });
     let live = true;
-    invoke<{ url: string }>("body_texture", { path, texture })
+    cli<{ url: string }>("body_texture", { path, texture })
       .then((tx) => live && setState({ url: tx.url, error: null }))
       .catch((e) => live && setState({ url: null, error: String(e) }));
     return () => {

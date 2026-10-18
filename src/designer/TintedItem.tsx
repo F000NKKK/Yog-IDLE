@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { invoke } from "@tauri-apps/api/core";
+import { cli } from "../cli";
 
 /** The game's spawn egg: its base, tinted by the first color, and its spots, by the second (item layers 0 and 1). */
 const SPAWN_EGG = ["minecraft:item/spawn_egg", "minecraft:item/spawn_egg_overlay"] as const;
@@ -32,7 +32,7 @@ export function TintedItem({ path, layers: ids, colors, size = 48, title }: { pa
   const [layers, setLayers] = useState<HTMLImageElement[] | null>(null);
   useEffect(() => {
     let live = true;
-    Promise.all(ids.map((id) => invoke<{ url: string }>("content_texture", { path, texture: id }).then((t) => loadImage(t.url))))
+    Promise.all(ids.map((id) => cli<{ url: string }>("content_texture", { path, texture: id }).then((t) => loadImage(t.url))))
       .then((imgs) => live && setLayers(imgs))
       .catch(() => live && setLayers(null));
     return () => {

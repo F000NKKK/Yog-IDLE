@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { invoke } from "@tauri-apps/api/core";
+import { cli } from "../../cli";
 import { Icon, IconButton, SelectField, TextField, ToolbarCheck, ToolbarGroup, ToolbarSelect, useT, type PropertyDescriptor } from "substrate-platform-ui";
 import { qualify, refId, refProblem, refSuggestions, useContentDefs, useContentRefs, type RefChoices } from "../../data/contentRefs";
 import { designText, useDesignResources } from "../../lang/designResources";
@@ -44,7 +44,7 @@ export function AdvancementDesigner({ path, file, update, readOnly, kindLabel }:
   const [strings, setStrings] = useState<string[]>([]);
   const [hover, setHover] = useState<string | null>(null);
   useEffect(() => {
-    invoke<string[]>("content_strings", { path }).then((s) => setStrings(s ?? []), () => setStrings([]));
+    cli<string[]>("content_strings", { path }).then((s) => setStrings(s ?? []), () => setStrings([]));
   }, [path]);
 
   const ns = defs[0]?.id.split(":")[0] ?? advancements.own[0]?.id.split(":")[0] ?? GAME_NAMESPACE;
@@ -98,7 +98,7 @@ export function AdvancementDesigner({ path, file, update, readOnly, kindLabel }:
   );
   useEffect(() => {
     let live = true;
-    invoke<Rendered>("advancement_render", { args }).then(
+    cli<Rendered>("advancement_render", { args }).then(
       (r) => {
         if (!live) return;
         setDrawn(r);

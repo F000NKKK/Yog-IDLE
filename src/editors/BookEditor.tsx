@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { invoke } from "@tauri-apps/api/core";
+import { cli } from "../cli";
 import { Toolbar, ToolbarButton, ToolbarGroup, ToolbarSelect, pt, usePropertyContext, useT, type EditorProps, type PropertyDescriptor, type PropertySet, type PropertyValue, Spacer } from "substrate-platform-ui";
 import { ItemHeader } from "../designer/ItemIcons";
 import { iconSource, imagePreview, imageSourcesVersion, subscribeImageSources } from "../designer/imageSources";
@@ -81,7 +81,7 @@ export function BookEditor({ path, content, onChange, readOnly }: EditorProps) {
   const draw = useCallback(
     (action: Action | null) => {
       const n = ++seq.current;
-      invoke<Rendered>("book_designer_render", {
+      cli<Rendered>("book_designer_render", {
         args: { path, text: content, screenW: SCREEN_W, screenH: SCREEN_H, scale: SCALE, action, locale },
       })
         .then((r) => {
@@ -110,7 +110,7 @@ export function BookEditor({ path, content, onChange, readOnly }: EditorProps) {
     return () => clearTimeout(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [content, locale]);
-  useEffect(() => () => void invoke("book_designer_close", { path }).catch(() => {}), [path]);
+  useEffect(() => () => void cli("book_designer_close", { path }).catch(() => {}), [path]);
 
   // A page that moves (an entity, a structure, an ingredient's
   // alternatives) is drawn again and again, as the game does.
@@ -122,7 +122,7 @@ export function BookEditor({ path, content, onChange, readOnly }: EditorProps) {
       if (busy) return;
       busy = true;
       const n = ++seq.current;
-      invoke<Rendered>("book_designer_render", {
+      cli<Rendered>("book_designer_render", {
         args: { path, text: content, screenW: SCREEN_W, screenH: SCREEN_H, scale: SCALE, action: null, locale },
       })
         .then((r) => n === seq.current && setRendered(r))

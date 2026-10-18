@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { invoke } from "@tauri-apps/api/core";
+import { cli } from "../cli";
 import { KeyHints, Toolbar, ToolbarButton, ToolbarCheck, ToolbarGroup, ToolbarSelect, usePropertyContext, useT, type EditorProps, type KeyHint, type PropertyDescriptor } from "substrate-platform-ui";
 import { ModelViewport, type ViewOverlay } from "../body/ModelViewport";
 import { SpawnEgg } from "../designer/TintedItem";
@@ -74,7 +74,7 @@ export function EntityEditor({ path, content, onChange, readOnly }: EditorProps)
 
   useEffect(() => {
     let live = true;
-    invoke<string[]>("content_strings", { path })
+    cli<string[]>("content_strings", { path })
       .then((s) => live && setStrings(s ?? []))
       .catch(() => live && setStrings([]));
     return () => {

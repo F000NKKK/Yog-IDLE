@@ -1,13 +1,12 @@
 //! The backend's hot paths on synthetic input: Code Search (index + fuzzy
-//! ranking), symbol extraction, Find in Files, Git Changes' status parse and
-//! the screen designer's render — each including the JSON the frontend gets.
+//! ranking), symbol extraction, Find in Files, and Git Changes' status parse — each including the JSON the frontend gets.
 
 use std::hint::black_box;
 use std::path::{Path, PathBuf};
 
 use criterion::{Criterion, criterion_group, criterion_main};
 use yog_idle_tauri_lib::bench::{
-    self, CodeIndex, OpenDocument, RenderArgs, extract_symbols, fuzzy_match, render,
+    self, CodeIndex, OpenDocument, extract_symbols, fuzzy_match,
 };
 
 const WORDS: &[&str] = &[
@@ -136,48 +135,5 @@ fn git_status(c: &mut Criterion) {
     });
 }
 
-fn designer(c: &mut Criterion) {
-    let label = |i: usize| {
-        serde_json::json!({
-            "uid": format!("l{i}"), "kind": "Label",
-            "attrs": { "text": format!("Row {i}: §e{}", snake(i)), "color": "#FFFFFF" },
-            "children": []
-        })
-    };
-    let button = |i: usize| {
-        serde_json::json!({
-            "uid": format!("b{i}"), "kind": "Button",
-            "attrs": { "w": "80", "h": "20", "text": camel(i), "on_click": "go" },
-            "children": []
-        })
-    };
-    let column = |from: usize| {
-        serde_json::json!({
-            "uid": format!("c{from}"), "kind": "Column",
-            "attrs": { "spacing": "2" },
-            "children": (from..from + 12)
-                .map(|i| if i % 3 == 0 { button(i) } else { label(i) })
-                .collect::<Vec<_>>()
-        })
-    };
-    let args: RenderArgs = serde_json::from_value(serde_json::json!({
-        "path": "/nowhere/src/bench.yui",
-        "root": {
-            "uid": "s", "kind": "Screen",
-            "attrs": { "width": "400", "height": "240", "bg": "#C0101010" },
-            "children": [{
-                "uid": "row", "kind": "Row",
-                "attrs": { "spacing": "8" },
-                "children": [column(0), column(12), column(24)]
-            }]
-        },
-        "screenW": 427, "screenH": 240, "scale": 2, "preview": false
-    }))
-    .unwrap();
-    c.bench_function("designer_render/36_widgets", |b| {
-        b.iter(|| serde_json::to_string(&render(black_box(&args)).unwrap()).unwrap())
-    });
-}
-
-criterion_group!(benches, code_search, find_in_files, git_status, designer);
+criterion_group!(benches, code_search, find_in_files, git_status);
 criterion_main!(benches);

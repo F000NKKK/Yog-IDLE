@@ -5,7 +5,7 @@
 // Polled while a designer is open, shared by the designer, Toolbox and
 // Properties.
 
-import { invoke } from "@tauri-apps/api/core";
+import { cli } from "../cli";
 import { useEffect, useSyncExternalStore } from "react";
 import type { YuiNode } from "./yui";
 
@@ -60,7 +60,7 @@ const pollers = new Map<string, { users: number; timer: ReturnType<typeof setInt
 const listeners = new Set<() => void>();
 
 function poll(path: string) {
-  invoke<ComponentsSnapshot>("yui_designer_components", { path })
+  cli<ComponentsSnapshot>("yui_designer_components", { path })
     .then((s) => {
       const key = JSON.stringify(s);
       if (keys.get(path) === key) return;

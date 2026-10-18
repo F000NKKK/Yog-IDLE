@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { invoke } from "@tauri-apps/api/core";
+import { cli } from "../cli";
 import { JsonEditor, useT, type EditorProps } from "substrate-platform-ui";
 
 /**
@@ -11,7 +11,7 @@ export function YdataViewer({ path }: EditorProps) {
   const [text, setText] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   useEffect(() => {
-    invoke<string>("ydata_text", { path })
+    cli<string>("ydata_text", { path })
       .then((s) => {
         setText(s);
         setError(null);

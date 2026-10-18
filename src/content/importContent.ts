@@ -1,4 +1,4 @@
-import { invoke } from "@tauri-apps/api/core";
+import { cli } from "../cli";
 import { open } from "@tauri-apps/plugin-dialog";
 import { confirmDialog, notify, promptDialog, showDialog, t } from "substrate-platform-ui";
 import { reportError } from "../reportError";
@@ -70,7 +70,7 @@ export async function importContent(modRoot: string): Promise<void> {
   }
 
   const path = `${modRoot.replace(/[/\\]+$/, "")}/yog.toml`;
-  const run = (force: boolean) => invoke<string>("content_import", { path, kind, source: picked, model: model || null, force });
+  const run = (force: boolean) => cli<string>("content_import", { path, kind, source: picked, model: model || null, force });
   try {
     let out: string;
     try {

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react";
+import { cli } from "../cli";
 import { invoke } from "@tauri-apps/api/core";
 import {
   ContextMenu,
@@ -450,7 +451,7 @@ function CanvasDesigner({ path, content, onChange, readOnly, contentVersion, lin
     const { w, h } = res;
     // A short debounce: typing in the XAML re-parses on every key.
     const timer = setTimeout(() => {
-      invoke<RenderReply>("yui_designer_render", { args: { path, root: withDesignResources(drawnRoot), screenW: w, screenH: h, scale, preview: previewing } })
+      cli<RenderReply>("yui_designer_render", { args: { path, root: withDesignResources(drawnRoot), screenW: w, screenH: h, scale, preview: previewing } })
         .then((reply) => {
           if (seq !== renderSeq.current) return;
           const geo = new Map<string, Geo>(reply.rects.map((r) => [r.uid, { rect: toRect(r.rect), content: toRect(r.content), grid: r.grid }]));
@@ -466,7 +467,7 @@ function CanvasDesigner({ path, content, onChange, readOnly, contentVersion, lin
     return () => clearTimeout(timer);
   }, [path, drawnRoot, res, view.zoom, previewing, previewTick, resourcesVersion, componentsRevision]);
 
-  useEffect(() => () => void invoke("yui_designer_reset", { path }).catch(() => {}), [path]);
+  useEffect(() => () => void cli("yui_designer_reset", { path }).catch(() => {}), [path]);
 
   /** The picture for this GUI size (possibly of the previous edit, until the next one arrives). */
   const picture = rendered && rendered.w === res.w && rendered.h === res.h && rendered.assets ? rendered : null;
@@ -988,7 +989,7 @@ function CanvasDesigner({ path, content, onChange, readOnly, contentVersion, lin
       if (s.doc === before) return; // not written (the XAML can't take it now)
     }
     try {
-      const at = await invoke<HandlerLocation>("yui_event_handler", { path, event });
+      const at = await cli<HandlerLocation>("yui_event_handler", { path, event });
       openFile({ path: at.path, line: at.line, column: at.column });
       if (at.changed) emitTo(EVENT.ideOutput, `[designer] ${t("Added handler for {event} to {file}", { event, file: at.path })}`);
     } catch (err) {
@@ -1021,7 +1022,7 @@ function CanvasDesigner({ path, content, onChange, readOnly, contentVersion, lin
       return;
     }
     eventBusy.current = true;
-    invoke<EventReply>("yui_designer_event", { args: { path, root: withDesignResources(root), screenW: res.w, screenH: res.h, event, x, y } })
+    cli<EventReply>("yui_designer_event", { args: { path, root: withDesignResources(root), screenW: res.w, screenH: res.h, event, x, y } })
       .then((r) => {
         setHovered(r.hit);
         if (event.startsWith("click:")) setPressed(r.hit);
@@ -1040,7 +1041,7 @@ function CanvasDesigner({ path, content, onChange, readOnly, contentVersion, lin
   sendEventRef.current = sendEvent;
 
   const togglePreview = () => {
-    if (previewing) void invoke("yui_designer_reset", { path }).catch(() => {});
+    if (previewing) void cli("yui_designer_reset", { path }).catch(() => {});
     setPreviewTexts({});
     setFocusedBox(null);
     setHovered(null);

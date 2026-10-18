@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties } from "react";
-import { invoke } from "@tauri-apps/api/core";
+import { cli } from "../cli";
 import { ItemHeader, ItemIcons } from "../designer/ItemIcons";
 import { Toolbar, ToolbarButton, ToolbarGroup, ToolbarInput, ToolbarLabel, ToolbarSelect, usePropertyContext, useT, type EditorProps, type PropertyDescriptor, type PropertySet, type PropertyValue, fileTypeOf } from "substrate-platform-ui";
 import { DataEditor } from "./DataEditor";
@@ -57,7 +57,7 @@ function useRecipeKinds(path: string): [Kinds | null, () => void] {
   const reload = useCallback(() => setAsked((n) => n + 1), []);
   useEffect(() => {
     let live = true;
-    void invoke<Kinds>("recipe_kinds", { path }).then(
+    void cli<Kinds>("recipe_kinds", { path }).then(
       (k) => live && setKinds(k),
       () => live && setKinds(null),
     );
@@ -176,7 +176,7 @@ export function RecipeEditor({ path, content, onChange, readOnly }: EditorProps)
 
   const createKind = async (name: string) => {
     try {
-      const file = await invoke<string>("recipe_kind_create", { path, name });
+      const file = await cli<string>("recipe_kind_create", { path, name });
       setNewKind(null);
       setError(null);
       reloadKinds();

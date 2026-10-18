@@ -1,9 +1,9 @@
 import { GAME_NAMESPACE, TYPED } from "../data/yogFormat";
+import { cli } from "../cli";
 import { kind as KIND, sep } from "../data/yogIds.generated";
 import { cropFrame, pasteFrame, sameAnimation, stillAnimation, type TextureAnimation } from "../content/animation";
 import { FrameStrip } from "../content/paint/FrameStrip";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { invoke } from "@tauri-apps/api/core";
 import {
   Button,
   confirmDialog,
@@ -358,7 +358,7 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
 
   useEffect(() => {
     let live = true;
-    invoke<BuiltInBlockKind[]>("content_block_kinds")
+    cli<BuiltInBlockKind[]>("content_block_kinds")
       .then((kinds) => live && setBlockKinds(kinds))
       .catch((e) => live && reportError(t("Can't load built-in block kinds: {error}", { error: String(e) })));
     return () => {
@@ -403,7 +403,7 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
       return;
     }
     let live = true;
-    void invoke<number | null>("content_item_potion_color", { path })
+    void cli<number | null>("content_item_potion_color", { path })
       .then((color) => {
         if (live) setPotionTint(color == null ? undefined : `#${color.toString(16).padStart(6, "0")}`);
       })
@@ -517,13 +517,13 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
   useEffect(() => {
     let live = true;
     void Promise.all([
-      invoke<{ value: string }[]>("content_textures", { path }).catch(() => []),
-      invoke<string[]>("content_strings", { path }).catch(() => []),
-      invoke<string[]>("content_sound_groups", { path }).catch(() => []),
-      invoke<string[]>("content_tags", { path, registry: kindOf(path) ?? "item" }).catch(() => []),
-      invoke<string[]>("content_tool_materials", { path }).catch(() => []),
-      invoke<string[]>("content_armor_materials", { path }).catch(() => []),
-      invoke<string | null>("content_mod_id", { path }).catch(() => null),
+      cli<{ value: string }[]>("content_textures", { path }).catch(() => []),
+      cli<string[]>("content_strings", { path }).catch(() => []),
+      cli<string[]>("content_sound_groups", { path }).catch(() => []),
+      cli<string[]>("content_tags", { path, registry: kindOf(path) ?? "item" }).catch(() => []),
+      cli<string[]>("content_tool_materials", { path }).catch(() => []),
+      cli<string[]>("content_armor_materials", { path }).catch(() => []),
+      cli<string | null>("content_mod_id", { path }).catch(() => null),
     ]).then(
       ([tex, strings, sounds, tags, toolMaterials, armorMaterials, modId]) =>
         live && setChoices({ modId: modId ?? GAME_NAMESPACE, textures: tex.map((c) => c.value), strings, sounds, tags, toolMaterials, armorMaterials })
@@ -542,7 +542,7 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
     for (const id of rawParents) {
       if (id in parents) continue;
       setParents((p) => ({ ...p, [id]: null }));
-      invoke<ParentModel>("content_parent_model", { path, id })
+      cli<ParentModel>("content_parent_model", { path, id })
         .then((m) => setParents((p) => ({ ...p, [id]: m })))
         .catch((e) => reportError(t("Can't load the parent model {id}: {error}", { id, error: String(e) })));
     }
@@ -564,7 +564,7 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
     for (const value of wanted) {
       if (requested.current.has(value)) continue;
       requested.current.add(value);
-      invoke<LoadedTexture>("content_texture", { path, texture: value })
+      cli<LoadedTexture>("content_texture", { path, texture: value })
         .then((src) => setImages((m) => ({ ...m, [value]: src })))
         .catch(() => setImages((m) => ({ ...m, [value]: undefined })));
     }
@@ -614,11 +614,11 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
     const written: Record<string, Edited> = {};
     for (const key of keys) {
       const e = cur[key];
-      await invoke<string>("content_save_texture", { path, texture: key, png: e.url.slice(e.url.indexOf(",") + 1) });
+      await cli<string>("content_save_texture", { path, texture: key, png: e.url.slice(e.url.indexOf(",") + 1) });
       written[key] = e;
     }
     // The .mcmeta after its png: its frame size is checked against the image.
-    for (const key of animKeys) await invoke<string>("content_save_texture_animation", { path, texture: key, animation: anims[key]?.animation ?? null });
+    for (const key of animKeys) await cli<string>("content_save_texture_animation", { path, texture: key, animation: anims[key]?.animation ?? null });
     setSaved((s) => ({ ...s, ...Object.fromEntries(Object.entries(written).map(([k, e]) => [k, e.img])) }));
     setImages((m) => {
       const next = { ...m };
@@ -638,7 +638,7 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
       const { dirtyKeys: keys, images: cur } = saveState.current;
       for (const key of Object.keys(cur)) {
         if (keys.includes(key) || saveState.current.animDirtyKeys.includes(key)) continue;
-        invoke<LoadedTexture>("content_texture", { path, texture: key })
+        cli<LoadedTexture>("content_texture", { path, texture: key })
           .then((src) => {
             if (saveState.current.images[key]?.url === src.url) return;
             setImages((m) => ({ ...m, [key]: src }));

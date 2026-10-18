@@ -12,7 +12,6 @@ use std::process::{Child, ChildStdin, ChildStdout, Command, Stdio};
 use std::sync::Mutex;
 use std::time::SystemTime;
 
-use base64::Engine as _;
 use serde_json::{Value, json};
 
 /// The CLI's program name, looked up on `PATH`.
@@ -122,64 +121,6 @@ pub fn mod_id(root: &Path) -> Option<String> {
         m.insert(root.to_path_buf(), (modified, id.clone()));
     }
     id
-}
-
-/// The file the build makes at `assets/<ns>/<asset>` from the mod at `root`, when it's the mod's.
-pub fn built_asset(root: &Path, ns: &str, asset: &str) -> Option<Vec<u8>> {
-    if mod_id(root)?.as_str() != ns {
-        return None;
-    }
-    let b64 = call("media.built_asset", json!({ "path": root, "ns": ns, "asset": asset })).ok()?;
-    base64::engine::general_purpose::STANDARD.decode(b64.as_str()?).ok()
-}
-
-/// A texture of the mod (from `media.textures`).
-#[derive(serde::Deserialize, Debug, Clone)]
-pub struct Texture {
-    pub id: String,
-}
-
-/// The mod's textures.
-pub fn textures(root: &Path) -> Vec<Texture> {
-    call("media.textures", json!({ "path": root })).ok().and_then(|v| serde_json::from_value(v).ok()).unwrap_or_default()
-}
-
-/// A picture of the mod's `.yres` sets (from `media.pictures`).
-#[derive(serde::Deserialize, Debug, Clone)]
-pub struct Picture {
-    pub set: String,
-    pub name: String,
-    pub path: String,
-}
-
-/// The mod's pictures.
-pub fn pictures(root: &Path) -> Vec<Picture> {
-    call("media.pictures", json!({ "path": root })).ok().and_then(|v| serde_json::from_value(v).ok()).unwrap_or_default()
-}
-
-/// Whether texture `id` is the mod's own.
-pub fn is_own_texture(root: &Path, id: &str) -> bool {
-    call("media.is_own_texture", json!({ "path": root, "id": id })).ok().and_then(|v| v.as_bool()).unwrap_or(false)
-}
-
-/// The reply's error as text.
-fn message(e: Value) -> String {
-    match e {
-        Value::String(s) => s,
-        Value::Object(o) => o.get("message").and_then(Value::as_str).map_or_else(|| Value::Object(o.clone()).to_string(), str::to_string),
-        other => other.to_string(),
-    }
-}
-
-/// Paints texture `id`: `png` as its picture; the file written.
-pub fn save_texture_picture(root: &Path, id: &str, png: &[u8]) -> Result<PathBuf, String> {
-    let png = base64::engine::general_purpose::STANDARD.encode(png);
-    call("media.save_texture_picture", json!({ "path": root, "id": id, "png": png })).map(|v| PathBuf::from(v.as_str().unwrap_or_default())).map_err(message)
-}
-
-/// Sets texture `id`'s animation (the game's `.mcmeta` JSON, or none).
-pub fn save_texture_animation(root: &Path, id: &str, mcmeta: Option<&Value>) -> Result<PathBuf, String> {
-    call("media.save_texture_animation", json!({ "path": root, "id": id, "mcmeta": mcmeta })).map(|v| PathBuf::from(v.as_str().unwrap_or_default())).map_err(message)
 }
 
 #[cfg(test)]

@@ -5,7 +5,7 @@
 // `yog build` checks references by.
 
 import { useCallback, useEffect, useState } from "react";
-import { invoke } from "@tauri-apps/api/core";
+import { cli } from "../cli";
 import { fileTypeOf } from "substrate-platform-ui";
 import { useFsChanged } from "../fsWatch";
 import { classify } from "./yogData";
@@ -56,7 +56,7 @@ export function useContentRefs(path: string, kind: string): RefChoices {
   const [asked] = useContentReload();
   useEffect(() => {
     let live = true;
-    invoke<RefChoices>("content_refs", { path, kind })
+    cli<RefChoices>("content_refs", { path, kind })
       .then((c) => live && setChoices(c ?? NO_REFS))
       .catch(() => live && setChoices(NO_REFS));
     return () => {
@@ -72,7 +72,7 @@ export function useContentDefs(path: string, kind: string): OwnDef[] {
   const [asked] = useContentReload();
   useEffect(() => {
     let live = true;
-    invoke<OwnDef[]>("content_defs", { path, kind })
+    cli<OwnDef[]>("content_defs", { path, kind })
       .then((d) => live && setDefs(d ?? []))
       .catch(() => live && setDefs([]));
     return () => {

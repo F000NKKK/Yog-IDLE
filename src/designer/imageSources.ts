@@ -1,11 +1,11 @@
 import { TAG_MARK, alternativesOf, isTag } from "../data/ingredients";
+import { cli } from "../cli";
 // What the `<Image source>` property offers: Yog image sources (`item:apple`,
 // `sprite:button`, `mod:gui/logo` — see docs/yui.md) listed and previewed by
 // the backend (`yui_image_sources`, `yui_image_preview`), cached here so the
 // synchronous Properties rows can show them; listeners re-render when they
 // arrive.
 
-import { invoke } from "@tauri-apps/api/core";
 
 export interface ImageSourceCandidate {
   /** What to write in `source`. */
@@ -48,7 +48,7 @@ export function imageSources(path: string): ImageSourceCandidate[] {
   const key = `list:${path}`;
   if (!pending.has(key)) {
     pending.add(key);
-    invoke<ImageSourceCandidate[]>("yui_image_sources", { path })
+    cli<ImageSourceCandidate[]>("yui_image_sources", { path })
       .then((list) => lists.set(path, list))
       .catch(() => lists.set(path, []))
       .finally(() => {
@@ -67,7 +67,7 @@ function preview(path: string, source: string, size = PREVIEW_SIZE): Preview | u
   if (previews.has(key)) return previews.get(key);
   if (!pending.has(key)) {
     pending.add(key);
-    invoke<Preview>("yui_image_preview", { path, source, size })
+    cli<Preview>("yui_image_preview", { path, source, size })
       .then((p) => previews.set(key, p))
       .catch(() => previews.set(key, { url: null, alias: null }))
       .finally(() => {
@@ -117,7 +117,7 @@ export function tagItems(path: string, tag: string): string[] | undefined {
   if (tags.has(key)) return tags.get(key);
   if (!pending.has(key)) {
     pending.add(key);
-    invoke<string[]>("item_tag_items", { path, tag })
+    cli<string[]>("item_tag_items", { path, tag })
       .then((items) => tags.set(key, items))
       .catch(() => tags.set(key, []))
       .finally(() => {

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { invoke } from "@tauri-apps/api/core";
+import { cli } from "../cli";
 import { Toolbar, ToolbarSelect, useT } from "substrate-platform-ui";
 
 interface Preview {
@@ -22,7 +22,7 @@ export function TerrainPreview({ content }: { content: string }) {
   useEffect(() => {
     let live = true;
     const timer = setTimeout(() => {
-      invoke<Preview>("worldgen_preview", { text: content, size }).then(
+      cli<Preview>("worldgen_preview", { text: content, size }).then(
         (p) => {
           if (!live) return;
           setPreview(p);
