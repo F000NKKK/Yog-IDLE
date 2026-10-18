@@ -80,3 +80,39 @@ yog-symbols = "0.4.1"
 yog-debugger = "0.9.1"
 yog-hot-reload = "0.2.3"
 nix = { version = "0.31", features = ["ptrace", "signal", "process"] }
+
+# The loader's crates from the sibling checkout (as Substrate-Platform is):
+# the IDE always builds against the loader it ships with, published or not.
+[patch.crates-io]
+yog-abi = { path = "../../Yog-Mod-Loader/rust/crates/yog-abi" }
+yog-api = { path = "../../Yog-Mod-Loader/rust/crates/yog-api" }
+yog-body = { path = "../../Yog-Mod-Loader/rust/crates/yog-body" }
+yog-book = { path = "../../Yog-Mod-Loader/rust/crates/yog-book" }
+yog-cli = { path = "../../Yog-Mod-Loader/rust/crates/yog-cli" }
+yog-command = { path = "../../Yog-Mod-Loader/rust/crates/yog-command" }
+yog-config = { path = "../../Yog-Mod-Loader/rust/crates/yog-config" }
+yog-core = { path = "../../Yog-Mod-Loader/rust/crates/yog-core" }
+yog-data = { path = "../../Yog-Mod-Loader/rust/crates/yog-data" }
+yog-data-derive = { path = "../../Yog-Mod-Loader/rust/crates/yog-data-derive" }
+yog-debugger = { path = "../../Yog-Mod-Loader/rust/crates/yog-debugger" }
+yog-dimensions = { path = "../../Yog-Mod-Loader/rust/crates/yog-dimensions" }
+yog-entity = { path = "../../Yog-Mod-Loader/rust/crates/yog-entity" }
+yog-event = { path = "../../Yog-Mod-Loader/rust/crates/yog-event" }
+yog-font = { path = "../../Yog-Mod-Loader/rust/crates/yog-font" }
+yog-formats = { path = "../../Yog-Mod-Loader/rust/crates/yog-formats" }
+yog-gfx = { path = "../../Yog-Mod-Loader/rust/crates/yog-gfx" }
+yog-graphics = { path = "../../Yog-Mod-Loader/rust/crates/yog-graphics" }
+yog-hot-reload = { path = "../../Yog-Mod-Loader/rust/crates/yog-hot-reload" }
+yog-interop = { path = "../../Yog-Mod-Loader/rust/crates/yog-interop" }
+yog-inventory = { path = "../../Yog-Mod-Loader/rust/crates/yog-inventory" }
+yog-kit = { path = "../../Yog-Mod-Loader/rust/crates/yog-kit" }
+yog-logging = { path = "../../Yog-Mod-Loader/rust/crates/yog-logging" }
+yog-network = { path = "../../Yog-Mod-Loader/rust/crates/yog-network" }
+yog-player = { path = "../../Yog-Mod-Loader/rust/crates/yog-player" }
+yog-registry = { path = "../../Yog-Mod-Loader/rust/crates/yog-registry" }
+yog-runtime = { path = "../../Yog-Mod-Loader/rust/crates/yog-runtime" }
+yog-storage = { path = "../../Yog-Mod-Loader/rust/crates/yog-storage" }
+yog-symbols = { path = "../../Yog-Mod-Loader/rust/crates/yog-symbols" }
+yog-ui = { path = "../../Yog-Mod-Loader/rust/crates/yog-ui" }
+yog-world = { path = "../../Yog-Mod-Loader/rust/crates/yog-world" }
+yog-worldgen = { path = "../../Yog-Mod-Loader/rust/crates/yog-worldgen" }

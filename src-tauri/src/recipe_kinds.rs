@@ -23,6 +23,9 @@ const SCALE: u32 = 3;
 const ITEM_SIZE: f32 = 16.0;
 /// How far a slot frame reaches around its item.
 const FRAME_INSET: f32 = 4.0;
+/// A block station's angle: a block item's in a slot.
+const SLOT_YAW: f32 = 225.0;
+const SLOT_PITCH: f32 = 30.0;
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -217,7 +220,7 @@ fn layout(root: &Path, file: &Path, size: [f32; 2], parts: &[LayoutPart]) -> Lay
             LayoutPart::Result { at, .. } => spots.push(Spot::Result { at: *at }),
             LayoutPart::Count { at } => spots.push(Spot::Count { at: *at }),
             LayoutPart::Text { text, at } => spots.push(Spot::Text { text: text.clone(), at: *at }),
-            LayoutPart::Image { .. } | LayoutPart::Item { .. } => {}
+            LayoutPart::Image { .. } | LayoutPart::Item { .. } | LayoutPart::Block { .. } => {}
         }
     }
     let (w, h) = (size[0].ceil().max(1.0) as u32, size[1].ceil().max(1.0) as u32);
@@ -240,6 +243,7 @@ fn layout(root: &Path, file: &Path, size: [f32; 2], parts: &[LayoutPart]) -> Lay
                     Color::WHITE,
                 ),
                 LayoutPart::Item { item, at } => d.item(item, Vec2::new(at[0], at[1]), ITEM_SIZE),
+                LayoutPart::Block { block, at } => d.blocks(&[((0, 0, 0), block.as_str())], Rect::new(at[0], at[1], ITEM_SIZE, ITEM_SIZE), SLOT_YAW, SLOT_PITCH),
                 LayoutPart::Slots { at, frame: true, .. } => at.iter().for_each(|a| frame(*a)),
                 LayoutPart::Result { at, frame: true } => frame(*at),
                 _ => {}

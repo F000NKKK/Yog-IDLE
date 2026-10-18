@@ -5563,14 +5563,10 @@ dependencies = [
 [[package]]
 name = "yog-abi"
 version = "0.30.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "84041b7b9d82f0bcaa23b440910ff550db0fe6a526f827e8aec87e4707722c8a"
 
 [[package]]
 name = "yog-body"
 version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "71797ba9c0a00a0aea894d6ad6f112e488afbf142ed57f3f635a5c69793c6394"
 dependencies = [
  "yog-data",
  "yog-graphics",
@@ -5579,8 +5575,6 @@ dependencies = [
 [[package]]
 name = "yog-book"
 version = "0.67.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "46f6795c0b67685ff1ffa28ab1a1fe4cca6409e7ee98e4c1080a4e8aa649fc1b"
 dependencies = [
  "serde",
  "serde_json",
@@ -5593,8 +5587,6 @@ dependencies = [
 [[package]]
 name = "yog-data"
 version = "0.4.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "66f4c7107981fd60cb0c75de0fff17a4d6dd2e5c0e5835967f3f078df8fd2f87"
 dependencies = [
  "bumpalo",
  "serde",
@@ -5605,8 +5597,6 @@ dependencies = [
 [[package]]
 name = "yog-data-derive"
 version = "0.4.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e5742176d14fbceda50df19f9e1645d6c1bab641f9491e18e81b5cf3c925f6d7"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -5616,8 +5606,6 @@ dependencies = [
 [[package]]
 name = "yog-debugger"
 version = "0.9.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "87a587283f421e64df5ff370c700b9f35ebc36226c66f5e214bab5e528dd88a0"
 dependencies = [
  "iced-x86",
  "nix 0.31.3",
@@ -5629,8 +5617,6 @@ dependencies = [
 [[package]]
 name = "yog-formats"
 version = "0.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "638bb38c3183c60189d16c736370897a04f8508caf3a435949194d30ee8909e9"
 dependencies = [
  "yog-body",
  "yog-data",
@@ -5641,8 +5627,6 @@ dependencies = [
 [[package]]
 name = "yog-gfx"
 version = "0.28.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "113a9fd00360b7c1c80bfae590e472ad267ffffa0c67234c43a2afc7fc2775e1"
 dependencies = [
  "yog-abi",
  "yog-graphics",
@@ -5651,8 +5635,6 @@ dependencies = [
 [[package]]
 name = "yog-graphics"
 version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "90d27021bb3a969dcb9503473c2a888ed14972f1c775e9cae5ad8ced6038607d"
 dependencies = [
  "yog-data",
 ]
@@ -5660,8 +5642,6 @@ dependencies = [
 [[package]]
 name = "yog-hot-reload"
 version = "0.2.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f55e046dbfb653e16df4909caf41b5bd672380f7f2d0c421bbfb49087c440ccf"
 dependencies = [
  "libloading 0.9.0",
 ]
@@ -5712,8 +5692,6 @@ dependencies = [
 [[package]]
 name = "yog-registry"
 version = "0.35.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "903d3739aeea9ac91477e4098b5faf93b53a9f2d71b2209be969e4e75affef17"
 dependencies = [
  "serde",
  "yog-abi",
@@ -5723,8 +5701,6 @@ dependencies = [
 [[package]]
 name = "yog-symbols"
 version = "0.4.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "819f2012cdac6f81d78811e8f0fa26c2601ed5202bcb263e1aad354456dbe28a"
 dependencies = [
  "addr2line",
  "gimli",
@@ -5734,8 +5710,6 @@ dependencies = [
 [[package]]
 name = "yog-ui"
 version = "0.43.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "77c63ae18fc75bd22093f8ffdfb754cb31f39ba8d3139a8c43f4f106042b53d5"
 dependencies = [
  "yog-abi",
  "yog-gfx",
@@ -5744,8 +5718,6 @@ dependencies = [
 [[package]]
 name = "yog-worldgen"
 version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "614b4365d08812504cb75e8d38b93c1bed8141f73f12c6acc0f35406c517b6be"
 dependencies = [
  "yog-data",
 ]
@@ -5996,3 +5968,75 @@ dependencies = [
  "syn 3.0.9",
  "winnow 1.0.4",
 ]
+
+[[patch.unused]]
+name = "yog-api"
+version = "0.98.1"
+
+[[patch.unused]]
+name = "yog-cli"
+version = "0.44.0"
+
+[[patch.unused]]
+name = "yog-command"
+version = "0.2.1"
+
+[[patch.unused]]
+name = "yog-config"
+version = "0.1.1"
+
+[[patch.unused]]
+name = "yog-core"
+version = "0.6.0"
+
+[[patch.unused]]
+name = "yog-dimensions"
+version = "0.13.0"
+
+[[patch.unused]]
+name = "yog-entity"
+version = "0.6.0"
+
+[[patch.unused]]
+name = "yog-event"
+version = "0.7.0"
+
+[[patch.unused]]
+name = "yog-font"
+version = "0.1.1"
+
+[[patch.unused]]
+name = "yog-interop"
+version = "0.21.4"
+
+[[patch.unused]]
+name = "yog-inventory"
+version = "0.18.0"
+
+[[patch.unused]]
+name = "yog-kit"
+version = "0.9.1"
+
+[[patch.unused]]
+name = "yog-logging"
+version = "0.1.1"
+
+[[patch.unused]]
+name = "yog-network"
+version = "0.1.1"
+
+[[patch.unused]]
+name = "yog-player"
+version = "0.7.0"
+
+[[patch.unused]]
+name = "yog-runtime"
+version = "0.104.1"
+
+[[patch.unused]]
+name = "yog-storage"
+version = "0.1.2"
+
+[[patch.unused]]
+name = "yog-world"
+version = "0.6.0"

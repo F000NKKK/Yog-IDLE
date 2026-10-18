@@ -6,7 +6,7 @@
 use std::collections::HashMap;
 use std::path::Path;
 
-use yog_book::layout::{LayoutPart, RecipeLayout};
+use yog_book::layout::RecipeLayout;
 
 use super::components::INNER;
 use super::markup::YuiNode;
@@ -67,46 +67,11 @@ fn area(a: &mut YuiNode, layouts: &[RecipeLayout], ns: &str, next: &mut usize) {
     a.attrs.insert("w".into(), layout.size[0].to_string());
     a.attrs.insert("h".into(), layout.size[1].to_string());
     let uid = a.uid.clone();
-    let mut i = 0;
-    let mut child = |a: &mut YuiNode, kind: &str, attrs: &[(&str, String)]| {
-        a.children.push(node(format!("{uid}{INNER}r{i}"), kind, attrs));
-        i += 1;
-    };
-    let xy = |p: [f32; 2], d: f32| [("x", (p[0] - d).to_string()), ("y", (p[1] - d).to_string())];
-    for part in &layout.parts {
-        match part {
-            LayoutPart::Image { source, uv, at } => {
-                let [u, v, w, h] = *uv;
-                let [x, y] = xy(*at, 0.0);
-                let mut attrs = vec![("source", source.clone()), ("w", w.to_string()), ("h", h.to_string()), ("stretch", "Fill".into()), x, y];
-                if !source.starts_with("sprite:") {
-                    attrs.push(("uv", format!("{u} {v} {w} {h}")));
-                }
-                child(a, "Image", &attrs);
-            }
-            LayoutPart::Slots { at, .. } => {
-                for p in at {
-                    let [x, y] = xy(*p, 1.0);
-                    child(a, "Slot", &[("index", next.to_string()), x, y]);
-                    *next += 1;
-                }
-            }
-            LayoutPart::Result { at, .. } => {
-                let [x, y] = xy(*at, 1.0);
-                child(a, "Slot", &[("index", next.to_string()), x, y]);
-                *next += 1;
-            }
-            LayoutPart::Item { item, at } => {
-                let [x, y] = xy(*at, 0.0);
-                child(a, "Image", &[("source", format!("item:{item}")), ("w", "16".into()), ("h", "16".into()), x, y]);
-            }
-            LayoutPart::Text { text, at } if !text.contains('{') => {
-                let [x, y] = xy(*at, 0.0);
-                child(a, "Label", &[("text", text.clone()), ("color", "#FF404040".into()), ("shadow", "false".into()), x, y]);
-            }
-            LayoutPart::Text { .. } | LayoutPart::Count { .. } => {}
-        }
+    let area = yog_book::layout::screen_area(layout, *next);
+    for (i, e) in area.elements.into_iter().enumerate() {
+        a.children.push(node(format!("{uid}{INNER}r{i}"), e.kind, &e.attrs));
     }
+    *next = area.next;
 }
 
 #[cfg(test)]

@@ -2,8 +2,10 @@
 //! a GUI (an orthographic view, turned and tilted), each block a cube with
 //! its model's boxes (`elements`: a cable's core, a slab's half) with
 //! their textures — the faces you'd see, back to front, the top lit, the
-//! sides shaded like Minecraft's. A model without elements is a cube;
-//! elements' rotations are left out.
+//! sides shaded like Minecraft's. A model without elements is a cube.
+//! A block state picks its blockstate's variant (turned by its `x`/`y`)
+//! or every multipart part whose `when` it meets; elements keep their own
+//! rotations.
 
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
@@ -18,12 +20,58 @@ pub type Faces = [Option<Arc<Image>>; 6];
 
 /// One box of a model, in sixteenths of a block: per face (up, down,
 /// north, south, west, east) its texture, already cut to the face's uv
-/// (`None`: the box has no such face).
+/// (`None`: the box has no such face), and the turns it's drawn with, in
+/// order (its element's, then its variant's).
 #[derive(Clone)]
 pub struct Cuboid {
     pub from: [f32; 3],
     pub to: [f32; 3],
     pub faces: Faces,
+    pub turns: Vec<Turn>,
+}
+
+/// A turn of a box about `axis` (0 x, 1 y, 2 z) through `origin`
+/// (sixteenths of a block), `degrees` counter-clockwise looking down the
+/// axis; `rescale` stretches the turned box's other axes back to the block
+/// (an element's `rescale`).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Turn {
+    pub origin: [f32; 3],
+    pub axis: usize,
+    pub degrees: f32,
+    pub rescale: bool,
+}
+
+/// A block's centre, in sixteenths: what a variant turns about.
+const CENTRE: [f32; 3] = [8.0, 8.0, 8.0];
+/// A block's side, in the sixteenths models are written in.
+const BLOCK_UNITS: f32 = 16.0;
+
+impl Turn {
+    /// `p` (sixteenths) turned.
+    fn apply(&self, p: [f32; 3]) -> [f32; 3] {
+        let (s, c) = self.degrees.to_radians().sin_cos();
+        let (a, b) = match self.axis {
+            0 => (1, 2),
+            1 => (2, 0),
+            _ => (0, 1),
+        };
+        let d = [0, 1, 2].map(|i| p[i] - self.origin[i]);
+        let mut out = d;
+        out[a] = d[a] * c - d[b] * s;
+        out[b] = d[a] * s + d[b] * c;
+        if self.rescale && c.abs() > f32::EPSILON {
+            let k = 1.0 / c.abs();
+            out[a] *= k;
+            out[b] *= k;
+        }
+        [0, 1, 2].map(|i| out[i] + self.origin[i])
+    }
+
+    /// A direction turned (no origin, no rescale).
+    fn apply_dir(&self, v: [f32; 3]) -> [f32; 3] {
+        Turn { origin: [0.0; 3], rescale: false, ..*self }.apply(v)
+    }
 }
 
 /// A block as drawn: its model's boxes.
@@ -32,7 +80,7 @@ pub type Shape = Vec<Cuboid>;
 /// A whole-block cube with `faces` (a missing one: the missing texture).
 pub fn cube(faces: Faces) -> Shape {
     let faces = faces.map(|f| Some(f.unwrap_or_else(|| Arc::new(missing_image()))));
-    vec![Cuboid { from: [0.0; 3], to: [16.0; 3], faces }]
+    vec![Cuboid { from: [0.0; 3], to: [BLOCK_UNITS; 3], faces, turns: Vec::new() }]
 }
 
 const FACE_NAMES: [&str; 6] = ["up", "down", "north", "south", "west", "east"];
@@ -89,9 +137,19 @@ pub fn shape_of(elements: &[Value], texture: &mut dyn FnMut(&str) -> Option<Arc<
                     .unwrap_or_else(|| default_uv(slot, f, t));
                 Some(Arc::new(cut(&img, uv)))
             });
-            Some(Cuboid { from: f, to: t, faces })
+            Some(Cuboid { from: f, to: t, faces, turns: element_turn(e).into_iter().collect() })
         })
         .collect()
+}
+
+/// An element's `rotation`: `{ origin, axis: "x"|"y"|"z", angle, rescale }`.
+fn element_turn(e: &Value) -> Option<Turn> {
+    let r = e.get("rotation")?;
+    let o = r.get("origin")?.as_array()?;
+    let origin = [o.first()?.as_f64()? as f32, o.get(1)?.as_f64()? as f32, o.get(2)?.as_f64()? as f32];
+    let axis = ["x", "y", "z"].iter().position(|a| r.get("axis").and_then(Value::as_str) == Some(*a))?;
+    let degrees = r.get("angle")?.as_f64()? as f32;
+    Some(Turn { origin, axis, degrees, rescale: r.get("rescale").and_then(Value::as_bool).unwrap_or(false) })
 }
 
 /// The first `elements` up a model's parents.
@@ -132,56 +190,124 @@ fn model_textures(res: &Resources, model: &str, depth: usize) -> HashMap<String,
     out
 }
 
-/// The model a block's blockstate shows first (its first variant or part).
-fn block_model(res: &Resources, id: &str) -> Option<String> {
+/// A block state's id and its properties: `minecraft:furnace[facing=north]`.
+fn split_state(state: &str) -> (&str, HashMap<&str, &str>) {
+    let (id, props) = state.split_once('[').unwrap_or((state, ""));
+    let props = props.trim_end_matches(']').split(',').filter_map(|kv| kv.split_once('=')).map(|(k, v)| (k.trim(), v.trim())).collect();
+    (id, props)
+}
+
+/// Whether `props` meet a multipart `when` (every property one of its
+/// `a|b` values; `OR`/`AND`: any/all of a list). A property the state
+/// doesn't name meets nothing.
+fn meets(when: &Value, props: &HashMap<&str, &str>) -> bool {
+    let Some(map) = when.as_object() else { return true };
+    if let Some(any) = map.get("OR").and_then(Value::as_array) {
+        return any.iter().any(|w| meets(w, props));
+    }
+    if let Some(all) = map.get("AND").and_then(Value::as_array) {
+        return all.iter().all(|w| meets(w, props));
+    }
+    map.iter().all(|(k, v)| {
+        let want = v.as_str().map(str::to_string).unwrap_or_else(|| v.to_string());
+        props.get(k.as_str()).is_some_and(|have| want.split('|').any(|w| w == *have))
+    })
+}
+
+/// A blockstate's `apply`/variant: its model and its turns (`x` then `y`,
+/// about the block's centre; the game turns models clockwise looking down
+/// an axis).
+fn applied(v: &Value) -> Option<(String, Vec<Turn>)> {
+    let v = if v.is_array() { v.get(0)? } else { v };
+    let model = v.get("model")?.as_str()?.to_string();
+    let mut turns = Vec::new();
+    for (axis, key) in [(0, "x"), (1, "y")] {
+        let deg = v.get(key).and_then(Value::as_f64).unwrap_or(0.0) as f32;
+        if deg != 0.0 {
+            turns.push(Turn { origin: CENTRE, axis, degrees: -deg, rescale: false });
+        }
+    }
+    Some((model, turns))
+}
+
+/// The models block state `state` shows: its variant (the one whose
+/// properties it has; the first otherwise), or each multipart part it meets.
+fn block_models(res: &Resources, state: &str) -> Vec<(String, Vec<Turn>)> {
+    let (id, props) = split_state(state);
     let (ns, path) = split_id(id);
-    let json: Value = serde_json::from_slice(&res.read(ns, &format!("blockstates/{path}.json"))?).ok()?;
-    let first = |v: &Value| -> Option<String> {
-        let v = if v.is_array() { v.get(0)? } else { v };
-        v.get("model")?.as_str().map(str::to_string)
+    let Some(json) = res.read(ns, &format!("blockstates/{path}.json")).and_then(|b| serde_json::from_slice::<Value>(&b).ok()) else {
+        return Vec::new();
     };
     if let Some(variants) = json.get("variants").and_then(Value::as_object) {
-        return variants.values().find_map(first);
+        let fits = |key: &str| key.split(',').filter(|kv| !kv.is_empty()).all(|kv| kv.split_once('=').is_some_and(|(k, v)| props.get(k) == Some(&v)));
+        let chosen = variants.iter().find(|(k, _)| fits(k)).or_else(|| variants.iter().next());
+        return chosen.and_then(|(_, v)| applied(v)).into_iter().collect();
     }
-    json.get("multipart")?.as_array()?.iter().find_map(|p| first(p.get("apply")?))
+    json.get("multipart")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter(|part| part.get("when").is_none_or(|w| meets(w, &props)))
+        .filter_map(|part| applied(part.get("apply")?))
+        .collect()
 }
 
 /// Whether `id` is a block (the game's, or the mod's `.yblock`).
 pub fn is_block(res: &Resources, id: &str) -> bool {
+    let id = split_state(id).0;
     let (ns, path) = split_id(id);
     res.read(ns, &format!("blockstates/{path}.json")).is_some()
         || res.mod_root.as_deref().is_some_and(|root| crate::content::content_block_faces(root, id).is_some())
 }
 
-fn shape(res: &Resources, id: &str, cache: &mut HashMap<String, Shape>) -> Shape {
-    if let Some(s) = cache.get(id) {
+fn shape(res: &Resources, state: &str, cache: &mut HashMap<String, Shape>) -> Shape {
+    if let Some(s) = cache.get(state) {
         return s.clone();
     }
-    // The mod's own block: its `.yblock` model — its elements, else a cube of its textures.
-    if let Some(root) = res.mod_root.as_deref() {
-        if let Some((elements, textures)) = crate::content::content_block_model(root, id) {
-            let mut decoded: HashMap<String, Option<Arc<Image>>> = HashMap::new();
-            let mut texture = |var: &str| -> Option<Arc<Image>> {
-                let var = var.trim_start_matches('#');
-                decoded.entry(var.to_string()).or_insert_with(|| textures.get(var).and_then(|b| decode_png(b)).map(Arc::new)).clone()
-            };
-            let s = shape_of(&elements, &mut texture);
-            if !s.is_empty() {
-                cache.insert(id.to_string(), s.clone());
-                return s;
-            }
-        }
-        if let Some(faces) = crate::content::content_block_faces(root, id) {
-            let s = cube(faces.map(|b| b.and_then(|b| decode_png(&b)).map(Arc::new)));
-            cache.insert(id.to_string(), s.clone());
-            return s;
+    let id = split_state(state).0;
+    let s = mod_shape(res, id).unwrap_or_else(|| game_shape(res, state));
+    cache.insert(state.to_string(), s.clone());
+    s
+}
+
+/// The mod's own block: its `.yblock` model — its elements, else a cube of its textures.
+fn mod_shape(res: &Resources, id: &str) -> Option<Shape> {
+    let root = res.mod_root.as_deref()?;
+    if let Some((elements, textures)) = crate::content::content_block_model(root, id) {
+        let mut decoded: HashMap<String, Option<Arc<Image>>> = HashMap::new();
+        let mut texture = |var: &str| -> Option<Arc<Image>> {
+            let var = var.trim_start_matches('#');
+            decoded.entry(var.to_string()).or_insert_with(|| textures.get(var).and_then(|b| decode_png(b)).map(Arc::new)).clone()
+        };
+        let s = shape_of(&elements, &mut texture);
+        if !s.is_empty() {
+            return Some(s);
         }
     }
-    let model = block_model(res, id).unwrap_or_else(|| {
-        let (ns, path) = split_id(id);
-        format!("{ns}:block/{path}")
-    });
-    let vars = model_textures(res, &model, 0);
+    crate::content::content_block_faces(root, id).map(|faces| cube(faces.map(|b| b.and_then(|b| decode_png(&b)).map(Arc::new))))
+}
+
+/// The game's block state: every model its blockstate shows for it, each
+/// turned as the blockstate says.
+fn game_shape(res: &Resources, state: &str) -> Shape {
+    let mut models = block_models(res, state);
+    if models.is_empty() {
+        let (ns, path) = split_id(split_state(state).0);
+        models.push((format!("{ns}:block/{path}"), Vec::new()));
+    }
+    let mut out = Shape::new();
+    for (model, turns) in models {
+        for mut cuboid in model_shape(res, &model) {
+            cuboid.turns.extend(turns.iter().copied());
+            out.push(cuboid);
+        }
+    }
+    out
+}
+
+/// One block model's boxes: its elements, else a cube of its textures.
+fn model_shape(res: &Resources, model: &str) -> Shape {
+    let vars = model_textures(res, model, 0);
     // `#var` → its value, following references.
     let resolve = |key: &str| -> Option<String> {
         let mut v = vars.get(key)?.clone();
@@ -193,31 +319,27 @@ fn shape(res: &Resources, id: &str, cache: &mut HashMap<String, Shape>) -> Shape
         }
         None
     };
-    let pick = |keys: &[&str]| keys.iter().find_map(|k| resolve(k));
     let load = |tex: Option<String>| -> Option<Arc<Image>> {
         let tex = tex?;
         let (ns, path) = split_id(&tex);
         decode_png(&res.read(ns, &format!("textures/{path}.png"))?).map(Arc::new)
     };
-    if let Some(elements) = model_elements(res, &model, 0) {
+    if let Some(elements) = model_elements(res, model, 0) {
         let mut texture = |var: &str| load(resolve(var.trim_start_matches('#')));
         let s = shape_of(&elements, &mut texture);
         if !s.is_empty() {
-            cache.insert(id.to_string(), s.clone());
             return s;
         }
     }
-    let f: Faces = [
+    let pick = |keys: &[&str]| keys.iter().find_map(|k| resolve(k));
+    cube([
         load(pick(&["up", "top", "end", "all", "texture", "particle"])),
         load(pick(&["down", "bottom", "end", "all", "texture", "particle"])),
         load(pick(&["north", "front", "side", "all", "texture", "particle"])),
         load(pick(&["south", "side", "all", "texture", "particle"])),
         load(pick(&["west", "side", "all", "texture", "particle"])),
         load(pick(&["east", "side", "all", "texture", "particle"])),
-    ];
-    let s = cube(f);
-    cache.insert(id.to_string(), s.clone());
-    s
+    ])
 }
 
 /// `x y z state` lines → blocks.
@@ -226,9 +348,7 @@ fn parse(list: &str) -> Vec<([i32; 3], String)> {
         .filter_map(|l| {
             let mut p = l.trim().splitn(4, ' ');
             let at = [p.next()?.parse().ok()?, p.next()?.parse().ok()?, p.next()?.parse().ok()?];
-            let state = p.next()?;
-            let id = state.split('[').next().unwrap_or(state).to_string();
-            Some((at, id))
+            Some((at, p.next()?.to_string()))
         })
         .collect()
 }
@@ -293,17 +413,22 @@ fn draw_with(
     ];
     for (p, id) in blocks {
         for cuboid in shape_of(c.resources(), id) {
-            let (f, t) = (cuboid.from.map(|v| v / 16.0), cuboid.to.map(|v| v / 16.0));
-            // A unit cube's corner → this box's, in the world.
-            let at = |u: [f32; 3]| [0, 1, 2].map(|i| p[i] as f32 + f[i] + u[i] * (t[i] - f[i]));
+            let (f, t) = (cuboid.from, cuboid.to);
+            // A unit cube's corner → this box's (in sixteenths, turned), in the world.
+            let at = |u: [f32; 3]| {
+                let q = cuboid.turns.iter().fold([0, 1, 2].map(|i| f[i] + u[i] * (t[i] - f[i])), |q, turn| turn.apply(q));
+                [0, 1, 2].map(|i| p[i] as f32 + q[i] / BLOCK_UNITS)
+            };
             for (n, corner, a, b, slot, shade) in FACES {
-                // On the block's side, against a neighbour: hidden.
-                let on_side = (0..3).all(|i| n[i] == 0 || (n[i] > 0 && t[i] >= 1.0) || (n[i] < 0 && f[i] <= 0.0));
+                // On the block's side, against a neighbour: hidden (a turned box is never flush).
+                let on_side = cuboid.turns.is_empty()
+                    && (0..3).all(|i| n[i] == 0 || (n[i] > 0 && t[i] >= BLOCK_UNITS) || (n[i] < 0 && f[i] <= 0.0));
                 if on_side && occupied.contains(&[p[0] + n[0], p[1] + n[1], p[2] + n[2]]) {
                     continue;
                 }
                 // Facing away from the viewer: unseen.
-                let nv = view([centre[0] + n[0] as f32, centre[1] + n[1] as f32, centre[2] + n[2] as f32]);
+                let normal = cuboid.turns.iter().fold(n.map(|v| v as f32), |v, turn| turn.apply_dir(v));
+                let nv = view([0, 1, 2].map(|i| centre[i] + normal[i]));
                 if nv[2] <= 0.0 {
                     continue;
                 }
@@ -367,6 +492,31 @@ mod tests {
     #[test]
     fn parses_block_lines() {
         let b = parse("0 0 0 minecraft:stone\n1 2 -1 minecraft:furnace[facing=north]\nbad");
-        assert_eq!(b, [([0, 0, 0], "minecraft:stone".to_string()), ([1, 2, -1], "minecraft:furnace".to_string())]);
+        assert_eq!(b, [([0, 0, 0], "minecraft:stone".to_string()), ([1, 2, -1], "minecraft:furnace[facing=north]".to_string())]);
+    }
+
+    #[test]
+    fn a_state_meets_multipart_conditions() {
+        let (id, props) = split_state("minecraft:brewing_stand[has_bottle_0=true,has_bottle_1=false]");
+        assert_eq!(id, "minecraft:brewing_stand");
+        let when = |j: &str| serde_json::from_str::<Value>(j).unwrap();
+        assert!(meets(&when(r#"{ "has_bottle_0": "true" }"#), &props));
+        assert!(!meets(&when(r#"{ "has_bottle_1": "true" }"#), &props));
+        assert!(meets(&when(r#"{ "has_bottle_1": "true|false" }"#), &props));
+        assert!(meets(&when(r#"{ "OR": [{ "has_bottle_2": "true" }, { "has_bottle_0": "true" }] }"#), &props));
+        assert!(!meets(&when(r#"{ "has_bottle_2": "false" }"#), &props), "a property the state doesn't name");
+    }
+
+    #[test]
+    fn turns_turn_about_their_origin() {
+        let close = |a: [f32; 3], b: [f32; 3]| (0..3).all(|i| (a[i] - b[i]).abs() < 1e-4);
+        // A quarter turn about y through the centre: east goes north.
+        let y = Turn { origin: CENTRE, axis: 1, degrees: 90.0, rescale: false };
+        assert!(close(y.apply([16.0, 8.0, 8.0]), [8.0, 8.0, 0.0]), "{:?}", y.apply([16.0, 8.0, 8.0]));
+        assert!(close(y.apply(CENTRE), CENTRE));
+        // Rescaled at 45°: the diagonal is stretched back to the block.
+        let r = Turn { origin: CENTRE, axis: 1, degrees: 45.0, rescale: true };
+        let d = r.apply([16.0, 8.0, 8.0]);
+        assert!(((d[0] - 8.0).powi(2) + (d[2] - 8.0).powi(2)).sqrt() > 8.0 * 1.4);
     }
 }
