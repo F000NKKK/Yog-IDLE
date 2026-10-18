@@ -34,7 +34,7 @@ export const ENTITY_SOURCE_VIEW = "yog.yentity.source";
 /** Each kind's name as the designer shows it. */
 const KIND_LABELS: Record<EntityKind, string> = { object: "Object", living: "Living", mob: "Mob", hanging: "Hanging" };
 
-/** A new spawn egg's colours: the game's pig. */
+/** A new spawn egg's colors: the game's pig. */
 const DEFAULT_EGG: [number, number] = [0xf0a5a2, 0xdb635f];
 
 /** The view's controls (Properties lists them). */
@@ -53,7 +53,7 @@ const attributeName = (id: string) => id.replace(/^minecraft:/, "").replace(/^ge
  * model posed by a clip (played, scrubbed from the toolbar), its hitbox and
  * eyes, a hanging thing's wall — and everything it says in Properties: its
  * kind and size, attributes, goals in priority order, its model, clips by
- * state, spawn egg colours (drawn as the game does) and a hanging thing's
+ * state, spawn egg colors (drawn as the game does) and a hanging thing's
  * sounds. Edits go into the file's text, comments kept; Undo/Redo are the
  * platform's.
  */
@@ -309,8 +309,8 @@ export function EntityEditor({ path, content, onChange, readOnly }: EditorProps)
       );
       if (colors)
         out.push(
-          color("egg.base", t("Base Colour"), egg, colors[0], (v) => v !== undefined && update((d) => void (d.spawn_egg = [v, d.spawn_egg?.[1] ?? DEFAULT_EGG[1]]))),
-          color("egg.spots", t("Spots Colour"), egg, colors[1], (v) => v !== undefined && update((d) => void (d.spawn_egg = [d.spawn_egg?.[0] ?? DEFAULT_EGG[0], v]))),
+          color("egg.base", t("Base Color"), egg, colors[0], (v) => v !== undefined && update((d) => void (d.spawn_egg = [v, d.spawn_egg?.[1] ?? DEFAULT_EGG[1]]))),
+          color("egg.spots", t("Spots Color"), egg, colors[1], (v) => v !== undefined && update((d) => void (d.spawn_egg = [d.spawn_egg?.[0] ?? DEFAULT_EGG[0], v]))),
           { id: "egg.preview", name: t("Preview"), category: egg, value: null, kind: "custom", render: () => <SpawnEgg path={path} colors={colors} /> },
         );
     }

@@ -35,7 +35,7 @@ describe("yres", () => {
     ['{\n  "a": "x\n"}', 2, "line break in a string"],
     ['{\n  "a": nope\n}', 2, "expected a value"],
     ['{\n  "a": []\n}', 2, "must be a string, a number or true/false"],
-    ['{\n  "a": { "colour": "x" }\n}', 2, "unknown field `colour`"],
+    ['{\n  "a": { "color": "x" }\n}', 2, "unknown field `color`"],
     ['{\n  "a": { "type": "image" }\n}', 2, "missing `value`"],
     ['{\n  "a": { "type": "font", "value": "x" }\n}', 2, "unknown type `font`"],
     ['{ "a": "x" "b": "y" }', 1, "expected `,` or `}`"],

@@ -38,7 +38,7 @@ interface Modifier extends Record<string, unknown> {
 
 /**
  * A mob effect as the inventory shows one: its icon and name in an effect
- * box, the colour of its particles, and its modifiers as a potion's
+ * box, the color of its particles, and its modifiers as a potion's
  * tooltip lists them (+20% Grid Zoom) — blue for the good, red for the bad.
  */
 export function EffectDesigner({ path, file, update, readOnly, kindLabel }: DefProps) {
@@ -60,9 +60,9 @@ export function EffectDesigner({ path, file, update, readOnly, kindLabel }: DefP
       text("id", t("Id"), c, file.id, (v) => update((d) => void (d.id = v)), { description: t("Its id, the mod's (enlarge_grid); its icon is textures/mob_effect/<id>.png, its name effect.<ns>.<id>.") }),
       choice("category", t("Category"), c, file.category as string | undefined, EFFECT_CATEGORIES, (v) => v && update((d) => void (d.category = v)), {
         optionLabel: (o) => (o ? t(CATEGORY_LABELS[o as keyof typeof CATEGORY_LABELS]) : ""),
-        description: t("Good or bad for whoever has it: its colour in the inventory, what milk and beacons do with it."),
+        description: t("Good or bad for whoever has it: its color in the inventory, what milk and beacons do with it."),
       }),
-      colorRow("color", t("Colour"), c, file.color as number | undefined, (v) => v !== undefined && update((d) => void (d.color = v)), { description: t("Its particles' and potions' colour.") }),
+      colorRow("color", t("Color"), c, file.color as number | undefined, (v) => v !== undefined && update((d) => void (d.color = v)), { description: t("Its particles' and potions' color.") }),
       {
         id: "modifiers",
         name: "",

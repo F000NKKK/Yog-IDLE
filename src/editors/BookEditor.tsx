@@ -319,7 +319,7 @@ export function BookEditor({ path, content, onChange, readOnly }: EditorProps) {
           ...base,
           value: text,
           swatch,
-          validate: (x) => (/^([0-9a-f]{6}|[0-9a-f]{8})$/i.test(digits(String(x))) ? null : t("Not a colour: #RRGGBB or #AARRGGBB.")),
+          validate: (x) => (/^([0-9a-f]{6}|[0-9a-f]{8})$/i.test(digits(String(x))) ? null : t("Not a color: #RRGGBB or #AARRGGBB.")),
           onCommit: (x) => set(typeof v === "number" ? parseInt(digits(String(x)), 16) >>> 0 : String(x).trim()),
         };
       }

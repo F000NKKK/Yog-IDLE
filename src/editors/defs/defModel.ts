@@ -1,7 +1,7 @@
 // The `.ydef` kinds (`yog_formats::def::Def`) as their designers see them:
 // the file read and written back in place, the game's vocabularies the
 // format names in its docs, and what the designers compute to draw —
-// an advancement tab's layout, loot odds, a potion's colour.
+// an advancement tab's layout, loot odds, a potion's color.
 
 import { DataSyntaxError, formatData, parseDataValue, patchDataText } from "../../data/yogData";
 

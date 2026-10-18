@@ -4,7 +4,7 @@
 //! `yog.toml` (`[external.<namespace>]`) and the game's (read from the
 //! client jar on this machine, when there is one). And the mod's own
 //! `.ydef`s of a kind with what they say (an advancement's parent, an
-//! effect's colour), for the designers that draw several at once.
+//! effect's color), for the designers that draw several at once.
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};

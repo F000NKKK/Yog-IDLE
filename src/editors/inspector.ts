@@ -3,7 +3,7 @@
 // written back, whichever designer shows it: an optional text or number
 // (empty: unset), a choice, a yes/no with its default, a reference
 // (`@item:…`, validated against what the mod, its declared mods and the
-// game have, an item's icon beside it), a `0xRRGGBB` colour.
+// game have, an item's icon beside it), a `0xRRGGBB` color.
 
 import type { PropertyDescriptor, useT } from "substrate-platform-ui";
 import { iconSource, imagePreview } from "../designer/imageSources";
@@ -119,7 +119,7 @@ export function inspectorRows(t: T, ro: boolean, path: string) {
     });
   };
 
-  /** A `0xRRGGBB` colour, edited as `#rrggbb`. */
+  /** A `0xRRGGBB` color, edited as `#rrggbb`. */
   const color = (id: string, name: string, category: string, value: number | undefined, set: (v: number | undefined) => void, extra: Extra = {}): PropertyDescriptor => ({
     id,
     name,
@@ -128,7 +128,7 @@ export function inspectorRows(t: T, ro: boolean, path: string) {
     swatch: value === undefined ? undefined : colorText(value),
     kind: "string",
     readOnly: ro,
-    validate: (v) => (String(v).trim() === "" || parseColor(String(v)) !== null ? null : t("A colour: #rrggbb.")),
+    validate: (v) => (String(v).trim() === "" || parseColor(String(v)) !== null ? null : t("A color: #rrggbb.")),
     onCommit: (v) => set(String(v).trim() === "" ? undefined : (parseColor(String(v)) ?? undefined)),
     ...extra,
   });

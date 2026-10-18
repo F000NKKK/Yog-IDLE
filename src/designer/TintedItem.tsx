@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 
-/** The game's spawn egg: its base, tinted by the first colour, and its spots, by the second (item layers 0 and 1). */
+/** The game's spawn egg: its base, tinted by the first color, and its spots, by the second (item layers 0 and 1). */
 const SPAWN_EGG = ["minecraft:item/spawn_egg", "minecraft:item/spawn_egg_overlay"] as const;
 
-/** Its colour that leaves a layer as it is. */
+/** Its color that leaves a layer as it is. */
 export const NO_TINT = 0xffffff;
 
 function loadImage(url: string): Promise<HTMLImageElement> {
@@ -16,14 +16,14 @@ function loadImage(url: string): Promise<HTMLImageElement> {
   });
 }
 
-/** A spawn egg as the game draws it, in its two colours. */
+/** A spawn egg as the game draws it, in its two colors. */
 export function SpawnEgg({ path, colors, size = 48 }: { path: string; colors: readonly [number, number]; size?: number }) {
   return <TintedItem path={path} layers={SPAWN_EGG} colors={colors} size={size} />;
 }
 
 /**
  * An item drawn as the game draws a tinted one: its layers (texture ids)
- * one over another, each one's pixels multiplied by its colour
+ * one over another, each one's pixels multiplied by its color
  * (`0xRRGGBB`), pixelated at `size`. Nothing while the textures can't be
  * read (no client jar for the game's).
  */
