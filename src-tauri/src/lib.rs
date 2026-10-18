@@ -714,7 +714,7 @@ async fn cli(method: String, params: serde_json::Value) -> Result<serde_json::Va
 /// The id of the mod a content file is in (its own textures' namespace).
 #[tauri::command]
 fn content_mod_id(path: String) -> Option<String> {
-    designer::mod_root(Path::new(&path)).and_then(|root| yog_cli::media::mod_id(&root))
+    designer::mod_root(Path::new(&path)).and_then(|root| cli::mod_id(&root))
 }
 
 /// The texture picker's choices for a content file.

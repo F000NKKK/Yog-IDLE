@@ -62,7 +62,7 @@ fn crop_png(bytes: &[u8], x: u32, y: u32, width: u32, height: u32) -> Result<Vec
 }
 
 /// A file of texture `texture` — its `png`, or its `png.mcmeta` — as the
-/// build makes it (the mod's own, through `yog_cli::media`) or the game has it.
+/// build makes it (the mod's own, through the CLI service) or the game has it.
 fn texture_file(file: &Path, texture: &str, ext: &str) -> Result<Vec<u8>, String> {
     let id = texture_id(texture);
     let (ns, path) = yog_ids::split(&id);
@@ -378,12 +378,11 @@ pub fn write_animation(file: &Path, texture: &str, animation: Option<&Animation>
         Some(a) => {
             let png = texture_bytes(file, texture)?;
             let size = image_size(&png).ok_or_else(|| format!("{id} isn't a picture"))?;
-            let meta: Value = serde_json::from_str(&a.write(size)).map_err(|e| e.to_string())?;
-            yog_formats::texture::Animation::from_mcmeta(&meta)
+            Some(serde_json::from_str::<Value>(&a.write(size)).map_err(|e| e.to_string())?)
         }
         None => None,
     };
-    yog_cli::media::save_texture_animation(&root, &id, animation)
+    crate::cli::save_texture_animation(&root, &id, animation.as_ref())
 }
 
 /// A body model's texture (`.ymodel`): `@texture:<ns>:<path>`, as a content file's.
@@ -416,7 +415,7 @@ pub fn own_texture(file: &Path, texture: &str) -> Option<(PathBuf, String)> {
     }
     let root = mod_root(file)?;
     let id = texture_id(texture);
-    yog_cli::media::is_own_texture(&root, &id).then_some((root, id))
+    crate::cli::is_own_texture(&root, &id).then_some((root, id))
 }
 
 /// Writes `png` as the picture of the mod's texture `texture`; the `.yres` written.
@@ -425,7 +424,7 @@ pub fn write_texture(file: &Path, texture: &str, png: Vec<u8>) -> Result<PathBuf
         return Err("not a PNG image".into());
     }
     let (root, id) = own_texture(file, texture).ok_or_else(|| format!("{texture} isn't a texture of this mod"))?;
-    yog_cli::media::save_texture_picture(&root, &id, png)
+    crate::cli::save_texture_picture(&root, &id, &png)
 }
 
 /// Width and height from a PNG header.
@@ -539,7 +538,7 @@ pub fn textures(file: &Path) -> Vec<TextureChoice> {
     let mut out = Vec::new();
     let root = mod_root(file);
     if let Some(root) = &root {
-        out.extend(yog_cli::media::textures(root).into_iter().map(|t| TextureChoice {
+        out.extend(crate::cli::textures(root).into_iter().map(|t| TextureChoice {
             value: format!("{}{}", yog_ids::reference::TEXTURE, t.id),
             group: "Mod textures",
         }));

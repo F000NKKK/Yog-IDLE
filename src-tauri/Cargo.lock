@@ -5708,27 +5708,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "yog-cli"
-version = "0.44.0"
-dependencies = [
- "base64 0.22.1",
- "proc-macro2",
- "serde_json",
- "syn 3.0.9",
- "yog-body",
- "yog-book",
- "yog-data",
- "yog-font",
- "yog-formats",
- "yog-gfx",
- "yog-ids",
- "yog-media",
- "yog-registry",
- "yog-ui",
- "zip",
-]
-
-[[package]]
 name = "yog-data"
 version = "0.4.2"
 dependencies = [
@@ -5736,8 +5715,6 @@ dependencies = [
  "bumpalo",
  "serde",
  "serde_json",
- "serde_spanned 1.1.2",
- "toml 1.1.8+spec-1.1.0",
  "yog-data-derive",
  "yog-ids",
 ]
@@ -5838,7 +5815,6 @@ dependencies = [
  "toml_edit 0.25.17+spec-1.1.0",
  "yog-abi",
  "yog-book",
- "yog-cli",
  "yog-data",
  "yog-debugger",
  "yog-formats",

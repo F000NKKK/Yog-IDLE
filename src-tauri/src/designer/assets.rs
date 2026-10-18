@@ -326,7 +326,7 @@ impl Resources {
     /// The bytes of resource `<ns>:<path>` (`textures/gui/x.png`): the mod's
     /// own are its `.yres` images (a mod has no `assets/`), the rest the game's.
     pub fn read(&self, ns: &str, path: &str) -> Option<Vec<u8>> {
-        if let Some(bytes) = self.mod_root.as_deref().and_then(|root| yog_cli::media::built_asset(root, ns, path)) {
+        if let Some(bytes) = self.mod_root.as_deref().and_then(|root| crate::cli::built_asset(root, ns, path)) {
             return Some(bytes);
         }
         self.vanilla.as_ref()?.read(&format!("{ns}/{path}"))

@@ -52,7 +52,6 @@ yog-book = "0.67.0"
 yog-graphics = "0.1.1"
 yog-ids = "0.1.0"
 yog-media = "0.1.0"
-yog-cli = "0.44.0"
 # Yog Data: the text syntax of every Yog format.
 yog-data = "0.4.2"
 # A dimension's terrain, previewed by the code the runtime generates it with.
@@ -93,7 +92,6 @@ yog-abi = { path = "../../Yog-Mod-Loader/rust/crates/yog-abi" }
 yog-api = { path = "../../Yog-Mod-Loader/rust/crates/yog-api" }
 yog-body = { path = "../../Yog-Mod-Loader/rust/crates/yog-body" }
 yog-book = { path = "../../Yog-Mod-Loader/rust/crates/yog-book" }
-yog-cli = { path = "../../Yog-Mod-Loader/rust/crates/yog-cli" }
 yog-command = { path = "../../Yog-Mod-Loader/rust/crates/yog-command" }
 yog-config = { path = "../../Yog-Mod-Loader/rust/crates/yog-config" }
 yog-core = { path = "../../Yog-Mod-Loader/rust/crates/yog-core" }
