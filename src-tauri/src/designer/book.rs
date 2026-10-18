@@ -91,7 +91,7 @@ fn texts(mod_root: Option<&Path>, res: &Resources, locale: Option<&str>) -> Text
     let mut t = Texts { refs: HashMap::new(), lang: HashMap::new() };
     // The game's (and the mod's assets') language files, the mod's own on top.
     let lang_file = locale.unwrap_or("en_us");
-    let mod_id = mod_root.and_then(|r| crate::manifest::read_mod_field(r, "id")).unwrap_or_default();
+    let mod_id = mod_root.and_then(|r| crate::manifest::mod_id(r)).unwrap_or_default();
     for ns in ["minecraft", mod_id.as_str()] {
         for file in ["en_us".to_string(), lang_file.to_string()] {
             if let Some(Value::Object(map)) = res.read(ns, &format!("lang/{file}.json")).and_then(|b| serde_json::from_slice(&b).ok()) {
@@ -188,7 +188,7 @@ fn translate(key: &str) -> Option<String> {
 /// The mod's recipes, as the game gets them: `content/**/*.yrecipe` in
 /// Yog's recipe format — (id, JSON).
 fn recipes(mod_root: &Path) -> Vec<(String, yog_data::Value)> {
-    let mod_id = crate::manifest::read_mod_field(mod_root, "id").unwrap_or_default();
+    let mod_id = crate::manifest::mod_id(mod_root).unwrap_or_default();
     let mut out = Vec::new();
     let mut stack = vec![mod_root.join("content")];
     while let Some(dir) = stack.pop() {

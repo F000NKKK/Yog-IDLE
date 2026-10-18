@@ -305,8 +305,6 @@ mod tests {
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(dir.join("content/items")).unwrap();
         std::fs::create_dir_all(dir.join("content/effects")).unwrap();
-        std::fs::create_dir_all(dir.join("assets/minecraft/models/item")).unwrap();
-        std::fs::create_dir_all(dir.join("assets/minecraft/textures/item")).unwrap();
         std::fs::write(dir.join("yog.toml"), "[mod]\nid = \"hexcasting\"\n").unwrap();
         std::fs::write(
             dir.join("content/items/enlarge_grid.yitem"),
@@ -318,25 +316,25 @@ mod tests {
             r#"{ kind: "effect", id: "enlarge_grid", color: 13137407 }"#,
         )
         .unwrap();
-        std::fs::write(
-            dir.join("assets/minecraft/models/item/potion.json"),
-            r#"{"textures":{"layer0":"minecraft:item/potion_overlay","layer1":"minecraft:item/potion"}}"#,
-        )
-        .unwrap();
-        std::fs::write(
-            dir.join("assets/minecraft/textures/item/potion_overlay.png"),
-            png([255, 255, 255, 255]),
-        )
-        .unwrap();
-        std::fs::write(
-            dir.join("assets/minecraft/textures/item/potion.png"),
-            png([0, 0, 0, 0]),
-        )
-        .unwrap();
-
+        // The game's potion, in a stand-in client jar.
+        let jar = dir.join("client.jar");
+        {
+            use std::io::Write as _;
+            let mut zip = zip::ZipWriter::new(std::fs::File::create(&jar).unwrap());
+            let files: [(&str, Vec<u8>); 3] = [
+                ("assets/minecraft/models/item/potion.json", br#"{"textures":{"layer0":"minecraft:item/potion_overlay","layer1":"minecraft:item/potion"}}"#.to_vec()),
+                ("assets/minecraft/textures/item/potion_overlay.png", png([255, 255, 255, 255])),
+                ("assets/minecraft/textures/item/potion.png", png([0, 0, 0, 0])),
+            ];
+            for (name, bytes) in files {
+                zip.start_file(name, zip::write::SimpleFileOptions::default()).unwrap();
+                zip.write_all(&bytes).unwrap();
+            }
+            zip.finish().unwrap();
+        }
         let res = Resources {
             mod_root: Some(dir.clone()),
-            vanilla: None,
+            vanilla: super::super::assets::Vanilla::from_jar(jar, "1.21.1").map(std::sync::Arc::new),
         };
         let Some(Look::Flat(image)) = look(&res, "hexcasting:enlarge_grid") else {
             panic!("content potion should resolve to a layered item model");

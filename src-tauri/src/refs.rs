@@ -100,10 +100,6 @@ pub struct OwnDef {
     pub value: Value,
 }
 
-fn mod_id(root: &Path) -> Option<String> {
-    manifest::read_mod_field(root, "id")
-}
-
 fn files(root: &Path, format: Format) -> Vec<PathBuf> {
     crate::files::of(&root.join("content"), format)
 }
@@ -133,7 +129,7 @@ fn body_format(kind: &str) -> Option<Format> {
 }
 
 fn own(root: &Path, kind: &str) -> Vec<OwnRef> {
-    let ns = mod_id(root).unwrap_or_else(|| yog_ids::ns::MINECRAFT.into());
+    let ns = crate::manifest::mod_id(root).unwrap_or_else(|| yog_ids::ns::MINECRAFT.into());
     let mut out = Vec::new();
     if let Some(of) = kind.strip_prefix("tag:") {
         for d in defs(root, yog_ids::kind::TAG) {
@@ -169,7 +165,7 @@ fn own(root: &Path, kind: &str) -> Vec<OwnRef> {
 
 /// The mod's `.ydef`s of `kind`, in file order.
 fn defs(root: &Path, kind: &str) -> Vec<OwnDef> {
-    let ns = mod_id(root).unwrap_or_else(|| yog_ids::ns::MINECRAFT.into());
+    let ns = crate::manifest::mod_id(root).unwrap_or_else(|| yog_ids::ns::MINECRAFT.into());
     let mut out = Vec::new();
     for f in files(root, Format::Def) {
         let Some(doc) = read(&f) else { continue };

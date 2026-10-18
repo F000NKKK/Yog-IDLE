@@ -97,8 +97,7 @@ impl DebugStoppedEvent {
 
 /// `[mod] id` of the mod at `root`.
 fn mod_id(root: &Path) -> Result<String, String> {
-    let text = std::fs::read_to_string(manifest::path(root)).map_err(|e| e.to_string())?;
-    manifest::mod_field(&text, "id").ok_or_else(|| "yog.toml has no [mod] id".to_string())
+    manifest::mod_id(root).ok_or_else(|| format!("{} has no [mod] {}", yog_ids::file::MANIFEST, manifest::MOD_ID))
 }
 
 /// How long a write to the control socket may block.

@@ -27,7 +27,7 @@ fn trees(root: &Path) -> Vec<(PathBuf, Element)> {
 }
 
 pub fn ns(root: &Path) -> String {
-    crate::manifest::read_mod_field(root, "id").unwrap_or_else(|| "minecraft".into())
+    crate::manifest::mod_id(root).unwrap_or_else(|| yog_ids::ns::MINECRAFT.into())
 }
 
 /// The mod's recipe layouts and the files they're in.

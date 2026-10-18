@@ -30,9 +30,17 @@ pub fn mod_field(text: &str, key: &str) -> Option<String> {
     doc.get("mod")?.get(key)?.as_str().map(str::to_string)
 }
 
+/// The key of a mod's id under `[mod]`.
+pub const MOD_ID: &str = "id";
+
 /// [`mod_field`] of the `yog.toml` at `root`.
 pub fn read_mod_field(root: &Path, key: &str) -> Option<String> {
     mod_field(&std::fs::read_to_string(path(root)).ok()?, key)
+}
+
+/// The id of the mod at `root` (its `yog.toml`'s `[mod] id`).
+pub fn mod_id(root: &Path) -> Option<String> {
+    read_mod_field(root, MOD_ID)
 }
 
 #[cfg(test)]

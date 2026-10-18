@@ -29,7 +29,7 @@ fn mod_tags(root: Option<&Path>) -> BTreeMap<String, Vec<String>> {
         .and_then(|b| serde_json::from_slice::<BTreeMap<String, BTreeMap<String, Vec<String>>>>(&b).ok())
         .and_then(|mut kinds| kinds.remove("item"))
         .unwrap_or_default();
-    let Some(ns) = crate::manifest::read_mod_field(root, "id") else { return tags };
+    let Some(ns) = crate::manifest::mod_id(root) else { return tags };
     for format in [Format::Block, Format::Item, Format::Def] {
         for file in crate::files::of(&root.join("content"), format) {
             let Ok(text) = std::fs::read_to_string(&file) else { continue };

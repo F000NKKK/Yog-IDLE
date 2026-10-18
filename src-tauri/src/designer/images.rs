@@ -31,16 +31,12 @@ thread_local! {
 }
 
 /// `[mod] id` from `<root>/yog.toml`.
-fn mod_id(root: &Path) -> Option<String> {
-    crate::manifest::read_mod_field(root, "id")
-}
-
 /// The `.yui` being laid out and drawn: its mod's resources (images, fonts)
 /// and id (for `mod:` sources). Set before every layout.
 pub fn set_document(mod_root: Option<&Path>) {
     let doc = Doc {
         res: Resources::for_mod(mod_root),
-        mod_id: mod_root.and_then(mod_id),
+        mod_id: mod_root.and_then(crate::manifest::mod_id),
     };
     DOC.with(|d| *d.borrow_mut() = Some(doc));
 }
@@ -129,9 +125,13 @@ fn book_sheet(id: &str) -> Option<Arc<Image>> {
             super::assets::decode_png(yog_book::CRAFTING_PNG).map(Arc::new),
         ]
     });
+    let texture = |sheet: &str| match ImageSource::parse(sheet) {
+        Some(ImageSource::Texture(t)) => t,
+        _ => String::new(),
+    };
     match id {
-        "yog:textures/gui/book/book.png" => book.clone(),
-        "yog:textures/gui/book/crafting.png" => crafting.clone(),
+        _ if id == texture(yog_book::BOOK_SHEET) => book.clone(),
+        _ if id == texture(yog_book::CRAFTING_SHEET) => crafting.clone(),
         _ => None,
     }
 }
@@ -452,44 +452,17 @@ pub struct Candidate {
     pub detail: String,
 }
 
-/// `.png` files under `dir` (recursively), as paths relative to it without the extension.
-fn pngs(dir: &Path, prefix: &str, out: &mut Vec<String>) {
-    let Ok(entries) = std::fs::read_dir(dir) else {
-        return;
-    };
-    for e in entries.flatten() {
-        let name = e.file_name().to_string_lossy().into_owned();
-        let p = e.path();
-        if p.is_dir() {
-            pngs(&p, &format!("{prefix}{name}/"), out);
-        } else if let Some(stem) = name.strip_suffix(".png") {
-            out.push(format!("{prefix}{stem}"));
-        }
-    }
-}
-
 /// Everything the `source` picker offers for the `.yui` at `path`: the
 /// mod's own textures, the sprite table, then the game's items and blocks.
 pub fn candidates(path: &Path) -> Vec<Candidate> {
     let root = super::mod_root(path);
     let mut out = Vec::new();
-    if let Some(root) = &root
-        && let Some(id) = mod_id(root)
-    {
-        let mut own = Vec::new();
-        for base in [
-            root.join("assets"),
-            root.join("src/assets"),
-            root.join("resources/assets"),
-        ] {
-            pngs(&base.join(&id).join("textures"), "", &mut own);
-        }
-        own.sort();
-        own.dedup();
-        out.extend(own.into_iter().map(|p| Candidate {
-            source: format!("mod:{p}"),
+    if let Some(root) = &root {
+        let resources = root.join(crate::yres_images::RESOURCES_DIR);
+        out.extend(crate::yres_images::images(root).into_iter().map(|i| Candidate {
+            source: ImageSource::ModPath(i.texture).to_string(),
             group: "mod".into(),
-            detail: format!("assets/{id}/textures/{p}.png"),
+            detail: i.file.strip_prefix(&resources).unwrap_or(&i.file).to_string_lossy().replace('\\', "/"),
         }));
     }
     out.extend(SPRITES.iter().map(|s| Candidate {

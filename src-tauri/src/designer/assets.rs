@@ -5,9 +5,9 @@
 //! bundled or redistributed: when no client jar is found the designer says
 //! so and draws with what it has (flat rects, a fallback glyph box).
 //!
-//! Resources resolve like a resource-pack stack: the mod's own `assets/`
-//! first, then the client jar, then the asset objects (where the unifont
-//! lives).
+//! Resources resolve like a resource-pack stack: the mod's own images
+//! (`.yres`) first, then the client jar, then the asset objects (where the
+//! unifont lives).
 
 use std::collections::HashMap;
 use std::fs::File;
@@ -70,6 +70,13 @@ pub struct Vanilla {
 }
 
 impl Vanilla {
+    /// A client jar at `jar` (tests stand one in for the game's).
+    #[cfg(test)]
+    pub fn from_jar(jar: PathBuf, version: &str) -> Option<Vanilla> {
+        let zip = zip::ZipArchive::new(File::open(&jar).ok()?).ok()?;
+        Some(Vanilla { jar, version: version.to_string(), zip: Mutex::new(zip), objects: None })
+    }
+
     /// `key` from the jar and from the asset objects — both, for files the
     /// download overrides (the jar's `font/include/unifont.json` is an
     /// empty stub; the real one is an asset object).
@@ -313,7 +320,16 @@ pub fn vanilla_versions(extra_roots: &[PathBuf]) -> &'static [Arc<Vanilla>] {
     })
 }
 
-/// Resolves `namespace:path` resources for one mod: its `assets/` dir, then vanilla.
+/// The png of the mod's texture `<ns>:<path>` — one of its `.yres` images.
+fn mod_texture(root: &Path, ns: &str, path: &str) -> Option<PathBuf> {
+    if crate::manifest::mod_id(root)? != ns {
+        return None;
+    }
+    let texture = path.strip_prefix(yog_ids::res::TEXTURES)?.strip_suffix(yog_ids::res::PNG)?;
+    crate::yres_images::images(root).into_iter().find(|i| i.texture == texture).map(|i| i.file)
+}
+
+/// Resolves `namespace:path` resources for one mod: its `.yres` images, then the game's.
 #[derive(Clone)]
 pub struct Resources {
     pub mod_root: Option<PathBuf>,
@@ -334,18 +350,11 @@ impl Resources {
         }
     }
 
-    /// The bytes of `assets/<ns>/<path>`.
+    /// The bytes of resource `<ns>:<path>` (`textures/gui/x.png`): the mod's
+    /// own are its `.yres` images (a mod has no `assets/`), the rest the game's.
     pub fn read(&self, ns: &str, path: &str) -> Option<Vec<u8>> {
-        if let Some(root) = &self.mod_root {
-            for base in [
-                root.join("assets"),
-                root.join("src/assets"),
-                root.join("resources/assets"),
-            ] {
-                if let Ok(bytes) = std::fs::read(base.join(ns).join(path)) {
-                    return Some(bytes);
-                }
-            }
+        if let Some(file) = self.mod_root.as_deref().and_then(|root| mod_texture(root, ns, path)) {
+            return std::fs::read(file).ok();
         }
         self.vanilla.as_ref()?.read(&format!("{ns}/{path}"))
     }

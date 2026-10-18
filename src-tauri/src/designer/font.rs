@@ -108,22 +108,7 @@ fn lenient_json(bytes: &[u8]) -> Option<Value> {
 }
 
 fn json(res: &Resources, ns: &str, path: &str) -> Vec<Value> {
-    // A mod's own definition first, then vanilla's — both count, like stacked resource packs.
     let mut out = Vec::new();
-    if let Some(root) = &res.mod_root {
-        for base in [
-            root.join("assets"),
-            root.join("src/assets"),
-            root.join("resources/assets"),
-        ] {
-            if let Some(v) = std::fs::read(base.join(ns).join(path))
-                .ok()
-                .and_then(|b| lenient_json(&b))
-            {
-                out.push(v);
-            }
-        }
-    }
     if let Some(v) = &res.vanilla {
         out.extend(
             v.read_all(&format!("{ns}/{path}"))

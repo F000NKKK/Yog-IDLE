@@ -27,6 +27,7 @@ mod search;
 mod symbols;
 mod worldgen;
 mod yui;
+mod yres_images;
 
 mod debugger;
 

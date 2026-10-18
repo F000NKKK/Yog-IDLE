@@ -5,7 +5,7 @@
 
 use yog_ids::Format;
 use crate::designer::assets::{Resources};
-use crate::manifest::{self, mod_root};
+use crate::manifest::mod_root;
 use base64::Engine as _;
 use serde::Serialize;
 use serde_json::{Map, Value};
@@ -13,27 +13,10 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 /// `[mod] id` of the mod at `root`.
-fn mod_id(root: &Path) -> Option<String> {
-    manifest::read_mod_field(root, "id")
-}
-
 /// A `.yres` image entry `@<Set>.<name>` → its png file.
 fn yres_image(root: &Path, reference: &str) -> Option<PathBuf> {
     let (set, name) = reference.split_once('.')?;
-    for file in crate::files::of(&root.join("resources"), Format::Res) {
-        if file.file_stem().and_then(|s| s.to_str()) != Some(set) {
-            continue;
-        }
-        let text = std::fs::read_to_string(&file).ok()?;
-        let doc = crate::data::read_object(&text)?;
-        let entry = doc.get(name)?;
-        if entry.get("type").and_then(Value::as_str) != Some("image") {
-            return None;
-        }
-        let value = entry.get("value")?.as_str()?;
-        return Some(file.parent()?.join(value));
-    }
-    None
+    crate::yres_images::images(root).into_iter().find(|i| i.set == set && i.name == name).map(|i| i.file)
 }
 
 /// The png bytes of a texture as a content file names it: `@Set.name`,
@@ -106,20 +89,20 @@ fn texture_file(file: &Path, texture: &str, ext: &str) -> Result<Vec<u8>, String
     let (ns, path) = yog_ids::split(texture);
     // A texture `yog build` bundles from `resources/` (`mymod:block/x` = `resources/block/x.png`).
     if let Some(root) = &root
-        && mod_id(root).as_deref() == Some(ns)
+        && crate::manifest::mod_id(root).as_deref() == Some(ns)
         && let Ok(b) = std::fs::read(root.join("resources").join(format!("{path}.{ext}")))
     {
         return Ok(b);
     }
     Resources::for_mod(root.as_deref())
         .read(ns, &format!("textures/{path}.{ext}"))
-        .ok_or_else(|| format!("texture {ns}:{path}.{ext} not found (mod assets/, resources/ or the Minecraft client jar)"))
+        .ok_or_else(|| format!("texture {ns}:{path}.{ext} not found (resources/ or the Minecraft client jar)"))
 }
 
 /// The mod's `content/` file defining item or block `id` (`kind`:
 /// `yitem` or `yblock`), parsed.
 fn content_file(root: &Path, id: &str, formats: &[Format]) -> Option<(PathBuf, Value)> {
-    let ns = mod_id(root)?;
+    let ns = crate::manifest::mod_id(root)?;
     let (want_ns, want) = yog_ids::split(id);
     if want_ns != ns {
         return None;
@@ -200,7 +183,7 @@ fn stair_element(from: [u8; 3], to: [u8; 3]) -> Value {
 
 /// A mod item's definition and, for potions, its effect-derived color.
 pub fn content_item_appearance(root: &Path, id: &str) -> Option<(Value, Option<u32>)> {
-    let ns = mod_id(root)?;
+    let ns = crate::manifest::mod_id(root)?;
     let (want_ns, want) = yog_ids::split(id);
     let want = if want_ns == "yog" {
         want.strip_prefix("potion/")?
@@ -265,7 +248,7 @@ pub fn item_potion_color(file: &Path) -> Option<u32> {
 }
 
 fn content_effect_color(root: &Path, reference: &str) -> Option<u32> {
-    let mod_ns = mod_id(root)?;
+    let mod_ns = crate::manifest::mod_id(root)?;
     let id = reference.strip_prefix("@effect:").unwrap_or(reference);
     let (ns, want) = yog_ids::split(id);
     if ns != mod_ns {
@@ -298,7 +281,7 @@ fn content_effect_color(root: &Path, reference: &str) -> Option<u32> {
 /// The icon of the mod's item or block `id` as its `content/` file draws
 /// it: the model's `layer0` (else its first texture), as png bytes.
 pub fn content_icon(root: &Path, id: &str) -> Option<Vec<u8>> {
-    let ns = mod_id(root)?;
+    let ns = crate::manifest::mod_id(root)?;
     let (want_ns, want) = yog_ids::split(id);
     if want_ns != ns {
         return None;
@@ -439,7 +422,7 @@ pub fn body_texture(file: &Path, texture: &str) -> Result<Texture, String> {
     let id = match texture.split_once(':') {
         Some((ns, p)) => format!("{ns}:{}", p.trim_start_matches("textures/").trim_end_matches(".png")),
         None => {
-            let ns = mod_root(file).and_then(|r| mod_id(&r)).unwrap_or_else(|| "minecraft".into());
+            let ns = mod_root(file).and_then(|r| crate::manifest::mod_id(&r)).unwrap_or_else(|| "minecraft".into());
             format!("{ns}:{}", texture.trim_start_matches('/').trim_end_matches(".png"))
         }
     };
@@ -472,8 +455,7 @@ fn plain_relative(rel: &str) -> bool {
 
 /// Where a texture of the mod is written: a `.yres` image's png, a png
 /// under `resources/` (created if missing), or the mod's own `ns:path`
-/// (`resources/<path>.png`, or `assets/<ns>/textures/<path>.png` when only
-/// that exists). `None`: not the mod's (vanilla, another mod's, `#slot`).
+/// (`resources/<path>.png`). `None`: not the mod's (vanilla, another mod's, `#slot`).
 pub fn texture_target(file: &Path, texture: &str) -> Option<PathBuf> {
     let root = mod_root(file)?;
     if let Some(r) = texture.strip_prefix('@') {
@@ -491,21 +473,10 @@ pub fn texture_target(file: &Path, texture: &str) -> Option<PathBuf> {
         return None;
     }
     let (ns, path) = yog_ids::split(texture);
-    if mod_id(&root).as_deref() != Some(ns) || !plain_relative(path) {
+    if crate::manifest::mod_id(&root).as_deref() != Some(ns) || !plain_relative(path) {
         return None;
     }
-    let resources = root.join("resources").join(format!("{path}.png"));
-    let assets = root
-        .join("assets")
-        .join(ns)
-        .join("textures")
-        .join(format!("{path}.png"));
-    Some(if !resources.is_file() && assets.is_file() {
-        assets
-    } else {
-        resources
-    })
-}
+    Some(root.join(crate::yres_images::RESOURCES_DIR).join(format!("{path}{}", yog_ids::res::PNG)))}
 
 /// Writes `png` (PNG bytes) to `target` (from `texture_target`), creating
 /// its folder.
@@ -574,7 +545,7 @@ fn definitions(file: &Path, kind: &str, built_ins: impl IntoIterator<Item = Stri
     let Some(root) = mod_root(file) else {
         return out;
     };
-    let ns = mod_id(&root).unwrap_or_else(|| "minecraft".into());
+    let ns = crate::manifest::mod_id(&root).unwrap_or_else(|| "minecraft".into());
     let mut own = Vec::new();
     for p in crate::files::of(&root.join("content"), Format::Def) {
         let Some(doc) = std::fs::read_to_string(&p).ok().and_then(|t| crate::data::read_object(&t)) else {
@@ -613,7 +584,7 @@ pub fn armor_materials(file: &Path) -> Vec<String> {
 pub fn tags(file: &Path, registry: &str) -> Vec<String> {
     let mut out = Vec::new();
     if let Some(root) = mod_root(file) {
-        let ns = mod_id(&root).unwrap_or_default();
+        let ns = crate::manifest::mod_id(&root).unwrap_or_default();
         let listed = std::fs::read(root.join(".yog-build/generated/tags.json"))
             .ok()
             .and_then(|b| serde_json::from_slice::<std::collections::BTreeMap<String, std::collections::BTreeMap<String, Value>>>(&b).ok())
@@ -630,49 +601,16 @@ pub fn textures(file: &Path) -> Vec<TextureChoice> {
     let mut out = Vec::new();
     let root = mod_root(file);
     if let Some(root) = &root {
-        let res = root.join("resources");
-        for p in crate::files::of(&res, Format::Res) {
-            let Some(set) = p.file_stem().and_then(|s| s.to_str()) else {
-                continue;
-            };
-            if set.contains('.') {
-                continue; // a culture variant
-            }
-            let Ok(text) = std::fs::read_to_string(&p) else {
-                continue;
-            };
-            let Some(doc) = crate::data::read_object(&text) else {
-                continue;
-            };
-            for (name, e) in &doc {
-                if e.get("type").and_then(Value::as_str) == Some("image") {
-                    out.push(TextureChoice {
-                        value: format!("@{set}.{name}"),
-                        group: "Resource sets",
-                    });
-                }
-            }
-        }
+        let res = root.join(crate::yres_images::RESOURCES_DIR);
+        out.extend(crate::yres_images::images(root).into_iter().map(|i| TextureChoice {
+            value: format!("@{}.{}", i.set, i.name),
+            group: "Resource sets",
+        }));
         for p in crate::files::with_ext(&res, yog_ids::res::PNG.trim_start_matches('.')) {
             if let Ok(rel) = p.strip_prefix(&res) {
                 out.push(TextureChoice {
                     value: rel.to_string_lossy().replace('\\', "/"),
                     group: "Resources",
-                });
-            }
-        }
-        let assets = root.join("assets");
-        for p in crate::files::with_ext(&assets, yog_ids::res::PNG.trim_start_matches('.')) {
-            let Ok(rel) = p.strip_prefix(&assets) else {
-                continue;
-            };
-            let rel = rel.to_string_lossy().replace('\\', "/");
-            if let Some((ns, rest)) = rel.split_once("/textures/")
-                && !ns.contains('/')
-            {
-                out.push(TextureChoice {
-                    value: format!("{ns}:{}", rest.trim_end_matches(".png")),
-                    group: "Mod assets",
                 });
             }
         }
@@ -861,7 +799,7 @@ mod tests {
         let choices = textures(&file);
         assert!(choices.iter().any(|c| c.value == "@Textures.ruby"));
         assert!(choices.iter().any(|c| c.value == "block/ruby.png"));
-        assert_eq!(mod_id(&dir).as_deref(), Some("mymod"));
+        assert_eq!(crate::manifest::mod_id(&dir).as_deref(), Some("mymod"));
         assert_eq!(
             texture_target(&file, "@Textures.ruby"),
             Some(dir.join("resources/block/ruby.png"))
