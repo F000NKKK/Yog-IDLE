@@ -313,7 +313,7 @@ impl TtfProvider {
 fn bitmap(res: &Resources, p: &Value) -> Option<BitmapProvider> {
     let file = p.get("file")?.as_str()?;
     let (ns, path) = yog_ids::split(file);
-    let image = Arc::new(decode_png(&res.read(ns, &format!("textures/{path}"))?)?);
+    let image = Arc::new(decode_png(&res.read(ns, &format!("{}{path}", yog_ids::res::TEXTURES))?)?);
     let rows: Vec<Vec<char>> = p
         .get("chars")?
         .as_array()?

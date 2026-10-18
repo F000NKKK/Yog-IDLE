@@ -91,6 +91,8 @@ export const program = {
 
 export const res = {
   TEXTURES: "textures/",
+  MODELS: "models/",
+  BLOCKSTATES: "blockstates/",
   ITEM_DIR: "item/",
   BLOCK_DIR: "block/",
   GUI_SPRITES: "gui/sprites/",

@@ -5761,6 +5761,7 @@ version = "0.35.0"
 dependencies = [
  "serde",
  "yog-data",
+ "yog-graphics",
  "yog-ids",
 ]
 

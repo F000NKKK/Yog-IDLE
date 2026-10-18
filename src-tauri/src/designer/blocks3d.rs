@@ -159,7 +159,7 @@ fn model_elements(res: &Resources, model: &str, depth: usize) -> Option<Vec<Valu
     }
     let (ns, path) = yog_ids::split(model);
     let path = path.strip_prefix("block/").map_or(format!("block/{path}"), |p| format!("block/{p}"));
-    let json: Value = serde_json::from_slice(&res.read(ns, &format!("models/{path}.json"))?).ok()?;
+    let json: Value = serde_json::from_slice(&res.read(ns, &yog_ids::model_file(&path))?).ok()?;
     if let Some(e) = json.get("elements").and_then(Value::as_array) {
         return Some(e.clone());
     }
@@ -174,7 +174,7 @@ fn model_textures(res: &Resources, model: &str, depth: usize) -> HashMap<String,
     }
     let (ns, path) = yog_ids::split(model);
     let path = path.strip_prefix("block/").map_or(format!("block/{path}"), |p| format!("block/{p}"));
-    let Some(json) = res.read(ns, &format!("models/{path}.json")).and_then(|b| serde_json::from_slice::<Value>(&b).ok()) else {
+    let Some(json) = res.read(ns, &yog_ids::model_file(&path)).and_then(|b| serde_json::from_slice::<Value>(&b).ok()) else {
         return out;
     };
     if let Some(parent) = json.get("parent").and_then(Value::as_str) {
@@ -235,7 +235,7 @@ fn applied(v: &Value) -> Option<(String, Vec<Turn>)> {
 fn block_models(res: &Resources, state: &str) -> Vec<(String, Vec<Turn>)> {
     let (id, props) = split_state(state);
     let (ns, path) = yog_ids::split(id);
-    let Some(json) = res.read(ns, &format!("blockstates/{path}.json")).and_then(|b| serde_json::from_slice::<Value>(&b).ok()) else {
+    let Some(json) = res.read(ns, &yog_ids::blockstate_file(path)).and_then(|b| serde_json::from_slice::<Value>(&b).ok()) else {
         return Vec::new();
     };
     if let Some(variants) = json.get("variants").and_then(Value::as_object) {
@@ -256,7 +256,7 @@ fn block_models(res: &Resources, state: &str) -> Vec<(String, Vec<Turn>)> {
 pub fn is_block(res: &Resources, id: &str) -> bool {
     let id = split_state(id).0;
     let (ns, path) = yog_ids::split(id);
-    res.read(ns, &format!("blockstates/{path}.json")).is_some()
+    res.read(ns, &yog_ids::blockstate_file(path)).is_some()
         || res.mod_root.as_deref().is_some_and(|root| crate::content::content_block_faces(root, id).is_some())
 }
 
@@ -322,7 +322,7 @@ fn model_shape(res: &Resources, model: &str) -> Shape {
     let load = |tex: Option<String>| -> Option<Arc<Image>> {
         let tex = tex?;
         let (ns, path) = yog_ids::split(&tex);
-        decode_png(&res.read(ns, &format!("textures/{path}.png"))?).map(Arc::new)
+        decode_png(&res.read(ns, &yog_ids::texture_file(path))?).map(Arc::new)
     };
     if let Some(elements) = model_elements(res, model, 0) {
         let mut texture = |var: &str| load(resolve(var.trim_start_matches('#')));

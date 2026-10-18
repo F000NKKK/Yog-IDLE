@@ -90,12 +90,12 @@ fn texture_file(file: &Path, texture: &str, ext: &str) -> Result<Vec<u8>, String
     // A texture `yog build` bundles from `resources/` (`mymod:block/x` = `resources/block/x.png`).
     if let Some(root) = &root
         && crate::manifest::mod_id(root).as_deref() == Some(ns)
-        && let Ok(b) = std::fs::read(root.join("resources").join(format!("{path}.{ext}")))
+        && let Ok(b) = std::fs::read(root.join(crate::yres_images::RESOURCES_DIR).join(format!("{path}.{ext}")))
     {
         return Ok(b);
     }
     Resources::for_mod(root.as_deref())
-        .read(ns, &format!("textures/{path}.{ext}"))
+        .read(ns, &format!("{}{path}.{ext}", yog_ids::res::TEXTURES))
         .ok_or_else(|| format!("texture {ns}:{path}.{ext} not found (resources/ or the Minecraft client jar)"))
 }
 
@@ -419,12 +419,11 @@ pub fn write_animation(file: &Path, texture: &str, animation: Option<&Animation>
 /// A body model's texture (`.ymodel`): a path under the mod's `textures/`
 /// (`entity/wisp.png`) or a full id (`minecraft:textures/entity/elytra.png`).
 pub fn body_texture(file: &Path, texture: &str) -> Result<Texture, String> {
-    let id = match texture.split_once(':') {
-        Some((ns, p)) => format!("{ns}:{}", p.trim_start_matches("textures/").trim_end_matches(".png")),
-        None => {
-            let ns = mod_root(file).and_then(|r| crate::manifest::mod_id(&r)).unwrap_or_else(|| "minecraft".into());
-            format!("{ns}:{}", texture.trim_start_matches('/').trim_end_matches(".png"))
-        }
+    let id = if texture.contains(yog_ids::sep::NAMESPACE) {
+        yog_gfx::image::short_source(texture)
+    } else {
+        let ns = mod_root(file).and_then(|r| crate::manifest::mod_id(&r)).unwrap_or_else(|| yog_ids::ns::MINECRAFT.into());
+        yog_gfx::image::short_source(&yog_ids::qualify_in(&ns, texture.trim_start_matches(yog_ids::sep::PATH)))
     };
     self::texture(file, &id)
 }
@@ -641,7 +640,7 @@ pub fn parent_model(file: &Path, id: &str) -> Result<Value, String> {
     for _ in 0..16 {
         let (ns, path) = yog_ids::split(&current);
         let bytes = resources
-            .read(ns, &format!("models/{path}.json"))
+            .read(ns, &yog_ids::model_file(path))
             .ok_or_else(|| format!("model {ns}:{path} not found"))?;
         let m: Map<String, Value> =
             serde_json::from_slice(&bytes).map_err(|e| format!("{ns}:{path}: {e}"))?;
