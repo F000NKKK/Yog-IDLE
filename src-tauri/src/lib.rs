@@ -27,7 +27,6 @@ mod search;
 mod symbols;
 mod worldgen;
 mod yui;
-mod yres_images;
 
 mod debugger;
 
@@ -658,8 +657,8 @@ async fn content_texture(
 }
 
 /// Writes a painted texture of a content file's mod (`png`: base64 PNG
-/// bytes) to where the file names it (see `content::texture_target`) —
-/// never outside the mod or the open project. Returns the written path.
+/// bytes) as its picture (see `content::write_texture`) — never outside the
+/// mod or the open project. Returns the written path.
 #[tauri::command]
 async fn content_save_texture(
     state: State<'_, AppState>,
@@ -668,22 +667,22 @@ async fn content_save_texture(
     png: String,
 ) -> Result<String, String> {
     validate_within_roots(&state, Path::new(&path))?;
-    let target = content::texture_target(Path::new(&path), &texture)
+    let (root, _) = content::own_texture(Path::new(&path), &texture)
         .ok_or_else(|| format!("{texture} isn't a texture of this mod"))?;
-    validate_within_roots(&state, &target)?;
+    validate_within_roots(&state, &root)?;
     use base64::Engine as _;
     let bytes = base64::engine::general_purpose::STANDARD
         .decode(png.as_bytes())
         .map_err(|e| e.to_string())?;
     tauri::async_runtime::spawn_blocking(move || {
-        content::write_png(&target, &bytes).map(|()| target.to_string_lossy().into_owned())
+        content::write_texture(Path::new(&path), &texture, bytes).map(|p| p.to_string_lossy().into_owned())
     })
     .await
     .map_err(|e| e.to_string())?
 }
 
-/// Writes a texture's animation as its `.png.mcmeta` (`None` removes it) —
-/// beside the png `content_save_texture` writes, never outside the mod.
+/// Sets a texture's animation in its `.ytexture` (`None`: still) — never
+/// outside the mod.
 #[tauri::command]
 async fn content_save_texture_animation(
     state: State<'_, AppState>,
@@ -692,14 +691,20 @@ async fn content_save_texture_animation(
     animation: Option<content::Animation>,
 ) -> Result<String, String> {
     validate_within_roots(&state, Path::new(&path))?;
-    if let Some(target) = content::texture_target(Path::new(&path), &texture) {
-        validate_within_roots(&state, &target)?;
+    if let Some((root, _)) = content::own_texture(Path::new(&path), &texture) {
+        validate_within_roots(&state, &root)?;
     }
     tauri::async_runtime::spawn_blocking(move || {
         content::write_animation(Path::new(&path), &texture, animation.as_ref()).map(|p| p.to_string_lossy().into_owned())
     })
     .await
     .map_err(|e| e.to_string())?
+}
+
+/// The id of the mod a content file is in (its own textures' namespace).
+#[tauri::command]
+fn content_mod_id(path: String) -> Option<String> {
+    designer::mod_root(Path::new(&path)).and_then(|root| yog_cli::media::mod_id(&root))
 }
 
 /// The texture picker's choices for a content file.
@@ -1858,6 +1863,7 @@ pub fn run() {
         yui_codegen,
         content_texture,
         content_textures,
+        content_mod_id,
         content_save_texture,
         content_save_texture_animation,
         content_strings,

@@ -86,7 +86,8 @@ describe("yres", () => {
     expect(valueProblem(e("color", "#12345678"))).toBeUndefined();
     expect(valueProblem(e("color", "#123"))).toBeDefined();
     expect(valueProblem(e("number", Number.NaN))).toBeDefined();
-    expect(valueProblem(e("image", "a.PNG"))).toBeUndefined();
+    expect(valueProblem(e("image", "@bytes:iVBORw0KGgo="))).toBeUndefined();
+    expect(valueProblem(e("image", "a.png"))).toBeDefined();
     expect(valueProblem(e("file", " "))).toBeDefined();
     expect(coerceValue("number", " 4 ")).toBe(4);
     expect(coerceValue("number", "")).toBe(0);

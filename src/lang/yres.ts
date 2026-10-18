@@ -6,6 +6,7 @@
  * their line.
  */
 
+import { sep, typed } from "../data/yogIds.generated";
 import { classify, DataSyntaxError, escapeAt, parseData, type DataNode } from "../data/yogData";
 
 export const RESOURCE_TYPES = ["string", "image", "file", "sound", "color", "number", "bool"] as const;
@@ -184,6 +185,9 @@ export function isColor(value: string): boolean {
 }
 
 /** Why `entry`'s value doesn't fit its type, or `undefined`. */
+/** What bytes are written as: `@bytes:<base64>`. */
+const BYTES = `${sep.TYPED}${typed.BYTES}${sep.NAMESPACE}`;
+
 export function valueProblem(entry: YresEntry): string | undefined {
   const v = entry.value;
   switch (entry.type) {
@@ -194,11 +198,9 @@ export function valueProblem(entry: YresEntry): string | undefined {
     case "color":
       return typeof v === "string" && isColor(v) ? undefined : "a color, #RRGGBB or #AARRGGBB";
     case "image":
-      return typeof v === "string" && /\.png$/i.test(v) ? undefined : "a .png path";
     case "sound":
-      return typeof v === "string" && /\.ogg$/i.test(v) ? undefined : "an .ogg path";
     case "file":
-      return typeof v === "string" && v.trim() !== "" ? undefined : "a file path";
+      return typeof v === "string" && v.startsWith(BYTES) ? undefined : "bytes (@bytes:…)";
     default:
       return typeof v === "string" ? undefined : "a text";
   }

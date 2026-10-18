@@ -13,10 +13,10 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 /// `[mod] id` of the mod at `root`.
-/// A `.yres` image entry `@<Set>.<name>` → its png file.
-fn yres_image(root: &Path, reference: &str) -> Option<PathBuf> {
-    let (set, name) = reference.split_once('.')?;
-    crate::yres_images::images(root).into_iter().find(|i| i.set == set && i.name == name).map(|i| i.file)
+/// The id a content file's texture names: `@texture:<ns>:<path>`, or an id
+/// (`<ns>:<path>`; a bare path is the game's).
+fn texture_id(texture: &str) -> String {
+    yog_ids::qualify(texture.strip_prefix(yog_ids::reference::TEXTURE).unwrap_or(texture))
 }
 
 /// The png bytes of a texture as a content file names it: `@Set.name`,
@@ -62,40 +62,14 @@ fn crop_png(bytes: &[u8], x: u32, y: u32, width: u32, height: u32) -> Result<Vec
     Ok(output)
 }
 
-/// A file of texture `texture` — its `png`, or the `png.mcmeta` beside it —
-/// from wherever the texture is: a `.yres` image, `resources/`, the mod's
-/// assets or the Minecraft client jar.
+/// A file of texture `texture` — its `png`, or its `png.mcmeta` — as the
+/// build makes it (the mod's own, through `yog_cli::media`) or the game has it.
 fn texture_file(file: &Path, texture: &str, ext: &str) -> Result<Vec<u8>, String> {
-    let root = mod_root(file);
-    if let Some(r) = texture.strip_prefix('@') {
-        let root = root.as_deref().ok_or("not in a mod")?;
-        let png =
-            yres_image(root, r).ok_or_else(|| format!("no image {texture} in resources/*.yres"))?;
-        let p = png.with_extension(ext);
-        return std::fs::read(&p).map_err(|e| format!("{}: {e}", p.display()));
-    }
-    if let Some(stem) = texture.strip_suffix(".png") {
-        let root = root.as_deref().ok_or("not in a mod")?;
-        let rel = stem
-            .trim_start_matches("./")
-            .trim_start_matches("resources/");
-        if rel.split('/').any(|p| p == "..") {
-            return Err("a path inside resources/".into());
-        }
-        let p = root.join("resources").join(format!("{rel}.{ext}"));
-        return std::fs::read(&p).map_err(|_| format!("resources/{rel}.{ext} doesn't exist"));
-    }
-    let (ns, path) = yog_ids::split(texture);
-    // A texture `yog build` bundles from `resources/` (`mymod:block/x` = `resources/block/x.png`).
-    if let Some(root) = &root
-        && crate::manifest::mod_id(root).as_deref() == Some(ns)
-        && let Ok(b) = std::fs::read(root.join(crate::yres_images::RESOURCES_DIR).join(format!("{path}.{ext}")))
-    {
-        return Ok(b);
-    }
-    Resources::for_mod(root.as_deref())
+    let id = texture_id(texture);
+    let (ns, path) = yog_ids::split(&id);
+    Resources::for_mod(mod_root(file).as_deref())
         .read(ns, &format!("{}{path}.{ext}", yog_ids::res::TEXTURES))
-        .ok_or_else(|| format!("texture {ns}:{path}.{ext} not found (resources/ or the Minecraft client jar)"))
+        .ok_or_else(|| format!("texture {id} not found (the mod's .{}, or the Minecraft client jar)", yog_ids::Format::Texture.ext()))
 }
 
 /// The mod's `content/` file defining item or block `id` (`kind`:
@@ -396,35 +370,26 @@ impl Animation {
     }
 }
 
-/// Writes `animation` as texture `texture`'s `.png.mcmeta` (beside the png
-/// `texture_target` names), or removes it for `None`.
+/// Sets the animation of texture `texture` of the mod (`None`: still) in
+/// its `.ytexture`; the file written.
 pub fn write_animation(file: &Path, texture: &str, animation: Option<&Animation>) -> Result<PathBuf, String> {
-    let png = texture_target(file, texture).ok_or_else(|| format!("{texture} isn't a texture of this mod"))?;
-    let meta = png.with_extension("png.mcmeta");
-    match animation {
+    let root = mod_root(file).ok_or("not in a mod")?;
+    let id = texture_id(texture);
+    let animation = match animation {
         Some(a) => {
-            let size = std::fs::read(&png).ok().and_then(|b| image_size(&b)).ok_or_else(|| format!("{} isn't a png", png.display()))?;
-            std::fs::write(&meta, a.write(size)).map_err(|e| format!("{}: {e}", meta.display()))?;
+            let png = texture_bytes(file, texture)?;
+            let size = image_size(&png).ok_or_else(|| format!("{id} isn't a picture"))?;
+            let meta: Value = serde_json::from_str(&a.write(size)).map_err(|e| e.to_string())?;
+            yog_formats::texture::Animation::from_mcmeta(&meta)
         }
-        None => {
-            if meta.exists() {
-                std::fs::remove_file(&meta).map_err(|e| format!("{}: {e}", meta.display()))?;
-            }
-        }
-    }
-    Ok(meta)
+        None => None,
+    };
+    yog_cli::media::save_texture_animation(&root, &id, animation)
 }
 
-/// A body model's texture (`.ymodel`): a path under the mod's `textures/`
-/// (`entity/wisp.png`) or a full id (`minecraft:textures/entity/elytra.png`).
+/// A body model's texture (`.ymodel`): `@texture:<ns>:<path>`, as a content file's.
 pub fn body_texture(file: &Path, texture: &str) -> Result<Texture, String> {
-    let id = if texture.contains(yog_ids::sep::NAMESPACE) {
-        yog_gfx::image::short_source(texture)
-    } else {
-        let ns = mod_root(file).and_then(|r| crate::manifest::mod_id(&r)).unwrap_or_else(|| yog_ids::ns::MINECRAFT.into());
-        yog_gfx::image::short_source(&yog_ids::qualify_in(&ns, texture.trim_start_matches(yog_ids::sep::PATH)))
-    };
-    self::texture(file, &id)
+    self::texture(file, texture)
 }
 
 pub fn texture(file: &Path, texture: &str) -> Result<Texture, String> {
@@ -439,53 +404,29 @@ pub fn texture(file: &Path, texture: &str) -> Result<Texture, String> {
             base64::engine::general_purpose::STANDARD.encode(&bytes)
         ),
         animation,
-        writable: texture_target(file, texture).is_some(),
+        writable: own_texture(file, texture).is_some(),
     })
 }
 
-/// A relative path with no `..`, root or drive parts.
-fn plain_relative(rel: &str) -> bool {
-    !rel.is_empty()
-        && Path::new(rel)
-            .components()
-            .all(|c| matches!(c, std::path::Component::Normal(_)))
+/// The mod and the id of texture `texture` when it's the mod's own (it
+/// can be painted in place, or added); `None` for the game's, another
+/// mod's, a `#slot`.
+pub fn own_texture(file: &Path, texture: &str) -> Option<(PathBuf, String)> {
+    if texture.starts_with(yog_formats::content::SLOT_MARK) {
+        return None;
+    }
+    let root = mod_root(file)?;
+    let id = texture_id(texture);
+    yog_cli::media::is_own_texture(&root, &id).then_some((root, id))
 }
 
-/// Where a texture of the mod is written: a `.yres` image's png, a png
-/// under `resources/` (created if missing), or the mod's own `ns:path`
-/// (`resources/<path>.png`). `None`: not the mod's (vanilla, another mod's, `#slot`).
-pub fn texture_target(file: &Path, texture: &str) -> Option<PathBuf> {
-    let root = mod_root(file)?;
-    if let Some(r) = texture.strip_prefix('@') {
-        let png = yres_image(&root, r)?;
-        let rel = png.strip_prefix(&root).ok()?.to_string_lossy().into_owned();
-        return plain_relative(&rel).then_some(png);
-    }
-    if texture.ends_with(".png") {
-        let rel = texture
-            .trim_start_matches("./")
-            .trim_start_matches("resources/");
-        return plain_relative(rel).then(|| root.join("resources").join(rel));
-    }
-    if texture.starts_with('#') {
-        return None;
-    }
-    let (ns, path) = yog_ids::split(texture);
-    if crate::manifest::mod_id(&root).as_deref() != Some(ns) || !plain_relative(path) {
-        return None;
-    }
-    Some(root.join(crate::yres_images::RESOURCES_DIR).join(format!("{path}{}", yog_ids::res::PNG)))}
-
-/// Writes `png` (PNG bytes) to `target` (from `texture_target`), creating
-/// its folder.
-pub fn write_png(target: &Path, png: &[u8]) -> Result<(), String> {
-    if image_size(png).is_none() {
+/// Writes `png` as the picture of the mod's texture `texture`; the `.yres` written.
+pub fn write_texture(file: &Path, texture: &str, png: Vec<u8>) -> Result<PathBuf, String> {
+    if image_size(&png).is_none() {
         return Err("not a PNG image".into());
     }
-    if let Some(dir) = target.parent() {
-        std::fs::create_dir_all(dir).map_err(|e| format!("{}: {e}", dir.display()))?;
-    }
-    std::fs::write(target, png).map_err(|e| format!("{}: {e}", target.display()))
+    let (root, id) = own_texture(file, texture).ok_or_else(|| format!("{texture} isn't a texture of this mod"))?;
+    yog_cli::media::save_texture_picture(&root, &id, png)
 }
 
 /// Width and height from a PNG header.
@@ -599,28 +540,19 @@ pub fn textures(file: &Path) -> Vec<TextureChoice> {
     let mut out = Vec::new();
     let root = mod_root(file);
     if let Some(root) = &root {
-        let res = root.join(crate::yres_images::RESOURCES_DIR);
-        out.extend(crate::yres_images::images(root).into_iter().map(|i| TextureChoice {
-            value: format!("@{}.{}", i.set, i.name),
-            group: "Resource sets",
+        out.extend(yog_cli::media::textures(root).into_iter().map(|t| TextureChoice {
+            value: format!("{}{}", yog_ids::reference::TEXTURE, t.id),
+            group: "Mod textures",
         }));
-        for p in crate::files::with_ext(&res, yog_ids::res::PNG.trim_start_matches('.')) {
-            if let Ok(rel) = p.strip_prefix(&res) {
-                out.push(TextureChoice {
-                    value: rel.to_string_lossy().replace('\\', "/"),
-                    group: "Resources",
-                });
-            }
-        }
     }
     if let Some(v) = Resources::for_mod(root.as_deref()).vanilla {
         let (items, blocks) = v.texture_names();
         out.extend(blocks.into_iter().map(|b| TextureChoice {
-            value: format!("minecraft:block/{b}"),
+            value: format!("{}{}", yog_ids::reference::TEXTURE, yog_ids::join(yog_ids::ns::MINECRAFT, &format!("{}{b}", yog_ids::res::BLOCK_DIR))),
             group: "Minecraft blocks",
         }));
         out.extend(items.into_iter().map(|i| TextureChoice {
-            value: format!("minecraft:item/{i}"),
+            value: format!("{}{}", yog_ids::reference::TEXTURE, yog_ids::join(yog_ids::ns::MINECRAFT, &format!("{}{i}", yog_ids::res::ITEM_DIR))),
             group: "Minecraft items",
         }));
     }
@@ -781,39 +713,17 @@ mod tests {
     fn resolves_yres_images_and_resource_paths() {
         let dir = std::env::temp_dir().join(format!("idle-content-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
-        std::fs::create_dir_all(dir.join("resources/block")).unwrap();
         std::fs::create_dir_all(dir.join("content")).unwrap();
         std::fs::write(dir.join("yog.toml"), "[mod]\nid = \"mymod\"\n").unwrap();
-        std::fs::write(dir.join("resources/block/ruby.png"), b"png!").unwrap();
-        std::fs::write(
-            dir.join("resources/Textures.yres"),
-            r#"{ "ruby": { "type": "image", "value": "block/ruby.png" } }"#,
-        )
-        .unwrap();
+        let png = yog_media::image::encode_png(&yog_media::image::Image { width: 1, height: 1, rgba: vec![1, 2, 3, 255] }).unwrap();
         let file = dir.join("content/ruby.yblock");
-        assert_eq!(texture_bytes(&file, "@Textures.ruby").unwrap(), b"png!");
-        assert_eq!(texture_bytes(&file, "block/ruby.png").unwrap(), b"png!");
-        assert_eq!(texture_bytes(&file, "mymod:block/ruby").unwrap(), b"png!");
-        let choices = textures(&file);
-        assert!(choices.iter().any(|c| c.value == "@Textures.ruby"));
-        assert!(choices.iter().any(|c| c.value == "block/ruby.png"));
-        assert_eq!(crate::manifest::mod_id(&dir).as_deref(), Some("mymod"));
-        assert_eq!(
-            texture_target(&file, "@Textures.ruby"),
-            Some(dir.join("resources/block/ruby.png"))
-        );
-        assert_eq!(
-            texture_target(&file, "item/new.png"),
-            Some(dir.join("resources/item/new.png"))
-        );
-        assert_eq!(
-            texture_target(&file, "mymod:item/new"),
-            Some(dir.join("resources/item/new.png"))
-        );
-        assert_eq!(texture_target(&file, "../escape.png"), None);
-        assert_eq!(texture_target(&file, "/etc/x.png"), None);
-        assert_eq!(texture_target(&file, "minecraft:item/apple"), None);
-        assert_eq!(texture_target(&file, "#layer0"), None);
+        // Painting a new texture of the mod makes its picture and .ytexture.
+        assert_eq!(own_texture(&file, "@texture:mymod:block/ruby").map(|(_, id)| id).as_deref(), Some("mymod:block/ruby"));
+        write_texture(&file, "@texture:mymod:block/ruby", png.clone()).unwrap();
+        assert_eq!(texture_bytes(&file, "@texture:mymod:block/ruby").unwrap(), png);
+        assert!(textures(&file).iter().any(|c| c.value == "@texture:mymod:block/ruby"));
+        assert_eq!(own_texture(&file, "@texture:minecraft:item/apple"), None);
+        assert_eq!(own_texture(&file, "#layer0"), None);
         let _ = std::fs::remove_dir_all(dir);
     }
 

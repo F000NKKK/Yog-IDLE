@@ -11,6 +11,7 @@ export const sep = {
   TYPED: "@",
   TAG_SHOWN: "#",
   ALTERNATIVES: "|",
+  FIELD: "\t",
 } as const;
 
 export const kind = {
@@ -44,6 +45,8 @@ export const kind = {
   TREE: "tree",
   LOOT_MODIFIER: "loot_modifier",
   LOOT_TABLE: "loot_table",
+  TEXTURE: "texture",
+  MATERIAL: "material",
 } as const;
 
 export const reference = {
@@ -56,12 +59,15 @@ export const reference = {
   FLUID: "@fluid:",
   BIOME: "@biome:",
   DIMENSION: "@dimension:",
+  TEXTURE: "@texture:",
+  MATERIAL: "@material:",
 } as const;
 
 export const typed = {
   TAG: "tag",
   LANG: "lang",
   IMAGE: "image",
+  BYTES: "bytes",
 } as const;
 
 export const imageScheme = {
@@ -83,6 +89,12 @@ export const pack = {
   OVERLAYS: "when",
   ANY_LOADER: "any",
   ANY_VERSION: "any",
+} as const;
+
+export const project = {
+  RESOURCES: "resources",
+  CONTENT: "content",
+  SRC: "src",
 } as const;
 
 export const program = {
@@ -142,6 +154,8 @@ export const formats = {
   model: { ext: "ymodel", noun: "model" },
   anim: { ext: "yanim", noun: "animation" },
   font: { ext: "yfont", noun: "font" },
+  texture: { ext: "ytexture", noun: "texture" },
+  material: { ext: "ymaterial", noun: "material" },
   data: { ext: "ydata", noun: "compiled data" },
   mod: { ext: "yog", noun: "mod" },
 } as const;

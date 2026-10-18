@@ -36,28 +36,9 @@ pub fn missing_image() -> Image {
     image
 }
 
+/// A picture in any format the build reads (`yog_media`), as RGBA.
 pub fn decode_png(bytes: &[u8]) -> Option<Image> {
-    let mut decoder = png::Decoder::new(std::io::Cursor::new(bytes));
-    decoder.set_transformations(png::Transformations::EXPAND | png::Transformations::STRIP_16);
-    let mut reader = decoder.read_info().ok()?;
-    let mut buf = vec![0; reader.output_buffer_size()?];
-    let info = reader.next_frame(&mut buf).ok()?;
-    let (w, h) = (info.width, info.height);
-    let px = (w * h) as usize;
-    let rgba = match info.color_type {
-        png::ColorType::Rgba => buf[..px * 4].to_vec(),
-        png::ColorType::Rgb => buf[..px * 3]
-            .chunks(3)
-            .flat_map(|c| [c[0], c[1], c[2], 0xFF])
-            .collect(),
-        png::ColorType::GrayscaleAlpha => buf[..px * 2]
-            .chunks(2)
-            .flat_map(|c| [c[0], c[0], c[0], c[1]])
-            .collect(),
-        png::ColorType::Grayscale => buf[..px].iter().flat_map(|&g| [g, g, g, 0xFF]).collect(),
-        png::ColorType::Indexed => return None, // EXPAND turns these into RGB(A)
-    };
-    Some(Image { width: w, height: h, rgba })
+    yog_media::image::decode(bytes).ok()
 }
 
 /// Where the vanilla resources come from.
@@ -320,14 +301,6 @@ pub fn vanilla_versions(extra_roots: &[PathBuf]) -> &'static [Arc<Vanilla>] {
     })
 }
 
-/// The png of the mod's texture `<ns>:<path>` — one of its `.yres` images.
-fn mod_texture(root: &Path, ns: &str, path: &str) -> Option<PathBuf> {
-    if crate::manifest::mod_id(root)? != ns {
-        return None;
-    }
-    let texture = path.strip_prefix(yog_ids::res::TEXTURES)?.strip_suffix(yog_ids::res::PNG)?;
-    crate::yres_images::images(root).into_iter().find(|i| i.texture == texture).map(|i| i.file)
-}
 
 /// Resolves `namespace:path` resources for one mod: its `.yres` images, then the game's.
 #[derive(Clone)]
@@ -353,8 +326,8 @@ impl Resources {
     /// The bytes of resource `<ns>:<path>` (`textures/gui/x.png`): the mod's
     /// own are its `.yres` images (a mod has no `assets/`), the rest the game's.
     pub fn read(&self, ns: &str, path: &str) -> Option<Vec<u8>> {
-        if let Some(file) = self.mod_root.as_deref().and_then(|root| mod_texture(root, ns, path)) {
-            return std::fs::read(file).ok();
+        if let Some(bytes) = self.mod_root.as_deref().and_then(|root| yog_cli::media::built_asset(root, ns, path)) {
+            return Some(bytes);
         }
         self.vanilla.as_ref()?.read(&format!("{ns}/{path}"))
     }

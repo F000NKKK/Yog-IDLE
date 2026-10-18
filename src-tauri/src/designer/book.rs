@@ -419,7 +419,20 @@ pub fn render(args: &BookArgs) -> BookRendered {
 }
 
 /// Draws `book` (already read) for `args`: its session's reader, the action.
+/// The mod whose book is being drawn: where its tags come from.
+static BOOK_MOD: std::sync::Mutex<Option<PathBuf>> = std::sync::Mutex::new(None);
+
+/// An item tag's items for the book being drawn (`yog_book::set_tag_items`).
+fn book_tag_items(tag: &str) -> Vec<String> {
+    let root = BOOK_MOD.lock().ok().and_then(|r| r.clone());
+    root.map(|r| super::tags::item_tag(&r.join(yog_ids::file::MANIFEST), tag)).unwrap_or_default()
+}
+
 fn render_book(args: &BookArgs, book: yog_formats::book::Book, problem: Option<String>, root: Option<&Path>, locales: Vec<String>) -> BookRendered {
+    yog_book::set_tag_items(book_tag_items);
+    if let Ok(mut m) = BOOK_MOD.lock() {
+        *m = root.map(Path::to_path_buf);
+    }
     let (sw, sh) = (args.screen_w.clamp(1, 4096), args.screen_h.clamp(1, 4096));
     let fail = |error: String| BookRendered {
         image: None,

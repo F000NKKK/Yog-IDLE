@@ -132,8 +132,7 @@ pub fn item_tag(path: &Path, tag: &str) -> Vec<String> {
     let roots: Vec<PathBuf> = root.iter().flat_map(|r| [r.clone(), r.parent().map(Path::to_path_buf).unwrap_or_default()]).collect();
     let own = mod_tags(root.as_deref());
     let mut out = Vec::new();
-    let tag = tag.trim_start_matches('#');
-    let full = if tag.contains(':') { tag.to_owned() } else { format!("minecraft:{tag}") };
+    let full = yog_ids::qualify(tag.trim_start_matches(yog_ids::sep::TAG_SHOWN));
     collect(&roots, &own, &full, &mut BTreeSet::new(), &mut out, 0);
     out
 }
@@ -141,6 +140,15 @@ pub fn item_tag(path: &Path, tag: &str) -> Vec<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Hex Casting's own tag of planks.
+    #[test]
+    #[ignore = "needs ../HexMod-Yog"]
+    fn a_mods_item_tag_has_its_items() {
+        let manifest = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../HexMod-Yog").join(yog_ids::file::MANIFEST);
+        let items = item_tag(&manifest, "#hexcasting:edified_planks");
+        assert!(items.iter().any(|i| i.contains("edified_planks")), "{items:?}");
+    }
 
     #[test]
     fn opens_mod_tags_from_source_without_a_prior_build() {

@@ -1,3 +1,5 @@
+import { GAME_NAMESPACE, TYPED } from "../data/yogFormat";
+import { kind as KIND, sep } from "../data/yogIds.generated";
 import { cropFrame, pasteFrame, sameAnimation, stillAnimation, type TextureAnimation } from "../content/animation";
 import { FrameStrip } from "../content/paint/FrameStrip";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -118,6 +120,8 @@ import "./ContentEditor.css";
 
 /** What the pickers offer, from the mod and the game. */
 interface Choices {
+  /** The mod's id: its own textures' namespace. */
+  modId: string;
   textures: string[];
   strings: string[];
   sounds: string[];
@@ -125,7 +129,7 @@ interface Choices {
   toolMaterials: string[];
   armorMaterials: string[];
 }
-const NO_CHOICES: Choices = { textures: [], strings: [], sounds: [], tags: [], toolMaterials: [], armorMaterials: [] };
+const NO_CHOICES: Choices = { modId: GAME_NAMESPACE, textures: [], strings: [], sounds: [], tags: [], toolMaterials: [], armorMaterials: [] };
 
 interface BuiltInBlockKind {
   name: string;
@@ -523,9 +527,10 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
       invoke<string[]>("content_tags", { path, registry: kindOf(path) ?? "item" }).catch(() => []),
       invoke<string[]>("content_tool_materials", { path }).catch(() => []),
       invoke<string[]>("content_armor_materials", { path }).catch(() => []),
+      invoke<string | null>("content_mod_id", { path }).catch(() => null),
     ]).then(
-      ([tex, strings, sounds, tags, toolMaterials, armorMaterials]) =>
-        live && setChoices({ textures: tex.map((c) => c.value), strings, sounds, tags, toolMaterials, armorMaterials })
+      ([tex, strings, sounds, tags, toolMaterials, armorMaterials, modId]) =>
+        live && setChoices({ modId: modId ?? GAME_NAMESPACE, textures: tex.map((c) => c.value), strings, sounds, tags, toolMaterials, armorMaterials })
     );
     return () => {
       live = false;
@@ -727,7 +732,7 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
     if (faceSlot) setPaintSlot(faceSlot);
   }, [faceSlot]);
 
-  /** A new png under `resources/` for `slot` — `item/<file>.png`, `block/<file>_<slot>.png` and the like, not yet taken. */
+  /** A new texture of the mod for `slot` — `@texture:<mod>:item/<file>`, `…:block/<file>_<slot>` and the like, not yet taken. */
   const newTexturePath = (slot: string): string => {
     const stem = (stemOf(path) || "texture").toLowerCase().replace(/[^a-z0-9_.-]/g, "_");
     const folder = modelKind === "item" || resolved.sprite ? "item" : "block";
@@ -735,8 +740,9 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
     const several = paintSlots.length > 1 || effectiveKey === "arm" || state !== null;
     const base = `${folder}/${stem}${state !== null ? `_${state}` : ""}${several ? `_${slot}` : ""}`;
     const taken = new Set([...choices.textures, ...Object.keys(editedRef.current), ...named]);
-    let value = `${base}.png`;
-    for (let n = 2; taken.has(value); n++) value = `${base}_${n}.png`;
+    const ref = (p: string) => `${TYPED}${KIND.TEXTURE}${sep.NAMESPACE}${choices.modId}${sep.NAMESPACE}${p}`;
+    let value = ref(base);
+    for (let n = 2; taken.has(value); n++) value = ref(`${base}_${n}`);
     return value;
   };
 

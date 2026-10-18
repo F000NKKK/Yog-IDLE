@@ -456,11 +456,10 @@ pub fn candidates(path: &Path) -> Vec<Candidate> {
     let root = super::mod_root(path);
     let mut out = Vec::new();
     if let Some(root) = &root {
-        let resources = root.join(crate::yres_images::RESOURCES_DIR);
-        out.extend(crate::yres_images::images(root).into_iter().map(|i| Candidate {
-            source: ImageSource::ModPath(i.texture).to_string(),
+        out.extend(yog_cli::media::pictures(root).into_iter().map(|p| Candidate {
+            source: ImageSource::ModPath(p.path()).to_string(),
             group: "mod".into(),
-            detail: i.file.strip_prefix(&resources).unwrap_or(&i.file).to_string_lossy().replace('\\', "/"),
+            detail: format!("@{}.{}", p.set, p.name),
         }));
     }
     out.extend(SPRITES.iter().map(|s| Candidate {
