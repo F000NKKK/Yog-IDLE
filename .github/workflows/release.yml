@@ -1,6 +1,6 @@
 # Builds Yog IDLE for Linux, Windows and macOS and attaches the packages to
-# the release of the pushed tag (v1.0.0, …). Substrate-Platform is checked
-# out next to it, as on a developer's machine.
+# the release of the pushed tag (v1.0.0, …). Substrate-Platform and
+# Yog-Mod-Loader are checked out next to it, as on a developer's machine.
 name: Release
 
 on:
@@ -32,6 +32,11 @@ jobs:
         with:
           repository: F000NKKK/Substrate-Platform
           path: Substrate-Platform
+      # The loader's crates (yog-ids, yog-home, the debugger's) are patched in from its checkout.
+      - uses: actions/checkout@v4
+        with:
+          repository: F000NKKK/Yog-Mod-Loader
+          path: Yog-Mod-Loader
 
       - name: Linux libraries
         if: runner.os == 'Linux'

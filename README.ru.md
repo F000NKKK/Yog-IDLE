@@ -32,20 +32,15 @@ Yog IDLE — десктопная IDE для модов на
 
 ## 📦 Скачать
 
-Готовые пакеты лежат на странице [Releases](https://github.com/F000NKKK/Yog-IDLE/releases/latest):
+Ставьте через [Yog Installer](https://github.com/F000NKKK/Yog-Installer/releases/latest)
+— как Visual Studio Installer, он устанавливает IDLE вместе со всем, что
+нужно моду (Yog CLI, Rust и цели сборки для всех платформ, Zig, JDK для
+Minecraft, SDK загрузчика), обновляет это и саму IDLE. Всё ставится в папку
+пользователя (`~/.yog`), без прав администратора.
 
-| Система | Пакет |
-|---|---|
-| Windows | установщик (.exe) или .msi |
-| Linux | .deb, .rpm или AppImage |
-| macOS | универсальный .dmg (Intel и Apple Silicon) |
-
-Больше ничего ставить вручную не нужно. При первом запуске IDLE проверяет
-машину и предлагает установить недостающее — Rust, цели сборки для всех
-платформ, Zig, JDK для Minecraft и консольную утилиту Yog — в папку
-пользователя, без прав администратора.
-
-<p align="center"><img src="docs/images/environment-ru.png" alt="Окно «Окружение Yog»: всё установлено" width="900"></p>
+Пакеты самой IDLE тоже есть на странице [Releases](https://github.com/F000NKKK/Yog-IDLE/releases/latest)
+(Windows .exe/.msi, Linux .deb/.rpm/AppImage, macOS универсальный .dmg);
+остальное поставит **Сервис › Yog Installer...**.
 
 ## 🧭 Обзор
 
@@ -121,14 +116,13 @@ Yog IDLE — десктопная IDE для модов на
 
 Редакторы кода с предпросмотром Markdown, Git (изменения, ветки, диффы, push и
 pull), поиск по файлам и символам, поиск и замена в файлах, встроенные
-терминалы, английский и русский интерфейс и настройки для всего — в том числе
-где лежат инструменты и какой JDK берёт каждая версия Minecraft.
-
-<p align="center"><img src="docs/images/options-ru.png" alt="Параметры: страница «Среда»" width="900"></p>
+терминалы, английский и русский интерфейс и настройки для всего. Установкой
+занимается Yog Installer, а переопределения конкретной машины — своя копия
+загрузчика, свои JDK, видеокарта — лежат в `~/.yog/local.toml`.
 
 ## 🚀 Начало работы
 
-1. Установите IDLE и дайте ему настроить окружение.
+1. Установите IDLE через Yog Installer (рабочая нагрузка «Разработка модов»).
 2. **Файл › Открыть папку** с модом — папку, где лежит yog.toml.
    [Yog-Modlist](https://github.com/F000NKKK/Yog-Modlist) — небольшой мод для
    начала, [Yog-VLSI](https://github.com/F000NKKK/Yog-VLSI) использует все

@@ -32,20 +32,16 @@ What you see in an editor is drawn by the same code the game runs.
 
 ## 📦 Download
 
-Ready-made packages are on the [Releases](https://github.com/F000NKKK/Yog-IDLE/releases/latest) page:
+Install it with [Yog Installer](https://github.com/F000NKKK/Yog-Installer/releases/latest)
+— like Visual Studio Installer, it installs IDLE together with everything a
+mod needs (the Yog CLI, Rust and the build targets for every platform, Zig,
+the JDKs for Minecraft, the loader SDK), keeps them up to date, and updates
+IDLE itself. Everything goes into your user folder (`~/.yog`), without
+administrator rights.
 
-| System | Package |
-|---|---|
-| Windows | installer (.exe) or .msi |
-| Linux | .deb, .rpm or AppImage |
-| macOS | universal .dmg (Intel and Apple Silicon) |
-
-You don't have to install anything else by hand. On the first start IDLE
-checks your machine and offers to install what's missing — Rust, the build
-targets for every platform, Zig, the JDKs for Minecraft and the Yog command
-line tool — into your user folder, without administrator rights.
-
-<p align="center"><img src="docs/images/environment.png" alt="The Yog Environment window: every component installed" width="900"></p>
+IDLE's own packages are on the [Releases](https://github.com/F000NKKK/Yog-IDLE/releases/latest)
+page too (Windows .exe/.msi, Linux .deb/.rpm/AppImage, macOS universal
+.dmg); then **Tools › Yog Installer...** sets up the rest.
 
 ## 🧭 A tour
 
@@ -120,14 +116,13 @@ code editor; a mod gets typed access to their rows.
 
 Code editors with Markdown preview, Git (changes, branches, diffs, push and
 pull), code search by file and symbol, find and replace in files, integrated
-terminals, an English and a Russian interface, and settings for everything —
-including where the tools live and which JDK each Minecraft version uses.
-
-<p align="center"><img src="docs/images/options.png" alt="Options: the Environment page" width="900"></p>
+terminals, an English and a Russian interface, and settings for everything.
+What's installed is Yog Installer's; a machine's own overrides — a loader
+checkout, its JDKs, its graphics card — go in `~/.yog/local.toml`.
 
 ## 🚀 Getting started
 
-1. Install IDLE and let it set up the environment.
+1. Install IDLE with Yog Installer (workload *Mod development*).
 2. **File › Open Folder** on a mod — a folder with a yog.toml.
    [Yog-Modlist](https://github.com/F000NKKK/Yog-Modlist) is a small one to
    start with; [Yog-VLSI](https://github.com/F000NKKK/Yog-VLSI) uses every
