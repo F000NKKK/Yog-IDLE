@@ -21,6 +21,15 @@ const IconYogItem = createIcon(
   </>
 );
 
+/** A framed picture — a texture. */
+const IconYogTexture = createIcon(
+  <>
+    <rect x="4" y="4" width="16" height="16" rx="1" />
+    <path d="M4 16l5-5 4 4 3-3 4 4" />
+    <circle cx="15.5" cy="8.5" r="1.5" />
+  </>
+);
+
 // The texture paint tools.
 
 const IconPaintPencil = createIcon(
@@ -110,6 +119,7 @@ const IconSkipBack = createIcon(
 
 registerIcons({
   yogBlock: IconYogBlock,
+  yogTexture: IconYogTexture,
   yogEntity: IconYogEntity,
   yogAnim: IconYogAnim,
   yogDef: IconYogDef,

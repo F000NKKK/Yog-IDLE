@@ -13,6 +13,7 @@ import { YdataViewer } from "./YdataViewer";
 import { MODEL_SOURCE_VIEW, ModelEditor } from "./ModelEditor";
 import { ENTITY_SOURCE_VIEW, EntityEditor } from "./EntityEditor";
 import { ANIM_SOURCE_VIEW, AnimEditor } from "./AnimEditor";
+import { TEXTURE_SOURCE_VIEW, TextureEditor } from "./TextureEditor";
 import { fileTypeId, formats } from "../yogFileTypes";
 
 // Yog-specific editors, on top of the platform's built-in ones — imported
@@ -266,6 +267,30 @@ registerEditorProvider({
   label: "Code",
   name: "Animation Source Editor",
   fileTypes: [fileTypeId(formats.anim)],
+  component: JsonEditor,
+  priority: 0,
+  kind: "text",
+  strict: true,
+});
+
+// `.ytexture` textures: the picture painted, how the game takes it in
+// Properties; the file's text a click (or F7) away.
+registerEditorProvider({
+  id: fileTypeId(formats.texture),
+  label: "Texture",
+  name: "Texture Editor",
+  icon: "yogTexture",
+  fileTypes: [fileTypeId(formats.texture)],
+  component: TextureEditor,
+  priority: 20,
+  kind: "designer",
+});
+
+registerEditorProvider({
+  id: TEXTURE_SOURCE_VIEW,
+  label: "Code",
+  name: "Texture Source Editor",
+  fileTypes: [fileTypeId(formats.texture)],
   component: JsonEditor,
   priority: 0,
   kind: "text",

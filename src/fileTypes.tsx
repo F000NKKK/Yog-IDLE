@@ -23,6 +23,7 @@ registerFileTypes([
   { id: fileTypeId(formats.model), name: "Yog Body Model", extensions: [formats.model.ext], icon: "yogBlock", language: jsonLanguage },
   { id: fileTypeId(formats.anim), name: "Yog Animations", extensions: [formats.anim.ext], icon: "yogAnim", language: jsonLanguage },
   { id: fileTypeId(formats.entity), name: "Yog Entity", extensions: [formats.entity.ext], icon: "yogEntity", language: jsonLanguage },
+  { id: fileTypeId(formats.texture), name: "Yog Texture", extensions: [formats.texture.ext], icon: "yogTexture", language: jsonLanguage },
   { id: fileTypeId(formats.data), name: "Compiled Yog Data", extensions: [formats.data.ext] },
 ]);
 

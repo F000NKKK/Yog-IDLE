@@ -1,0 +1,21 @@
+.texture-editor {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+.texture-editor-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+.texture-editor-center {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+.texture-editor-canvas {
+  flex: 1;
+  min-height: 0;
+}
