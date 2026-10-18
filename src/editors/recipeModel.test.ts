@@ -1,170 +1,119 @@
 import { describe, expect, it } from "vitest";
-import { customFrom, emptyRecipe, parseCustomRecipe, parseRecipe, serializeCustomRecipe, serializeRecipe, slotCell, type RecipeKind } from "./recipeModel";
+import { parseDataValue } from "../data/yogData";
+import { parseRecipe, recipeType, serializeRecipe, switchKind, type RecipeFields, type RecipeKind } from "./recipeModel";
 
-describe("recipeModel", () => {
+// What `recipe_kinds` sends (src-tauri/src/recipe_kinds.rs), for the kinds these tests use.
+const FIELDS: RecipeFields = { type: "type", result: "result", count: "count", slots: "slots", values: "values", pattern: "pattern", key: "key", gridSide: 3 };
+const game = (id: string, slots: RecipeKind["slots"], values: RecipeKind["values"] = []): RecipeKind => ({ id, file: "", slots, values, layout: null });
+const SHAPED = game("shaped", [{ name: "grid", max: 9, required: true, grid: true }]);
+const SHAPELESS = game("shapeless", [{ name: "grid", max: 9, required: true, field: "ingredients", grid: false }]);
+const SMELTING = game("smelting", [{ name: "input", max: 1, required: true, field: "ingredient", grid: false }], [
+  { name: "cook_time", kind: "number", default: 200 },
+  { name: "experience", kind: "number", default: 0.1 },
+]);
+const SMITHING = game("smithing", ["template", "base", "addition"].map((p) => ({ name: p, max: 1, required: true, field: p, grid: false })));
+const BREWING = game("brewing", [
+  { name: "from", max: 1, required: true, field: "from", grid: false },
+  { name: "input", max: 1, required: true, field: "ingredient", grid: false },
+]);
+const CRUSHER: RecipeKind = {
+  id: "mymod:crusher",
+  file: "content/crusher.ydef",
+  slots: [
+    { name: "input", max: 1, required: true, grid: false },
+    { name: "extra", max: 2, required: false, grid: false },
+  ],
+  values: [{ name: "time", kind: "number" }],
+  layout: null,
+};
+const KINDS = [SHAPED, SHAPELESS, SMELTING, SMITHING, BREWING, CRUSHER];
+const read = (text: string) => parseDataValue(text) as Record<string, unknown>;
+
+describe("recipes of the game's kinds", () => {
   it("reads a shaped pattern into the grid and writes it back trimmed", () => {
-    const r = parseRecipe(
-      JSON.stringify({ type: "shaped", pattern: ["ISI", " S "], key: { I: "minecraft:iron_ingot", S: "minecraft:stick" }, result: "mymod:pick", id: "mymod:x" })
-    )!;
-    expect(r.cells).toEqual(["minecraft:iron_ingot", "minecraft:stick", "minecraft:iron_ingot", null, "minecraft:stick", null, null, null, null]);
+    const text = JSON.stringify({ type: "shaped", pattern: ["ISI", " S "], key: { I: "minecraft:iron_ingot", S: "minecraft:stick" }, result: "mymod:pick", id: "mymod:x" });
+    const r = parseRecipe(text, SHAPED, FIELDS)!;
+    expect(r.slots.grid).toEqual(["minecraft:iron_ingot", "minecraft:stick", "minecraft:iron_ingot", null, "minecraft:stick", null, null, null, null]);
     // Moved to the bottom-right corner: the empty edges go away again.
-    const moved = { ...r, cells: [null, null, null, null, ...r.cells.slice(0, 2), null, ...r.cells.slice(4, 5), null] };
-    const j = JSON.parse(serializeRecipe(moved));
+    const g = r.slots.grid;
+    const moved = { ...r, slots: { grid: [null, null, null, null, g[0], g[1], null, g[4], null] } };
+    const j = read(serializeRecipe(text, moved, SHAPED, FIELDS));
     expect(j.pattern).toEqual(["IS", "S "]);
     expect(j.key).toEqual({ I: "@item:minecraft:iron_ingot", S: "@item:minecraft:stick" });
-    expect(j.id).toBe("mymod:x");
+    expect(j.id, "keys the editor doesn't know stay").toBe("mymod:x");
     expect(j.count).toBeUndefined();
   });
 
   it("picks distinct letters", () => {
-    const r = parseRecipe(JSON.stringify({ type: "shaped", pattern: [], key: {}, result: "a:b" }))!;
-    r.cells = ["minecraft:stone", "minecraft:stick", "minecraft:string", null, null, null, null, null, null];
-    const j = JSON.parse(serializeRecipe(r));
-    expect(new Set(j.pattern[0]).size).toBe(3);
-    expect(Object.keys(j.key)).toHaveLength(3);
+    const text = '{ type: "shaped", pattern: [], key: {}, result: "a:b" }';
+    const r = parseRecipe(text, SHAPED, FIELDS)!;
+    r.slots.grid = ["minecraft:stone", "minecraft:stick", "minecraft:string", null, null, null, null, null, null];
+    const j = read(serializeRecipe(text, r, SHAPED, FIELDS));
+    expect(new Set((j.pattern as string[])[0]).size).toBe(3);
+    expect(Object.keys(j.key as object)).toHaveLength(3);
   });
 
-  it("shapeless and smelting", () => {
-    const s = parseRecipe(JSON.stringify({ type: "shapeless", ingredients: ["minecraft:paper", "#c:dusts"], result: "a:b", count: 2 }))!;
-    expect(s.cells.slice(0, 3)).toEqual(["minecraft:paper", "#c:dusts", null]);
-    expect(JSON.parse(serializeRecipe(s))).toMatchObject({ ingredients: ["@item:minecraft:paper", "@tag:item:c:dusts"], count: 2 });
-    const f = parseRecipe(JSON.stringify({ type: "smelting", ingredient: "minecraft:sand", result: "minecraft:glass", cook_time: 100 }))!;
-    expect(f.cells[0]).toBe("minecraft:sand");
-    const j = JSON.parse(serializeRecipe(f));
+  it("reads each slot from the field its definition names", () => {
+    const s = parseRecipe('{ type: "shapeless", ingredients: ["minecraft:paper", "#c:dusts"], result: "a:b", count: 2 }', SHAPELESS, FIELDS)!;
+    expect(s.slots.grid).toEqual(["minecraft:paper", "#c:dusts"]);
+    const b = parseRecipe('{ type: "brewing", from: "@item:yog:potion/awkward", ingredient: "@item:minecraft:sugar", result: "@item:yog:potion/swiftness" }', BREWING, FIELDS)!;
+    expect(b.slots).toEqual({ from: ["yog:potion/awkward"], input: ["minecraft:sugar"] });
+    const smith = parseRecipe('{ type: "smithing", template: "@item:minecraft:netherite_upgrade_smithing_template", base: "@item:minecraft:diamond_sword", addition: "@item:minecraft:netherite_ingot", result: "@item:minecraft:netherite_sword" }', SMITHING, FIELDS)!;
+    expect(smith.slots.base).toEqual(["minecraft:diamond_sword"]);
+  });
+
+  it("values take their defaults, and a default isn't written", () => {
+    const text = '{ type: "smelting", ingredient: "minecraft:sand", result: "minecraft:glass", cook_time: 100 }';
+    const f = parseRecipe(text, SMELTING, FIELDS)!;
+    expect(f.values).toEqual({ cook_time: 100, experience: 0.1 });
+    const j = read(serializeRecipe(text, f, SMELTING, FIELDS));
     expect(j).toMatchObject({ ingredient: "@item:minecraft:sand", cook_time: 100 });
     expect(j.experience).toBeUndefined();
+    const back = read(serializeRecipe(text, { ...f, values: { ...f.values, cook_time: 200 } }, SMELTING, FIELDS));
+    expect(back.cook_time, "back to the default: dropped").toBeUndefined();
+  });
+
+  it("keeps comments, alternatives and the file's layout", () => {
+    const text = `{
+  // a comment
+  type: "shaped",
+  pattern: ["CI"],
+  key: { C: ["@item:minecraft:iron_ingot", "@tag:item:c:iron_ingots"], I: "@item:minecraft:stick" },
+  result: "@item:mymod:pick",
+}`;
+    const r = parseRecipe(text, SHAPED, FIELDS)!;
+    expect(r.slots.grid.slice(0, 2)).toEqual(["minecraft:iron_ingot | #c:iron_ingots", "minecraft:stick"]);
+    const out = serializeRecipe(text, { ...r, count: 2 }, SHAPED, FIELDS);
+    expect(out).toContain("// a comment");
+    expect(read(out).count).toBe(2);
   });
 
   it("isn't a recipe", () => {
-    expect(parseRecipe("[1]")).toBeNull();
-    expect(parseRecipe("{")).toBeNull();
-    expect(parseRecipe('{ type: "not_a_recipe" }'), "another kind: edited as code, never overwritten").toBeNull();
-  });
-
-  it("reads and writes Yog Data references, alternatives kept", () => {
-    const r = parseRecipe(`{
-      // a comment
-      type: "shaped", pattern: ["CI"],
-      key: { C: ["@item:minecraft:iron_ingot", "@tag:item:c:iron_ingots"], I: "@item:minecraft:stick" },
-      result: "@item:mymod:pick",
-    }`)!;
-    expect(r.cells.slice(0, 2)).toEqual(["minecraft:iron_ingot | #c:iron_ingots", "minecraft:stick"]);
-    expect(r.result).toBe("mymod:pick");
-    const j = JSON.parse(serializeRecipe(r));
-    expect(j.key).toEqual({ I: ["@item:minecraft:iron_ingot", "@tag:item:c:iron_ingots"], S: "@item:minecraft:stick" });
-    expect(j.result).toBe("@item:mymod:pick");
+    expect(parseRecipe("[1]", SHAPED, FIELDS)).toBeNull();
+    expect(parseRecipe("{", SHAPED, FIELDS)).toBeNull();
+    expect(recipeType('{ type: "smelting" }', FIELDS)).toBe("smelting");
   });
 });
 
 describe("recipes of the mod's own kinds", () => {
-  const kind: RecipeKind = {
-    id: "mymod:crusher",
-    file: "",
-    slots: [{ name: "input", max: 1, required: true }, { name: "extra", max: 2, required: false }],
-    values: [{ name: "time", kind: "number" }],
-    layout: null,
-  };
-
-  it("reads and writes slots, values, result and count", () => {
-    const text = `{ type: "mymod:crusher", slots: { extra: ["@tag:item:c:dusts"], input: [["@item:minecraft:coal", "@item:minecraft:charcoal"]] },
-      values: { time: 200 }, result: "@item:minecraft:gravel", count: 2, id: "x" }`;
-    const r = parseCustomRecipe(text)!;
-    expect(r.slots.input).toEqual(["minecraft:coal | minecraft:charcoal"]);
-    expect(r.slots.extra).toEqual(["#c:dusts"]);
-    expect(r.values.time).toBe(200);
-    const back = JSON.parse(serializeCustomRecipe(r, kind));
-    expect(Object.keys(back.slots)).toEqual(["input", "extra"]);
-    expect(back.slots.input).toEqual([["@item:minecraft:coal", "@item:minecraft:charcoal"]]);
-    expect(back).toMatchObject({ type: "mymod:crusher", values: { time: 200 }, result: "@item:minecraft:gravel", count: 2, id: "x" });
-    expect(parseRecipe(text)).toBeNull();
-    expect(parseCustomRecipe(`{ type: "shaped" }`)).toBeNull();
-  });
-
-  it("starts a recipe of a kind from another's result", () => {
-    const r = customFrom(kind, { result: "minecraft:stone", count: 3 });
-    expect(r).toMatchObject({ type: "mymod:crusher", values: { time: 0 }, result: "minecraft:stone", count: 3 });
+  it("round-trips slots and values, in the kind's order", () => {
+    const text = '{ type: "mymod:crusher", values: { time: 40 }, slots: { extra: ["@item:minecraft:flint"], input: ["minecraft:gravel"] }, result: "minecraft:sand", count: 2 }';
+    const r = parseRecipe(text, CRUSHER, FIELDS)!;
+    expect(r.slots).toEqual({ input: ["minecraft:gravel"], extra: ["minecraft:flint"] });
+    expect(r.values).toEqual({ time: 40 });
+    const j = read(serializeRecipe(text, r, CRUSHER, FIELDS));
+    expect(Object.keys(j.slots as object)).toEqual(["input", "extra"]);
+    expect(j).toMatchObject({ values: { time: 40 }, count: 2 });
   });
 });
 
-describe("the game's single-input kinds", () => {
-  it("reads and writes stonecutting and every cooking kind", () => {
-    const cut = parseRecipe('{ "type": "stonecutting", "ingredient": "@tag:item:hexcasting:amethyst_blocks", "result": "@item:hexcasting:amethyst_bricks", "count": 2 }')!;
-    expect([cut.type, cut.cells[0], cut.result, cut.count]).toEqual(["stonecutting", "#hexcasting:amethyst_blocks", "hexcasting:amethyst_bricks", 2]);
-    expect(parseRecipe(serializeRecipe(cut))).toEqual(cut);
-    const blast = parseRecipe('{ "type": "blasting", "ingredient": "@item:minecraft:iron_ore", "result": "@item:minecraft:iron_ingot" }')!;
-    // Its own default time, not a furnace's — and not written back.
-    expect(blast.cookTime).toBe(100);
-    expect(serializeRecipe(blast)).not.toContain("cook_time");
-  });
-
-  it("reads and writes brewing with stable potion references", () => {
-    const r = parseRecipe(`{
-      type: "brewing",
-      from: "@item:yog:potion/awkward",
-      ingredient: "@item:hexcasting:amethyst_dust",
-      result: "@item:hexcasting:enlarge_grid",
-    }`)!;
-    expect([r.from, r.cells[0], r.result]).toEqual(["yog:potion/awkward", "hexcasting:amethyst_dust", "hexcasting:enlarge_grid"]);
-    expect(JSON.parse(serializeRecipe(r))).toMatchObject({
-      type: "brewing",
-      from: "@item:yog:potion/awkward",
-      ingredient: "@item:hexcasting:amethyst_dust",
-      result: "@item:hexcasting:enlarge_grid",
-    });
-    expect(parseRecipe(serializeRecipe(r))).toEqual(r);
-  });
-});
-
-describe("smithing", () => {
-  const text = `{
-    type: "smithing",
-    template: "@item:minecraft:netherite_upgrade_smithing_template",
-    base: "@item:minecraft:diamond_sword",
-    addition: ["@item:minecraft:netherite_ingot", "@tag:item:c:ingots/netherite"],
-    result: "@item:minecraft:netherite_sword",
-    id: "mymod:netherite_sword", group: "netherite", category: "equipment", requires: ["pehkui"],
-  }`;
-
-  it("reads template, base and addition into their cells, every other field kept", () => {
-    const r = parseRecipe(text)!;
-    expect(r.type).toBe("smithing");
-    expect(r.cells.slice(0, 3)).toEqual(["minecraft:netherite_upgrade_smithing_template", "minecraft:diamond_sword", "minecraft:netherite_ingot | #c:ingots/netherite"]);
-    expect(r.result).toBe("minecraft:netherite_sword");
-    const j = JSON.parse(serializeRecipe(r));
-    expect(j).toEqual({
-      id: "mymod:netherite_sword",
-      group: "netherite",
-      category: "equipment",
-      requires: ["pehkui"],
-      type: "smithing",
-      template: "@item:minecraft:netherite_upgrade_smithing_template",
-      base: "@item:minecraft:diamond_sword",
-      addition: ["@item:minecraft:netherite_ingot", "@tag:item:c:ingots/netherite"],
-      result: "@item:minecraft:netherite_sword",
-    });
-    expect(parseRecipe(serializeRecipe(r))).toEqual(r);
-  });
-
-  it("an edited part, a count and an emptied part go back to the file", () => {
-    const r = parseRecipe(text)!;
-    r.cells[slotCell("base", 0)] = "minecraft:diamond_axe";
-    r.cells[slotCell("template", 0)] = null;
-    r.count = 2;
-    const j = JSON.parse(serializeRecipe(r));
-    expect(j).toMatchObject({ template: "", base: "@item:minecraft:diamond_axe", count: 2 });
+describe("switching kinds", () => {
+  it("keeps the result and count, drops the old kind's fields", () => {
+    const text = '{ type: "smelting", ingredient: "minecraft:sand", cook_time: 100, result: "minecraft:glass", count: 3 }';
+    const before = parseRecipe(text, SMELTING, FIELDS);
+    const j = read(switchKind(text, before, CRUSHER, KINDS, FIELDS));
+    expect(j).toMatchObject({ type: "mymod:crusher", result: "@item:minecraft:glass", count: 3, values: { time: 0 } });
     expect(j.ingredient).toBeUndefined();
-    expect(j.experience).toBeUndefined();
-  });
-
-  it("a new one from another kind keeps the result and starts empty", () => {
-    const r = { ...emptyRecipe(), type: "smithing" as const, result: "mymod:ruby_sword" };
-    const j = JSON.parse(serializeRecipe(r));
-    expect(j).toEqual({ type: "smithing", template: "", base: "", addition: "", result: "@item:mymod:ruby_sword" });
-    expect(j.pattern).toBeUndefined();
-  });
-
-  it("maps the game kinds' slots to cells", () => {
-    expect([slotCell("template", 0), slotCell("base", 0), slotCell("addition", 0)]).toEqual([0, 1, 2]);
-    expect([slotCell("grid", 4), slotCell("input", 0)]).toEqual([4, 0]);
+    expect(j.cook_time).toBeUndefined();
   });
 });

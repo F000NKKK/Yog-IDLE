@@ -1,273 +1,234 @@
-// `.yrecipe` ⇄ what the recipe editor edits. A shaped recipe is a 3×3 grid
-// of cells here; its `pattern`/`key` are made from the grid on save (empty
-// edge rows and columns dropped, a letter picked per ingredient), so the
-// editor never shows them. Cells hold plain ids as the item picker gives
-// them (`minecraft:paper`, `#c:dusts` for a tag, alternatives joined by
-// ` | `); the file has Yog Data references (`@item:minecraft:paper`,
-// `@tag:item:c:dusts`, a list of them).
+// `.yrecipe` ⇄ what the recipe editor edits, for every kind alike — the
+// game's and the mod's — by the kind's definition (`recipe_kinds` on the
+// Rust side): each slot is a list of places, read from the field the
+// definition names (a grid slot from `pattern` and `key`, a mod's kind's
+// slots from `slots`), each value from its field (a mod's from `values`).
+// Places hold plain ids as the item picker gives them (`minecraft:paper`,
+// `#c:dusts` for a tag, alternatives joined by ` | `); the file has Yog Data
+// references. Writing patches the file's text: its comments and layout stay.
 
-import { parseDataValue } from "../data/yogData";
+import { ALTERNATIVES, TAG_MARK, refOf, shownOf, showIngredient, writeIngredient } from "../data/ingredients";
+import { isObject, num, str } from "../data/values";
+import { formatData, parseDataValue, patchDataText } from "../data/yogData";
+import { MAX_STACK_SIZE } from "../data/yogFormat";
 
-/** The game's cooking recipes — one input, experience, a time — and their default times (ticks). */
-export const COOKING = { smelting: 200, blasting: 100, smoking: 100, campfire_cooking: 600 } as const;
-export type CookingType = keyof typeof COOKING;
-export const isCooking = (type: string): type is CookingType => type in COOKING;
-
-/** A smithing recipe's ingredients, as the file names them, in the order its cells hold them. */
-export const SMITHING = ["template", "base", "addition"] as const;
-export type SmithingPart = (typeof SMITHING)[number];
-
-export type RecipeType = "shaped" | "shapeless" | CookingType | "stonecutting" | "smithing" | "brewing";
-
-export interface Recipe {
-  type: RecipeType;
-  /** Shaped: the 3×3 grid, row by row (null = empty). Shapeless: up to 9 ingredients, in order. Cooking, stonecutting: cell 0. Smithing: cells 0–2, in `SMITHING`'s order. */
-  cells: (string | null)[];
-  result: string;
-  count: number;
-  /** Cooking only. */
-  experience: number;
-  cookTime: number;
-  /** Brewing only: potion already in the bottle. */
-  from: string;
-  /** Keys the editor doesn't know (`id`, `$schema`, ...), written back as they were. */
-  extra: Record<string, unknown>;
+/** `recipe_kinds::Slot`. */
+export interface RecipeSlot {
+  name: string;
+  /** What editors call it; `name` if none. */
+  label?: string | null;
+  description?: string | null;
+  max: number;
+  required: boolean;
+  /** The game's kinds: the `.yrecipe` field it's written in. */
+  field?: string | null;
+  /** Its places are a crafting grid's, written as `pattern` and `key`. */
+  grid: boolean;
 }
 
-export const GRID = 9;
-const DEFAULT_EXPERIENCE = 0.1;
-const KNOWN = new Set(["type", "pattern", "key", "ingredients", "ingredient", "result", "from", "count", "experience", "cook_time", ...SMITHING]);
-
-export function emptyRecipe(): Recipe {
-  return { type: "shaped", cells: Array(GRID).fill(null), result: "", count: 1, experience: DEFAULT_EXPERIENCE, cookTime: COOKING.smelting, from: "", extra: {} };
+/** `recipe_kinds::ValueSpec`. */
+export interface RecipeValue {
+  name: string;
+  kind: "number" | "text" | "bool";
+  default?: number | null;
 }
 
-const str = (v: unknown) => (typeof v === "string" ? v : null);
-const num = (v: unknown, fallback: number) => (typeof v === "number" && Number.isFinite(v) ? v : fallback);
+/** `recipe_kinds::Spot` — where the layout puts something, in GUI pixels. */
+export type LayoutSpot =
+  | { type: "slot"; slot: string; index: number; at: [number, number] }
+  | { type: "result"; at: [number, number] }
+  | { type: "count"; at: [number, number] }
+  | { type: "text"; text: string; at: [number, number] };
 
-/** A reference as the editor shows it: `@item:x` → `x`, `@tag:item:x` → `#x`. */
-export function fromRef(s: string): string {
-  if (s.startsWith("@tag:item:")) return `#${s.slice("@tag:item:".length)}`;
-  if (s.startsWith("@item:") || s.startsWith("@block:")) return s.slice(s.indexOf(":") + 1);
-  return s;
-}
-
-/** An id as the file writes it: `x` → `@item:x`, `#x` → `@tag:item:x`. */
-export function toRef(s: string): string {
-  if (s.startsWith("#")) return `@tag:item:${s.slice(1)}`;
-  return s.startsWith("@") ? s : `@item:${s}`;
-}
-
-/** An ingredient (a reference or a list of them) as a cell: ids joined by ` | `. */
-function cellOf(v: unknown): string | null {
-  const list = (Array.isArray(v) ? v : [v]).map(str).filter((s): s is string => !!s);
-  return list.length ? list.map(fromRef).join(" | ") : null;
-}
-
-/** A cell as an ingredient: one reference, or a list of them. */
-function ingredientOf(cell: string): string | string[] {
-  const alts = cell.split("|").map((s) => s.trim()).filter(Boolean).map(toRef);
-  return alts.length === 1 ? alts[0] : alts;
-}
-
-/** The recipe types the editor lays out; other kinds are edited as code. */
-export const EDITED_TYPES: readonly string[] = ["shaped", "shapeless", ...Object.keys(COOKING), "stonecutting", "smithing", "brewing"];
-
-/** The cell the `index`-th place of a game kind's slot (`grid`, `input`, `template`…) is: the grid's by position, smithing's by part, else cell 0. */
-export function slotCell(slot: string, index: number): number {
-  if (slot === "grid") return index;
-  const part = SMITHING.indexOf(slot as SmithingPart);
-  return part >= 0 ? part : 0;
-}
-
-/** The recipe in `text`, or `null` when it isn't one the editor lays out (not an object, another kind). */
-export function parseRecipe(text: string): Recipe | null {
-  let j: unknown;
-  try {
-    j = parseDataValue(text);
-  } catch {
-    return null;
-  }
-  if (!j || typeof j !== "object" || Array.isArray(j)) return null;
-  const o = j as Record<string, unknown>;
-  if (o.type !== undefined && !EDITED_TYPES.includes(String(o.type))) return null;
-  const r = emptyRecipe();
-  r.type = typeof o.type === "string" && EDITED_TYPES.includes(o.type) ? (o.type as RecipeType) : "shaped";
-  r.result = fromRef(str(o.result) ?? "");
-  r.from = fromRef(str(o.from) ?? "");
-  r.count = Math.max(1, Math.min(64, Math.round(num(o.count, 1))));
-  r.experience = num(o.experience, DEFAULT_EXPERIENCE);
-  r.cookTime = Math.round(num(o.cook_time, isCooking(r.type) ? COOKING[r.type] : COOKING.smelting));
-  for (const [k, v] of Object.entries(o)) if (!KNOWN.has(k)) r.extra[k] = v;
-  if (r.type === "shaped") {
-    const pattern = Array.isArray(o.pattern) ? o.pattern.map((row) => String(row)) : [];
-    const key = o.key && typeof o.key === "object" ? (o.key as Record<string, unknown>) : {};
-    pattern.slice(0, 3).forEach((row, y) =>
-      [...row].slice(0, 3).forEach((c, x) => {
-        r.cells[y * 3 + x] = c === " " ? null : cellOf(key[c]);
-      })
-    );
-  } else if (r.type === "shapeless") {
-    const list = Array.isArray(o.ingredients) ? o.ingredients.map(cellOf).filter((s): s is string => !!s) : [];
-    list.slice(0, GRID).forEach((s, i) => (r.cells[i] = s));
-  } else if (r.type === "smithing") {
-    SMITHING.forEach((part, i) => (r.cells[i] = cellOf(o[part])));
-  } else {
-    r.cells[0] = cellOf(o.ingredient);
-  }
-  return r;
-}
-
-/** A letter for `item`: its name's first letter when free, else the next free A–Z. */
-function letterFor(item: string, used: Set<string>): string {
-  const name = item.replace(/^#/, "").split("|")[0].trim().split(":").pop() ?? "";
-  const first = name.charAt(0).toUpperCase();
-  if (/[A-Z]/.test(first) && !used.has(first)) return first;
-  for (let c = 65; c <= 90; c++) {
-    const l = String.fromCharCode(c);
-    if (!used.has(l)) return l;
-  }
-  return "#";
-}
-
-/** The `.yrecipe` text of `r`. */
-export function serializeRecipe(r: Recipe): string {
-  const out: Record<string, unknown> = { ...r.extra, type: r.type };
-  if (r.type === "shaped") {
-    const at = (x: number, y: number) => r.cells[y * 3 + x];
-    const rows = [0, 1, 2].filter((y) => [0, 1, 2].some((x) => at(x, y)));
-    const cols = [0, 1, 2].filter((x) => [0, 1, 2].some((y) => at(x, y)));
-    const letters = new Map<string, string>();
-    const used = new Set<string>();
-    const pattern = rows.map((y) =>
-      cols
-        .map((x) => {
-          const item = at(x, y);
-          if (!item) return " ";
-          let l = letters.get(item);
-          if (!l) {
-            l = letterFor(item, used);
-            used.add(l);
-            letters.set(item, l);
-          }
-          return l;
-        })
-        .join("")
-    );
-    out.pattern = pattern;
-    out.key = Object.fromEntries([...letters].map(([item, l]) => [l, ingredientOf(item)]));
-  } else if (r.type === "shapeless") {
-    out.ingredients = r.cells.filter((c): c is string => !!c).map(ingredientOf);
-  } else if (r.type === "smithing") {
-    SMITHING.forEach((part, i) => {
-      const c = r.cells[i];
-      out[part] = c ? ingredientOf(c) : "";
-    });
-  } else {
-    out.ingredient = r.cells[0] ? ingredientOf(r.cells[0]) : "";
-  }
-  out.result = r.result ? toRef(r.result) : "";
-  if (r.type === "brewing") out.from = r.from ? toRef(r.from) : "";
-  if (r.count !== 1) out.count = r.count;
-  if (isCooking(r.type)) {
-    if (r.experience !== DEFAULT_EXPERIENCE) out.experience = r.experience;
-    if (r.cookTime !== COOKING[r.type]) out.cook_time = r.cookTime;
-  }
-  return JSON.stringify(out, null, 2) + "\n";
-}
-
-
-// ── The mod's own kinds (`.ydef` `recipe_kind`) ─────────────────────────────
-
-/** `recipe_kinds::Kind` — a kind the mod declares. */
+/** `recipe_kinds::Kind`. */
 export interface RecipeKind {
   id: string;
+  label?: string | null;
+  /** The `.ydef` declaring it; empty for the game's. */
   file: string;
-  slots: { name: string; max: number; required: boolean }[];
-  values: { name: string; kind: "number" | "text" | "bool" }[];
+  slots: RecipeSlot[];
+  values: RecipeValue[];
   layout: {
-    /** The `.yui` (`recipe_layout`) it's laid out in. */
+    /** The `.yui` it's laid out in; empty for a built-in layout. */
     file: string;
     size: [number, number];
     image: string | null;
     scale: number;
-    spots: (
-      | { type: "slot"; slot: string; index: number; at: [number, number] }
-      | { type: "result"; at: [number, number] }
-      | { type: "count"; at: [number, number] }
-      | { type: "text"; text: string; at: [number, number] }
-    )[];
+    spots: LayoutSpot[];
   } | null;
 }
 
-/** A recipe of a mod's kind: `{ type: "mymod:crusher", slots: { input: […] }, values: { time: 200 }, result, count }`. */
-export interface CustomRecipe {
+/** `recipe_kinds::Fields` — the format's names for what every recipe has. */
+export interface RecipeFields {
   type: string;
-  /** Per slot its cells (as the grid's: ids, `#tag`, alternatives joined by ` | `). */
+  result: string;
+  count: string;
+  slots: string;
+  values: string;
+  pattern: string;
+  key: string;
+  gridSide: number;
+}
+
+/** A recipe of any kind. */
+export interface Recipe {
+  type: string;
+  /** Per slot, its places (null = empty). */
   slots: Record<string, (string | null)[]>;
   values: Record<string, number | string | boolean>;
   result: string;
   count: number;
-  extra: Record<string, unknown>;
 }
 
-const CUSTOM_KNOWN = new Set(["type", "slots", "values", "result", "count"]);
+const clampCount = (n: number) => Math.max(1, Math.min(MAX_STACK_SIZE, Math.round(n)));
+/** An empty place in a grid's pattern row. */
+const EMPTY_KEY = " ";
 
-/** Whether `type` is a mod's kind (`ns:kind`), not one of the game's. */
-export function isCustomType(type: unknown): type is string {
-  return typeof type === "string" && type.includes(":") && !type.startsWith("minecraft:");
-}
-
-/** The recipe of a mod's kind in `text`, else `null`. */
-export function parseCustomRecipe(text: string): CustomRecipe | null {
-  let j: unknown;
+/** The parsed object of a `.yrecipe`, or `null` when it isn't one. */
+function objectOf(text: string): Record<string, unknown> | null {
   try {
-    j = parseDataValue(text);
+    const v = parseDataValue(text);
+    return isObject(v) ? v : null;
   } catch {
     return null;
   }
-  if (!j || typeof j !== "object" || Array.isArray(j)) return null;
-  const o = j as Record<string, unknown>;
-  if (!isCustomType(o.type)) return null;
-  const slots: CustomRecipe["slots"] = {};
-  if (o.slots && typeof o.slots === "object" && !Array.isArray(o.slots)) {
-    for (const [name, v] of Object.entries(o.slots as Record<string, unknown>)) {
-      slots[name] = (Array.isArray(v) ? v : [v]).map(cellOf);
-    }
-  }
-  const values: CustomRecipe["values"] = {};
-  if (o.values && typeof o.values === "object" && !Array.isArray(o.values)) {
-    for (const [name, v] of Object.entries(o.values as Record<string, unknown>)) {
-      if (typeof v === "number" || typeof v === "string" || typeof v === "boolean") values[name] = v;
-    }
-  }
-  const extra: Record<string, unknown> = {};
-  for (const [k, v] of Object.entries(o)) if (!CUSTOM_KNOWN.has(k)) extra[k] = v;
-  return { type: o.type, slots, values, result: fromRef(str(o.result) ?? ""), count: Math.max(1, Math.min(64, Math.round(num(o.count, 1)))), extra };
 }
 
-/** The `.yrecipe` text of a recipe of a mod's kind; `kind` orders its slots and values as declared. */
-export function serializeCustomRecipe(r: CustomRecipe, kind?: RecipeKind): string {
-  const out: Record<string, unknown> = { ...r.extra, type: r.type };
-  const slotNames = kind ? kind.slots.map((s) => s.name) : Object.keys(r.slots);
-  const slots: Record<string, unknown> = {};
-  for (const name of slotNames) {
-    const cells = (r.slots[name] ?? []).filter((c): c is string => !!c);
-    if (cells.length) slots[name] = cells.map(ingredientOf);
-  }
-  if (Object.keys(slots).length) out.slots = slots;
-  const valueNames = kind ? kind.values.map((v) => v.name) : Object.keys(r.values);
-  const values: Record<string, unknown> = {};
-  for (const name of valueNames) if (r.values[name] !== undefined) values[name] = r.values[name];
-  if (Object.keys(values).length) out.values = values;
-  out.result = r.result ? toRef(r.result) : "";
-  if (r.count !== 1) out.count = r.count;
-  return JSON.stringify(out, null, 2) + "\n";
+/** The kind (`type`) of the recipe in `text`, if it says one. */
+export function recipeType(text: string, fields: RecipeFields): string | null {
+  return str(objectOf(text)?.[fields.type]);
 }
 
-/** A recipe of `kind` keeping `from`'s result and count (switching kinds). */
-export function customFrom(kind: RecipeKind, from: { result: string; count: number }): CustomRecipe {
-  const values: CustomRecipe["values"] = {};
-  for (const v of kind.values) values[v.name] = v.kind === "number" ? 0 : v.kind === "bool" ? false : "";
-  return { type: kind.id, slots: {}, values, result: from.result, count: from.count, extra: {} };
+/** Whether `kind` is one of the game's (its slots are written in fields of their own). */
+const isGameKind = (kind: RecipeKind) => kind.file === "";
+
+/** A grid's places from `pattern` rows and their `key`. */
+function readGrid(o: Record<string, unknown>, fields: RecipeFields): (string | null)[] {
+  const side = fields.gridSide;
+  const places: (string | null)[] = Array(side * side).fill(null);
+  const pattern = Array.isArray(o[fields.pattern]) ? (o[fields.pattern] as unknown[]).map(String) : [];
+  const key = isObject(o[fields.key]) ? (o[fields.key] as Record<string, unknown>) : {};
+  pattern.slice(0, side).forEach((row, y) =>
+    [...row].slice(0, side).forEach((c, x) => {
+      places[y * side + x] = c === EMPTY_KEY ? null : showIngredient(key[c]);
+    }),
+  );
+  return places;
+}
+
+/** A letter for `place`'s key: its name's first letter when free, else the next free A–Z. */
+function letterFor(place: string, used: Set<string>): string {
+  const name = place.replace(TAG_MARK, "").split(ALTERNATIVES)[0].trim().split(":").pop() ?? "";
+  const first = name.charAt(0).toUpperCase();
+  if (/[A-Z]/.test(first) && !used.has(first)) return first;
+  for (let c = "A".charCodeAt(0); c <= "Z".charCodeAt(0); c++) {
+    const l = String.fromCharCode(c);
+    if (!used.has(l)) return l;
+  }
+  return TAG_MARK;
+}
+
+/** `pattern` rows (empty edge rows and columns dropped) and `key` for a grid's places. */
+function writeGrid(places: (string | null)[], side: number): { pattern: string[]; key: Record<string, unknown> } {
+  const at = (x: number, y: number) => places[y * side + x];
+  const span = [...Array(side).keys()];
+  const rows = span.filter((y) => span.some((x) => at(x, y)));
+  const cols = span.filter((x) => span.some((y) => at(x, y)));
+  const letters = new Map<string, string>();
+  const used = new Set<string>();
+  const pattern = rows.map((y) =>
+    cols
+      .map((x) => {
+        const place = at(x, y);
+        if (!place) return EMPTY_KEY;
+        let l = letters.get(place);
+        if (!l) {
+          l = letterFor(place, used);
+          used.add(l);
+          letters.set(place, l);
+        }
+        return l;
+      })
+      .join(""),
+  );
+  return { pattern, key: Object.fromEntries([...letters].map(([place, l]) => [l, writeIngredient(place)])) };
+}
+
+/** The recipe in `text`, read as a recipe of `kind`; `null` if it isn't an object. */
+export function parseRecipe(text: string, kind: RecipeKind, fields: RecipeFields): Recipe | null {
+  const o = objectOf(text);
+  if (!o) return null;
+  const game = isGameKind(kind);
+  const ownSlots = isObject(o[fields.slots]) ? (o[fields.slots] as Record<string, unknown>) : {};
+  const ownValues = isObject(o[fields.values]) ? (o[fields.values] as Record<string, unknown>) : {};
+  const slots: Recipe["slots"] = {};
+  for (const s of kind.slots) {
+    if (s.grid) slots[s.name] = readGrid(o, fields);
+    else {
+      const v = game ? (s.field ? o[s.field] : undefined) : ownSlots[s.name];
+      slots[s.name] = s.max > 1 && Array.isArray(v) ? v.map(showIngredient) : [showIngredient(v)];
+    }
+  }
+  const values: Recipe["values"] = {};
+  for (const v of kind.values) {
+    const given = game ? o[v.name] : ownValues[v.name];
+    if (typeof given === "number" || typeof given === "string" || typeof given === "boolean") values[v.name] = given;
+    else if (v.default != null) values[v.name] = v.default;
+  }
+  return { type: kind.id, slots, values, result: shownOf(str(o[fields.result]) ?? ""), count: clampCount(num(o[fields.count], 1)) };
+}
+
+/** The `.yrecipe` text `text` becomes with `r` (a recipe of `kind`), its other keys, comments and layout kept. */
+export function serializeRecipe(text: string, r: Recipe, kind: RecipeKind, fields: RecipeFields): string {
+  const game = isGameKind(kind);
+  const o: Record<string, unknown> = { ...(objectOf(text) ?? {}) };
+  o[fields.type] = r.type;
+  const ownSlots: Record<string, unknown> = {};
+  for (const s of kind.slots) {
+    const places = r.slots[s.name] ?? [];
+    if (s.grid) {
+      const { pattern, key } = writeGrid(places, fields.gridSide);
+      o[fields.pattern] = pattern;
+      o[fields.key] = key;
+      continue;
+    }
+    const filled = places.filter((p): p is string => !!p).map(writeIngredient);
+    const value = s.max > 1 ? filled : (filled[0] ?? "");
+    if (game && s.field) o[s.field] = value;
+    else if (filled.length) ownSlots[s.name] = filled;
+  }
+  const ownValues: Record<string, unknown> = {};
+  for (const v of kind.values) {
+    const given = r.values[v.name];
+    const isDefault = given === undefined || (v.default != null && given === v.default);
+    if (game) {
+      if (isDefault) delete o[v.name];
+      else o[v.name] = given;
+    } else if (given !== undefined) ownValues[v.name] = given;
+  }
+  if (!game) {
+    if (Object.keys(ownSlots).length) o[fields.slots] = ownSlots;
+    else delete o[fields.slots];
+    if (Object.keys(ownValues).length) o[fields.values] = ownValues;
+    else delete o[fields.values];
+  }
+  o[fields.result] = r.result ? refOf(r.result) : "";
+  if (r.count !== 1) o[fields.count] = r.count;
+  else delete o[fields.count];
+  return patchDataText(text, o, formatData);
+}
+
+/** A recipe of `kind` keeping `from`'s result and count (switching kinds); the old kind's own fields dropped. */
+export function switchKind(text: string, from: Recipe | null, kind: RecipeKind, kinds: RecipeKind[], fields: RecipeFields): string {
+  const o = objectOf(text) ?? {};
+  // What belonged to the kind it was: its slots' and values' fields.
+  for (const k of kinds) {
+    for (const s of k.slots) if (s.field) delete o[s.field];
+    for (const v of k.values) delete o[v.name];
+  }
+  for (const f of [fields.pattern, fields.key, fields.slots, fields.values]) delete o[f];
+  const values: Recipe["values"] = {};
+  for (const v of kind.values) values[v.name] = v.default ?? (v.kind === "number" ? 0 : v.kind === "bool" ? false : "");
+  const next: Recipe = { type: kind.id, slots: {}, values, result: from?.result ?? "", count: from?.count ?? 1 };
+  return serializeRecipe(patchDataText(text, o, formatData), next, kind, fields);
 }

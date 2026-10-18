@@ -1,3 +1,4 @@
+import { TAG_MARK, alternativesOf, isTag } from "../data/ingredients";
 // What the `<Image source>` property offers: Yog image sources (`item:apple`,
 // `sprite:button`, `mod:gui/logo` — see docs/yui.md) listed and previewed by
 // the backend (`yui_image_sources`, `yui_image_preview`), cached here so the
@@ -130,8 +131,8 @@ export function tagItems(path: string, tag: string): string[] | undefined {
  */
 export function ingredientItems(path: string, value: string): string[] {
   const out: string[] = [];
-  for (const part of value.split("|").map((p) => p.trim()).filter(Boolean)) {
-    if (part.startsWith("#")) out.push(...(tagItems(path, part.slice(1)) ?? []));
+  for (const part of alternativesOf(value)) {
+    if (isTag(part)) out.push(...(tagItems(path, part.slice(TAG_MARK.length)) ?? []));
     else out.push(part);
   }
   return out;

@@ -1872,4 +1872,9 @@ registerTranslations("ru", {
   "Linux x86_64": "Linux x86_64",
   "Linux ARM64": "Linux ARM64",
   "Windows x86_64": "Windows x86_64",
+  "1 to {max}": "От 1 до {max}",
+  "Cook time": "Время готовки",
+  "Input": "Ввод",
+  "The potion in the bottle, brewed into the result.": "Зелье в бутылке, которое превращается в результат.",
+  "What's put in the brewing stand's top slot.": "То, что кладут в верхнюю ячейку варочной стойки.",
 });

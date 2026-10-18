@@ -1,3 +1,4 @@
+import { list, num } from "../../data/values";
 // The `.ydef` kinds (`yog_formats::def::Def`) as their designers see them:
 // the file read and written back in place, the game's vocabularies the
 // format names in its docs, and what the designers compute to draw —
@@ -25,8 +26,6 @@ export function patchDef(text: string, file: DefFile): string {
   return patchDataText(text, file, formatData);
 }
 
-const num = (v: unknown, d = 0) => (typeof v === "number" && Number.isFinite(v) ? v : d);
-const list = <T>(v: unknown): T[] => (Array.isArray(v) ? (v as T[]) : []);
 export const asList = list;
 
 // ── The game's vocabularies, as the format documents them ──────────────────
