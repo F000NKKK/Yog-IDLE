@@ -5686,6 +5686,7 @@ name = "yog-gfx"
 version = "0.28.1"
 dependencies = [
  "yog-abi",
+ "yog-data",
  "yog-graphics",
  "yog-ids",
 ]

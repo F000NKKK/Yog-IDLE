@@ -13,7 +13,7 @@ use std::sync::Arc;
 
 use yog_gfx::{Color, Rect, Vec2};
 use yog_gfx::image::{
-    ImageSource, LegacyRegion, SPRITES, Sprite, Stretch, fit, sprite as find_sprite,
+    ImageSource, LegacyRegion, SPRITES, Sprite, Stretch, atlas_texture, fit, sprite as find_sprite,
 };
 use yog_ui::widget::{self, Widget};
 
@@ -138,7 +138,7 @@ fn book_sheet(id: &str) -> Option<Arc<Image>> {
 
 /// The game files have the 1.20.2+ GUI sprite atlas.
 fn has_atlas() -> bool {
-    texture("minecraft:textures/gui/sprites/widget/button.png").is_some()
+    SPRITES.iter().filter_map(|s| s.atlas.as_deref()).next().and_then(|a| texture(&atlas_texture(yog_ids::ns::MINECRAFT, a))).is_some()
 }
 
 /// The texture an item/block icon is drawn with (the designer doesn't run
@@ -283,8 +283,8 @@ fn sprite(c: &mut Canvas, sp: &Sprite, dest: [f32; 4], t: u32) {
         slot(c, dest);
         return;
     }
-    if let Some(atlas) = sp.atlas
-        && let Some(img) = texture(&format!("minecraft:textures/gui/sprites/{atlas}.png"))
+    if let Some(atlas) = &sp.atlas
+        && let Some(img) = texture(&atlas_texture(yog_ids::ns::MINECRAFT, atlas))
     {
         // Animated sprites stack their frames vertically: the first one.
         let size = sp.size(true);
@@ -307,7 +307,7 @@ fn sprite(c: &mut Canvas, sp: &Sprite, dest: [f32; 4], t: u32) {
         texture: tex,
         region,
         texture_size,
-    }) = sp.legacy
+    }) = &sp.legacy
         && let Some(img) = texture(tex)
     {
         // Resource packs may ship the sheet at a higher resolution.
@@ -421,7 +421,7 @@ pub fn draw(c: &mut Canvas, source: &str, dest: [f32; 4], region: [f32; 4], t: u
             Some(sp) => sprite(c, sp, dest, t),
             None => match name
                 .split_once(':')
-                .and_then(|(ns, p)| texture(&format!("{ns}:textures/gui/sprites/{p}.png")))
+                .and_then(|(ns, p)| texture(&atlas_texture(ns, p)))
             {
                 Some(img) => blit_px(c, &img, dest, [0.0, 0.0, img.width as f32, img.height as f32], t),
                 None => missing(c, dest),

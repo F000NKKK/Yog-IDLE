@@ -25,21 +25,20 @@ fn texture_bytes(file: &Path, texture: &str) -> Result<Vec<u8>, String> {
     match texture_file(file, texture, "png") {
         Ok(bytes) => Ok(bytes),
         Err(original) => {
-            let Some((x, y, w, h)) = brewing_sprite_sheet_region(texture) else {
+            // A 1.20.2+ GUI sprite (`minecraft:gui/sprites/<atlas>`) on a game without the atlas: its 1.20.1 region.
+            let (ns, path) = yog_ids::split(texture);
+            let Some(legacy) = path
+                .strip_prefix(yog_ids::res::GUI_SPRITES)
+                .and_then(yog_gfx::image::sprite_by_atlas)
+                .and_then(|s| s.legacy.as_ref())
+                .filter(|_| ns == yog_ids::ns::MINECRAFT)
+            else {
                 return Err(original);
             };
-            let sheet = texture_file(file, "minecraft:gui/container/brewing_stand", "png")?;
-            crop_png(&sheet, x, y, w, h).map_err(|e| format!("{original}; brewing sprite fallback: {e}"))
+            let sheet = texture_file(file, &yog_gfx::image::short_source(&legacy.texture), "png")?;
+            let r = legacy.region;
+            crop_png(&sheet, r.x as u32, r.y as u32, r.w as u32, r.h as u32).map_err(|e| format!("{original}; the 1.20.1 sprite: {e}"))
         }
-    }
-}
-
-fn brewing_sprite_sheet_region(texture: &str) -> Option<(u32, u32, u32, u32)> {
-    match texture {
-        "minecraft:gui/sprites/container/brewing_stand/brew_progress" => Some((176, 0, 9, 28)),
-        "minecraft:gui/sprites/container/brewing_stand/bubbles" => Some((185, 0, 12, 29)),
-        "minecraft:gui/sprites/container/brewing_stand/fuel_length" => Some((176, 29, 18, 4)),
-        _ => None,
     }
 }
 
