@@ -189,6 +189,45 @@ export const yui = {
   RECIPE_COUNT: "RecipeCount",
 } as const;
 
+export const model = {
+  PARENT: "parent",
+  TEXTURES: "textures",
+  ELEMENTS: "elements",
+  DISPLAY: "display",
+  FACES: "faces",
+  FROM: "from",
+  TO: "to",
+  UV: "uv",
+  ROTATION: "rotation",
+  TEXTURE: "texture",
+  LAYER0: "layer0",
+  PARTICLE: "particle",
+  MODEL: "model",
+  ORIGIN: "origin",
+  AXIS: "axis",
+  ANGLE: "angle",
+  RESCALE: "rescale",
+  VARIANTS: "variants",
+  MULTIPART: "multipart",
+  WHEN: "when",
+  APPLY: "apply",
+  OR: "OR",
+  AND: "AND",
+} as const;
+
+export const contentField = {
+  ID: "id",
+  KIND: "kind",
+  MODEL: "model",
+  ITEM_MODEL: "item_model",
+  ITEM: "item",
+  POTION: "potion",
+  EFFECTS: "effects",
+  EFFECT: "effect",
+  OF: "of",
+  COLOR: "color",
+} as const;
+
 export const yuiAttr = {
   ID: "id",
   X: "x",
