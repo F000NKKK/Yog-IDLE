@@ -9,6 +9,10 @@ import { contextKey, registerTranslations } from "substrate-platform-ui";
 registerTranslations(
   { id: "ru", name: "Русский" },
   {
+    "Check Components...": "Проверить компоненты...",
+    "Yog Installer...": "Yog Installer...",
+    "Yog needs components that aren't installed: {names}. Tools > Yog Installer... sets them up.": "Для Yog нужны неустановленные компоненты: {names}. Их можно установить в меню \"Сервис > Yog Installer...\".",
+    "Yog Mod Loader SDK": "Пакет SDK Yog Mod Loader",
     "… moves the color into resources/Colors.yres and refers to it.": "… переносит цвет в resources/Colors.yres и ссылается на него.",
     // Toolbox and properties (designer)
     "Scroll Viewer": "Прокручиваемая область",
@@ -831,62 +835,14 @@ registerTranslations("ru", {
   "Dependencies...": "Зависимости...",
   "Run Targets...": "Цели запуска...",
   "Edit Project File": "Изменить файл проекта",
-  "Check Environment...": "Проверить среду...",
-  "Install Components...": "Установить компоненты...",
   Environment: "Среда",
-  "Installs from Tools > Install Components show their output here.": "Здесь отображается вывод установки из меню \"Сервис > Установить компоненты\".",
 
   // Environment window
-  "Yog Environment": "Среда Yog",
-  Installed: "Установлено",
-  "Not installed": "Не установлено",
-  "Update available": "Доступно обновление",
-  Incomplete: "Не полностью",
-  "Installing…": "Установка…",
-  Queued: "В очереди",
   Failed: "Ошибка",
   Install: "Установить",
   Update: "Обновить",
-  "Download...": "Скачать...",
-  "latest: {version}": "последняя: {version}",
-  "Couldn't check the environment: {error}": "Не удалось проверить среду: {error}",
-  "Checking…": "Проверка…",
   "Everything Yog needs to build and run mods is installed.": "Все, что нужно Yog для сборки и запуска модов, установлено.",
-  "Missing or out of date: {names}.": "Отсутствуют или устарели: {names}.",
-  "Rust toolchain": "Набор инструментов Rust",
-  "Build Tools": "Средства сборки",
-  "Yog Components": "Компоненты Yog",
-  "General Tools": "Общие инструменты",
-  "This platform": "Эта платформа",
-  unsupported: "не поддерживается",
-  "not found": "не найдено",
-  "none found": "не найдены",
-  "Tools folder": "Папка инструментов",
-  "Loader checkout": "Копия загрузчика",
   JDKs: "JDK",
-  "Minecraft itself is downloaded by the loader's Gradle build the first time a run target starts.":
-    "Сам Minecraft скачивает сборка Gradle загрузчика при первом запуске цели.",
-  "Cancel Install": "Отменить установку",
-  "Check Again": "Проверить снова",
-  "Install Selected": "Установить выбранное",
-  "Install Selected ({count})": "Установить выбранное ({count})",
-  "Install Components": "Установка компонентов",
-  "Install {name}": "Установка: {name}",
-  "Downloads go to your user account only (rustup, ~/.cargo, and {dir}) — nothing needs administrator rights.":
-    "Все устанавливается только в вашу учетную запись (rustup, ~/.cargo и {dir}) — права администратора не нужны.",
-  "Progress is shown in the Output window (Environment).": "Ход установки отображается в окне вывода (Среда).",
-  "Install the JDK just for you (into {dir}), or for all users of this computer (asks for the administrator password)?":
-    "Установить JDK только для вас (в {dir}) или для всех пользователей компьютера (потребуется пароль администратора)?",
-  "For All Users": "Для всех пользователей",
-  "Just for Me": "Только для меня",
-  "Waiting…": "Ожидание…",
-  "Install failed to start: {error}": "Не удалось начать установку: {error}",
-  "{name} installed.": "{name}: установлено.",
-  "Installing {name} was cancelled.": "Установка {name} отменена.",
-  "Installing {name} failed: {error}": "Не удалось установить {name}: {error}",
-  "Yog needs components that aren't installed: {names}. Tools > Install Components... sets them up.":
-    "Для Yog нужны неустановленные компоненты: {names}. Их можно установить в меню \"Сервис > Установить компоненты...\".",
-  "Failed to apply the Environment options: {error}": "Не удалось применить параметры среды: {error}",
 
   // Components (names and descriptions come from the backend in English)
   "Yog CLI": "Yog CLI",
@@ -898,31 +854,18 @@ registerTranslations("ru", {
   "The Rust targets a .yog bundles natives for (Linux, Windows, macOS).": "Цели Rust, для которых .yog содержит нативные библиотеки (Linux, Windows, macOS).",
   "Links the Linux, Windows and macOS natives from one machine (uses zig).": "Компонует нативные библиотеки для Linux, Windows и macOS на одной машине (использует zig).",
   "The cross-linker cargo-zigbuild drives — installed into Yog IDLE's tools folder.": "Кросс-компоновщик, которым управляет cargo-zigbuild, — устанавливается в папку инструментов Yog IDLE.",
-  "JDK {major}": "JDK {major}",
-  "Java {major} for Minecraft run targets that need it — Eclipse Temurin, installed into Yog IDLE's tools folder.":
-    "Java {major} для целей запуска Minecraft, которым она нужна, — Eclipse Temurin, устанавливается в папку инструментов Yog IDLE.",
   "Fetches and updates the Yog Mod Loader checkout.": "Получает и обновляет копию Yog Mod Loader.",
   "Yog Mod Loader": "Yog Mod Loader",
   "The loader's Gradle dev instances (Fabric, NeoForge, Forge) run targets launch — Gradle downloads Minecraft on the first run.":
     "Отладочные экземпляры Gradle загрузчика (Fabric, NeoForge, Forge), которые запускают цели, — Gradle скачивает Minecraft при первом запуске.",
 
   // Options > Environment
-  "yog executable": "Исполняемый файл yog",
-  "Where rustup, cargo and cargo-installed tools (yog, cargo-zigbuild) live.": "Где находятся rustup, cargo и установленные через cargo инструменты (yog, cargo-zigbuild).",
-  "Where Yog IDLE installs JDKs, zig and the loader checkout.": "Куда Yog IDLE устанавливает JDK, zig и копию загрузчика.",
   Java: "Java",
-  "Run targets get JAVA_HOME from here when their yog.toml doesn't set it.": "Отсюда выбирается JAVA_HOME для новых целей запуска.",
-  "No run target needs a particular Java version.": "Целям запуска не нужна определенная версия Java.",
-  "Newest detected": "Новейшая обнаруженная",
-  "Yog Mod Loader checkout": "Копия Yog Mod Loader",
   "Local yog-api crate": "Локальный крейт yog-api",
   "Builds every mod against this yog-api (YOG_API_PATH) instead of crates.io — needed for hot reload of a locally built loader.":
     "Собирает все моды с этим yog-api (YOG_API_PATH) вместо crates.io — нужно для горячей перезагрузки с локально собранным загрузчиком.",
   "Build for this platform only ({platform}) — faster, but the .yog won't run elsewhere": "Собирать только для этой платформы ({platform}) — быстрее, но .yog не запустится на других",
   "Build for this platform only ({platform})": "Собирать только для этой платформы ({platform})",
-  "Empty: found in PATH or ~/.cargo/bin.": "Если пусто — ищется в PATH и ~/.cargo/bin.",
-  "Empty: next to the project, or in the tools folder.": "Если пусто — ищется рядом с проектом или в папке инструментов.",
-  "Check the environment on startup": "Проверять среду при запуске",
 
   // Project Properties
   "Open yog.toml in the editor": "Открыть yog.toml в редакторе",
@@ -973,11 +916,11 @@ registerTranslations("ru", {
     "Версия крейта API с crates.io, с которой собирается мод. Она должна соответствовать загрузчику, в котором мод работает.",
   Latest: "Последняя",
   "Not a version requirement like 0.30 or =0.30.1.": "Это не требование к версии вида 0.30 или =0.30.1.",
-  "[dev] yog_api_path — build against a yog-api checkout instead of crates.io (for loader development). Tools > Options > Environment can set this for every project.":
-    "[dev] yog_api_path — собирать с локальной копией yog-api вместо crates.io (для разработки загрузчика). Для всех проектов это задается в \"Сервис > Параметры > Среда\".",
+  "[dev] yog_api_path — build against a yog-api checkout instead of crates.io (for loader development). Tools > Options > Build can set this for every project.":
+    "[dev] yog_api_path — собирать с локальной копией yog-api вместо crates.io (для разработки загрузчика). Для всех проектов это задается в \"Сервис > Параметры > Сборка\".",
   Platforms: "Платформы",
-  "A .yog bundles a native library per platform. Building fewer is faster, but the mod then only loads on those. Saved for this project in .yog-idle/ (YOG_TARGETS); with all of them checked, the Environment option \"Build for this platform only\" decides.":
-    "Файл .yog содержит нативную библиотеку для каждой платформы. Чем их меньше, тем быстрее сборка, но мод загрузится только на них. Сохраняется для проекта в .yog-idle/ (YOG_TARGETS); если отмечены все, решает параметр среды \"Собирать только для этой платформы\".",
+  "A .yog bundles a native library per platform. Building fewer is faster, but the mod then only loads on those. Saved for this project in .yog-idle/ (YOG_TARGETS); with all of them checked, the Build option \"Build for this platform only\" decides.":
+    "Файл .yog содержит нативную библиотеку для каждой платформы. Чем их меньше, тем быстрее сборка, но мод загрузится только на них. Сохраняется для проекта в .yog-idle/ (YOG_TARGETS); если отмечены все, решает параметр сборки \"Собирать только для этой платформы\".",
   "{platform} (this computer)": "{platform} (этот компьютер)",
   "Run targets — what Start ({keys}) launches. Every mod has the same ones: each loader and Minecraft version of the loader SDK, and this machine's own.":
     "Цели запуска — то, что запускает \"Пуск\" ({keys}). У всех модов они одни и те же: каждый загрузчик и каждая версия Minecraft из SDK загрузчика, плюс цели этого компьютера.",

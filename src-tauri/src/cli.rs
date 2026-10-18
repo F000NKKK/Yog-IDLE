@@ -25,7 +25,7 @@ pub fn command() -> Command {
 }
 
 /// Where the CLI is: the first `yog` on `PATH`.
-fn binary() -> Option<PathBuf> {
+pub fn binary() -> Option<PathBuf> {
     let exe = format!("{PROGRAM}{}", std::env::consts::EXE_SUFFIX);
     std::env::split_paths(&std::env::var_os("PATH")?).map(|d| d.join(&exe)).find(|p| p.is_file())
 }

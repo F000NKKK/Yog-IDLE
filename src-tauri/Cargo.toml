@@ -45,7 +45,7 @@ proc-macro2 = { version = "1.0.107", features = ["span-locations"] }
 # Generated TypeScript of Yog's ids, and the one `yog` program name.
 yog-ids = "0.2.1"
 # Yog's home on the machine (~/.yog): where its local patch is.
-yog-home = "0.1.1"
+yog-home = "0.2.1"
 
 [dev-dependencies]
 criterion = { version = "0.8", default-features = false, features = ["cargo_bench_support"] }

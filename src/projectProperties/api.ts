@@ -57,7 +57,7 @@ export function emptyDependency(name = ""): Dependency {
   return { name, version: "", features: [], defaultFeatures: true, optional: false, path: "", git: "", otherKeys: [] };
 }
 
-/** Every platform a `.yog` can bundle natives for — `environment::TARGETS`. */
+/** Every platform a `.yog` can bundle natives for — `tools::TARGETS`. */
 export const PLATFORMS: { tag: string; label: string }[] = [
   { tag: "linux-x86_64", label: "Linux x86_64" },
   { tag: "linux-aarch64", label: "Linux ARM64" },

@@ -11,7 +11,7 @@ use substrate_platform::{
 use tauri::{AppHandle, Emitter, Manager, State};
 
 mod cli;
-mod environment;
+mod tools;
 mod events;
 mod git;
 mod manifest;
@@ -984,13 +984,12 @@ fn mod_hot_reload(
     debugger::hot_reload(app, project_root)
 }
 
-/// A one-step `yog <args>` workflow run the way Tools > Options >
-/// Environment says: the configured `yog`, its tool dirs on `PATH`, and the
-/// project's build platforms (`YOG_TARGETS`).
+/// A one-step `yog <args>` workflow run the way Tools > Options > Build
+/// says, with the project's build platforms (`YOG_TARGETS`).
 fn yog_workflow(app: &AppHandle, root: &Path, args: Vec<String>) -> WorkflowFile {
-    let settings = app.state::<environment::EnvironmentState>().settings();
-    let env = environment::tool_env(&settings, &project_properties::read_build_targets(root));
-    single_step_workflow(&environment::yog_program(&settings), args, env)
+    let settings = app.state::<tools::ToolsState>().settings();
+    let env = tools::tool_env(&settings, &project_properties::read_build_targets(root));
+    single_step_workflow(yog_ids::program::CLI, args, env)
 }
 
 /// The Build menu's plain "Build" action for a `yog-mod` project — `yog build`.
@@ -1295,11 +1294,9 @@ pub mod bench {
         crate::cli::call(method, params)
     }
 
-    /// The environment report with the settings in `state_file`.
-    pub fn environment_detect(state_file: &Path, project_root: Option<&Path>) -> serde_json::Value {
-        let settings = crate::environment::load_settings_from(state_file);
-        serde_json::to_value(crate::environment::detect(&crate::environment::SystemProbe, &settings, project_root, false))
-            .unwrap_or_default()
+    /// What Yog needs here and has (`tools_status`).
+    pub fn tools_status() -> serde_json::Value {
+        serde_json::to_value(crate::tools::tools_status()).unwrap_or_default()
     }
 
     /// A Code Search index over in-memory `(absolute, relative, source)` files.
@@ -1361,12 +1358,12 @@ pub mod bench {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let context = tauri::generate_context!();
-    // Before any thread exists: the Environment options go into this
-    // process's own environment, for every `yog`/`cargo` it starts.
-    let env_settings = environment::default_state_file(&context.config().identifier)
-        .map(|file| environment::load_settings_from(&file))
+    // Before any thread exists: the Build options go into this process's
+    // own environment, for every `yog`/`cargo` it starts.
+    let build_settings = tools::default_state_file(&context.config().identifier)
+        .map(|file| tools::load_settings_from(&file))
         .unwrap_or_default();
-    environment::apply_to_process_at_startup(&env_settings);
+    tools::apply_to_process_at_startup(&build_settings);
 
     let builder = tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
@@ -1387,7 +1384,7 @@ pub fn run() {
         .manage(WorkflowState::default())
         .manage(AppState::default())
         .manage(WatchState::default())
-        .manage(environment::EnvironmentState::with_settings(env_settings))
+        .manage(tools::ToolsState::new(build_settings))
         .manage(search::SearchState::default())
         .manage(symbols::SymbolIndexState::default());
 
@@ -1454,10 +1451,9 @@ pub fn run() {
         search::find_cancel,
         search::replace_in_files,
         symbols::code_search,
-        environment::environment_detect,
-        environment::environment_settings_set,
-        environment::environment_install,
-        environment::environment_cancel,
+        tools::tools_settings_set,
+        tools::tools_status,
+        tools::open_installer,
         project_properties_read,
         project_properties_set_field,
         project_properties_set_yog_api,

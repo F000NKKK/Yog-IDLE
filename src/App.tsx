@@ -69,9 +69,8 @@ import { WorkspaceProvider } from "./WorkspaceContext";
 import { installCloseHandler } from "./windowClose";
 import { reportError } from "./reportError";
 import { openFile } from "./fileOpenBus";
-import { EnvironmentWindow } from "./environment/EnvironmentWindow";
-import { EnvironmentSettingsPage, EnvironmentSync, environmentSettingsKeywords } from "./environment/EnvironmentSettings";
-import { detectEnvironment, missingRequired } from "./environment/environmentStore";
+import { BuildSettingsPage, BuildSettingsSync, buildSettingsKeywords } from "./tools/BuildSettings";
+import { missingTools, openInstaller, toolsStatus } from "./tools/toolsStore";
 import { ProjectPropertiesWindow } from "./projectProperties/ProjectPropertiesWindow";
 import { onOpenProjectProperties, openProjectProperties, type ProjectPropertiesPage } from "./projectProperties/bus";
 import { ErrorListPanel } from "./panels/ErrorListPanel";
@@ -142,7 +141,6 @@ const EMPTY_LABELS: Record<OutputSource, string> = {
   game: "Start the game to see its output here.",
   debug: "Debugger messages appear here.",
   ide: "No messages.",
-  environment: "Installs from Tools > Install Components show their output here.",
   git: "Fetch, pull, push and other Git operations show their output here.",
 };
 
@@ -173,12 +171,12 @@ function makeToolWindows() {
   };
 }
 
-function makeSettingsSections(openInstaller: () => void): SettingsSection[] {
+function makeSettingsSections(): SettingsSection[] {
   return [
     { id: "appearance", label: t("Appearance"), content: <AppearanceSettings />, keywords: appearanceSettingsKeywords },
     { id: "editor", label: t("Editor"), content: <EditorSettings />, keywords: editorSettingsKeywords },
     { id: "international", label: t("International Settings"), content: <InternationalSettings />, keywords: internationalSettingsKeywords },
-    { id: "environment", label: t("Environment"), content: <EnvironmentSettingsPage onOpenInstaller={openInstaller} />, keywords: environmentSettingsKeywords },
+    { id: "build", label: t("Build"), content: <BuildSettingsPage />, keywords: buildSettingsKeywords },
     { id: "sourceControl", label: t("Source Control"), content: <GitSettingsPage />, keywords: gitSettingsKeywords },
   ];
 }
@@ -385,15 +383,10 @@ function ProjectMenu() {
   );
 }
 
-/** Tools > Check Environment — re-detects (asking crates.io for newer versions too); all good is just a notification, anything missing opens the installer. */
-async function checkEnvironment(projectRoot: string | null, openInstaller: () => void) {
-  const report = await detectEnvironment(projectRoot, true);
-  if (!report) {
-    openInstaller();
-    return;
-  }
-  const outdated = report.components.filter((c) => c.status === "outdated");
-  if (missingRequired(report).length > 0 || outdated.length > 0) openInstaller();
+/** Tools > Check Components — whether what Yog needs is installed; what isn't opens Yog Installer. */
+async function checkComponents() {
+  const missing = missingTools(await toolsStatus());
+  if (missing.length > 0) await openInstaller();
   else notify({ level: "info", message: t("Everything Yog needs to build and run mods is installed.") });
 }
 
@@ -441,14 +434,12 @@ function HelpMenu() {
 
 interface MenuProps {
   onOpenSettings: () => void;
-  onOpenInstaller: () => void;
   onOpenPublish: () => void;
   editor: EditorActions;
 }
 
-function Menu({ onOpenSettings, onOpenInstaller, onOpenPublish, editor }: MenuProps) {
+function Menu({ onOpenSettings, onOpenPublish, editor }: MenuProps) {
   const t = useT();
-  const { project } = useProject();
   return (
     <MenuBar title="Yog IDLE" windowControls={<WindowControls />}>
       <FileMenu editor={editor} />
@@ -461,8 +452,8 @@ function Menu({ onOpenSettings, onOpenInstaller, onOpenPublish, editor }: MenuPr
       <MenuBarItem
         label={t("Tools")}
         items={[
-          { label: t("Check Environment..."), onClick: () => void checkEnvironment(project?.root ?? null, onOpenInstaller) },
-          { label: t("Install Components..."), onClick: onOpenInstaller },
+          { label: t("Check Components..."), onClick: () => void checkComponents() },
+          { label: t("Yog Installer..."), onClick: () => void openInstaller() },
           { label: t("Options..."), onClick: onOpenSettings, separatorBefore: true },
         ]}
       />
@@ -516,13 +507,13 @@ function runToolbarSections(run: RunActions): ToolbarSection[] {
 }
 
 /** The menu bar, toolbar and editor keybindings — rendered inside the shell, since they act on its active editor tab and tool windows. */
-function ShellChrome({ onOpenSettings, onOpenInstaller, onOpenPublish, run, onRunningChange }: Omit<MenuProps, "editor"> & { run: RunActions; onRunningChange: (running: boolean) => void }) {
+function ShellChrome({ onOpenSettings, onOpenPublish, run, onRunningChange }: Omit<MenuProps, "editor"> & { run: RunActions; onRunningChange: (running: boolean) => void }) {
   const editor = useEditorActions();
   // The toolbar's labels are built by plain functions — re-rendered here when the locale changes.
   useLocale();
   return (
     <>
-      <Menu onOpenSettings={onOpenSettings} onOpenInstaller={onOpenInstaller} onOpenPublish={onOpenPublish} editor={editor} />
+      <Menu onOpenSettings={onOpenSettings} onOpenPublish={onOpenPublish} editor={editor} />
       <Toolbar leading={<RunToolbar onRunningChange={onRunningChange} />} sections={[...editorToolbarSections(editor), ...runToolbarSections(run)]} />
       <EditorKeybindings actions={editor} />
       <ExplorerKeybindings />
@@ -535,7 +526,7 @@ function ShellChrome({ onOpenSettings, onOpenInstaller, onOpenPublish, run, onRu
   );
 }
 
-function Shell({ onOpenSettings, onOpenInstaller, onOpenPublish }: { onOpenSettings: () => void; onOpenInstaller: () => void; onOpenPublish: () => void }) {
+function Shell({ onOpenSettings, onOpenPublish }: { onOpenSettings: () => void; onOpenPublish: () => void }) {
   const { panels, closeTab } = useOpenFiles();
   const gitPanels = useGitPanels();
   const centerPanels = useMemo(() => [...panels, ...gitPanels], [panels, gitPanels]);
@@ -569,7 +560,7 @@ function Shell({ onOpenSettings, onOpenInstaller, onOpenPublish }: { onOpenSetti
       persistKey="yog-idle"
       extraCenterPanels={centerPanels}
       onCloseDynamicPanel={(id) => (isGitDocument(id) ? closeGitDocument(id) : void closeTab(id))}
-      menu={<ShellChrome onOpenSettings={onOpenSettings} onOpenInstaller={onOpenInstaller} onOpenPublish={onOpenPublish} run={runActions} onRunningChange={setRunning} />}
+      menu={<ShellChrome onOpenSettings={onOpenSettings} onOpenPublish={onOpenPublish} run={runActions} onRunningChange={setRunning} />}
       statusBar={<GameStatusBar text={gameStatus.text} busy={gameStatus.busy} trailing={<GitStatusBar />} />}
     />
   );
@@ -579,14 +570,12 @@ function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsSection, setSettingsSection] = useState<string | undefined>(undefined);
   const [publishOpen, setPublishOpen] = useState(false);
-  const [installerOpen, setInstallerOpen] = useState(false);
   /** The page Project Properties is open on — `null` while closed. */
   const [propertiesPage, setPropertiesPage] = useState<{ page?: ProjectPropertiesPage; key: number } | null>(null);
   const { project } = useProject();
   const locale = useLocale();
-  const openInstaller = () => setInstallerOpen(true);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const settingsSections = useMemo(() => makeSettingsSections(openInstaller), [locale]);
+  const settingsSections = useMemo(() => makeSettingsSections(), [locale]);
   const mod = project?.kind === "yog-mod" ? project : null;
 
   // Git > Settings.
@@ -617,25 +606,15 @@ function App() {
     <main className="app-root">
       <OutputSourceSync />
       <BuildDiagnosticsSync root={project?.root ?? null} project={project?.name} />
-      <EnvironmentSync onOpenInstaller={openInstaller} />
+      <BuildSettingsSync />
       <Shell
         onOpenSettings={() => {
           setSettingsSection(undefined);
           setSettingsOpen(true);
         }}
-        onOpenInstaller={openInstaller}
         onOpenPublish={() => setPublishOpen(true)}
       />
       {settingsOpen && <SettingsWindow key={settingsSection} sections={settingsSections} initialSectionId={settingsSection} onClose={() => setSettingsOpen(false)} />}
-      {installerOpen && (
-        <EnvironmentWindow
-          onClose={() => setInstallerOpen(false)}
-          onOpenOptions={() => {
-            setSettingsSection("environment");
-            setSettingsOpen(true);
-          }}
-        />
-      )}
       {propertiesPage && mod && (
         <ProjectPropertiesWindow
           key={propertiesPage.key}

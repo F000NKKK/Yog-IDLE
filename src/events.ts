@@ -9,7 +9,6 @@ export const EVENT = {
   buildOutput: "workflow-output",
   gameOutput: "game-output",
   debugOutput: "debug-output",
-  environmentOutput: "environment-output",
   gitOutput: "git-output",
   /** IDE-side messages (`reportError`, the Project Explorer, the designer) — emitted by the front end only. */
   ideOutput: "ide-output",
@@ -25,10 +24,6 @@ export const EVENT = {
   debugAttachFailed: "debug-attach-failed",
   debugFailed: "debug-failed",
   debugStopped: "debug-stopped",
-
-  environmentProgress: "environment-progress",
-  environmentInstallDone: "environment-install-done",
-  environmentInstallFinished: "environment-install-finished",
 } as const;
 
 export interface GameStatusEvent {
@@ -77,24 +72,11 @@ export interface DebugStoppedEvent {
   registers: [string, string][];
 }
 
-export interface EnvironmentProgressEvent {
-  component: string;
-  fraction: number | null;
-  message: string;
-}
-
-export interface EnvironmentInstallDoneEvent {
-  component: string;
-  success: boolean;
-  cancelled: boolean;
-  error: string | null;
-}
 
 type Payloads = {
   "workflow-output": string;
   "game-output": string;
   "debug-output": string;
-  "environment-output": string;
   "git-output": string;
   "ide-output": string;
   "fs-changed": string[];
@@ -109,13 +91,10 @@ type Payloads = {
   "debug-attach-failed": string;
   "debug-failed": string;
   "debug-stopped": DebugStoppedEvent;
-  "environment-progress": EnvironmentProgressEvent;
-  "environment-install-done": EnvironmentInstallDoneEvent;
-  "environment-install-finished": unknown;
 };
 
 export type EventName = keyof Payloads;
-export type OutputEvent = (typeof EVENT)["buildOutput" | "gameOutput" | "debugOutput" | "environmentOutput" | "gitOutput" | "ideOutput"];
+export type OutputEvent = (typeof EVENT)["buildOutput" | "gameOutput" | "debugOutput" | "gitOutput" | "ideOutput"];
 
 export function listenTo<E extends EventName>(event: E, handler: (payload: Payloads[E]) => void): Promise<UnlistenFn> {
   return listen<Payloads[E]>(event, (e) => handler(e.payload));

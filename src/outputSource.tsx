@@ -13,7 +13,6 @@ export const OUTPUT_SOURCES = [
   { id: "game", label: "Game", event: EVENT.gameOutput },
   { id: "debug", label: "Debug", event: EVENT.debugOutput },
   { id: "ide", label: "General", event: EVENT.ideOutput },
-  { id: "environment", label: "Environment", event: EVENT.environmentOutput },
   { id: "git", label: "Source Control - Git", event: EVENT.gitOutput },
 ] as const satisfies readonly { id: string; label: string; event: OutputEvent }[];
 

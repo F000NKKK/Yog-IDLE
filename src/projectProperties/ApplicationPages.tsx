@@ -1,5 +1,5 @@
 import { CheckField, CommitTextField, FormField, FormPage, FormSection, SelectField, StringListField, useT } from "substrate-platform-ui";
-import { useEnvironment } from "../environment/environmentStore";
+import { useToolsStatus } from "../tools/toolsStore";
 import { PLATFORMS, projectApi } from "./api";
 import type { PageProps } from "./ProjectPropertiesWindow";
 
@@ -82,8 +82,7 @@ export function ApplicationPage({ root, props, apply }: PageProps) {
 /** Build: which yog-api the mod builds against, and for which platforms. */
 export function BuildPage({ root, props, apply }: PageProps) {
   const t = useT();
-  const env = useEnvironment();
-  const host = env.report?.hostTag ?? null;
+  const host = useToolsStatus()?.hostTag ?? null;
   const targets = props.buildTargets;
   const all = targets.length === 0;
 
@@ -109,7 +108,7 @@ export function BuildPage({ root, props, apply }: PageProps) {
         </FormField>
         <FormField
           label={t("Local yog-api crate")}
-          hint={t("[dev] yog_api_path — build against a yog-api checkout instead of crates.io (for loader development). Tools > Options > Environment can set this for every project.")}
+          hint={t("[dev] yog_api_path — build against a yog-api checkout instead of crates.io (for loader development). Tools > Options > Build can set this for every project.")}
         >
           <CommitTextField
             value={props.manifest.yogApiPath ?? ""}
@@ -126,7 +125,7 @@ export function BuildPage({ root, props, apply }: PageProps) {
 
       <FormSection
         title={t("Platforms")}
-        description={t("A .yog bundles a native library per platform. Building fewer is faster, but the mod then only loads on those. Saved for this project in .yog-idle/ (YOG_TARGETS); with all of them checked, the Environment option \"Build for this platform only\" decides.")}
+        description={t("A .yog bundles a native library per platform. Building fewer is faster, but the mod then only loads on those. Saved for this project in .yog-idle/ (YOG_TARGETS); with all of them checked, the Build option \"Build for this platform only\" decides.")}
       >
         {PLATFORMS.map((p) => (
           <CheckField

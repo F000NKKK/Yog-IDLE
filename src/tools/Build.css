@@ -1,0 +1,6 @@
+/* A path field with its Browse button. */
+.build-path-row {
+  display: flex;
+  gap: var(--sp-space-xs);
+  align-items: center;
+}
