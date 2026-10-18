@@ -8,13 +8,12 @@ import {
   addBoneTrack,
   addClip,
   CHANNELS,
-  cloneDoc,
+  ANIM_FORMAT,
+  clipsOf,
   EASES,
   freeClipName,
   LOOPS,
   moveKey,
-  parseAnim,
-  patchAnim,
   removeBoneTrack,
   removeKey,
   renameClip,
@@ -31,7 +30,8 @@ import {
   type Key,
   type Loop,
 } from "../body/yanim";
-import { blankModel, parseModel, type Vec3 } from "../body/ymodel";
+import { blankModel, readModel, type Vec3 } from "../body/ymodel";
+import { useDataFile, useRead } from "../data/useDataFile";
 import { inspectorRows } from "./inspector";
 import "./designers.css";
 import "./AnimEditor.css";
@@ -77,8 +77,8 @@ const fmtTime = (t: number) => `${(Math.round(t * 100) / 100).toFixed(2)} s`;
  */
 export function AnimEditor({ path, content, onChange, readOnly }: EditorProps) {
   const t = useT();
-  const parsed = useMemo(() => parseAnim(content), [content]);
-  const clips = useMemo(() => (parsed.ok ? parsed.clips : []), [parsed]);
+  const { parsed, update } = useDataFile(content, onChange, ANIM_FORMAT, readOnly);
+  const clips = useMemo(() => (parsed?.ok ? clipsOf(parsed.file) : []), [parsed]);
   const [clipName, setClipName] = useState<string | null>(null);
   const clip: Clip | null = clips.find((c) => c.name === clipName) ?? clips[0] ?? null;
   const [time, setTime] = useState(0);
@@ -96,29 +96,19 @@ export function AnimEditor({ path, content, onChange, readOnly }: EditorProps) {
   const modelRef = modelPick ?? models.find((m) => stem.startsWith(m.file.split(/[\\/]/).pop()!.replace(/\.ymodel$/, "")))?.id ?? models[0]?.id ?? null;
   const modelFile = models.find((m) => m.id === modelRef)?.file ?? null;
   const modelText = useFileText(modelFile);
-  const model = useMemo(() => {
-    try {
-      return modelText !== null ? parseModel(modelText) : null;
-    } catch {
-      return null;
-    }
-  }, [modelText]);
+  const modelRead = useRead(modelText, readModel);
+  const model = modelRead?.ok ? modelRead.value : null;
   const texture = useBodyTexture(modelFile, model?.texture).url;
   const shown = useMemo(() => model ?? { ...blankModel(), bones: [] }, [model]);
 
   // ── Edits: the document changed in place, written back as a patch ──────
 
-  const contentRef = useRef(content);
-  contentRef.current = content;
   const edit = useCallback(
-    (change: (doc: AnimDoc) => void) => {
-      if (readOnly || !parsed.ok) return;
-      const next = cloneDoc(parsed.doc);
-      change(next);
-      const text = patchAnim(contentRef.current, next);
-      if (text !== contentRef.current) onChange(text);
-    },
-    [onChange, readOnly, parsed],
+    (change: (doc: AnimDoc) => void) =>
+      void update((d) => {
+        change(d);
+      }),
+    [update],
   );
 
   // ── Playback ────────────────────────────────────────────────────────────
@@ -274,6 +264,7 @@ export function AnimEditor({ path, content, onChange, readOnly }: EditorProps) {
       : null,
   );
 
+  if (!parsed) return null;
   if (!parsed.ok) return <div className="designer-error">{t("This file has a mistake: {error}", { error: parsed.error })}</div>;
 
   const newClip = () =>

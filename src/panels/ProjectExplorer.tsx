@@ -347,8 +347,9 @@ function ProjectExplorerTree({ project, initialScope, main = false }: { project:
     const srcDir = isWithin(folder, src) ? folder.slice(src.length + 1).replace(/\\/g, "/") : "";
     const created = templateFiles(template, name, { modId, srcDir });
     await attempt(t("Failed to create {name}", { name }), async () => {
-      for (const [file, contents] of created) {
+      for (const [file, made] of created) {
         const path = joinPath(folder, file);
+        const contents = await made;
         await files.createFile(path);
         if (contents) await files.write(path, contents);
       }

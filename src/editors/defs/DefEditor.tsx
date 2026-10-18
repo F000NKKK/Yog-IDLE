@@ -1,13 +1,13 @@
-import { useCallback, useMemo, useRef, type ComponentType } from "react";
+import type { ComponentType } from "react";
 import { useT, type EditorProps } from "substrate-platform-ui";
-import { clone } from "../../content/model";
 import { DataEditor } from "../DataEditor";
 import { AdvancementDesigner } from "./AdvancementDesigner";
 import { EffectDesigner } from "./EffectDesigner";
 import { LootDesigner } from "./LootDesigner";
 import { TagDesigner } from "./TagDesigner";
 import type { DefProps } from "./DefLayout";
-import { parseDef, patchDef, type DefFile } from "./defModel";
+import { DEF_FORMAT } from "./defModel";
+import { useDataFile } from "../../data/useDataFile";
 import { formats } from "../../yogFileTypes";
 
 export const DEF_SOURCE_VIEW = "yog.ydef.source";
@@ -29,19 +29,8 @@ export const DEF_DESIGNERS: Partial<Record<string, { label: string; component: C
 export function DefEditor(props: EditorProps) {
   const { path, content, onChange, readOnly } = props;
   const t = useT();
-  const parsed = useMemo(() => parseDef(content), [content]);
-  const contentRef = useRef(content);
-  contentRef.current = content;
-  const update = useCallback(
-    (edit: (draft: DefFile) => void) => {
-      if (readOnly || !parsed.ok) return;
-      const draft = clone(parsed.file);
-      edit(draft);
-      const text = patchDef(contentRef.current, draft);
-      if (text !== contentRef.current) onChange(text);
-    },
-    [onChange, readOnly, parsed],
-  );
+  const { parsed, update } = useDataFile(content, onChange, DEF_FORMAT, readOnly);
+  if (!parsed) return null;
   const designer = parsed.ok && typeof parsed.file.kind === "string" ? DEF_DESIGNERS[parsed.file.kind] : undefined;
   if (!parsed.ok) return <div className="designer-error">{t("This file has a mistake: {error}", { error: parsed.error })}</div>;
   if (!designer) return <DataEditor {...props} format={formats.def.ext} sourceView={DEF_SOURCE_VIEW} />;

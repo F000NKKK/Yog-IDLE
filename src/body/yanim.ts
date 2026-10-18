@@ -8,7 +8,8 @@
 // it in place, so what the editor doesn't know (comments, `$…` keys) stays;
 // `patchAnim` writes it back with only what changed rewritten.
 
-import { DataSyntaxError, formatData, parseData, patchDataText, toOrdered } from "../data/yogData";
+import type { DataFormat } from "../data/useDataFile";
+import { patchData, readObject, type Read } from "../data/yogData";
 import type { PoseOverride } from "./ModelViewport";
 import type { Vec3 } from "./ymodel";
 
@@ -58,16 +59,20 @@ const vec = (v: unknown, d: number): Vec3 => (Array.isArray(v) ? [num(v[0], d), 
 /** A channel's neutral value: no turn, no move, scale 1. */
 export const restOf = (c: Channel): number => (c === "scale" ? 1 : 0);
 
-export function parseAnim(text: string): Parsed {
-  let doc: unknown;
-  try {
-    doc = text.trim() ? toOrdered(parseData(text)) : new Map();
-  } catch (e) {
-    return { ok: false, error: e instanceof DataSyntaxError ? `${e.line}:${e.col}: ${e.message}` : String(e) };
-  }
-  if (!isMap(doc)) return { ok: false, error: "an animation file is one object: clips by name" };
-  return { ok: true, doc, clips: clipsOf(doc) };
+export async function parseAnim(text: string): Promise<Parsed> {
+  const r = await readAnim(text);
+  return r.ok ? { ok: true, doc: r.value, clips: clipsOf(r.value) } : r;
 }
+
+/** A `.yanim` read through the CLI, its maps in file order. */
+export async function readAnim(text: string): Promise<Read<AnimDoc>> {
+  const r = await readObject<unknown>(text, { ordered: true });
+  if (!r.ok) return r;
+  return isMap(r.value) ? { ok: true, value: r.value } : { ok: false, error: "an animation file is one object: clips by name" };
+}
+
+/** A `.yanim` as the designer edits it. */
+export const ANIM_FORMAT: DataFormat<AnimDoc> = { read: readAnim };
 
 /** The clips `doc` holds, keys sorted by time. */
 export function clipsOf(doc: AnimDoc): Clip[] {
@@ -99,8 +104,8 @@ export function clipsOf(doc: AnimDoc): Clip[] {
 }
 
 /** `text` holding `doc`: what changed rewritten, the rest — comments too — as it was. */
-export function patchAnim(text: string, doc: AnimDoc): string {
-  return patchDataText(text, doc, formatData);
+export function patchAnim(text: string, doc: AnimDoc): Promise<string> {
+  return patchData(text, doc);
 }
 
 /** A deep copy, maps kept `Map`s. */
@@ -258,9 +263,4 @@ export function samplePose(c: Clip, t: number): PoseOverride {
     };
   }
   return pose;
-}
-
-/** A new `.yanim`: an idle clip. */
-export function newAnimFile(): string {
-  return `${formatData({ idle: { length: 2, loop: "loop", bones: {} } }, 0)}\n`;
 }

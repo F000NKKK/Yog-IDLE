@@ -99,14 +99,6 @@ impl From<substrate_platform::DirEntryInfo> for DirEntryOut {
     }
 }
 
-/// What a Yog format looks like (`yog_data::Shape::describe`) — the editors'
-/// property grids are generated from it (`yog_formats::FORMATS`).
-#[tauri::command]
-fn format_shape(format: String) -> Result<serde_json::Value, String> {
-    let shape = yog_formats::shape_of(&format).ok_or_else(|| format!("no format `{format}`"))?;
-    Ok(data::to_json(&shape.describe()))
-}
-
 /// The kinds of recipe the recipe editor offers for `path`: the game's it
 /// lays out, and the mod's own (`.ydef` `recipe_kind`).
 #[tauri::command]
@@ -1755,9 +1747,6 @@ pub mod bench {
     pub fn content_block_kinds() -> serde_json::Value {
         crate::refs::block_kinds()
     }
-    pub fn format_shape(format: &str) -> serde_json::Value {
-        crate::format_shape(format.to_string()).unwrap_or_else(|e| serde_json::json!({ "error": e }))
-    }
     pub fn content_tags(path: &Path, registry: &str) -> serde_json::Value {
         serde_json::to_value(crate::content::tags(path, registry)).unwrap_or_default()
     }
@@ -1865,7 +1854,6 @@ pub fn run() {
         body_texture,
         ydata_text,
         book_page_preview,
-        format_shape,
         worldgen_preview,
         recipe_kinds,
         recipe_kind_create,

@@ -18,8 +18,8 @@ export interface ItemTemplate {
   extension: string;
   /** The default name's stem — numbered, Visual Studio style: `screen1.yui`. */
   baseName: string;
-  /** The files it makes for `stem` — file name → contents. Default: one empty `stem + extension`. */
-  files?: (stem: string, ctx: TemplateContext) => [string, string][];
+  /** The files it makes for `stem` — file name → contents (a Yog format's written by the CLI, so a promise). Default: one empty `stem + extension`. */
+  files?: (stem: string, ctx: TemplateContext) => [string, string | Promise<string>][];
   /** Suggest `baseName` itself before numbering (`Strings.yres`, then `Strings1.yres`). */
   unnumbered?: boolean;
   /** Added on the project root, the files go into this folder of it (made if missing) — `resources` for `.yres`. */
@@ -191,7 +191,7 @@ const ITEM_TEMPLATES: ItemTemplate[] = [
 ];
 
 /** The files `template` makes for `name` (its extension included). */
-export function templateFiles(template: ItemTemplate, name: string, ctx: TemplateContext): [string, string][] {
+export function templateFiles(template: ItemTemplate, name: string, ctx: TemplateContext): [string, string | Promise<string>][] {
   const stem = name.slice(0, name.length - template.extension.length) || name;
   return template.files ? template.files(stem, ctx) : [[name, ""]];
 }

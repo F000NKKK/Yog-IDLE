@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { useContentRefs, type OwnRef } from "../data/contentRefs";
 import { parseAnim, type Clip } from "./yanim";
-import { parseModel, type ModelFile } from "./ymodel";
+import { readModel, type ModelFile } from "./ymodel";
+import { useRead } from "../data/useDataFile";
 import { useFileText } from "./useFileText";
 import { formats } from "../yogFileTypes";
 
@@ -52,19 +53,10 @@ export function useBody(path: string, modelRef: string | undefined, animRef: str
   const animFile = bodyFile(animations, animRef)?.file ?? null;
   const modelText = useFileText(modelFile);
   const animText = useFileText(animFile);
-  const model = useMemo(() => {
-    if (modelText === null) return null;
-    try {
-      return parseModel(modelText);
-    } catch {
-      return null;
-    }
-  }, [modelText]);
-  const clips = useMemo(() => {
-    if (animText === null) return [];
-    const p = parseAnim(animText);
-    return p.ok ? p.clips : [];
-  }, [animText]);
+  const modelRead = useRead(modelText, readModel);
+  const model = modelRead?.ok ? modelRead.value : null;
+  const animRead = useRead(animText, parseAnim);
+  const clips = useMemo(() => (animRead?.ok ? animRead.clips : []), [animRead]);
   const texture = useBodyTexture(modelFile, model?.texture).url;
   return { models, animations, model, modelFile, texture, clips, animFile };
 }

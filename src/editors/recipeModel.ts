@@ -9,7 +9,7 @@
 
 import { ALTERNATIVES, TAG_MARK, refOf, shownOf, showIngredient, writeIngredient } from "../data/ingredients";
 import { isObject, num, str } from "../data/values";
-import { formatData, parseDataValue, patchDataText } from "../data/yogData";
+import { patchData, readObject } from "../data/yogData";
 import { MAX_STACK_SIZE } from "../data/yogFormat";
 
 /** `recipe_kinds::Slot`. */
@@ -84,19 +84,23 @@ const clampCount = (n: number) => Math.max(1, Math.min(MAX_STACK_SIZE, Math.roun
 /** An empty place in a grid's pattern row. */
 const EMPTY_KEY = " ";
 
-/** The parsed object of a `.yrecipe`, or `null` when it isn't one. */
-function objectOf(text: string): Record<string, unknown> | null {
-  try {
-    const v = parseDataValue(text);
-    return isObject(v) ? v : null;
-  } catch {
-    return null;
-  }
+type Obj = Record<string, unknown>;
+
+/** The object of a `.yrecipe`, or `null` when it isn't one. */
+async function objectOf(text: string): Promise<Obj | null> {
+  const r = await readObject<Obj>(text);
+  return r.ok ? r.value : null;
+}
+
+/** The kind (`type`) of recipe `o`, if it says one. */
+export function typeOf(o: Obj, fields: RecipeFields): string | null {
+  return str(o[fields.type]);
 }
 
 /** The kind (`type`) of the recipe in `text`, if it says one. */
-export function recipeType(text: string, fields: RecipeFields): string | null {
-  return str(objectOf(text)?.[fields.type]);
+export async function recipeType(text: string, fields: RecipeFields): Promise<string | null> {
+  const o = await objectOf(text);
+  return o && typeOf(o, fields);
 }
 
 /** Whether `kind` is one of the game's (its slots are written in fields of their own). */
@@ -155,9 +159,13 @@ function writeGrid(places: (string | null)[], side: number): { pattern: string[]
 }
 
 /** The recipe in `text`, read as a recipe of `kind`; `null` if it isn't an object. */
-export function parseRecipe(text: string, kind: RecipeKind, fields: RecipeFields): Recipe | null {
-  const o = objectOf(text);
-  if (!o) return null;
+export async function parseRecipe(text: string, kind: RecipeKind, fields: RecipeFields): Promise<Recipe | null> {
+  const o = await objectOf(text);
+  return o && recipeOf(o, kind, fields);
+}
+
+/** Recipe object `o` read as a recipe of `kind`. */
+export function recipeOf(o: Obj, kind: RecipeKind, fields: RecipeFields): Recipe {
   const game = isGameKind(kind);
   const ownSlots = isObject(o[fields.slots]) ? (o[fields.slots] as Record<string, unknown>) : {};
   const ownValues = isObject(o[fields.values]) ? (o[fields.values] as Record<string, unknown>) : {};
@@ -179,9 +187,14 @@ export function parseRecipe(text: string, kind: RecipeKind, fields: RecipeFields
 }
 
 /** The `.yrecipe` text `text` becomes with `r` (a recipe of `kind`), its other keys, comments and layout kept. */
-export function serializeRecipe(text: string, r: Recipe, kind: RecipeKind, fields: RecipeFields): string {
+export async function serializeRecipe(text: string, r: Recipe, kind: RecipeKind, fields: RecipeFields): Promise<string> {
+  return patchData(text, withRecipe((await objectOf(text)) ?? {}, r, kind, fields));
+}
+
+/** Recipe object `from` holding `r` (a recipe of `kind`), its other keys kept. */
+export function withRecipe(from: Obj, r: Recipe, kind: RecipeKind, fields: RecipeFields): Obj {
   const game = isGameKind(kind);
-  const o: Record<string, unknown> = { ...(objectOf(text) ?? {}) };
+  const o: Obj = { ...from };
   o[fields.type] = r.type;
   const ownSlots: Record<string, unknown> = {};
   for (const s of kind.slots) {
@@ -215,12 +228,17 @@ export function serializeRecipe(text: string, r: Recipe, kind: RecipeKind, field
   o[fields.result] = r.result ? refOf(r.result) : "";
   if (r.count !== 1) o[fields.count] = r.count;
   else delete o[fields.count];
-  return patchDataText(text, o, formatData);
+  return o;
 }
 
 /** A recipe of `kind` keeping `from`'s result and count (switching kinds); the old kind's own fields dropped. */
-export function switchKind(text: string, from: Recipe | null, kind: RecipeKind, kinds: RecipeKind[], fields: RecipeFields): string {
-  const o = objectOf(text) ?? {};
+export async function switchKind(text: string, from: Recipe | null, kind: RecipeKind, kinds: RecipeKind[], fields: RecipeFields): Promise<string> {
+  return patchData(text, switchedTo((await objectOf(text)) ?? {}, from, kind, kinds, fields));
+}
+
+/** Recipe object `from` as a recipe of `kind`, keeping `was`'s result and count; the old kind's own fields dropped. */
+export function switchedTo(from: Obj, was: Recipe | null, kind: RecipeKind, kinds: RecipeKind[], fields: RecipeFields): Obj {
+  const o: Obj = { ...from };
   // What belonged to the kind it was: its slots' and values' fields.
   for (const k of kinds) {
     for (const s of k.slots) if (s.field) delete o[s.field];
@@ -229,6 +247,6 @@ export function switchKind(text: string, from: Recipe | null, kind: RecipeKind, 
   for (const f of [fields.pattern, fields.key, fields.slots, fields.values]) delete o[f];
   const values: Recipe["values"] = {};
   for (const v of kind.values) values[v.name] = v.default ?? (v.kind === "number" ? 0 : v.kind === "bool" ? false : "");
-  const next: Recipe = { type: kind.id, slots: {}, values, result: from?.result ?? "", count: from?.count ?? 1 };
-  return serializeRecipe(patchDataText(text, o, formatData), next, kind, fields);
+  const next: Recipe = { type: kind.id, slots: {}, values, result: was?.result ?? "", count: was?.count ?? 1 };
+  return withRecipe(o, next, kind, fields);
 }

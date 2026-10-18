@@ -1,14 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { entriesOf, freshId, moved, newPage, parseBook, serializeBook, withField, refId } from "./bookModel";
+import { entriesOf, freshId, moved, newPage, readBook, withField, refId } from "./bookModel";
 
 describe("bookModel", () => {
-  it("parses a book and keeps unknown fields", () => {
-    const b = parseBook(`{ "id": "m:g", "name": "@Book.t", "extra": 1, "entries": [{ "id": "e", "name": "E", "category": "c", "pages": [{ "type": "text", "text": "x" }] }] }`)!;
+  it("reads a book and keeps unknown fields", async () => {
+    const b = (await readBook(`{ "id": "m:g", "name": "@Book.t", "extra": 1, "entries": [{ "id": "e", "name": "E", "category": "c", "pages": [{ "type": "text", "text": "x" }] }] }`))!;
     expect(b.categories).toEqual([]);
     expect(b.entries[0].pages[0]).toEqual({ type: "text", text: "x" });
-    expect(JSON.parse(serializeBook(b)).extra).toBe(1);
-    expect(parseBook("[1]")).toBeNull();
-    expect(parseBook("{")).toBeNull();
+    expect(b.extra).toBe(1);
+    expect(await readBook("[1]")).toBeNull();
+    expect(await readBook("{")).toBeNull();
   });
 
   it("edits", () => {
@@ -21,11 +21,11 @@ describe("bookModel", () => {
     expect(refId("minecraft:textures/x.png")).toBe("minecraft:textures/x.png");
   });
 
-  it("lists a category's entries by their order", () => {
-    const b = parseBook(`{ "id": "g", "name": "G", "entries": [
+  it("lists a category's entries by their order", async () => {
+    const b = (await readBook(`{ "id": "g", "name": "G", "entries": [
       { "id": "a", "name": "A", "category": "c", "priority": 2, "pages": [] },
       { "id": "b", "name": "B", "category": "x", "pages": [] },
-      { "id": "c", "name": "C", "category": "c", "priority": 1, "pages": [] } ] }`)!;
+      { "id": "c", "name": "C", "category": "c", "priority": 1, "pages": [] } ] }`))!;
     expect(entriesOf(b, "c").map((e) => e.entry.id)).toEqual(["c", "a"]);
   });
 });

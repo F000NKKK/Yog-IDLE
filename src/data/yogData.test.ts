@@ -1,38 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { classify, DataSyntaxError, escapeAt, parseData, resourceId } from "./yogData";
+import { classify, escapeAt, readData, resourceId } from "./yogData";
 
-const err = (text: string) => {
-  try {
-    parseData(text);
-  } catch (e) {
-    if (e instanceof DataSyntaxError) return `${e.line}:${e.col}: ${e.message}`;
-    throw e;
-  }
-  throw new Error("parsed");
-};
-
-describe("yog data text", () => {
-  it("reads the JSON5 subset with positions, duplicates kept", () => {
-    const n = parseData('\ufeff{\n  // c\n  a: [1, 2.5, -3e2, true, null,],\n  "b": { "x": "y" }, /* z */\n  a: 0,\n}');
-    if (n.t !== "map") throw new Error();
-    expect(n.entries.map((e) => [e.key, e.keyLine])).toEqual([["a", 3], ["b", 4], ["a", 5]]);
-    const list = n.entries[0].value;
-    if (list.t !== "list") throw new Error();
-    expect(list.items.map((i) => (i.t === "num" ? [i.v, i.int] : i.t))).toEqual([[1, true], [2.5, false], [-300, false], "bool", "null"]);
-    expect(n.entries[1].value.line).toBe(4);
-  });
-
-  it("reports what and where, like the build", () => {
-    expect(err('{"a": 1,, }')).toBe("1:9: expected a key");
-    expect(err('{"a": 1 "b": 2}')).toBe("1:9: expected `,` or `}`");
-    expect(err("[1, 2")).toBe("1:6: expected `,` or `]`, found the end of the file");
-    expect(err('"ab\ncd"')).toBe("1:4: line break in a string (write `\\n`)");
-    expect(err("'x'")).toBe("1:1: strings use double quotes");
-    expect(err("01")).toBe("1:1: numbers don't start with 0");
-    expect(err("{} x")).toBe("1:4: unexpected text after the value");
-    expect(err('"\\q"')).toMatch(/^1:2: unknown escape/);
-    expect(err("{\n  a: tru }")).toBe("2:6: expected a value");
-    expect(err("[".repeat(300))).toMatch(/nested deeper/);
+describe("yog data", () => {
+  it("reads through the CLI, maps in order when asked", async () => {
+    expect(await readData("{ b: 1, a: [true, \"@item:x\"] }")).toEqual({ ok: true, value: { b: 1, a: [true, "@item:x"] } });
+    const r = await readData('{ "1": 1, "0.5": { x: "y" } }', { ordered: true });
+    expect(r.ok && [...(r.value as Map<string, unknown>).keys()]).toEqual(["1", "0.5"]);
+    const bad = await readData("{ a: }");
+    expect(!bad.ok && bad.error).toMatch(/^1:/);
   });
 
   it("classifies typed strings like yog_data::typed", () => {

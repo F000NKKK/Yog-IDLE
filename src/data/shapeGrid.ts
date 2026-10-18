@@ -1,6 +1,6 @@
 /**
  * Property grids generated from a format's schema (`yog schema`, the
- * `format_shape` command — `yog_data::Shape::describe`): the same
+ * CLI's `format.shape` — `yog_data::Shape::describe`): the same
  * definition `yog build` checks with, so an editor never lists a field the
  * build doesn't know or misses one it does. Nested structs become
  * categories, enums choices, a tagged enum its kind then that kind's

@@ -3,7 +3,8 @@
 // sizes it's drawn at, and its text written back in place — comments and
 // layout kept (`patchDataText`).
 
-import { DataSyntaxError, formatData, parseDataValue, patchDataText } from "../data/yogData";
+import type { DataFormat } from "../data/useDataFile";
+import { readObject } from "../data/yogData";
 
 /** What kind of entity a type is (`EntityKind`), in the format's order. */
 export const ENTITY_KINDS = ["object", "living", "mob", "hanging"] as const;
@@ -61,23 +62,8 @@ export interface EntityFile {
   [key: string]: unknown;
 }
 
-export type Parsed = { ok: true; file: EntityFile } | { ok: false; error: string };
-
-export function parseEntity(text: string): Parsed {
-  if (!text.trim()) return { ok: true, file: {} };
-  try {
-    const v = parseDataValue(text);
-    if (!v || typeof v !== "object" || Array.isArray(v)) return { ok: false, error: "an entity is one object" };
-    return { ok: true, file: v as EntityFile };
-  } catch (e) {
-    return { ok: false, error: e instanceof DataSyntaxError ? `${e.line}:${e.col}: ${e.message}` : String(e) };
-  }
-}
-
-/** `text` holding `file`: what changed rewritten, the rest — comments too — as it was. */
-export function patchEntity(text: string, file: EntityFile): string {
-  return patchDataText(text, file, formatData);
-}
+/** A `.yentity` read and written through the CLI. */
+export const ENTITY_FORMAT: DataFormat<EntityFile> = { read: readObject<EntityFile> };
 
 export const kindOf = (f: EntityFile): EntityKind => (ENTITY_KINDS.includes(f.kind as EntityKind) ? (f.kind as EntityKind) : "object");
 
@@ -107,9 +93,4 @@ export function moved<T>(list: readonly T[], from: number, to: number): T[] {
   const [x] = out.splice(from, 1);
   out.splice(to, 0, x);
   return out;
-}
-
-/** A new `.yentity`: a small mob. */
-export function newEntityFile(name: string): string {
-  return `${formatData({ name, kind: "mob", category: "creature", width: 0.6, height: 0.9, attributes: { max_health: 10, movement_speed: 0.25 }, goals: ["float", "panic", "wander", "look_at_player", "look_around"] }, 0)}\n`;
 }

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { Toolbar, ToolbarButton, ToolbarGroup, ToolbarSelect, pt, usePropertyContext, useT, type EditorProps, type PropertyDescriptor, type PropertySet, type PropertyValue, Spacer } from "substrate-platform-ui";
 import { ItemHeader } from "../designer/ItemIcons";
@@ -16,8 +16,7 @@ import {
   newPage,
   pageFields,
   refId,
-  parseBook,
-  serializeBook,
+  BOOK_FORMAT,
   withField,
   type Book,
   type Field,
@@ -27,6 +26,7 @@ import {
 } from "./bookModel";
 import "./BookEditor.css";
 import { modRootOf } from "../paths";
+import { useDataFile } from "../data/useDataFile";
 
 /** The code view of a `.ybook` (registered in `editors/index.tsx`). */
 export const BOOK_SOURCE_VIEW = "yog.book.source";
@@ -66,21 +66,15 @@ export function BookEditor({ path, content, onChange, readOnly }: EditorProps) {
   useSyncExternalStore(subscribeImageSources, imageSourcesVersion);
   // `@Book.title` texts shown from the mod's .yres files, as the book shows them.
   useDesignResources(modRootOf(path));
-  const parsed = useMemo(() => parseBook(content), [content]);
+  const { parsed: read, update: edit } = useDataFile(content, onChange, BOOK_FORMAT, readOnly);
+  const parsed = read?.ok ? read.file : null;
   const [sel, setSel] = useState<Selection>({ kind: "book" });
   const [rendered, setRendered] = useState<Rendered | null>(null);
   /** The language the book is read in ("": its neutral texts). */
   const [locale, setLocale] = useState("");
   const seq = useRef(0);
 
-  const update = useCallback(
-    (change: (b: Book) => Book) => {
-      if (readOnly || !parsed) return;
-      const text = serializeBook(change(parsed));
-      if (text !== content) onChange(text);
-    },
-    [parsed, content, onChange, readOnly]
-  );
+  const update = useCallback((change: (b: Book) => Book) => void edit(change), [edit]);
 
   // ── The preview ───────────────────────────────────────────────────────────
 
@@ -159,6 +153,7 @@ export function BookEditor({ path, content, onChange, readOnly }: EditorProps) {
   shownProperties.current = null;
   usePropertyContext(path, () => shownProperties.current);
 
+  if (!read) return null;
   if (!parsed) {
     return <div className="book-editor book-error">{t("This isn't a book (a JSON object) — fix it in the Code view.")}</div>;
   }

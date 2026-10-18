@@ -1,5 +1,6 @@
+import { readFile, editData } from "../test/data";
 import { describe, expect, it } from "vitest";
-import { cubeQuads, mirroredBone, ordered, parseModel, serializeModel, type Cube } from "./ymodel";
+import { cubeQuads, mirroredBone, modelOf, ordered, rawOf, type Cube } from "./ymodel";
 
 const wing: Cube = { origin: [-10, 0, 0], size: [10, 20, 2], uv: [22, 0], inflate: 1, mirror: false };
 
@@ -16,18 +17,20 @@ describe("ymodel", () => {
     expect(m[0].pos[3]).toEqual([-11, -1, 3]);
   });
 
-  it("reads and writes back", () => {
+  it("reads and writes back, comments kept", async () => {
     const text = `// a comment
 { texture: "misc/a.png", texture_size: [64, 32], bones: [
   { name: "body", pivot: [0, 24, 0], cubes: [{ origin: [-4, 0, -2], size: [8, 12, 4], uv: [16, 16] }] },
   { name: "wing", parent: "body", rotation: [15, 0, -15], locators: { tip: [1, 2, 3] } } ] }`;
-    const m = parseModel(text);
+    const m = modelOf(await readFile(text));
     expect(m.bones[1].parent).toBe("body");
-    expect(parseModel(serializeModel(m))).toEqual(m);
+    const out = await editData(text, () => {});
+    expect(out).toBe(text);
+    expect(modelOf(rawOf(m))).toEqual(m);
   });
 
   it("puts parents first and mirrors sides", () => {
-    const m = parseModel(`{ texture: "", bones: [{ name: "left_arm", parent: "body", pivot: [5, 2, 0] }, { name: "body" }] }`);
+    const m = modelOf({ texture: "", bones: [{ name: "left_arm", parent: "body", pivot: [5, 2, 0] }, { name: "body" }] });
     expect(ordered(m).map((b) => b.name)).toEqual(["body", "left_arm"]);
     const r = mirroredBone(m, m.bones[0]);
     expect(r.name).toBe("right_arm");

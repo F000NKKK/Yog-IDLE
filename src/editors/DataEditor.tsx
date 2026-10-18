@@ -1,20 +1,25 @@
 import { useEffect, useMemo, useState } from "react";
-import { invoke } from "@tauri-apps/api/core";
 import { Button, PropertyGrid, useT, type EditorProps } from "substrate-platform-ui";
-import { DataSyntaxError, parseDataValue } from "../data/yogData";
+import { cli } from "../cli";
+import { useDataFile, type DataFormat } from "../data/useDataFile";
+import { readObject } from "../data/yogData";
+import { kind as KIND } from "../data/yogIds.generated";
 import { shapeProperties, type Described } from "../data/shapeGrid";
 import { useOpenFiles } from "../OpenFilesContext";
 import { TerrainPreview } from "./TerrainPreview";
 import "./DataEditor.css";
 import { formats } from "../yogFileTypes";
 
+/** Any Yog format's file: one object. */
+const OBJECT: DataFormat<Record<string, unknown>> = { read: readObject<Record<string, unknown>> };
+
 const shapes = new Map<string, Promise<Described>>();
 
-/** The schema of `format`, asked once (`format_shape`, the build's own). */
+/** The schema of `format`, asked once (the CLI's `format.shape`, the build's own). */
 export function formatShape(format: string): Promise<Described> {
   let p = shapes.get(format);
   if (!p) {
-    p = invoke<Described>("format_shape", { format });
+    p = cli<Described>("format.shape", { format });
     shapes.set(format, p);
   }
   return p;
@@ -41,26 +46,18 @@ export function DataEditor({ path, content, onChange, readOnly, format, sourceVi
       live = false;
     };
   }, [format]);
-  const parsed = useMemo(() => {
-    if (content.trim() === "") return { ok: true as const, value: {} as Record<string, unknown> };
-    try {
-      const v = parseDataValue(content);
-      if (!v || typeof v !== "object" || Array.isArray(v)) return { ok: false as const, error: t("The file must be one object.") };
-      return { ok: true as const, value: v as Record<string, unknown> };
-    } catch (e) {
-      return { ok: false as const, error: e instanceof DataSyntaxError ? `${e.line}:${e.col}: ${e.message}` : String(e) };
-    }
-  }, [content, t]);
+  const { parsed, update } = useDataFile(content, onChange, OBJECT, readOnly);
   const viewCode = () => {
     const tab = tabs.find((x) => x.path === path);
     if (tab) void setView(tab.id, sourceView);
   };
   const properties = useMemo(() => {
-    if (!shape || !parsed.ok) return [];
-    const rows = shapeProperties(shape, parsed.value, (next) => onChange(`${JSON.stringify(next, null, 2)}\n`), t);
+    if (!shape || !parsed?.ok) return [];
+    const rows = shapeProperties(shape, parsed.file, (next) => void update(() => next), t);
     return readOnly ? rows.map((r) => ({ ...r, readOnly: true })) : rows;
-  }, [shape, parsed, onChange, readOnly, t]);
+  }, [shape, parsed, update, readOnly, t]);
 
+  if (!parsed) return null;
   if (error || !parsed.ok) {
     return (
       <div className="data-editor data-editor-broken">
@@ -70,7 +67,7 @@ export function DataEditor({ path, content, onChange, readOnly, format, sourceVi
     );
   }
   // A dimension with a terrain: the ground it makes, beside its properties.
-  const terrain = format === formats.def.ext && parsed.value.kind === "dimension" && parsed.value.terrain !== undefined;
+  const terrain = format === formats.def.ext && parsed.file.kind === KIND.DIMENSION && parsed.file.terrain !== undefined;
   return (
     <div className="data-editor">
       <div className="data-editor-body">

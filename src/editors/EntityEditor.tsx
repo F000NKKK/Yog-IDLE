@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { KeyHints, Toolbar, ToolbarButton, ToolbarCheck, ToolbarGroup, ToolbarSelect, usePropertyContext, useT, type EditorProps, type KeyHint, type PropertyDescriptor } from "substrate-platform-ui";
 import { ModelViewport, type ViewOverlay } from "../body/ModelViewport";
@@ -16,15 +16,14 @@ import {
   GAME_STATES,
   isLiving,
   kindOf,
-  parseEntity,
-  patchEntity,
+  ENTITY_FORMAT,
   pushable,
   type EntityFile,
   type EntityKind,
 } from "../body/yentity";
 import { blankModel } from "../body/ymodel";
 import { useContentRefs } from "../data/contentRefs";
-import { clone } from "../content/model";
+import { useDataFile } from "../data/useDataFile";
 import { inspectorRows } from "./inspector";
 import { ItemList } from "./ItemList";
 import "./designers.css";
@@ -59,8 +58,8 @@ const attributeName = (id: string) => id.replace(/^minecraft:/, "").replace(/^ge
  */
 export function EntityEditor({ path, content, onChange, readOnly }: EditorProps) {
   const t = useT();
-  const parsed = useMemo(() => parseEntity(content), [content]);
-  const file = useMemo<EntityFile>(() => (parsed.ok ? parsed.file : {}), [parsed]);
+  const { parsed, update } = useDataFile(content, onChange, ENTITY_FORMAT, readOnly);
+  const file = useMemo<EntityFile>(() => (parsed?.ok ? parsed.file : {}), [parsed]);
   const kind = kindOf(file);
   const living = isLiving(kind);
   const body = useBody(path, file.model, file.animations);
@@ -83,18 +82,6 @@ export function EntityEditor({ path, content, onChange, readOnly }: EditorProps)
     };
   }, [path]);
 
-  const contentRef = useRef(content);
-  contentRef.current = content;
-  const update = useCallback(
-    (edit: (draft: EntityFile) => void) => {
-      if (readOnly || !parsed.ok) return;
-      const draft = clone(parsed.file);
-      edit(draft);
-      const text = patchEntity(contentRef.current, draft);
-      if (text !== contentRef.current) onChange(text);
-    },
-    [onChange, readOnly, parsed],
-  );
 
   // The clip shown: picked, else the idle state's; played in real time.
   const clip = body.clips.find((c) => c.name === (clipName || file.clips?.idle)) ?? null;
@@ -334,8 +321,9 @@ export function EntityEditor({ path, content, onChange, readOnly }: EditorProps)
     return out;
   }, [file, kind, living, readOnly, t, path, update, strings, body.models, body.animations, body.clips, attributes, sounds, ns]);
 
-  usePropertyContext(path, parsed.ok ? { order: "declared", objectName: file.id ?? path.split(/[\\/]/).pop()?.replace(/\.yentity$/, ""), objectType: t("Entity"), objectKey: path, properties, footer: <KeyHints hints={CONTROLS} /> } : null);
+  usePropertyContext(path, parsed?.ok ? { order: "declared", objectName: file.id ?? path.split(/[\\/]/).pop()?.replace(/\.yentity$/, ""), objectType: t("Entity"), objectKey: path, properties, footer: <KeyHints hints={CONTROLS} /> } : null);
 
+  if (!parsed) return null;
   if (!parsed.ok) return <div className="designer-error">{t("This file has a mistake: {error}", { error: parsed.error })}</div>;
 
   const states = Object.entries(file.clips ?? {});

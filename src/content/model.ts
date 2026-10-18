@@ -2,7 +2,8 @@
 // editor sees it: types, Minecraft's constraints, the templates' geometry,
 // face UVs, display defaults, and the file's text form.
 
-import { DataSyntaxError, formatData, parseDataValue, patchDataText } from "../data/yogData";
+import type { DataFormat } from "../data/useDataFile";
+import { formatData, patchData, readObject } from "../data/yogData";
 
 export type Dir = "down" | "up" | "north" | "south" | "west" | "east";
 export const DIRS: Dir[] = ["down", "up", "north", "south", "west", "east"];
@@ -314,25 +315,23 @@ export function defaultDisplay(kind: "block" | "generated" | "handheld"): Partia
 
 export type Parsed = { ok: true; file: ContentFile } | { ok: false; error: string };
 
-/** Yog Data text (comments, trailing commas, unquoted keys — as `yog` reads it). */
-export function parseContent(text: string): Parsed {
-  try {
-    const value = parseDataValue(text);
-    if (!value || typeof value !== "object" || Array.isArray(value)) return { ok: false, error: "The file must be one object." };
-    return { ok: true, file: value as ContentFile };
-  } catch (e) {
-    return { ok: false, error: e instanceof DataSyntaxError ? `${e.line}:${e.col}: ${e.message}` : e instanceof Error ? e.message : String(e) };
-  }
+/** A `.yblock`/`.yitem` read and written through the CLI (Yog Data: comments, trailing commas, unquoted keys). */
+export const CONTENT_FORMAT: DataFormat<ContentFile> = { read: readObject<ContentFile> };
+
+/** Reads a content file. */
+export async function parseContent(text: string): Promise<Parsed> {
+  const r = await readObject<ContentFile>(text);
+  return r.ok ? { ok: true, file: r.value } : r;
 }
 
-/** The file's text: two-space indent, short arrays/objects of scalars on one line (`"uv": [0, 0, 16, 16]`). */
-export function serializeContent(file: ContentFile): string {
-  return `${formatData(file, 0)}\n`;
+/** The file's text as Yog's editors write it: two-space indent, short arrays/objects of scalars on one line. */
+export async function serializeContent(file: ContentFile): Promise<string> {
+  return `${await formatData(file, 0)}\n`;
 }
 
-/** `text` holding `file`: what changed rewritten as `serializeContent` writes it, the rest — comments too — as it was. */
-export function patchContent(text: string, file: ContentFile): string {
-  return patchDataText(text, file, formatData);
+/** `text` holding `file`: what changed rewritten, the rest — comments too — as it was. */
+export function patchContent(text: string, file: ContentFile): Promise<string> {
+  return patchData(text, file);
 }
 
 /** A deep copy (files are plain JSON). */
@@ -340,7 +339,7 @@ export const clone = <T>(v: T): T => JSON.parse(JSON.stringify(v)) as T;
 
 // ── New files ────────────────────────────────────────────────────────────────
 
-export function newBlockFile(name: string): string {
+export function newBlockFile(name: string): Promise<string> {
   return serializeContent({
     name,
     block: { hardness: 1.5, resistance: 6, sound: "stone", tool: "pickaxe" },
@@ -348,7 +347,7 @@ export function newBlockFile(name: string): string {
   });
 }
 
-export function newItemFile(name: string): string {
+export function newItemFile(name: string): Promise<string> {
   return serializeContent({
     name,
     item: { stack_size: 64 },
@@ -357,7 +356,7 @@ export function newItemFile(name: string): string {
 }
 
 /** A block with its own item sprite (`item_model`). */
-export function newBlockWithItemFile(name: string): string {
+export function newBlockWithItemFile(name: string): Promise<string> {
   return serializeContent({
     name,
     block: { hardness: 1.5, resistance: 6, sound: "stone", tool: "pickaxe" },

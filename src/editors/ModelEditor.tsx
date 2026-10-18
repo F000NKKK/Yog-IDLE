@@ -1,25 +1,23 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { KeyHints, Toolbar, ToolbarButton, ToolbarCheck, ToolbarGroup, ToolbarModes, ToolbarSelect, usePropertyContext, useT, type EditorProps, type KeyHint, type PropertyDescriptor } from "substrate-platform-ui";
 import { ModelViewport, type GizmoMode, type Selection } from "../body/ModelViewport";
 import {
-  blankModel,
   boxUvRects,
-  clone,
   freeName,
   isAncestor,
   mirroredBone,
   ordered,
-  parseModel,
+  MODEL_FORMAT,
   removeBone,
   renameBone,
-  serializeModel,
   type Bone,
   type Cube,
   type ModelFile,
   type Vec3,
 } from "../body/ymodel";
 import "./ModelEditor.css";
+import { useDataFile } from "../data/useDataFile";
 
 export const MODEL_SOURCE_VIEW = "yog.ymodel.source";
 
@@ -57,60 +55,19 @@ interface LoadedTexture {
  * move, turn, size with the gizmo; Blender's camera), the selected bone,
  * cube or locator on the right with its box-UV on the texture.
  */
-export function ModelEditor({ path, content, onChange, readOnly, contentVersion }: EditorProps) {
+export function ModelEditor({ path, content, onChange, readOnly }: EditorProps) {
   const t = useT();
-  const [model, setModel] = useState<ModelFile | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const { parsed, update } = useDataFile(content, onChange, MODEL_FORMAT, readOnly);
+  const model = parsed?.ok ? parsed.file : null;
+  const error = parsed && !parsed.ok ? parsed.error : null;
   const [selection, setSelection] = useState<Selection>(null);
   const [mode, setMode] = useState<GizmoMode>("translate");
   const [snap, setSnap] = useState<(typeof SNAPS)[number]["id"]>("1");
   const [grid, setGrid] = useState(true);
   const [texture, setTexture] = useState<string | null>(null);
   const [textureError, setTextureError] = useState<string | null>(null);
-  const lastText = useRef(content);
+  const edit = (change: (m: ModelFile) => void) => void update(change);
 
-  // The document: read at mount and when the file changed under us.
-  useEffect(() => {
-    try {
-      setModel(content.trim() ? parseModel(content) : blankModel());
-      setError(null);
-    } catch (e) {
-      setError(String(e));
-    }
-    lastText.current = content;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [contentVersion]);
-  // A text that isn't ours (Undo/Redo — the platform's history — or the
-  // code view): the model follows it.
-  useEffect(() => {
-    if (content === lastText.current) return;
-    lastText.current = content;
-    try {
-      setModel(content.trim() ? parseModel(content) : blankModel());
-      setError(null);
-    } catch (e) {
-      setError(String(e));
-    }
-  }, [content]);
-
-  const write = useCallback(
-    (next: ModelFile) => {
-      if (readOnly) return;
-      const text = serializeModel(next);
-      if (text === lastText.current) return;
-      lastText.current = text;
-      setModel(next);
-      onChange(text);
-    },
-    [onChange, readOnly],
-  );
-
-  const edit = (change: (m: ModelFile) => void) => {
-    if (!model) return;
-    const next = clone(model);
-    change(next);
-    write(next);
-  };
 
 
   // The texture, as the format names it.

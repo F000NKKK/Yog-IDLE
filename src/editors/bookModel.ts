@@ -4,7 +4,8 @@
 // (`@item:minecraft:stick`, `@category:mymod:basics`…); texts may be
 // `@Set.key`, `@item:id` (a name) too (docs/books.md).
 
-import { parseDataValue } from "../data/yogData";
+import type { DataFormat } from "../data/useDataFile";
+import { readObject } from "../data/yogData";
 
 export type Json = null | boolean | number | string | Json[] | { [k: string]: Json };
 export type Obj = { [k: string]: Json };
@@ -160,16 +161,11 @@ export function newPage(type: string): Page {
 }
 
 /** The `.ybook` text → the book; `null` when it isn't one. */
-export function parseBook(text: string): Book | null {
+export async function readBook(text: string): Promise<Book | null> {
   if (text.trim() === "") return emptyBook("");
-  let v: unknown;
-  try {
-    v = parseDataValue(text);
-  } catch {
-    return null;
-  }
-  if (!v || typeof v !== "object" || Array.isArray(v)) return null;
-  const b = v as Obj;
+  const r = await readObject<Obj>(text);
+  if (!r.ok) return null;
+  const b = r.value;
   const arr = (x: Json | undefined) => (Array.isArray(x) ? x : []);
   return {
     ...b,
@@ -180,16 +176,20 @@ export function parseBook(text: string): Book | null {
   };
 }
 
+/** A `.ybook` read and written through the CLI. */
+export const BOOK_FORMAT: DataFormat<Book> = {
+  read: async (text) => {
+    const b = await readBook(text);
+    return b ? { ok: true, value: b } : { ok: false, error: "not a book" };
+  },
+};
+
 function isObj(v: Json): v is Obj {
   return !!v && typeof v === "object" && !Array.isArray(v);
 }
 
 export function emptyBook(id: string): Book {
   return { id, name: "", categories: [], entries: [] };
-}
-
-export function serializeBook(b: Book): string {
-  return JSON.stringify(b, null, 2) + "\n";
 }
 
 /** An id not yet in `taken`: `base`, `base_2`, … */

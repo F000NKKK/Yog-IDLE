@@ -41,6 +41,8 @@ import { useOpenFiles } from "../OpenFilesContext";
 import { reportError } from "../reportError";
 import { refMessage } from "./inspector";
 import { refProblem, refSuggestions, useContentRefs } from "../data/contentRefs";
+import { useDataFile } from "../data/useDataFile";
+import { readData } from "../data/yogData";
 import { RowsEditor } from "./RowsEditor";
 import {
   ANGLES,
@@ -50,8 +52,7 @@ import {
   DIRS,
   DISPLAY_SLOTS,
   kindOf,
-  parseContent,
-  patchContent,
+  CONTENT_FORMAT,
   RENDER_LAYERS,
   serializeContent,
   templateElements,
@@ -327,8 +328,8 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
   const t = useT();
   const { tabs, setView, setSideState } = useOpenFiles();
   const kind = kindOf(path) ?? "block";
-  const parsed = useMemo(() => parseContent(content), [content]);
-  const file = useMemo<ContentFile>(() => (parsed.ok ? parsed.file : {}), [parsed]);
+  const { parsed, update: updateFile } = useDataFile(content, onChange, CONTENT_FORMAT, readOnly);
+  const file = useMemo<ContentFile>(() => (parsed?.ok ? parsed.file : {}), [parsed]);
 
   const [modelKey, setModelKey] = useState<ModelKey>("model");
   const [selected, setSelected] = useState<number | null>(null);
@@ -442,8 +443,6 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
   // ── Edits — Undo/Redo are the platform's (`documentHistory`): the file's
   // text is recorded as it changes, painted pixels and animations as steps.
 
-  const contentRef = useRef(content);
-  contentRef.current = content;
   useEffect(() => {
     setImages({});
     setEdited({});
@@ -463,16 +462,13 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
     setEdited(next);
   }, []);
 
+  /** Changes the file; resolves once it's written (an undo step waits for it). */
   const update = useCallback(
-    (edit: (draft: ContentFile) => void) => {
-      if (readOnly || !parsed.ok) return;
-      const draft = clone(parsed.file);
-      edit(draft);
-      const text = patchContent(contentRef.current, draft);
-      if (text === contentRef.current) return;
-      onChange(text);
-    },
-    [onChange, readOnly, parsed]
+    (edit: (draft: ContentFile) => void) =>
+      updateFile((d) => {
+        edit(d);
+      }),
+    [updateFile]
   );
 
   /** Sets edited animations (`null`: back to the loaded one). */
@@ -749,13 +745,14 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
   /** Points `slot` at a new texture `img` (a copy, or a blank one) — one undo step, the file and the texture. */
   const assignTexture = (slot: string, img: PixelImage): string => {
     const key = newTexturePath(slot);
-    documentAction(path, () => {
-      const draft = clone(file);
-      const m = ensureModel(draft, effectiveKey);
-      m.textures = { ...(m.textures ?? {}), [slot]: key };
-      onChange(patchContent(contentRef.current, draft));
+    void documentAction(path, () => {
+      const written = update((d) => {
+        const m = ensureModel(d, effectiveKey);
+        m.textures = { ...(m.textures ?? {}), [slot]: key };
+      });
       setEditedImages({ [key]: img });
       pixelStep(key, null, img);
+      return written;
     });
     return key;
   };
@@ -1117,16 +1114,13 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
   /** Copies the selected element as JSON (pasteable into another model, or Blockbench-style text). */
   const copyElement = async () => {
     if (!selEl) return false;
-    await navigator.clipboard.writeText(serializeContent(selEl as unknown as ContentFile));
+    await navigator.clipboard.writeText(await serializeContent(selEl as unknown as ContentFile));
     return true;
   };
   const pasteElement = async () => {
-    let value: unknown;
-    try {
-      value = JSON.parse(await navigator.clipboard.readText());
-    } catch {
-      return;
-    }
+    const read = await readData(await navigator.clipboard.readText().catch(() => ""));
+    if (!read.ok) return;
+    const value = read.value;
     const list = (Array.isArray(value) ? value : [value]).filter(
       (v): v is Element => !!v && typeof v === "object" && Array.isArray((v as Element).from) && Array.isArray((v as Element).to) && typeof (v as Element).faces === "object"
     );
@@ -1982,6 +1976,7 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
 
   // ── Layout ────────────────────────────────────────────────────────────────
 
+  if (!parsed) return null;
   if (!parsed.ok) {
     return (
       <div className="content-editor content-broken">

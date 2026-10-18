@@ -9,7 +9,9 @@ import { MAX_STACK_SIZE } from "../data/yogFormat";
 import { iconSource, imagePreview, imageSources, imageSourcesVersion, ingredientItems, subscribeImageSources } from "../designer/imageSources";
 import { openFile } from "../fileOpenBus";
 import { useFsChanged } from "../fsWatch";
-import { parseRecipe, recipeType, serializeRecipe, switchKind, type Recipe, type RecipeFields, type RecipeKind, type RecipeSlot } from "./recipeModel";
+import { useDataFile, type DataFormat } from "../data/useDataFile";
+import { readObject } from "../data/yogData";
+import { recipeOf, switchedTo, typeOf, withRecipe, type Recipe, type RecipeFields, type RecipeKind, type RecipeSlot } from "./recipeModel";
 import "./RecipeEditor.css";
 import { fileTypeId, formats } from "../yogFileTypes";
 
@@ -86,6 +88,9 @@ function useSize(el: HTMLElement | null): [number, number] {
 /** A value's label from its name: `cook_time` → `Cook time`. */
 const labelOf = (name: string) => (name.charAt(0).toUpperCase() + name.slice(1)).replace(/_/g, " ");
 
+/** A `.yrecipe`: one object, read and written through the CLI. */
+const RECIPE_FORMAT: DataFormat<Record<string, unknown>> = { read: readObject<Record<string, unknown>> };
+
 /**
  * `.yrecipe` files, every kind drawn the same way: as books show it — by
  * its layout (built in for the game's kinds, a `.yui` `recipe_layout` for a
@@ -100,9 +105,11 @@ export function RecipeEditor({ path, content, onChange, readOnly }: EditorProps)
   const [kinds, reloadKinds] = useRecipeKinds(path);
   const itemRefs = useContentRefs(path, "item");
   const all = useMemo(() => (kinds ? [...kinds.game, ...kinds.own] : []), [kinds]);
-  const typeId = kinds ? recipeType(content, kinds.fields) : null;
+  const { parsed, update: edit } = useDataFile(content, onChange, RECIPE_FORMAT, readOnly);
+  const object = parsed?.ok ? parsed.file : null;
+  const typeId = kinds && object ? typeOf(object, kinds.fields) : null;
   const kind = all.find((k) => k.id === typeId);
-  const recipe = useMemo(() => (kind && kinds ? parseRecipe(content, kind, kinds.fields) : null), [content, kind, kinds]);
+  const recipe = useMemo(() => (kind && kinds && object ? recipeOf(object, kind, kinds.fields) : null), [object, kind, kinds]);
   const [target, setTarget] = useState<Target>(RESULT);
   const [newKind, setNewKind] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -134,14 +141,11 @@ export function RecipeEditor({ path, content, onChange, readOnly }: EditorProps)
     [itemRefs, path, imageSourcesVersion()],
   );
 
-  if (!kinds) return <div className="recipe-editor" />;
+  if (!kinds || !parsed) return <div className="recipe-editor" />;
   // Not a kind this mod knows (another mod's, a typo): its fields, from the schema.
   if (!kind || !recipe) return <DataEditor path={path} content={content} onChange={onChange} readOnly={readOnly} format={formats.recipe.ext} sourceView={RECIPE_SOURCE_VIEW} />;
 
-  const write = (next: Recipe) => {
-    const text = serializeRecipe(content, next, kind, kinds.fields);
-    if (!readOnly && text !== content) onChange(text);
-  };
+  const write = (next: Recipe) => void edit((o) => withRecipe(o, next, kind, kinds.fields));
   const update = (change: (r: Recipe) => void) => {
     const next: Recipe = { ...recipe, slots: Object.fromEntries(Object.entries(recipe.slots).map(([k, v]) => [k, [...v]])), values: { ...recipe.values } };
     change(next);
@@ -166,8 +170,7 @@ export function RecipeEditor({ path, content, onChange, readOnly }: EditorProps)
   const switchTo = (id: string) => {
     const next = all.find((k) => k.id === id);
     if (!next || next.id === kind.id) return;
-    const text = switchKind(content, recipe, next, all, kinds.fields);
-    if (!readOnly && text !== content) onChange(text);
+    void edit((o) => switchedTo(o, recipe, next, all, kinds.fields));
     setTarget(next.slots[0] ? placeTarget(next.slots[0].name, 0) : RESULT);
   };
 

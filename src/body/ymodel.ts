@@ -1,4 +1,5 @@
-import { parseDataValue } from "../data/yogData";
+import type { DataFormat } from "../data/useDataFile";
+import { patchData, readObject, type Read } from "../data/yogData";
 
 // `.ymodel` — a body model (yog-body's `ModelFile`): bones in Java model
 // space (pixels, y down, `CubeListBuilder`/`PartPose` numbers), each with a
@@ -34,9 +35,20 @@ export interface ModelFile {
 const vec = (v: unknown, d: Vec3 = [0, 0, 0]): Vec3 =>
   Array.isArray(v) && v.length === 3 ? (v.map((n, i) => (typeof n === "number" ? n : d[i])) as Vec3) : [...d];
 
-/** Reads a `.ymodel`; throws on text that isn't Yog Data. */
-export function parseModel(text: string): ModelFile {
-  const raw = (text.trim() ? parseDataValue(text) : {}) as Record<string, unknown>;
+/** Reads a `.ymodel` through the CLI. */
+export async function readModel(text: string): Promise<Read<ModelFile>> {
+  const r = await readObject<Record<string, unknown>>(text);
+  return r.ok ? { ok: true, value: modelOf(r.value) } : r;
+}
+
+/** A `.ymodel` as the designer edits it: an empty file is a new model; written back in place, comments kept. */
+export const MODEL_FORMAT: DataFormat<ModelFile> = {
+  read: async (text) => (text.trim() ? readModel(text) : { ok: true, value: blankModel() }),
+  write: (text, m) => patchData(text, rawOf(m)),
+};
+
+/** A `.ymodel`'s object read as a model. */
+export function modelOf(raw: Record<string, unknown>): ModelFile {
   const size = Array.isArray(raw.texture_size) ? raw.texture_size : [64, 32];
   const bones = (Array.isArray(raw.bones) ? raw.bones : []).map((b): Bone => {
     const o = (b ?? {}) as Record<string, unknown>;
@@ -69,37 +81,31 @@ export function parseModel(text: string): ModelFile {
 }
 
 const round = (n: number) => Math.round(n * 1000) / 1000;
-const nums = (v: number[]) => `[${v.map(round).join(", ")}]`;
+const nums = (v: readonly number[]) => v.map(round);
 
-/** Writes a `.ymodel`: fields at their defaults left out, numbers rounded. */
-export function serializeModel(m: ModelFile): string {
-  const lines: string[] = ["{"];
-  lines.push(`  "texture": ${JSON.stringify(m.texture)},`);
-  lines.push(`  "texture_size": ${nums(m.textureSize)},`);
-  lines.push(`  "bones": [`);
-  m.bones.forEach((b, bi) => {
-    const fields: string[] = [`"name": ${JSON.stringify(b.name)}`];
-    if (b.parent) fields.push(`"parent": ${JSON.stringify(b.parent)}`);
-    if (b.pivot.some((n) => n !== 0)) fields.push(`"pivot": ${nums(b.pivot)}`);
-    if (b.rotation.some((n) => n !== 0)) fields.push(`"rotation": ${nums(b.rotation)}`);
-    const cubes = b.cubes.map((c) => {
-      const f = [`"origin": ${nums(c.origin)}`, `"size": ${nums(c.size)}`];
-      if (c.uv[0] || c.uv[1]) f.push(`"uv": ${nums(c.uv)}`);
-      if (c.inflate) f.push(`"inflate": ${round(c.inflate)}`);
-      if (c.mirror) f.push(`"mirror": true`);
-      return `{ ${f.join(", ")} }`;
-    });
-    const locs = Object.entries(b.locators);
-    lines.push(`    {`);
-    const body = [...fields];
-    if (cubes.length) body.push(`"cubes": [\n        ${cubes.join(",\n        ")}\n      ]`);
-    if (locs.length) body.push(`"locators": { ${locs.map(([n, p]) => `${JSON.stringify(n)}: ${nums(p)}`).join(", ")} }`);
-    lines.push(body.map((f) => `      ${f}`).join(",\n"));
-    lines.push(`    }${bi < m.bones.length - 1 ? "," : ""}`);
-  });
-  lines.push(`  ]`);
-  lines.push("}");
-  return lines.join("\n") + "\n";
+/** A model as its file holds it: fields at their defaults left out, numbers rounded. */
+export function rawOf(m: ModelFile): Record<string, unknown> {
+  return {
+    texture: m.texture,
+    texture_size: nums(m.textureSize),
+    bones: m.bones.map((b) => {
+      const o: Record<string, unknown> = { name: b.name };
+      if (b.parent) o.parent = b.parent;
+      if (b.pivot.some((n) => n !== 0)) o.pivot = nums(b.pivot);
+      if (b.rotation.some((n) => n !== 0)) o.rotation = nums(b.rotation);
+      if (b.cubes.length)
+        o.cubes = b.cubes.map((c) => {
+          const f: Record<string, unknown> = { origin: nums(c.origin), size: nums(c.size) };
+          if (c.uv[0] || c.uv[1]) f.uv = nums(c.uv);
+          if (c.inflate) f.inflate = round(c.inflate);
+          if (c.mirror) f.mirror = true;
+          return f;
+        });
+      const locs = Object.entries(b.locators);
+      if (locs.length) o.locators = Object.fromEntries(locs.map(([n, p]) => [n, nums(p)]));
+      return o;
+    }),
+  };
 }
 
 /** A new model: one root bone. */

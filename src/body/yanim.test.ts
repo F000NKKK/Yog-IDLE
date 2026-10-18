@@ -20,15 +20,15 @@ const FILE = `// Wings.
 }
 `;
 
-const parsed = () => {
-  const p = parseAnim(FILE);
+const parsed = async () => {
+  const p = await parseAnim(FILE);
   if (!p.ok) throw new Error(p.error);
   return p;
 };
 
 describe("yanim", () => {
-  it("reads clips, keys in time order", () => {
-    const { clips } = parsed();
+  it("reads clips, keys in time order", async () => {
+    const { clips } = await parsed();
     expect(clips.map((c) => c.name)).toEqual(["flap"]);
     const keys = clips[0].bones[0].tracks.rotation;
     expect(keys.map((k) => k.at)).toEqual(["0", "0.5", "1"]);
@@ -36,35 +36,35 @@ describe("yanim", () => {
     expect(clips[0].loop).toBe("loop");
   });
 
-  it("writes back what changed, comments and spelling kept", () => {
-    const { doc } = parsed();
-    expect(patchAnim(FILE, doc)).toBe(FILE);
+  it("writes back what changed, comments and spelling kept", async () => {
+    const { doc } = await parsed();
+    expect(await patchAnim(FILE, doc)).toBe(FILE);
     const next = cloneDoc(doc);
     setKey(next, "flap", "left_wing", "rotation", 0.5, [0, 0, 60], "smooth");
-    expect(patchAnim(FILE, next)).toBe(FILE.replace("[0, 0, 40]", "[0, 0, 60]"));
+    expect(await patchAnim(FILE, next)).toBe(FILE.replace("[0, 0, 40]", "[0, 0, 60]"));
   });
 
-  it("adds a key between others, moves and removes keys", () => {
-    const { doc } = parsed();
+  it("adds a key between others, moves and removes keys", async () => {
+    const { doc } = await parsed();
     const next = cloneDoc(doc);
     setKey(next, "flap", "left_wing", "rotation", 0.25, [0, 0, 20], "linear");
-    const out = patchAnim(FILE, next);
+    const out = await patchAnim(FILE, next);
     expect(out.indexOf('"0.25"')).toBeLessThan(out.indexOf('"0.5"'));
     expect(out).toContain("// Up and down.");
     moveKey(next, "flap", "left_wing", "rotation", "0.25", 0.75);
-    const moved = parseAnim(patchAnim(FILE, next));
+    const moved = await parseAnim(await patchAnim(FILE, next));
     expect(moved.ok && moved.clips[0].bones[0].tracks.rotation.map((k) => k.at)).toEqual(["0", "0.5", "0.75", "1"]);
     removeKey(next, "flap", "left_wing", "rotation", "0.75");
-    expect(patchAnim(FILE, next)).toBe(FILE);
+    expect(await patchAnim(FILE, next)).toBe(FILE);
   });
 
-  it("adds, renames clips and sets their loop", () => {
-    const { doc } = parsed();
+  it("adds, renames clips and sets their loop", async () => {
+    const { doc } = await parsed();
     const next = cloneDoc(doc);
     addClip(next, "idle", 2);
     renameClip(next, "flap", "fly");
     setClipField(next, "fly", "loop", "once");
-    const p = parseAnim(patchAnim(FILE, next));
+    const p = await parseAnim(await patchAnim(FILE, next));
     expect(p.ok && p.clips.map((c) => [c.name, c.loop, c.length])).toEqual([
       ["fly", "once", 1],
       ["idle", "loop", 2],

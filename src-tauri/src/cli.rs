@@ -18,7 +18,7 @@ use serde_json::{Value, json};
 /// The CLI's program name, looked up on `PATH`.
 const PROGRAM: &str = yog_ids::program::CLI;
 /// The service's command.
-const SERVE: &str = "serve";
+const SERVE: &str = yog_ids::program::SERVE;
 
 /// A command running the CLI.
 pub fn command() -> Command {

@@ -4,27 +4,13 @@ import { list, num } from "../../data/values";
 // format names in its docs, and what the designers compute to draw —
 // an advancement tab's layout, loot odds, a potion's color.
 
-import { DataSyntaxError, formatData, parseDataValue, patchDataText } from "../../data/yogData";
+import type { DataFormat } from "../../data/useDataFile";
+import { readObject } from "../../data/yogData";
 
 export type DefFile = Record<string, unknown> & { kind?: string; id?: string };
 
-export type Parsed = { ok: true; file: DefFile } | { ok: false; error: string };
-
-export function parseDef(text: string): Parsed {
-  if (!text.trim()) return { ok: true, file: {} };
-  try {
-    const v = parseDataValue(text);
-    if (!v || typeof v !== "object" || Array.isArray(v)) return { ok: false, error: "a definition is one object" };
-    return { ok: true, file: v as DefFile };
-  } catch (e) {
-    return { ok: false, error: e instanceof DataSyntaxError ? `${e.line}:${e.col}: ${e.message}` : String(e) };
-  }
-}
-
-/** `text` holding `file`: what changed rewritten, the rest — comments too — as it was. */
-export function patchDef(text: string, file: DefFile): string {
-  return patchDataText(text, file, formatData);
-}
+/** A `.ydef` read and written through the CLI. */
+export const DEF_FORMAT: DataFormat<DefFile> = { read: readObject<DefFile> };
 
 export const asList = list;
 

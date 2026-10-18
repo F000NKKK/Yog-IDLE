@@ -99,6 +99,7 @@ export const project = {
 
 export const program = {
   CLI: "yog",
+  SERVE: "serve",
 } as const;
 
 export const res = {
