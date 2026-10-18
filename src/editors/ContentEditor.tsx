@@ -1979,15 +1979,14 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
 
   // ── Layout ────────────────────────────────────────────────────────────────
 
-  if (!parsed) return null;
-  if (!parsed.ok) {
-    return (
+  // Shown once every hook below has run (their number mustn't change between renders).
+  const broken =
+    parsed && !parsed.ok ? (
       <div className="content-editor content-broken">
         <p>{t("This file isn't valid JSON: {error}", { error: parsed.error })}</p>
         <Button onClick={viewCode}>{t("View Code")}</Button>
       </div>
-    );
-  }
+    ) : null;
 
   const modelChoices: { value: ModelKey; label: string }[] = [{ value: "model", label: kind === "block" ? t("Block Model") : t("Item Model") }];
   if (kind === "block") {
@@ -2319,6 +2318,8 @@ export function ContentEditor({ path, content, onChange, readOnly, contentVersio
     properties: uvRow ? [...properties, uvRow] : properties,
   });
 
+  if (!parsed) return null;
+  if (broken) return broken;
   return (
     <div className="content-editor" ref={rootRef}>
       <Toolbar>
