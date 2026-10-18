@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { yui } from "../data/yogIds.generated";
 import { Tree, useT, type TreeNode } from "substrate-platform-ui";
 import { useActiveDesigner } from "../designer/activeDesigner";
 import { isComponentDoc } from "../designer/components";
@@ -8,7 +9,7 @@ import { isContainer, isPropertyElement, type YuiNode } from "../designer/yui";
 const branches = (n: YuiNode) => isContainer(n) || isComponentDoc(n);
 
 function toTree(node: YuiNode): TreeNode<YuiNode> {
-  const named = node.attrs.id ?? (node.kind === "Component" || node.kind === "Property" || node.kind === "Event" ? node.attrs.name : undefined);
+  const named = node.attrs.id ?? (node.kind === yui.COMPONENT || node.kind === yui.PROPERTY || node.kind === yui.EVENT ? node.attrs.name : undefined);
   return {
     id: node.uid,
     label: named ? `${named} (${node.kind})` : node.kind,

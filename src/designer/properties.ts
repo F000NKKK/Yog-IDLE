@@ -2,6 +2,7 @@
 // designer — one row per `.yui` attribute the selection can have.
 
 import { pt, t, type PropertyDescriptor, type PropertyValue, type XmlSchema } from "substrate-platform-ui";
+import { yui } from "../data/yogIds.generated";
 import { imageAlias, imagePreview, imageSources } from "./imageSources";
 import { CONTAINER_KINDS, cssColor, KIND_INFO, KINDS, parseColor, parseNumber, type YuiNode } from "./yui";
 import { findComponent, type ComponentInfo, type ComponentsSnapshot } from "./components";
@@ -37,46 +38,46 @@ interface AttrSpec {
   attached?: boolean;
 }
 
-const TEXT_KINDS = ["Label", "Button", "TextBox"];
+const TEXT_KINDS = [yui.LABEL, yui.BUTTON, yui.TEXT_BOX];
 /** Text that wraps (a text box scrolls its one line instead). */
-const WRAP_KINDS = ["Label", "Button"];
+const WRAP_KINDS = [yui.LABEL, yui.BUTTON];
 /** Vanilla's fonts; a resource pack can add more (`namespace:name`). */
 const FONTS = ["minecraft:default", "minecraft:uniform", "minecraft:alt", "minecraft:illageralt"] as const;
 const ANCHORS = ["center", "top_left", "top", "top_right", "left", "right", "bottom_left", "bottom", "bottom_right", "fill"] as const;
 
 const SPECS: AttrSpec[] = [
   { attr: "id", name: "(Name)", category: "Design", kind: "text", description: "The widget's id — a constant in the generated `ids` module, and what `find_mut` looks it up by. The screen's own id is its UI id, `<modid>:<name>`." },
-  { attr: "width", name: "Width", category: "Screen", kind: "number", fallback: "176", only: ["Screen"], description: "The screen's width in GUI pixels." },
-  { attr: "height", name: "Height", category: "Screen", kind: "number", fallback: "166", only: ["Screen"], description: "The screen's height in GUI pixels." },
-  { attr: "theme", name: "Theme", category: "Screen", kind: "enum", options: ["", "minecraft:vanilla"], fallback: "", only: ["Screen"], description: "The look of the screen's elements where they don't set it themselves: none is yog-ui's plain look, minecraft:vanilla the game's windows, buttons and slots." },
-  { attr: "anchor", name: "Anchor", category: "Screen", kind: "enum", options: ANCHORS, fallback: "center", only: ["Screen"], description: "Where the screen sits in the game window; fill stretches it over the whole window." },
-  { attr: "modal", name: "Modal", category: "Screen", kind: "bool", fallback: "true", only: ["Screen"], description: "Whether the screen takes the mouse and keyboard while open (open_ui's modal)." },
-  { attr: "pause", name: "Pauses Game", category: "Screen", kind: "bool", fallback: "false", only: ["Screen"], description: "Whether single-player pauses while the screen is open." },
-  { attr: "x", name: "X", category: "Layout", kind: "number", not: ["Screen"], description: "Left edge, in GUI pixels from the container's content box. Children of a Canvas are always placed at x/y; in a Row or Column, setting x/y takes a child out of the flow." },
-  { attr: "y", name: "Y", category: "Layout", kind: "number", not: ["Screen"], description: "Top edge, in GUI pixels from the container's content box." },
-  { attr: "w", name: "Width", category: "Layout", kind: "units", fallback: "auto", not: ["Screen"], description: "Width: pixels (`80`), a percentage of the container (`50%`), or `auto` to size to the content." },
-  { attr: "h", name: "Height", category: "Layout", kind: "units", fallback: "auto", not: ["Screen"], description: "Height: pixels, a percentage of the container, or `auto`." },
+  { attr: "width", name: "Width", category: "Screen", kind: "number", fallback: "176", only: [yui.SCREEN], description: "The screen's width in GUI pixels." },
+  { attr: "height", name: "Height", category: "Screen", kind: "number", fallback: "166", only: [yui.SCREEN], description: "The screen's height in GUI pixels." },
+  { attr: "theme", name: "Theme", category: "Screen", kind: "enum", options: ["", "minecraft:vanilla"], fallback: "", only: [yui.SCREEN], description: "The look of the screen's elements where they don't set it themselves: none is yog-ui's plain look, minecraft:vanilla the game's windows, buttons and slots." },
+  { attr: "anchor", name: "Anchor", category: "Screen", kind: "enum", options: ANCHORS, fallback: "center", only: [yui.SCREEN], description: "Where the screen sits in the game window; fill stretches it over the whole window." },
+  { attr: "modal", name: "Modal", category: "Screen", kind: "bool", fallback: "true", only: [yui.SCREEN], description: "Whether the screen takes the mouse and keyboard while open (open_ui's modal)." },
+  { attr: "pause", name: "Pauses Game", category: "Screen", kind: "bool", fallback: "false", only: [yui.SCREEN], description: "Whether single-player pauses while the screen is open." },
+  { attr: "x", name: "X", category: "Layout", kind: "number", not: [yui.SCREEN], description: "Left edge, in GUI pixels from the container's content box. Children of a Canvas are always placed at x/y; in a Row or Column, setting x/y takes a child out of the flow." },
+  { attr: "y", name: "Y", category: "Layout", kind: "number", not: [yui.SCREEN], description: "Top edge, in GUI pixels from the container's content box." },
+  { attr: "w", name: "Width", category: "Layout", kind: "units", fallback: "auto", not: [yui.SCREEN], description: "Width: pixels (`80`), a percentage of the container (`50%`), or `auto` to size to the content." },
+  { attr: "h", name: "Height", category: "Layout", kind: "units", fallback: "auto", not: [yui.SCREEN], description: "Height: pixels, a percentage of the container, or `auto`." },
   { attr: "min_w", name: "Minimum Width", category: "Layout", kind: "number", fallback: "4", description: "The smallest width the widget is laid out at." },
   { attr: "min_h", name: "Minimum Height", category: "Layout", kind: "number", fallback: "4", description: "The smallest height the widget is laid out at." },
-  { attr: "flex", name: "Flex", category: "Layout", kind: "number", fallback: "0", not: ["Screen"], description: "Share of the free space along a Row's or Column's direction (0 = none)." },
-  { attr: "tooltip", name: "Tooltip", category: "Common", kind: "text", not: ["Screen"], description: "Text shown next to the cursor while it rests on the widget (\\n breaks lines)." },
-  { attr: "dock", name: "Dock", category: "Layout", kind: "enum", options: ["none", "fill", "left", "right", "top", "bottom"], fallback: "none", not: ["Screen"], description: "Docks the widget to an edge of its Row/Column, or makes it fill the space left." },
-  { attr: "gap", name: "Gap", category: "Layout", kind: "number", fallback: "2", only: [...CONTAINER_KINDS].filter((k) => k !== "Grid"), description: "Space between flowing children." },
-  { attr: "margin", name: "Margin", category: "Layout", kind: "padding", fallback: "0", not: ["Screen"], description: "Space outside the widget: one value for all sides, `vertical horizontal`, or `top right bottom left` (WPF's Margin)." },
-  { attr: "halign", name: "Horizontal Alignment", category: "Layout", kind: "enum", options: ["left", "center", "right", "stretch"], not: ["Screen"], description: "Where the widget sits across the width it's given (WPF's HorizontalAlignment). In a Grid cell the default is stretch (an explicit w is centred); in a Column it overrides the Column's align for this child." },
-  { attr: "valign", name: "Vertical Alignment", category: "Layout", kind: "enum", options: ["top", "center", "bottom", "stretch"], not: ["Screen"], description: "Where the widget sits across the height it's given (WPF's VerticalAlignment). In a Grid cell the default is stretch (an explicit h is centred); in a Row it overrides the Row's align for this child." },
-  { attr: "rows", name: "Rows", category: "Grid", kind: "tracks", axis: "rows", fallback: "*", only: ["Grid"], description: "The grid's row heights, comma-separated: Auto fits the content, * shares the height left (2* gets twice as much), a number is pixels — `Auto,*,26`. … edits them with minimum and maximum heights (written as <Grid.RowDefinitions>)." },
-  { attr: "columns", name: "Columns", category: "Grid", kind: "tracks", axis: "cols", fallback: "*", only: ["Grid"], description: "The grid's column widths, comma-separated: Auto, * / 2* or pixels — `160,*`. … edits them with minimum and maximum widths (written as <Grid.ColumnDefinitions>)." },
-  { attr: "row_spacing", name: "Row Spacing", category: "Grid", kind: "number", fallback: "0", only: ["Grid"], description: "Space between rows, in GUI pixels (WinUI's RowSpacing)." },
-  { attr: "column_spacing", name: "Column Spacing", category: "Grid", kind: "number", fallback: "0", only: ["Grid"], description: "Space between columns, in GUI pixels (WinUI's ColumnSpacing)." },
-  { attr: "Grid.Row", name: "Row", category: "Grid", kind: "index", fallback: "0", attached: true, not: ["Screen"], description: "The grid row the widget is in, from 0 (Grid.Row)." },
-  { attr: "Grid.Column", name: "Column", category: "Grid", kind: "index", fallback: "0", attached: true, not: ["Screen"], description: "The grid column the widget is in, from 0 (Grid.Column)." },
-  { attr: "Grid.RowSpan", name: "Row Span", category: "Grid", kind: "span", fallback: "1", attached: true, not: ["Screen"], description: "How many rows the widget spans (Grid.RowSpan)." },
-  { attr: "Grid.ColumnSpan", name: "Column Span", category: "Grid", kind: "span", fallback: "1", attached: true, not: ["Screen"], description: "How many columns the widget spans (Grid.ColumnSpan)." },
+  { attr: "flex", name: "Flex", category: "Layout", kind: "number", fallback: "0", not: [yui.SCREEN], description: "Share of the free space along a Row's or Column's direction (0 = none)." },
+  { attr: "tooltip", name: "Tooltip", category: "Common", kind: "text", not: [yui.SCREEN], description: "Text shown next to the cursor while it rests on the widget (\\n breaks lines)." },
+  { attr: "dock", name: "Dock", category: "Layout", kind: "enum", options: ["none", "fill", "left", "right", "top", "bottom"], fallback: "none", not: [yui.SCREEN], description: "Docks the widget to an edge of its Row/Column, or makes it fill the space left." },
+  { attr: "gap", name: "Gap", category: "Layout", kind: "number", fallback: "2", only: [...CONTAINER_KINDS].filter((k) => k !== yui.GRID), description: "Space between flowing children." },
+  { attr: "margin", name: "Margin", category: "Layout", kind: "padding", fallback: "0", not: [yui.SCREEN], description: "Space outside the widget: one value for all sides, `vertical horizontal`, or `top right bottom left` (WPF's Margin)." },
+  { attr: "halign", name: "Horizontal Alignment", category: "Layout", kind: "enum", options: ["left", "center", "right", "stretch"], not: [yui.SCREEN], description: "Where the widget sits across the width it's given (WPF's HorizontalAlignment). In a Grid cell the default is stretch (an explicit w is centred); in a Column it overrides the Column's align for this child." },
+  { attr: "valign", name: "Vertical Alignment", category: "Layout", kind: "enum", options: ["top", "center", "bottom", "stretch"], not: [yui.SCREEN], description: "Where the widget sits across the height it's given (WPF's VerticalAlignment). In a Grid cell the default is stretch (an explicit h is centred); in a Row it overrides the Row's align for this child." },
+  { attr: "rows", name: "Rows", category: "Grid", kind: "tracks", axis: "rows", fallback: "*", only: [yui.GRID], description: "The grid's row heights, comma-separated: Auto fits the content, * shares the height left (2* gets twice as much), a number is pixels — `Auto,*,26`. … edits them with minimum and maximum heights (written as <Grid.RowDefinitions>)." },
+  { attr: "columns", name: "Columns", category: "Grid", kind: "tracks", axis: "cols", fallback: "*", only: [yui.GRID], description: "The grid's column widths, comma-separated: Auto, * / 2* or pixels — `160,*`. … edits them with minimum and maximum widths (written as <Grid.ColumnDefinitions>)." },
+  { attr: "row_spacing", name: "Row Spacing", category: "Grid", kind: "number", fallback: "0", only: [yui.GRID], description: "Space between rows, in GUI pixels (WinUI's RowSpacing)." },
+  { attr: "column_spacing", name: "Column Spacing", category: "Grid", kind: "number", fallback: "0", only: [yui.GRID], description: "Space between columns, in GUI pixels (WinUI's ColumnSpacing)." },
+  { attr: "Grid.Row", name: "Row", category: "Grid", kind: "index", fallback: "0", attached: true, not: [yui.SCREEN], description: "The grid row the widget is in, from 0 (Grid.Row)." },
+  { attr: "Grid.Column", name: "Column", category: "Grid", kind: "index", fallback: "0", attached: true, not: [yui.SCREEN], description: "The grid column the widget is in, from 0 (Grid.Column)." },
+  { attr: "Grid.RowSpan", name: "Row Span", category: "Grid", kind: "span", fallback: "1", attached: true, not: [yui.SCREEN], description: "How many rows the widget spans (Grid.RowSpan)." },
+  { attr: "Grid.ColumnSpan", name: "Column Span", category: "Grid", kind: "span", fallback: "1", attached: true, not: [yui.SCREEN], description: "How many columns the widget spans (Grid.ColumnSpan)." },
   { attr: "padding", name: "Padding", category: "Layout", kind: "padding", fallback: "0", description: "Inner spacing: one value for all sides, `vertical horizontal`, or `top right bottom left`." },
   { attr: "align", name: "Alignment", category: "Layout", kind: "enum", options: ["start", "center", "end"], fallback: "start", description: "Cross-axis alignment of a container's children; horizontal alignment of a Label's text." },
   { attr: "text", name: "Text", category: "Appearance", kind: "text", only: TEXT_KINDS, description: "The text shown (a text box's initial text)." },
-  { attr: "placeholder", name: "Placeholder", category: "Appearance", kind: "text", only: ["TextBox"], description: "Greyed hint shown while the text box is empty." },
+  { attr: "placeholder", name: "Placeholder", category: "Appearance", kind: "text", only: [yui.TEXT_BOX], description: "Greyed hint shown while the text box is empty." },
   { attr: "bg", name: "Background", category: "Appearance", kind: "color", description: "Background color — `#RRGGBB` or `#AARRGGBB`. Empty draws none." },
   { attr: "color", name: "Text Color", category: "Appearance", kind: "color", fallback: "#FFCCCCAA", only: TEXT_KINDS, description: "Text color — `#RRGGBB` or `#AARRGGBB`." },
   { attr: "font", name: "Font", category: "Appearance", kind: "text", fallback: "minecraft:default", only: TEXT_KINDS, suggestions: FONTS, description: "The font, as a font id: minecraft:default, minecraft:uniform (Unifont), minecraft:alt (enchanting table), minecraft:illageralt, or one from a resource pack." },
@@ -87,22 +88,22 @@ const SPECS: AttrSpec[] = [
   { attr: "focus_style", name: "Focus Style", category: "Appearance", kind: "enum", options: ["outline", "fill", "none"], fallback: "outline", description: "How keyboard focus is shown." },
   { attr: "focus_color", name: "Focus Color", category: "Appearance", kind: "color", description: "Color of the focus indicator (default amber)." },
   { attr: "enabled", name: "Enabled", category: "Behavior", kind: "bool", fallback: "true", description: "Whether the widget takes clicks and focus." },
-  { attr: "on_click", name: "On Click", category: "Events", kind: "text", not: ["Screen"], description: "The event raised when it's clicked — a constant in the generated `events` module; `click()` returns it." },
-  { attr: "max_length", name: "Max Length", category: "Behavior", kind: "number", fallback: "0", only: ["TextBox"], description: "The most characters the text box takes (0 = no limit)." },
-  { attr: "on_change", name: "On Change", category: "Events", kind: "text", only: ["TextBox"], description: "The event raised when the text box's text changes — a constant in the generated `events` module; `TextBoxState::event_name` returns it." },
-  { attr: "on_submit", name: "On Submit", category: "Events", kind: "text", only: ["TextBox"], description: "The event raised when Enter is pressed in the text box — a constant in the generated `events` module." },
-  { attr: "item", name: "Item", category: "Data", kind: "text", only: ["ItemSlot", "InvSlot"], description: "The item shown, as `namespace:id`." },
-  { attr: "slot", name: "Recipe Slot", category: "Data", kind: "text", only: ["RecipeSlot"], description: "Which slot of the recipe's kind this place is for — a mod kind's slot (its .ydef), or the game's: grid, input, template, base, addition." },
-  { attr: "index", name: "Place", category: "Data", kind: "number", fallback: "0", only: ["RecipeSlot"], description: "Which of the slot's ingredients goes here: 0, 1, … (empty: the next after this slot's last place)." },
-  { attr: "frame", name: "Frame", category: "Appearance", kind: "bool", fallback: "false", only: ["RecipeSlot", "RecipeResult"], description: "A slot frame behind it, for layouts without their own picture." },
-  { attr: "d:item", name: "Sample Item", category: "Design", kind: "text", only: ["RecipeSlot", "RecipeResult"], description: "An item shown here in the designer only — what a recipe might put in it." },
-  { attr: "kind", name: "Recipe Kind", category: "Data", kind: "text", only: ["RecipeArea"], description: "The kind of recipe it makes — the mod's (assembly, its namespace added; a .ydef recipe_kind) or another's (mymod:infusion). Its layout is the .yui <Component recipe_layout> for that kind." },
-  { attr: "index", name: "Slot Index", category: "Data", kind: "number", fallback: "0", only: ["Slot"], description: "Which slot of the block's inventory this is (0, 1, …)." },
-  { attr: "count", name: "Count", category: "Data", kind: "number", fallback: "1", only: ["InvSlot"], description: "The stack size drawn in the corner (shown when over 1)." },
-  { attr: "source", name: "Source", category: "Data", kind: "image", only: ["Image"], description: "What the image shows — a Yog image source, the same on every Minecraft version and loader: item:apple, block:stone, sprite:button (Yog's GUI sprite names), mod:gui/logo (this mod's assets/<mod id>/textures/gui/logo.png) or othermod:gui/logo." },
-  { attr: "stretch", name: "Stretch", category: "Data", kind: "enum", options: ["None", "Fill", "Uniform", "UniformToFill"], fallback: "Uniform", only: ["Image"], description: "How the image fills the widget: None = natural size, centered; Fill = the whole box; Uniform = as large as fits, aspect kept; UniformToFill = covers the box, aspect kept, the overflow cut (textures only)." },
-  { attr: "uv", name: "Region", category: "Data", kind: "uv", only: ["Image"], description: "Part of a texture to show, `u v w h` in the image's pixels (textures only). Empty = the whole image." },
-  { attr: "tint", name: "Tint", category: "Appearance", kind: "color", fallback: "#FFFFFFFF", only: ["Image"], description: "Multiplies the image's colors — `#RRGGBB` or `#AARRGGBB` (items aren't tinted)." },
+  { attr: "on_click", name: "On Click", category: "Events", kind: "text", not: [yui.SCREEN], description: "The event raised when it's clicked — a constant in the generated `events` module; `click()` returns it." },
+  { attr: "max_length", name: "Max Length", category: "Behavior", kind: "number", fallback: "0", only: [yui.TEXT_BOX], description: "The most characters the text box takes (0 = no limit)." },
+  { attr: "on_change", name: "On Change", category: "Events", kind: "text", only: [yui.TEXT_BOX], description: "The event raised when the text box's text changes — a constant in the generated `events` module; `TextBoxState::event_name` returns it." },
+  { attr: "on_submit", name: "On Submit", category: "Events", kind: "text", only: [yui.TEXT_BOX], description: "The event raised when Enter is pressed in the text box — a constant in the generated `events` module." },
+  { attr: "item", name: "Item", category: "Data", kind: "text", only: [yui.ITEM_SLOT, yui.INV_SLOT], description: "The item shown, as `namespace:id`." },
+  { attr: "slot", name: "Recipe Slot", category: "Data", kind: "text", only: [yui.RECIPE_SLOT], description: "Which slot of the recipe's kind this place is for — a mod kind's slot (its .ydef), or the game's: grid, input, template, base, addition." },
+  { attr: "index", name: "Place", category: "Data", kind: "number", fallback: "0", only: [yui.RECIPE_SLOT], description: "Which of the slot's ingredients goes here: 0, 1, … (empty: the next after this slot's last place)." },
+  { attr: "frame", name: "Frame", category: "Appearance", kind: "bool", fallback: "false", only: [yui.RECIPE_SLOT, yui.RECIPE_RESULT], description: "A slot frame behind it, for layouts without their own picture." },
+  { attr: "d:item", name: "Sample Item", category: "Design", kind: "text", only: [yui.RECIPE_SLOT, yui.RECIPE_RESULT], description: "An item shown here in the designer only — what a recipe might put in it." },
+  { attr: "kind", name: "Recipe Kind", category: "Data", kind: "text", only: [yui.RECIPE_AREA], description: "The kind of recipe it makes — the mod's (assembly, its namespace added; a .ydef recipe_kind) or another's (mymod:infusion). Its layout is the .yui <Component recipe_layout> for that kind." },
+  { attr: "index", name: "Slot Index", category: "Data", kind: "number", fallback: "0", only: [yui.SLOT], description: "Which slot of the block's inventory this is (0, 1, …)." },
+  { attr: "count", name: "Count", category: "Data", kind: "number", fallback: "1", only: [yui.INV_SLOT], description: "The stack size drawn in the corner (shown when over 1)." },
+  { attr: "source", name: "Source", category: "Data", kind: "image", only: [yui.IMAGE], description: "What the image shows — a Yog image source, the same on every Minecraft version and loader: item:apple, block:stone, sprite:button (Yog's GUI sprite names), mod:gui/logo (this mod's assets/<mod id>/textures/gui/logo.png) or othermod:gui/logo." },
+  { attr: "stretch", name: "Stretch", category: "Data", kind: "enum", options: ["None", "Fill", "Uniform", "UniformToFill"], fallback: "Uniform", only: [yui.IMAGE], description: "How the image fills the widget: None = natural size, centered; Fill = the whole box; Uniform = as large as fits, aspect kept; UniformToFill = covers the box, aspect kept, the overflow cut (textures only)." },
+  { attr: "uv", name: "Region", category: "Data", kind: "uv", only: [yui.IMAGE], description: "Part of a texture to show, `u v w h` in the image's pixels (textures only). Empty = the whole image." },
+  { attr: "tint", name: "Tint", category: "Appearance", kind: "color", fallback: "#FFFFFFFF", only: [yui.IMAGE], description: "Multiplies the image's colors — `#RRGGBB` or `#AARRGGBB` (items aren't tinted)." },
 ];
 
 const applies = (spec: AttrSpec, kind: string) => (!spec.only || spec.only.includes(kind)) && !spec.not?.includes(kind);
@@ -158,9 +159,9 @@ function instanceSpecs(info: ComponentInfo): AttrSpec[] {
 
 /** The rows a `kind` has: a built-in widget's, a component instance's, or a component document's own. */
 function specsFor(kind: string, components: ComponentsSnapshot | null): AttrSpec[] {
-  if (kind === "Component") return COMPONENT_SPECS;
-  if (kind === "Property") return PROPERTY_SPECS;
-  if (kind === "Event") return EVENT_SPECS;
+  if (kind === yui.COMPONENT) return COMPONENT_SPECS;
+  if (kind === yui.PROPERTY) return PROPERTY_SPECS;
+  if (kind === yui.EVENT) return EVENT_SPECS;
   const info = KIND_INFO[kind as keyof typeof KIND_INFO] ? null : findComponent(components, kind);
   // An instance's own attributes (x, w, bg, ...) override its body's root; its events are its declared ones.
   if (info) return [...instanceSpecs(info), ...SPECS.filter((spec) => spec.category !== "Events" && applies(spec, kind))];
@@ -341,7 +342,7 @@ function tracksRow(spec: AttrSpec, axis: Axis, nodes: YuiNode[], grid: GridConte
  * included, descriptions as completion info (in the current language).
  */
 export function yuiSchema(): XmlSchema {
-  const children = KINDS.filter((k) => k !== "Screen");
+  const children = KINDS.filter((k) => k !== yui.SCREEN);
   const attributes = (specs: AttrSpec[]) =>
     specs.map((spec) => ({
       name: spec.attr,
@@ -388,8 +389,8 @@ export function yuiSchema(): XmlSchema {
   return {
     elements: [...component, ...definitions, ...KINDS.map((kind) => ({
       name: kind,
-      top: kind === "Screen",
-      children: kind === "Grid" ? [AXES.rows.prop, AXES.cols.prop, ...children] : CONTAINER_KINDS.has(kind) ? children : [],
+      top: kind === yui.SCREEN,
+      children: kind === yui.GRID ? [AXES.rows.prop, AXES.cols.prop, ...children] : CONTAINER_KINDS.has(kind) ? children : [],
       completion: { info: t(KIND_INFO[kind].description) },
       attributes: SPECS.filter((spec) => applies(spec, kind)).map((spec) => ({
         name: spec.attr,

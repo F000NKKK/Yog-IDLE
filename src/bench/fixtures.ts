@@ -1,3 +1,4 @@
+import { yui } from "../data/yogIds.generated";
 // Synthetic inputs for the vitest benches and the equivalence tests that
 // keep the optimized code saying exactly what it said before. (No `Grid.Row`-style
 // attributes: happy-dom's XML parser rejects dotted attribute names.)
@@ -12,9 +13,9 @@ export function yuiText(depth: number, width: number): string {
     for (let i = 0; i < width; i++) {
       const id = n++;
       if (d < depth && i === 0) {
-        const kind = d % 3 === 0 ? "Column" : d % 3 === 1 ? "Row" : "Grid";
+        const kind = d % 3 === 0 ? yui.COLUMN : d % 3 === 1 ? yui.ROW : yui.GRID;
         lines.push(`${indent}<${kind} x:Name="c${id}" gap="2" padding="2" bg="#ff202020" w="${d % 2 ? "100%" : "auto"}">`);
-        if (kind === "Grid") {
+        if (kind === yui.GRID) {
           lines.push(`${indent}    <Grid.ColumnDefinitions>`, `${indent}        <ColumnDefinition Width="Auto" />`, `${indent}        <ColumnDefinition Width="*" />`, `${indent}    </Grid.ColumnDefinitions>`);
         }
         level(d + 1, `${indent}    `);

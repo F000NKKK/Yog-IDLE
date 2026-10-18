@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react";
+import { yui } from "../data/yogIds.generated";
 import { useTyped } from "../data/typed";
 import { cli } from "../cli";
 import { invoke } from "@tauri-apps/api/core";
@@ -195,9 +196,9 @@ const toRect = ([x, y, w, h]: [number, number, number, number]): DesignRect => (
 
 /** The event a double-click on `node` opens the handler of (Visual Studio's default event), if it has one. */
 function defaultEvent(node: YuiNode): "on_click" | "on_change" | null {
-  if (node.kind === "Button") return "on_click";
-  if (node.kind === "TextBox") return "on_change";
-  return node.kind !== "Screen" && node.attrs.on_click ? "on_click" : null;
+  if (node.kind === yui.BUTTON) return "on_click";
+  if (node.kind === yui.TEXT_BOX) return "on_change";
+  return node.kind !== yui.SCREEN && node.attrs.on_click ? "on_click" : null;
 }
 
 /** A new event name for `attr` on `node`, like Visual Studio's `button1_Click`: `<id>_click`, unique in the screen. */
@@ -523,13 +524,13 @@ function CanvasDesigner({ path, content, onChange, readOnly, contentVersion, lin
   /** A built-in kind or one of the mod's components — what may be added (never a root, nor a component into itself). */
   const addable = (kind: string) => {
     const root = sessionRef.current?.doc.root;
-    if (kind === "Screen" || (root && isComponentDoc(root) && root.attrs.name === kind)) return false;
+    if (kind === yui.SCREEN || (root && isComponentDoc(root) && root.attrs.name === kind)) return false;
     return (KINDS as readonly string[]).includes(kind) || !!findComponent(components, kind);
   };
 
   /** Index among `container`'s children where something dropped at `point` goes (flow containers). */
   const flowIndex = (container: YuiNode, point: DesignPoint, skip: ReadonlySet<string>): number => {
-    const row = container.kind === "Row";
+    const row = container.kind === yui.ROW;
     let index = 0;
     for (const c of container.children) {
       if (skip.has(c.uid)) continue;
@@ -1065,7 +1066,7 @@ function CanvasDesigner({ path, content, onChange, readOnly, contentVersion, lin
     let found: YuiNode | null = null;
     const visit = (n: YuiNode) => {
       const r = g?.get(n.uid)?.rect;
-      if (n.kind === "TextBox" && n.attrs.enabled !== "false" && r && x >= r.x && y >= r.y && x < r.x + r.w && y < r.y + r.h) found = n;
+      if (n.kind === yui.TEXT_BOX && n.attrs.enabled !== "false" && r && x >= r.x && y >= r.y && x < r.x + r.w && y < r.y + r.h) found = n;
       n.children.forEach(visit);
     };
     if (doc) visit(doc.root);
@@ -1386,7 +1387,7 @@ function DesignOutlines({ root, geo, zoom }: { root: YuiNode; geo: Map<string, G
   const out: ReactNode[] = [];
   const visit = (n: YuiNode) => {
     const g = geo.get(n.uid);
-    if (g && (isContainer(n) || n.kind === "Spacer")) out.push(<div key={n.uid} className="yui-box yui-outline" style={box(g.rect, zoom)} />);
+    if (g && (isContainer(n) || n.kind === yui.SPACER)) out.push(<div key={n.uid} className="yui-box yui-outline" style={box(g.rect, zoom)} />);
     if (isContainer(n)) n.children.forEach(visit);
   };
   visit(root);

@@ -3,6 +3,7 @@
 // will. Keep in step with the crate.
 
 import { designImage, designText } from "../lang/designResources";
+import { yui } from "../data/yogIds.generated";
 import { gridDefs, type GridLength, type TrackDef } from "./grid";
 import { CANVAS_KINDS, parseColor, parseNumber, widgetChildren, type YuiNode } from "./yui";
 
@@ -309,7 +310,7 @@ function toWidget(node: YuiNode, inCanvas: boolean): LWidget {
     style.color = 0xffe0e0e0;
     style.pad = [0, 4, 0, 4];
   }
-  if (node.kind === "Screen") {
+  if (node.kind === yui.SCREEN) {
     const w = parseNumber(a.width);
     const h = parseNumber(a.height);
     if (w !== null) style.w = { t: "px", v: w };
@@ -341,13 +342,13 @@ function toWidget(node: YuiNode, inCanvas: boolean): LWidget {
   if (a.shadow === "false") style.shadow = false;
   if (a.no_wrap === "true") style.noWrap = true;
   if (a.ellipsis === "true") style.noWrap = style.ellipsis = true;
-  if (node.kind === "ScrollView") style.scrollbar = style.clip = true;
+  if (node.kind === yui.SCROLL_VIEW) style.scrollbar = style.clip = true;
   const canvas = CANVAS_KINDS.has(node.kind);
-  const defs = node.kind === "Grid" ? gridDefs(node) : null;
+  const defs = node.kind === yui.GRID ? gridDefs(node) : null;
   return {
     uid: node.uid,
     kind,
-    dir: node.kind === "Row" ? "row" : "column",
+    dir: node.kind === yui.ROW ? "row" : "column",
     text: designText(a.text ?? ""),
     placeholder: designText(a.placeholder ?? ""),
     item: a.item ?? "",
@@ -406,7 +407,7 @@ export function screenWidget(screen: YuiNode, screenW: number, screenH: number):
   } else {
     content.style.pos = anchorOffset(screen.attrs.anchor, screenW, screenH, w, h);
   }
-  const wrapper = toWidget({ uid: "", kind: "Column", attrs: {}, children: [] }, false);
+  const wrapper = toWidget({ uid: "", kind: yui.COLUMN, attrs: {}, children: [] }, false);
   wrapper.uid = "";
   wrapper.style.w = { t: "px", v: screenW };
   wrapper.style.h = { t: "px", v: screenH };

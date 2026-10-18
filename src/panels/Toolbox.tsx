@@ -1,4 +1,5 @@
 import { useState, useSyncExternalStore } from "react";
+import { yui } from "../data/yogIds.generated";
 import { useTyped } from "../data/typed";
 import { SearchField, beginItemDrag, useT } from "substrate-platform-ui";
 import { TOOLBOX_MIME, useActiveDesigner } from "../designer/activeDesigner";
@@ -78,11 +79,11 @@ export function Toolbox() {
   const needle = query.trim().toLowerCase();
 
   // A recipe layout's own elements only while one is open (a screen has no recipe).
-  const recipeLayout = designer?.doc.root.kind === "Component" && designer.doc.root.attrs.recipe_layout !== undefined;
+  const recipeLayout = designer?.doc.root.kind === yui.COMPONENT && designer.doc.root.attrs.recipe_layout !== undefined;
   const groups: Group[] = GROUPS.filter((g) => g !== "Recipe Layout" || recipeLayout).map((group) => ({
     key: group,
     title: t(group),
-    entries: KINDS.filter((k) => k !== "Screen" && KIND_INFO[k].group === group).map((k) => ({
+    entries: KINDS.filter((k) => k !== yui.SCREEN && KIND_INFO[k].group === group).map((k) => ({
       kind: k,
       label: t(KIND_INFO[k].label),
       description: t(KIND_INFO[k].description),
@@ -91,7 +92,7 @@ export function Toolbox() {
   }));
   if (components) {
     // A component can't hold itself: not offered while its own .yui is open.
-    const editing = designer?.doc.root.kind === "Component" ? designer.doc.root.attrs.name : undefined;
+    const editing = designer?.doc.root.kind === yui.COMPONENT ? designer.doc.root.attrs.name : undefined;
     const building = components.compiled.length > 0 && components.status === "building";
     const failed = components.compiled.length > 0 && components.status === "failed";
     const fallback = t("{name} Components", { name: components.modName });

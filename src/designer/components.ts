@@ -6,6 +6,7 @@
 // Properties.
 
 import { cli } from "../cli";
+import { yui } from "../data/yogIds.generated";
 import { useEffect, useSyncExternalStore } from "react";
 import type { YuiNode } from "./yui";
 
@@ -117,9 +118,9 @@ export function findComponent(snapshot: ComponentsSnapshot | null, kind: string)
 // ── Component documents ────────────────────────────────────────────────────
 
 /** Children of a `<Component>` that declare rather than draw. */
-const DECLARATION_KINDS: ReadonlySet<string> = new Set(["Property", "Event"]);
+const DECLARATION_KINDS: ReadonlySet<string> = new Set([yui.PROPERTY, yui.EVENT]);
 
-export const isComponentDoc = (root: YuiNode) => root.kind === "Component";
+export const isComponentDoc = (root: YuiNode) => root.kind === yui.COMPONENT;
 
 /** A component document's body (its one drawn element), if it has one. */
 export function componentBody(root: YuiNode): YuiNode | null {
@@ -164,7 +165,7 @@ function bindValues(node: YuiNode, values: Record<string, string>): YuiNode {
 export function designRoot(root: YuiNode): YuiNode {
   if (!isComponentDoc(root)) return root;
   const values: Record<string, string> = {};
-  for (const c of root.children) if (c.kind === "Property" && c.attrs.name) values[c.attrs.name] = c.attrs.default ?? "";
+  for (const c of root.children) if (c.kind === yui.PROPERTY && c.attrs.name) values[c.attrs.name] = c.attrs.default ?? "";
   // A recipe layout is its own size; a component's design size is a preview's.
   const layout = root.attrs.recipe_layout !== undefined;
   const attrs: Record<string, string> = {
@@ -173,7 +174,7 @@ export function designRoot(root: YuiNode): YuiNode {
     anchor: "center",
   };
   if (root.attrs["d:bg"]) attrs.bg = root.attrs["d:bg"];
-  return { uid: root.uid, kind: "Screen", attrs, children: root.children.filter((c) => !DECLARATION_KINDS.has(c.kind)).map((c) => bindValues(c, values)) };
+  return { uid: root.uid, kind: yui.SCREEN, attrs, children: root.children.filter((c) => !DECLARATION_KINDS.has(c.kind)).map((c) => bindValues(c, values)) };
 }
 
 /** `stat_bar` → `StatBar`. */

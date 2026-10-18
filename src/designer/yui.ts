@@ -1,10 +1,11 @@
+import { yui } from "../data/yogIds.generated";
 // The `.yui` screen format — a XAML-like XML form of a `yog-ui` widget tree
 // (see docs/yui.md). `yog build` / `yog ui gen` turn it into Rust builder
 // code; this module is the designer's side: parse, edit as a tree of nodes,
 // write back.
 
 /** Every element the format knows, in Toolbox order. */
-export const KINDS = ["Screen", "Grid", "Canvas", "Column", "Row", "ScrollView", "Label", "Button", "TextBox", "Spacer", "ItemSlot", "InvSlot", "Slot", "PlayerInventory", "RecipeArea", "Image", "RecipeSlot", "RecipeResult", "RecipeCount"] as const;
+export const KINDS = [yui.SCREEN, yui.GRID, yui.CANVAS, yui.COLUMN, yui.ROW, yui.SCROLL_VIEW, yui.LABEL, yui.BUTTON, yui.TEXT_BOX, yui.SPACER, yui.ITEM_SLOT, yui.INV_SLOT, yui.SLOT, yui.PLAYER_INVENTORY, yui.RECIPE_AREA, yui.IMAGE, yui.RECIPE_SLOT, yui.RECIPE_RESULT, yui.RECIPE_COUNT] as const;
 export type YuiKind = (typeof KINDS)[number];
 
 export interface YuiNode {
@@ -23,13 +24,13 @@ export interface YuiDoc {
   root: YuiNode;
 }
 
-export const CONTAINER_KINDS: ReadonlySet<string> = new Set(["Screen", "Grid", "Canvas", "Column", "Row", "ScrollView"]);
+export const CONTAINER_KINDS: ReadonlySet<string> = new Set([yui.SCREEN, yui.GRID, yui.CANVAS, yui.COLUMN, yui.ROW, yui.SCROLL_VIEW]);
 /** Containers that position every child absolutely (a missing x/y is 0). */
-export const CANVAS_KINDS: ReadonlySet<string> = new Set(["Screen", "Canvas"]);
+export const CANVAS_KINDS: ReadonlySet<string> = new Set([yui.SCREEN, yui.CANVAS]);
 
 export const isContainer = (n: YuiNode) => CONTAINER_KINDS.has(n.kind);
 export const isCanvas = (n: YuiNode) => CANVAS_KINDS.has(n.kind);
-export const isGrid = (n: YuiNode) => n.kind === "Grid";
+export const isGrid = (n: YuiNode) => n.kind === yui.GRID;
 /** A property element (`<Grid.RowDefinitions>`): part of its parent, not a widget. */
 export const isPropertyElement = (n: YuiNode) => n.kind.includes(".");
 /** The children that are widgets (property elements skipped). */
@@ -380,116 +381,116 @@ export interface KindInfo {
 }
 
 export const KIND_INFO: Record<YuiKind, KindInfo> = {
-  Screen: { kind: "Screen", label: "Screen", group: "Containers", description: "The screen itself — the root of a .yui file.", defaults: {} },
-  Grid: {
-    kind: "Grid",
+  [yui.SCREEN]: { kind: yui.SCREEN, label: "Screen", group: "Containers", description: "The screen itself — the root of a .yui file.", defaults: {} },
+  [yui.GRID]: {
+    kind: yui.GRID,
     label: "Grid Panel",
     group: "Containers",
     description: "Rows and columns like WPF's Grid: children sit in cells (Grid.Row / Grid.Column); rows and columns are Auto, * or pixels.",
     defaults: { w: "120", h: "80", rows: "Auto,*", columns: "*,*" },
   },
-  Canvas: {
-    kind: "Canvas",
+  [yui.CANVAS]: {
+    kind: yui.CANVAS,
     label: "Canvas",
     group: "Containers",
     description: "A panel whose children are placed freely at x/y.",
     defaults: { w: "80", h: "60", bg: "#40000000" },
   },
-  Column: {
-    kind: "Column",
+  [yui.COLUMN]: {
+    kind: yui.COLUMN,
     label: "Stack Panel (Column)",
     group: "Containers",
     description: "Stacks its children top to bottom (flex column).",
     defaults: { w: "80", h: "60", gap: "2", padding: "2" },
   },
-  Row: {
-    kind: "Row",
+  [yui.ROW]: {
+    kind: yui.ROW,
     label: "Stack Panel (Row)",
     group: "Containers",
     description: "Lays its children out left to right (flex row).",
     defaults: { w: "100", h: "20", gap: "2", padding: "2" },
   },
-  ScrollView: {
-    kind: "ScrollView",
+  [yui.SCROLL_VIEW]: {
+    kind: yui.SCROLL_VIEW,
     label: "Scroll Viewer",
     group: "Containers",
     description: "A column that clips its children and scrolls them, with a scrollbar when they overflow (scroll_y in code).",
     defaults: { w: "80", h: "60", gap: "2", padding: "2", bg: "#40000000" },
   },
-  Label: { kind: "Label", label: "Label", group: "Common Controls", description: "Static text.", defaults: { text: "Label", no_wrap: "true" } },
-  Button: {
-    kind: "Button",
+  [yui.LABEL]: { kind: yui.LABEL, label: "Label", group: "Common Controls", description: "Static text.", defaults: { text: "Label", no_wrap: "true" } },
+  [yui.BUTTON]: {
+    kind: yui.BUTTON,
     label: "Button",
     group: "Common Controls",
     description: "Clickable text that raises an on_click event.",
     defaults: { w: "80", h: "20", text: "Button", bg: "#FF555555", color: "#FFFFFF" },
   },
-  TextBox: {
-    kind: "TextBox",
+  [yui.TEXT_BOX]: {
+    kind: yui.TEXT_BOX,
     label: "Text Box",
     group: "Common Controls",
     description: "A one-line text input: click to focus, type, Enter raises on_submit; each edit raises on_change (TextBoxState in code).",
     defaults: { w: "100", h: "16", placeholder: "Text" },
   },
-  Spacer: { kind: "Spacer", label: "Spacer", group: "Common Controls", description: "Invisible space; give it flex to push siblings apart.", defaults: { w: "8", h: "8" } },
-  ItemSlot: {
-    kind: "ItemSlot",
+  [yui.SPACER]: { kind: yui.SPACER, label: "Spacer", group: "Common Controls", description: "Invisible space; give it flex to push siblings apart.", defaults: { w: "8", h: "8" } },
+  [yui.ITEM_SLOT]: {
+    kind: yui.ITEM_SLOT,
     label: "Item Slot",
     group: "Minecraft",
     description: "An item icon in an 18×18 slot.",
     defaults: { item: "minecraft:diamond" },
   },
-  InvSlot: {
-    kind: "InvSlot",
+  [yui.INV_SLOT]: {
+    kind: yui.INV_SLOT,
     label: "Inventory Slot",
     group: "Minecraft",
     description: "A vanilla-looking inventory slot with an item and a stack count.",
     defaults: { item: "minecraft:diamond", count: "1" },
   },
-  Slot: {
-    kind: "Slot",
+  [yui.SLOT]: {
+    kind: yui.SLOT,
     label: "Container Slot",
     group: "Minecraft",
     description: "A real slot of the block's inventory (by index): the game draws its item and handles dragging. Where it is in the layout is where the slot is.",
     defaults: { index: "0" },
   },
-  PlayerInventory: {
-    kind: "PlayerInventory",
+  [yui.PLAYER_INVENTORY]: {
+    kind: yui.PLAYER_INVENTORY,
     label: "Player Inventory",
     group: "Minecraft",
     description: "The player's inventory on an inventory screen: 3 rows of 9 and the hotbar, real slots.",
     defaults: {},
   },
-  RecipeArea: {
-    kind: "RecipeArea",
+  [yui.RECIPE_AREA]: {
+    kind: yui.RECIPE_AREA,
     label: "Recipe Area",
     group: "Minecraft",
     description: "Makes the block a machine for a kind of recipe, like a crafting table: the kind's layout (its .yui recipe_layout) with its places as real slots, numbered after the screen's own, and its result an output slot.",
     defaults: { kind: "" },
   },
-  Image: {
-    kind: "Image",
+  [yui.IMAGE]: {
+    kind: yui.IMAGE,
     label: "Image",
     group: "Minecraft",
     description: "An image: an item or block icon, a GUI sprite or a mod texture (a Yog image source).",
     defaults: { source: "item:apple", w: "16", h: "16" },
   },
-  RecipeSlot: {
-    kind: "RecipeSlot",
+  [yui.RECIPE_SLOT]: {
+    kind: yui.RECIPE_SLOT,
     label: "Recipe Slot",
     group: "Recipe Layout",
     description: "A place for one of the recipe's ingredients: a slot of its kind (`slot`), the n-th of it (`index`), framed or not.",
     defaults: { slot: "input", frame: "true", "d:item": "minecraft:iron_ore" },
   },
-  RecipeResult: {
-    kind: "RecipeResult",
+  [yui.RECIPE_RESULT]: {
+    kind: yui.RECIPE_RESULT,
     label: "Recipe Result",
     group: "Recipe Layout",
     description: "Where the recipe's result is shown.",
     defaults: { frame: "true", "d:item": "minecraft:iron_ingot" },
   },
-  RecipeCount: {
-    kind: "RecipeCount",
+  [yui.RECIPE_COUNT]: {
+    kind: yui.RECIPE_COUNT,
     label: "Result Count",
     group: "Recipe Layout",
     description: "The result's count, shown when it's more than one.",
@@ -506,6 +507,6 @@ export function newNode(kind: string): YuiNode {
 export function newScreen(id: string): YuiDoc {
   return {
     prolog: "",
-    root: { uid: newUid(), kind: "Screen", attrs: { id, width: "176", height: "166", anchor: "center", bg: "#C0101010", padding: "4" }, children: [] },
+    root: { uid: newUid(), kind: yui.SCREEN, attrs: { id, width: "176", height: "166", anchor: "center", bg: "#C0101010", padding: "4" }, children: [] },
   };
 }
