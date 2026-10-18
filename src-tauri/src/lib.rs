@@ -10,6 +10,7 @@ use substrate_platform::{
 };
 use tauri::{AppHandle, Emitter, Manager, State};
 
+mod cli;
 mod content;
 mod data;
 mod designer;
@@ -699,6 +700,15 @@ async fn content_save_texture_animation(
     })
     .await
     .map_err(|e| e.to_string())?
+}
+
+/// Calls `method` of the CLI service (`yog serve`) — how the front end reads
+/// and writes every Yog format.
+#[tauri::command]
+async fn cli(method: String, params: serde_json::Value) -> Result<serde_json::Value, serde_json::Value> {
+    tauri::async_runtime::spawn_blocking(move || cli::call(&method, params))
+        .await
+        .map_err(|e| serde_json::Value::from(e.to_string()))?
 }
 
 /// The id of the mod a content file is in (its own textures' namespace).
@@ -1864,6 +1874,7 @@ pub fn run() {
         content_texture,
         content_textures,
         content_mod_id,
+        cli,
         content_save_texture,
         content_save_texture_animation,
         content_strings,

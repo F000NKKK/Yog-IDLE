@@ -505,7 +505,7 @@ fn rebuild(root: &Path, shared: &Shared, fp: u64) {
 }
 
 fn build_lib(root: &Path) -> Result<PathBuf, String> {
-    let out = Command::new("yog")
+    let out = crate::cli::command()
         .arg("designer-lib")
         .current_dir(root)
         .stdin(Stdio::null())

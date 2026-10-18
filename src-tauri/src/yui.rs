@@ -6,7 +6,6 @@
 
 use yog_ids::Format;
 use std::path::PathBuf;
-use std::process::Command;
 
 /// Runs `yog ui gen <path>` in the file's folder, so a saved screen's
 /// generated `foo.g.rs` is current without a full build (`yog` finds the
@@ -23,7 +22,7 @@ pub fn codegen(path: &str) -> Result<Codegen, String> {
         Some(Format::Block | Format::Item) => &["content", "check"],
         _ => return Err(format!("not a .yui, .yres, .yblock or .yitem file: {path}")),
     };
-    let mut command = Command::new("yog");
+    let mut command = crate::cli::command();
     command.args(args);
     if args[0] == "ui" {
         command.arg(&file);

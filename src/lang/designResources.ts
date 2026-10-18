@@ -5,6 +5,8 @@
  * and `texture="@Icons.logo"` the image's source, as `yog build` would
  * resolve them (see docs/yres.md).
  */
+import { cli } from "../cli";
+import { file } from "../data/yogIds.generated";
 import { classify, type Typed } from "../data/yogData";
 import { useEffect, useSyncExternalStore } from "react";
 import { resolvedLocale, type DirEntry } from "substrate-platform-ui";
@@ -24,6 +26,8 @@ interface Loaded {
   root: string;
   modId: string;
   sets: Map<string, ResourceSet>;
+  /** `Set.name` → the picture's path under the mod's textures, as the build writes it. */
+  pictures: Map<string, string>;
 }
 
 let loaded: Loaded | null = null;
@@ -63,7 +67,7 @@ async function load(root: string) {
     } catch {
       continue;
     }
-    const parsed = parseYres(text);
+    const parsed = await parseYres(text);
     if (!parsed.ok) continue;
     const { set, locale } = splitYresPath(file.path);
     const entry = sets.get(set) ?? { relDir: file.rel, neutral: [], cultures: new Map() };
@@ -79,7 +83,10 @@ async function load(root: string) {
   }
   if (loading !== root) return;
   loading = null;
-  loaded = { root, modId, sets };
+  const pictures = new Map<string, string>();
+  for (const p of await cli<{ set: string; name: string; path: string }[]>("media.pictures", { path: `${root}/${file.MANIFEST}` }).catch(() => []))
+    pictures.set(`${p.set}.${p.name}`, p.path);
+  loaded = { root, modId, sets, pictures };
   changed();
 }
 
@@ -176,15 +183,9 @@ export function designText(value: string): string {
 /** An image attribute: `@Icons.logo` → `<mod id>:<texture>` (as `yog build` bundles it), else as written. */
 export function designImage(value: string): string {
   if (!value.startsWith("@") || value.startsWith("@@") || !loaded) return value;
-  const found = lookup(value.slice(1));
-  if (!found || found.entry.type !== "image" || typeof found.entry.value !== "string") return value;
-  const texture =
-    found.entry.texture ??
-    [found.set.relDir, found.entry.value]
-      .filter(Boolean)
-      .join("/")
-      .replace(/\.png$/i, "");
-  return `${loaded.modId}:${texture}`;
+  const path = loaded.pictures.get(value.slice(1));
+  if (path === undefined) return value;
+  return `${loaded.modId}:${path}`;
 }
 
 /** `@Colors.x` → its `#AARRGGBB`/`#RRGGBB` value; anything else as written. */
@@ -214,7 +215,7 @@ export async function extractColor(root: string, hint: string, value: string): P
   const path = `${root}/resources/Colors.yres`;
   let entries: YresEntry[] = [];
   try {
-    const parsed = parseYres(await files.read(path));
+    const parsed = await parseYres(await files.read(path));
     if (parsed.ok) entries = parsed.entries.map(({ line: _, ...e }) => e as YresEntry);
   } catch {
     await files.createFile(path);
@@ -223,7 +224,7 @@ export async function extractColor(root: string, hint: string, value: string): P
   let name = base;
   for (let n = 2; entries.some((e) => e.name === name); n++) name = `${base}_${n}`;
   entries.push({ name, type: "color", value });
-  await files.write(path, serializeYres(entries));
+  await files.write(path, await serializeYres(entries));
   invalidateDesignResources();
   return `@Colors.${name}`;
 }

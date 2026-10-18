@@ -10,7 +10,6 @@ use base64::Engine as _;
 use serde::Serialize;
 use serde_json::{Map, Value};
 use std::path::{Path, PathBuf};
-use std::process::Command;
 
 /// `[mod] id` of the mod at `root`.
 /// The id a content file's texture names: `@texture:<ns>:<path>`, or an id
@@ -637,7 +636,7 @@ pub fn import(
         "bbmodel-item" => ("bbmodel", true),
         _ => return Err(format!("unknown import kind {kind}")),
     };
-    let mut cmd = Command::new("yog");
+    let mut cmd = crate::cli::command();
     cmd.current_dir(&root).args(["import", what, source]);
     if let Some(m) = model.filter(|m| !m.is_empty()) {
         cmd.args([if what == "bbmodel" { "--id" } else { "--model" }, m]);

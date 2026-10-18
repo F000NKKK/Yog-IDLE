@@ -164,7 +164,7 @@ pub fn run_with_mode(
     }
 
     let (child, log) = crate::spawn_yog_run(
-        Command::new("yog")
+        crate::cli::command()
             .args(&args)
             .current_dir(&root)
             .env("YOG_CONTROL_SOCKET", &control_addr)
@@ -626,7 +626,7 @@ fn build_and_check(
         None,
         format!("running `yog {}`", args.join(" ")),
     );
-    let mut child = Command::new("yog")
+    let mut child = crate::cli::command()
         .args(&args)
         .current_dir(root)
         .stdout(Stdio::piped())

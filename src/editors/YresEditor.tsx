@@ -33,6 +33,7 @@ import {
   NEUTRAL_LOCALE,
   parseYres,
   RESOURCE_TYPES,
+  type YresParse,
   serializeYres,
   splitYresPath,
   textMap,
@@ -120,7 +121,15 @@ export function YresEditor({ path, content, onChange, readOnly }: EditorProps) {
   const t = useT();
   const locale = useLocale();
   const { tabs, updateContent, setView } = useOpenFiles();
-  const parsed = useMemo(() => parseYres(content), [content]);
+  // Parsed by the CLI service; the last parse shown until the next arrives.
+  const [parsed, setParsed] = useState<YresParse>({ ok: true, entries: [] });
+  useEffect(() => {
+    let live = true;
+    void parseYres(content).then((p) => live && setParsed(p));
+    return () => {
+      live = false;
+    };
+  }, [content]);
   const entries = useMemo(() => (parsed.ok ? parsed.entries : []), [parsed]);
   const { dir, set, locale: ownLocale, sep } = splitYresPath(path);
   const isCulture = ownLocale !== null;
@@ -140,9 +149,9 @@ export function YresEditor({ path, content, onChange, readOnly }: EditorProps) {
   contentRef.current = content;
 
   const apply = useCallback(
-    (next: YresEntry[]) => {
+    async (next: YresEntry[]) => {
       if (readOnly) return;
-      const text = serializeYres(next.map(({ line: _, ...e }) => e));
+      const text = await serializeYres(next.map(({ line: _, ...e }) => e));
       if (text === contentRef.current) return;
       onChange(text);
     },
@@ -173,7 +182,7 @@ export function YresEditor({ path, content, onChange, readOnly }: EditorProps) {
         } catch {
           return null;
         }
-        const result = parseYres(text);
+        const result = await parseYres(text);
         const entries = result.ok ? result.entries : null;
         return { locale: splitYresPath(file.path).locale, path: file.path, entries, texts: textMap(entries ?? []) };
       })
@@ -196,7 +205,7 @@ export function YresEditor({ path, content, onChange, readOnly }: EditorProps) {
   /** Writes another file of the set: into its open tab (left unsaved, like any edit) or straight to disk. */
   const writeSibling = useCallback(
     async (sibling: Sibling, next: YresEntry[]) => {
-      const text = serializeYres(next.map(({ line: _, ...e }) => e));
+      const text = await serializeYres(next.map(({ line: _, ...e }) => e));
       const open = tabsRef.current.find((tab) => tab.path === sibling.path && tab.textLoaded);
       if (open) updateContent(open.id, text);
       else {
@@ -329,7 +338,6 @@ export function YresEditor({ path, content, onChange, readOnly }: EditorProps) {
       const type = text as ResourceType;
       next = { ...entry, type, value: coerceValue(type, entry.value) };
       if (type !== "string") delete next.key;
-      if (type !== "image") delete next.texture;
       if (type !== "sound") {
         delete next.event;
         delete next.subtitle;
@@ -437,7 +445,7 @@ export function YresEditor({ path, content, onChange, readOnly }: EditorProps) {
       .filter((e) => e.type === "string" && e.name && !seen.has(e.name) && seen.add(e.name))
       .map((e): YresEntry => ({ name: e.name, type: "string", value: "" }));
     try {
-      await files.write(target, serializeYres(texts));
+      await files.write(target, await serializeYres(texts));
     } catch (err) {
       reportError(t("Failed to save {path}: {error}", { path: target, error: String(err) }));
       return;
