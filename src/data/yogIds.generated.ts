@@ -76,6 +76,15 @@ export const file = {
   LOCK: "yog.lock",
 } as const;
 
+export const pack = {
+  DATA: "data",
+  ASSETS: "assets",
+  TAGS: "tags",
+  OVERLAYS: "when",
+  ANY_LOADER: "any",
+  ANY_VERSION: "any",
+} as const;
+
 export const program = {
   CLI: "yog",
 } as const;

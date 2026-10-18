@@ -10,24 +10,18 @@ use std::path::{Path, PathBuf};
 
 use base64::Engine as _;
 use serde::Serialize;
-use yog_book::renderer::FRAME_UV;
+use yog_book::layout_picture::{Piece, pieces};
+use yog_book::renderer::{BLOCK_PITCH, SLOT_YAW};
 use yog_formats::book::layout::{LayoutPart, RecipeLayout};
-use yog_ids::yog::CRAFTING_SHEET;
 use yog_data::Schema;
 use yog_formats::def::{Def, RecipeKindDef};
-use yog_gfx::{Color, Rect, Vec2};
+use yog_gfx::{Color, Vec2};
 use yog_registry::recipe_kinds::{self, fields};
 
 use crate::designer::{assets::Resources, gfx, images, raster};
 
 /// How much bigger than GUI pixels the picture is drawn.
 const SCALE: u32 = 3;
-/// An item's side in GUI pixels.
-const ITEM_SIZE: f32 = yog_formats::book::layout::ICON_PX;
-/// How far a slot frame reaches around its item.
-const FRAME_INSET: f32 = 4.0;
-/// How a block is turned and tilted in a slot (the game's GUI display; the book's).
-use yog_book::renderer::{BLOCK_PITCH as SLOT_PITCH, SLOT_YAW};
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -193,15 +187,16 @@ fn describe(root: &Path, k: &RecipeKindDef, id: String, file: String, layouts: &
                 default: k.default_of(name),
             })
             .collect(),
-        layout: yog_formats::book::layout::find(&own, &id).map(|l| layout(root, &layout_file, l.size, &l.parts)),
+        layout: yog_formats::book::layout::find(&own, &id).map(|l| layout(root, &layout_file, l)),
         id,
     }
 }
 
-/// The picture of `parts` (what doesn't change with the recipe) and the spots.
-fn layout(root: &Path, file: &Path, size: [f32; 2], parts: &[LayoutPart]) -> Layout {
+/// The picture of `layout` (what doesn't change with the recipe) and the spots.
+fn layout(root: &Path, file: &Path, layout: &RecipeLayout) -> Layout {
+    let size = layout.size;
     let mut spots = Vec::new();
-    for p in parts {
+    for p in &layout.parts {
         match p {
             LayoutPart::Slots { slot, at, .. } => {
                 spots.extend(at.iter().enumerate().map(|(index, at)| Spot::Slot { slot: slot.clone(), index, at: *at }));
@@ -215,27 +210,11 @@ fn layout(root: &Path, file: &Path, size: [f32; 2], parts: &[LayoutPart]) -> Lay
     let (w, h) = (size[0].ceil().max(1.0) as u32, size[1].ceil().max(1.0) as u32);
     let ops = gfx::record(w as i32, h as i32, |ctx| {
         let d = ctx.draw2d();
-        let frame = |[x, y]: [f32; 2]| {
-            d.image_region(
-                CRAFTING_SHEET,
-                Rect::new(x - FRAME_INSET, y - FRAME_INSET, FRAME_UV[2], FRAME_UV[3]),
-                Some(Rect::new(FRAME_UV[0], FRAME_UV[1], FRAME_UV[2], FRAME_UV[3])),
-                Color::WHITE,
-            )
-        };
-        for p in parts {
-            match p {
-                LayoutPart::Image { source, uv, at } => d.image_region(
-                    source,
-                    Rect::new(at[0], at[1], uv[2], uv[3]),
-                    Some(Rect::new(uv[0], uv[1], uv[2], uv[3])),
-                    Color::WHITE,
-                ),
-                LayoutPart::Item { item, at } => d.item(item, Vec2::new(at[0], at[1]), ITEM_SIZE),
-                LayoutPart::Block { block, at, size } => d.blocks(&[((0, 0, 0), block.as_str())], Rect::new(at[0], at[1], *size, *size), SLOT_YAW, SLOT_PITCH),
-                LayoutPart::Slots { at, frame: true, .. } => at.iter().for_each(|a| frame(*a)),
-                LayoutPart::Result { at, frame: true } => frame(*at),
-                _ => {}
+        for piece in pieces(layout) {
+            match piece {
+                Piece::Image { source, uv, at } => d.image_region(source, at, Some(uv), Color::WHITE),
+                Piece::Item { item, at } => d.item(item, Vec2::new(at.x, at.y), at.w),
+                Piece::Block { block, at } => d.blocks(&[((0, 0, 0), block)], at, SLOT_YAW, BLOCK_PITCH),
             }
         }
     });
