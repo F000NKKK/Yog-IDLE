@@ -1,8 +1,8 @@
 // The selection in Properties, the Edit menu and keys, the split view's XAML pane and the event handlers in code.
 
-import type { DesignerDocument } from "canvas/useDesignerDocument";
-import type { DesignerEdits } from "canvas/useDesignerEdits";
-import type { DesignerPicture } from "canvas/useDesignerPicture";
+import type { DesignerDocument } from "./useDesignerDocument";
+import type { DesignerEdits } from "./useDesignerEdits";
+import type { DesignerPicture } from "./useDesignerPicture";
 import { useEffect, useRef, useSyncExternalStore } from "react";
 import { activatePropertyContext, notifyDocumentCommands, openFile, type PropertySet, registerDocumentCommands, reportError, setPropertyContext, tn } from "substrate-platform-ui";
 import { cli } from "../../cli";

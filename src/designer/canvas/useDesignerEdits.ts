@@ -1,7 +1,7 @@
 // Edits to the screen: adding, moving, resizing, deleting, copying and pasting widgets.
 
-import type { DesignerDocument } from "canvas/useDesignerDocument";
-import type { DesignerPicture } from "canvas/useDesignerPicture";
+import type { DesignerDocument } from "./useDesignerDocument";
+import type { DesignerPicture } from "./useDesignerPicture";
 import { type DesignChange, type DesignPoint, notifyDocumentCommands } from "substrate-platform-ui";
 import { yui } from "../../data/yogIds.generated";
 import { cellAt, type GridGeo } from "../GridAdorner";

@@ -1,6 +1,6 @@
 // How the screen lays out, and the real picture the game draws of it.
 
-import type { DesignerDocument } from "canvas/useDesignerDocument";
+import type { DesignerDocument } from "./useDesignerDocument";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { DesignItem } from "substrate-platform-ui";
 import { cli } from "../../cli";

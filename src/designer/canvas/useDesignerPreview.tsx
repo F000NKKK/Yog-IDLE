@@ -1,9 +1,9 @@
 // The preview: the screen running live, its events, zoom and panning.
 
-import type { DesignerCommands } from "canvas/useDesignerCommands";
-import type { DesignerDocument } from "canvas/useDesignerDocument";
-import type { DesignerEdits } from "canvas/useDesignerEdits";
-import type { DesignerPicture } from "canvas/useDesignerPicture";
+import type { DesignerCommands } from "./useDesignerCommands";
+import type { DesignerDocument } from "./useDesignerDocument";
+import type { DesignerEdits } from "./useDesignerEdits";
+import type { DesignerPicture } from "./useDesignerPicture";
 import { type KeyboardEvent as ReactKeyboardEvent, useEffect, useRef } from "react";
 import { type ContextMenuItem, eventKey, useKeybinding } from "substrate-platform-ui";
 import { cli } from "../../cli";
