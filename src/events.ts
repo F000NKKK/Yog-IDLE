@@ -1,6 +1,6 @@
 // The Tauri events the IDE listens to and emits — names as in
 // `src-tauri/src/events.rs`, with their payloads, so `listenTo`/`emitTo`
-// can't get either wrong. (`pty-*` belong to the platform's terminal.)
+// can't get either wrong. (Terminals and Source Control send Substrate's.)
 
 import { emit, listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { events as substrateEvents, type BackendMessage } from "substrate-platform-ui";

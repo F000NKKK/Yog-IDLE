@@ -39,6 +39,3 @@ pub const DEBUG_STOPPED: &str = "debug-stopped";
 #[cfg_attr(not(target_os = "linux"), allow(dead_code))]
 pub const DEBUG_FAILED: &str = "debug-failed";
 
-/// A terminal session's output chunk / its shell exited.
-pub const PTY_OUTPUT: &str = "pty-output";
-pub const PTY_EXIT: &str = "pty-exit";

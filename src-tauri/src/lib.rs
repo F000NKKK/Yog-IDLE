@@ -7,7 +7,6 @@ use serde::{Deserialize, Serialize};
 use substrate_platform::fs::EntryKind;
 use substrate_platform::project::ProjectStandard;
 use substrate_platform::run::{Level, LogLine, LogSink, WorkflowFile, WorkflowHandle, WorkflowResult};
-use substrate_platform::terminal::{PtyOptions, PtySession, ShellInfo};
 use tauri::{AppHandle, Emitter, Manager, State};
 
 mod cli;
@@ -800,7 +799,7 @@ fn workflow_cancel(state: State<WorkflowState>) {
 /// Runs `name` in the background (non-blocking) — output streams live via
 /// the `workflow-output` event (one plain-string line each, same contract
 /// `OutputPanel` already listens for) and a `workflow-exit` event fires once
-/// every step has finished, mirroring the existing `pty-output`/`pty-exit`
+/// every step has finished, mirroring the terminal's output/exit
 /// pattern.
 #[tauri::command]
 fn workflow_run(
@@ -1115,115 +1114,6 @@ fn publish_run(
     Ok(())
 }
 
-/// Every shell available to spawn, for the frontend's "new terminal" menu —
-/// `ShellInfo` already serializes camelCase, ready for the frontend as-is.
-#[tauri::command]
-fn list_shells() -> Vec<ShellInfo> {
-    substrate_platform::terminal::detect_shells()
-}
-
-/// Every open integrated terminal, keyed by a frontend-chosen id, so the UI
-/// can run several at once (VS-Code style) and address each independently.
-#[derive(Default)]
-struct PtyState(Mutex<HashMap<String, PtySession>>);
-
-/// A chunk of one terminal's output — carries the id so the frontend routes it
-/// to the right xterm instance.
-#[derive(Clone, Serialize)]
-struct PtyOutput {
-    id: String,
-    data: String,
-}
-
-/// Emitted once when a terminal's shell exits, so the frontend can close that tab.
-#[derive(Clone, Serialize)]
-struct PtyExit {
-    id: String,
-}
-
-#[tauri::command]
-#[allow(clippy::too_many_arguments)] // a Tauri command's arguments are its JS parameters
-fn pty_spawn(
-    app: AppHandle,
-    state: State<PtyState>,
-    app_state: State<Workspace>,
-    id: String,
-    cols: u16,
-    rows: u16,
-    shell: Option<String>,
-    cwd: Option<String>,
-) -> Result<(), String> {
-    // "Open in Terminal" on a folder of the project; otherwise its root.
-    let cwd = match cwd {
-        Some(dir) => {
-            let dir = PathBuf::from(dir);
-            validate_within_roots(&app_state, &dir)?;
-            Some(dir)
-        }
-        None => app_state.current(),
-    };
-    let out_app = app.clone();
-    let out_id = id.clone();
-    let exit_app = app.clone();
-    let exit_id = id.clone();
-    // `spawn_utf8` holds back a multi-byte character split across two reads
-    // until it's complete, so every chunk is valid text on its own instead of
-    // each half being decoded (and garbled into U+FFFD) separately.
-    let session = PtySession::spawn_utf8(
-        PtyOptions {
-            shell,
-            cwd,
-            ..PtyOptions::default()
-        },
-        cols,
-        rows,
-        move |data| {
-            let _ = out_app.emit(
-                crate::events::PTY_OUTPUT,
-                PtyOutput {
-                    id: out_id.clone(),
-                    data,
-                },
-            );
-        },
-        move || {
-            let _ = exit_app.emit(
-                crate::events::PTY_EXIT,
-                PtyExit {
-                    id: exit_id.clone(),
-                },
-            );
-        },
-    )
-    .map_err(|e| e.to_string())?;
-    state.0.lock().unwrap().insert(id, session);
-    Ok(())
-}
-
-#[tauri::command]
-fn pty_write(state: State<PtyState>, id: String, data: String) -> Result<(), String> {
-    if let Some(session) = state.0.lock().unwrap().get_mut(&id) {
-        session.write(data.as_bytes()).map_err(|e| e.to_string())?;
-    }
-    Ok(())
-}
-
-#[tauri::command]
-fn pty_resize(state: State<PtyState>, id: String, cols: u16, rows: u16) -> Result<(), String> {
-    if let Some(session) = state.0.lock().unwrap().get(&id) {
-        session.resize(cols, rows).map_err(|e| e.to_string())?;
-    }
-    Ok(())
-}
-
-#[tauri::command]
-fn pty_kill(state: State<PtyState>, id: String) -> Result<(), String> {
-    if let Some(mut session) = state.0.lock().unwrap().remove(&id) {
-        let _ = session.kill();
-    }
-    Ok(())
-}
-
 /// Restarts Yog-IDLE — e.g. after `debug_grant_ptrace_capability`, which
 /// only takes effect for a fresh `exec()`.
 #[tauri::command]
@@ -1324,7 +1214,6 @@ pub fn run() {
                 )
                 .build(),
         )
-        .manage(PtyState::default())
         .manage(WorkflowState::default())
         .manage(WatchState::default())
         .manage(tools::ToolsState::new(build_settings))
@@ -1336,11 +1225,6 @@ pub fn run() {
     let builder = builder.invoke_handler(tauri::generate_handler![
         fs_watch,
         cli,
-        pty_spawn,
-        pty_write,
-        pty_resize,
-        pty_kill,
-        list_shells,
         dir_list,
         dir_create_file,
         dir_create_dir,
