@@ -1,7 +1,6 @@
 import { useEffect } from "react";
-import { onOutputSourceChange, outputSource, outputSources, registerOutputSources, setOutputSource, startOutputBuffer } from "substrate-platform-ui";
+import { onOutputSourceChange, outputSource, outputSources, registerOutputSources, setOutputSource, startOutputBuffer, useWorkspaceState } from "substrate-platform-ui";
 import { EVENT, listenAll, listenTo } from "./events";
-import { useWorkspaceState } from "./WorkspaceContext";
 
 /** Yog IDLE's own Output sources, before the platform's (General, Source Control). */
 const SOURCE = { build: "build", game: "game", debug: "debug" } as const;

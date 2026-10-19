@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react";
-import { invokeCommand, RunBar, type RunMode, useWorkflowRunner } from "substrate-platform-ui";
+import { invokeCommand, RunBar, type RunMode, useWorkflowRunner, useWorkspaceState } from "substrate-platform-ui";
 import { useProject } from "../ProjectContext";
 import { useModRunTargets } from "../useModRunTargets";
 import { useDebugSessionContext } from "../DebugSessionContext";
-import { useWorkspaceState } from "../WorkspaceContext";
 import { yog } from "../host.generated";
 
 export interface RunToolbarProps {

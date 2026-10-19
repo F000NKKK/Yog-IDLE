@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ComponentType, type ReactNode } from "react";
 import { invalidateDesignResources } from "./lang/designResources";
 import {
+  addCloseGuard,
   type CodeEditorProps,
   type ContextMenuItem,
   type EditorProps,
@@ -27,6 +28,7 @@ import {
   type TabMenuContext,
   useEditorProviders,
   useFilesChanged,
+  useGlobalStateStore,
   useKeybinding,
   useLocale,
   useShell,
@@ -39,8 +41,6 @@ import { useWatches } from "./debugger/WatchesContext";
 import { samePath } from "./paths";
 import { generatedSource, isGeneratedCode, isWithin, parentOf } from "./paths";
 import { selectDocument } from "./ideSelection";
-import { addCloseGuard } from "./windowClose";
-import { useGlobalStateStore } from "./WorkspaceContext";
 import { files } from "./files";
 import { askToSave, isViewMap, newTabId, nextRevealSeq, openWithItems, regenerateScreen, tabViews, VIEWS_KEY } from "./openFiles/tabViews";
 

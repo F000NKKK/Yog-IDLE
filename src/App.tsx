@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { getVersion } from "@tauri-apps/api/app";
 import { message, open, save as saveDialog } from "@tauri-apps/plugin-dialog";
 import { getCurrentWindow } from "@tauri-apps/api/window";
@@ -16,6 +16,7 @@ import {
   GitSettingsPage,
   GitStatusBar,
   hostFiles,
+  installCloseHandler,
   InternationalSettings,
   internationalSettingsKeywords,
   invokeCommand,
@@ -40,6 +41,7 @@ import {
   useT,
   useWorkflowRunner,
   WindowControls,
+  WorkspaceProvider,
 } from "substrate-platform-ui";
 import type { PanelDef, SettingsSection } from "substrate-platform-ui";
 
@@ -72,8 +74,6 @@ import {
   SearchHost,
 } from "./search/SearchHost";
 import { ViewMenu } from "./ViewMenu";
-import { WorkspaceProvider } from "./WorkspaceContext";
-import { installCloseHandler } from "./windowClose";
 import { BuildSettingsPage, BuildSettingsSync, buildSettingsKeywords } from "./tools/BuildSettings";
 import { missingTools, openInstaller, toolsStatus } from "./tools/toolsStore";
 import { ProjectPropertiesWindow } from "./projectProperties/ProjectPropertiesWindow";
@@ -556,7 +556,7 @@ function App() {
   });
 
   // Closing the window first asks about unsaved files, then writes the
-  // remembered UI state (see `windowClose`).
+  // remembered UI state (see Substrate's `installCloseHandler`).
   useEffect(() => installCloseHandler(), []);
 
   return (
@@ -587,10 +587,16 @@ function App() {
   );
 }
 
+/** Substrate's remembered state, for the project open now. */
+function ProjectWorkspace({ children }: { children: ReactNode }) {
+  const { project } = useProject();
+  return <WorkspaceProvider root={project?.root ?? null}>{children}</WorkspaceProvider>;
+}
+
 function AppWithProviders() {
   return (
     <ProjectProvider>
-      <WorkspaceProvider>
+      <ProjectWorkspace>
         <OpenFilesProvider>
           <SourceControl>
             <BreakpointsProvider>
@@ -600,7 +606,7 @@ function AppWithProviders() {
             </BreakpointsProvider>
           </SourceControl>
         </OpenFilesProvider>
-      </WorkspaceProvider>
+      </ProjectWorkspace>
     </ProjectProvider>
   );
 }

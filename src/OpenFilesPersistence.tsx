@@ -1,7 +1,6 @@
 import { useEffect, useRef } from "react";
-import { getEditorView, useShell, useStateStore } from "substrate-platform-ui";
+import { addWorkspaceCollector, getEditorView, useShell, useStateStore } from "substrate-platform-ui";
 import { useOpenFiles } from "./OpenFilesContext";
-import { addWorkspaceCollector } from "./WorkspaceContext";
 
 /** What `"openFiles"` holds in the workspace state: the tabs in order, each with its cursor, and which one was in front. */
 interface PersistedOpenFiles {

@@ -1,5 +1,5 @@
 import { createContext, useContext, useMemo, type ReactNode } from "react";
-import { useWorkspaceState } from "../WorkspaceContext";
+import { useWorkspaceState } from "substrate-platform-ui";
 
 interface WatchesValue {
   /** Watch expressions, in display order — remembered per project. */

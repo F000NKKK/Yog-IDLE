@@ -1,7 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, type ReactNode } from "react";
-import { useWorkspaceState } from "./WorkspaceContext";
 import { yog } from "./host.generated";
-import { invokeCommand } from "substrate-platform-ui";
+import { invokeCommand, useWorkspaceState } from "substrate-platform-ui";
 
 interface BreakpointsContextValue {
   /** Breakpoints set for `path` — stable empty set when there are none, so callers can pass it straight through as a prop without a fresh identity on every render. */

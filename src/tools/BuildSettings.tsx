@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef } from "react";
 import { open } from "@tauri-apps/plugin-dialog";
-import { Button, CheckField, CommitTextField, FormField, FormPage, FormSection, Icon, IconButton, SETTINGS_HISTORY, notify, t, undoable, useT } from "substrate-platform-ui";
-import { useGlobalState, useGlobalStateStore } from "../WorkspaceContext";
+import { Button, CheckField, CommitTextField, FormField, FormPage, FormSection, Icon, IconButton, notify, SETTINGS_HISTORY, t, undoable, useGlobalState, useGlobalStateStore, useT } from "substrate-platform-ui";
 import {
   BUILD_SETTINGS_KEY,
   applyBuildSettings,
