@@ -1,6 +1,6 @@
 [package]
 name = "yog-idle-tauri"
-version = "2.0.0"
+version = "2.0.1"
 description = "Visual UI editor for Yog mods — live preview into a running Minecraft client."
 authors = ["F000NK"]
 edition = "2024"

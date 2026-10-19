@@ -147,14 +147,6 @@ impl TracerHandle {
 }
 
 
-#[derive(Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct StackFrameOut {
-    pub id: i64,
-    pub name: String,
-    pub file: String,
-    pub line: u32,
-}
 
 
 /// One row of the Locals/Watch/Autos views and DataTips — a
@@ -202,17 +194,6 @@ impl TargetMemory for ProcMem {
     }
 }
 
-#[derive(Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ThreadOut {
-    pub id: i32,
-    /// `/proc/<pid>/task/<tid>/comm` — the JVM names its threads
-    /// ("Server thread", "Render thread", ...).
-    pub name: String,
-    /// Stopped (inspectable), as opposed to still running: a breakpoint
-    /// stops only the thread that hit it, Break All only `is_game_thread`s.
-    pub stopped: bool,
-}
 
 /// The threads Break All stops: the ones mod code runs on — the client's
 /// render thread and the integrated server's tick thread. Everything else

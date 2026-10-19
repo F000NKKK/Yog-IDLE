@@ -67,6 +67,30 @@ static NEXT_SESSION_ID: AtomicU64 = AtomicU64::new(1);
 #[derive(Default)]
 pub struct DebugState(pub Mutex<Option<RunSession>>);
 
+/// A frame of the call stack a stop shows (the same on every platform; only
+/// Linux fills it so far).
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct StackFrameOut {
+    pub id: i64,
+    pub name: String,
+    pub file: String,
+    pub line: u32,
+}
+
+/// A thread of the tracee, as a stop lists it.
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ThreadOut {
+    pub id: i32,
+    /// `/proc/<pid>/task/<tid>/comm` — the JVM names its threads
+    /// ("Server thread", "Render thread", ...).
+    pub name: String,
+    /// Stopped (inspectable), as opposed to still running: a breakpoint
+    /// stops only the thread that hit it, Break All only `is_game_thread`s.
+    pub stopped: bool,
+}
+
 #[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DebugStoppedEvent {
