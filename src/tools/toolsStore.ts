@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { invokeYog } from "../invokeYog";
+import { yog } from "../plugins.generated";
+import { invokeCommand } from "substrate-platform-ui";
 
 /** Tools > Options > Build (`tools::Settings`). */
 export interface BuildSettings {
@@ -24,7 +25,7 @@ export function normalizeBuildSettings(value: unknown): BuildSettings {
 
 /** Hands the options to the backend, for every `yog`/cargo it starts. */
 export function applyBuildSettings(settings: BuildSettings): Promise<void> {
-  return invokeYog("app", "tools_settings_set", { settings });
+  return invokeCommand(yog.app.toolsSettingsSet, { settings });
 }
 
 /** `tools::Status` — what Yog needs here and has. */
@@ -36,7 +37,7 @@ export interface ToolsStatus {
 }
 
 export function toolsStatus(): Promise<ToolsStatus> {
-  return invokeYog<ToolsStatus>("app", "tools_status");
+  return invokeCommand<ToolsStatus>(yog.app.toolsStatus);
 }
 
 /** What Yog needs and this machine hasn't (English names, shown through `t`). */
@@ -55,5 +56,5 @@ export function useToolsStatus(): ToolsStatus | null {
 
 /** Tools > Yog Installer: starts it, or opens where to download it. */
 export function openInstaller(): Promise<void> {
-  return invokeYog<void>("app", "open_installer");
+  return invokeCommand<void>(yog.app.openInstaller);
 }

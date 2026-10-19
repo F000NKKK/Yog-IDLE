@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { showDialog, useT } from "substrate-platform-ui";
+import { invokeCommand, showDialog, useT } from "substrate-platform-ui";
 import { EVENT, emitTo, listenTo, type HotReloadEvent } from "./events";
 import "./useHotReload.css";
-import { invokeYog } from "./invokeYog";
+import { yog } from "./plugins.generated";
 
 /**
  * The toolbar's Hot Reload action — `mod_hot_reload` rebuilds the project
@@ -67,13 +67,13 @@ export function useHotReload(restart: () => void) {
         { id: "cancel", label: t("Cancel"), cancel: true },
       ],
     });
-    await invokeYog("run", "mod_hot_reload_decide", { choice: button }).catch((err) => emitTo(EVENT.buildOutput, `[error] hot reload: ${err}`));
+    await invokeCommand(yog.run.modHotReloadDecide, { choice: button }).catch((err) => emitTo(EVENT.buildOutput, `[error] hot reload: ${err}`));
     if (button === "restart") restartRef.current();
   }
 
   const trigger = useCallback((projectRoot: string) => {
     setBusy(true);
-    invokeYog("run", "mod_hot_reload", { projectRoot }).catch((err) => {
+    invokeCommand(yog.run.modHotReload, { projectRoot }).catch((err) => {
       setBusy(false);
       // Refused before anything started (not running, already busy, ...) —
       // no `hot-reload` event will follow, so report it here.

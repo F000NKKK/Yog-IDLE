@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from "react";
 import { Channel } from "@tauri-apps/api/core";
-import { invokeYog } from "../invokeYog";
+import { yog } from "../plugins.generated";
+import { invokeCommand } from "substrate-platform-ui";
 
 // Find Results' contents — module-level, like the Output buffers: a search
 // is started from the Find and Replace window and shown by the Find Results
@@ -94,7 +95,7 @@ export function clearFindResults(): void {
 
 /** Stops the running search; what it found so far stays listed. */
 export function cancelFind(): void {
-  if (state.running) void invokeYog("code", "find_cancel");
+  if (state.running) void invokeCommand(yog.code.findCancel);
 }
 
 interface FindBatch {
@@ -111,7 +112,7 @@ export async function runFind(options: { caption: string; root: string | null; l
     if (currentSearch === searchId) set({ files: [...state.files, ...batch.files] });
   };
   try {
-    const summary = await invokeYog<FindSummary>("code", "find_in_files", {
+    const summary = await invokeCommand<FindSummary>(yog.code.findInFiles, {
       request: {
         searchId,
         root: options.root,

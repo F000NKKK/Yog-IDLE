@@ -1,14 +1,14 @@
 // The designer's document: its tree, the edit session, selection, history and view settings.
 
 import { useCallback, useRef, useState } from "react";
-import { type ContextMenuItem, notifyDocumentCommands, useContextMenu, useT } from "substrate-platform-ui";
+import { type ContextMenuItem, invokeCommand, notifyDocumentCommands, useContextMenu, useT } from "substrate-platform-ui";
 import { useActiveFileTab } from "../../OpenFilesContext";
 import { modRootOf } from "../../paths";
 import { adoptUids, findNode, newScreen, nodeAtPath, parseYui, serializeYui, withAttrs, type YuiDoc } from "../yui";
 import { patchYui } from "../yuiText";
 import { rememberSelection, screenIdOf, type Session, sessions, settings, type ViewSettings } from "./designerModel";
 import type { ScreenDesignerProps } from "../ScreenDesigner";
-import { invokeYog } from "../../invokeYog";
+import { yog } from "../../plugins.generated";
 
 /** The designer's document: its tree, the edit session, selection, history and view settings. */
 export function useDesignerDocument(props: ScreenDesignerProps) {
@@ -55,7 +55,7 @@ export function useDesignerDocument(props: ScreenDesignerProps) {
           if (!readOnly) onChange(s.text);
         };
         if (root)
-          invokeYog<{ fields: { id?: string } }>("project", "mod_manifest_read", { projectRoot: root })
+          invokeCommand<{ fields: { id?: string } }>(yog.project.modManifestRead, { projectRoot: root })
             .then((m) => finish(m.fields.id ?? null))
             .catch(() => finish(null));
         else void Promise.resolve().then(() => finish(null));

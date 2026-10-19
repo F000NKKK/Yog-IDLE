@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { openFile, t } from "substrate-platform-ui";
+import { type HostCommand, invokeCommand, openFile, t } from "substrate-platform-ui";
 import { EVENT, listenAll, listenTo, type DebugStackFrame, type DebugStoppedEvent } from "./events";
-import { invokeYog } from "./invokeYog";
+import { yog } from "./plugins.generated";
 
 export type StepKind = "over" | "into" | "out";
 
@@ -108,7 +108,7 @@ export function useDebugSession() {
   }, []);
 
   const stop = useCallback(() => {
-    return invokeYog("debug", "debug_stop").finally(() => {
+    return invokeCommand(yog.debug.debugStop).finally(() => {
       setDebugging(false);
       setAttaching(false);
       setStopped(null);
@@ -134,7 +134,7 @@ export function useDebugSession() {
     // Listening before cancelling, so the exit can't slip past.
     const unlisten = await listenTo(EVENT.workflowExit, () => exit());
     try {
-      await invokeYog("run", "workflow_cancel");
+      await invokeCommand(yog.run.workflowCancel);
       await exited;
       await relaunch();
     } catch (err) {
@@ -151,25 +151,25 @@ export function useDebugSession() {
   // leave the UI "running" with the game paused. Only one resume at a time,
   // and only from a stop: a held-down F10 auto-repeats far faster than
   // steps complete (the backend rejects extras too).
-  const resume = useCallback((command: string, args?: Record<string, unknown>) => {
+  const resume = useCallback((command: HostCommand, args?: Record<string, unknown>) => {
     if (!stoppedRef.current || stoppedRef.current.reason === "exited" || resumingRef.current) return;
     resumingRef.current = true;
     stoppedRef.current = null;
     setStopped(null);
-    invokeYog("debug", command, args)
+    invokeCommand(command, args)
       .catch((err) => setError(String(err)))
       .finally(() => {
         resumingRef.current = false;
       });
   }, []);
 
-  const continue_ = useCallback(() => resume("debug_continue"), [resume]);
+  const continue_ = useCallback(() => resume(yog.debug.debugContinue), [resume]);
 
-  const step = useCallback((kind: StepKind = "over") => resume("debug_step", { kind }), [resume]);
+  const step = useCallback((kind: StepKind = "over") => resume(yog.debug.debugStep, { kind }), [resume]);
 
   /** Break All — stops the running game wherever it is; the stop arrives as a `debug-stopped` with reason `"pause"`. */
   const pause = useCallback(() => {
-    invokeYog("debug", "debug_pause").catch((err) => setError(String(err)));
+    invokeCommand(yog.debug.debugPause).catch((err) => setError(String(err)));
   }, []);
 
   const selectFrame = useCallback(
@@ -186,11 +186,11 @@ export function useDebugSession() {
   const executionLocation = stopped && stopped.reason !== "exited" ? (stopped.stackTrace[selectedFrame] ?? null) : null;
 
   const selectThread = useCallback((thread: number) => {
-    invokeYog("debug", "debug_select_thread", { thread }).catch((err) => setError(String(err)));
+    invokeCommand(yog.debug.debugSelectThread, { thread }).catch((err) => setError(String(err)));
   }, []);
 
   const grantPtraceAccess = useCallback(() => {
-    return invokeYog("debug", "debug_grant_ptrace_capability");
+    return invokeCommand(yog.debug.debugGrantPtraceCapability);
   }, []);
 
   return {

@@ -18,6 +18,7 @@ import {
   hostFiles,
   InternationalSettings,
   internationalSettingsKeywords,
+  invokeCommand,
   isGitDocument,
   MenuBar,
   MenuBarItem,
@@ -84,8 +85,8 @@ import { OutputSourceSync } from "./outputSource";
 import { OpenWithPickerHost } from "./OpenWithPicker";
 import { SourceControl } from "./SourceControl";
 import "./App.css";
-import { invokeYog } from "./invokeYog";
 import { runModCommand } from "./runModCommand";
+import { yog } from "./plugins.generated";
 
 // Everything below is Yog-IDLE-specific: which panels exist, where they
 // start docked, and what the menu/settings contain. The shell itself
@@ -192,7 +193,7 @@ function useWorkflowActive(): boolean {
 /** Build > Cancel Build — stops every Build/Publish still running (`workflow_cancel`). */
 function useCancelBuildItem() {
   const active = useWorkflowActive();
-  return { label: t("Cancel Build"), onClick: () => invokeYog("run", "workflow_cancel"), disabled: !active, separatorBefore: true };
+  return { label: t("Cancel Build"), onClick: () => invokeCommand(yog.run.workflowCancel), disabled: !active, separatorBefore: true };
 }
 
 function ModBuildMenu({ root, onOpenPublish }: { root: string; onOpenPublish: () => void }) {
@@ -202,10 +203,10 @@ function ModBuildMenu({ root, onOpenPublish }: { root: string; onOpenPublish: ()
     <MenuBarItem
       label={t("Build")}
       items={[
-        { label: pt("command", "Build"), onClick: () => runModCommand("mod_build", root, t("Build")) },
+        { label: pt("command", "Build"), onClick: () => runModCommand(yog.run.modBuild, root, t("Build")) },
         // `yog-cli` has no clean command — `mod_clean` removes what builds
         // produce, so not while a build is still writing there.
-        { label: t("Clean"), onClick: () => runModCommand("mod_clean", root, t("Clean")), disabled: !cancelItem.disabled },
+        { label: t("Clean"), onClick: () => runModCommand(yog.run.modClean, root, t("Clean")), disabled: !cancelItem.disabled },
         { label: t("Publish..."), onClick: onOpenPublish, separatorBefore: true },
         cancelItem,
       ]}
@@ -507,7 +508,7 @@ function Shell({ onOpenSettings, onOpenPublish }: { onOpenSettings: () => void; 
     // else still running — a `workflow.toml` target, a mod run that hasn't
     // launched its game yet — is a workflow run, cancelled as such.
     onRestart: gameUp ? restart : () => void restartWorkflow(),
-    onStop: gameUp ? stop : () => void invokeYog("run", "workflow_cancel"),
+    onStop: gameUp ? stop : () => void invokeCommand(yog.run.workflowCancel),
   };
   return (
     <PlatformShell

@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, type ReactNode } from "react";
 import { useWorkspaceState } from "./WorkspaceContext";
-import { invokeYog } from "./invokeYog";
+import { yog } from "./plugins.generated";
+import { invokeCommand } from "substrate-platform-ui";
 
 interface BreakpointsContextValue {
   /** Breakpoints set for `path` — stable empty set when there are none, so callers can pass it straight through as a prop without a fresh identity on every render. */
@@ -58,12 +59,12 @@ export function BreakpointsProvider({ children }: { children: ReactNode }) {
     const wanted = flatten(stored);
     for (const [key, bp] of synced.current) {
       if (!wanted.has(key)) {
-        invokeYog("debug", "debug_clear_breakpoint", bp).catch((err) => console.error("clearing breakpoint:", err));
+        invokeCommand(yog.debug.debugClearBreakpoint, bp).catch((err) => console.error("clearing breakpoint:", err));
       }
     }
     for (const [key, bp] of wanted) {
       if (!synced.current.has(key)) {
-        invokeYog("debug", "debug_set_breakpoint", bp).catch((err) => console.error("setting breakpoint:", err));
+        invokeCommand(yog.debug.debugSetBreakpoint, bp).catch((err) => console.error("setting breakpoint:", err));
       }
     }
     synced.current = wanted;

@@ -8,8 +8,7 @@ use substrate_platform::project::ProjectStandard;
 use substrate_platform::run::{Level, LogLine, LogSink, WorkflowFile, WorkflowHandle, WorkflowResult};
 use tauri::{AppHandle, Emitter, Manager, State};
 
-mod plugin_names;
-mod plugins;
+pub mod plugins;
 mod path_commands;
 use path_commands::*;
 mod project_commands;
@@ -144,16 +143,11 @@ pub fn run() {
         .manage(WorkflowState::default())
         .manage(tools::ToolsState::new(build_settings))
         .manage(search::SearchState::default())
-        .manage(symbols::SymbolIndexState::default());
+        .manage(symbols::SymbolIndexState::default())
+        .manage(debugger::DebugState::default());
 
-    let builder = builder
-        .manage(debugger::DebugState::default())
-        // Yog IDLE's own commands, a plugin per domain.
-        .plugin(plugins::project())
-        .plugin(plugins::run())
-        .plugin(plugins::debug())
-        .plugin(plugins::code())
-        .plugin(plugins::app());
+    // Yog IDLE's own commands, a plugin per domain.
+    let builder = plugins::all().into_iter().fold(builder, |builder, plugin| builder.plugin(plugin));
 
     builder
         .build(context)

@@ -17,6 +17,7 @@ name = "yog_idle_tauri_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
+substrate-platform = { path = "../../Substrate-Platform" }
 tauri-build = { version = "2", features = [] }
 # The front end's copy of the shared names (`src/data/yogIds.generated.ts`).
 yog-ids = "0.2.1"

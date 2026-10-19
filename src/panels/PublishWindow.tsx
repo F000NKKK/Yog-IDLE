@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import { Button, CheckField, confirmDialog, Icon, IconButton, pt, reportError, TextField, useDraggable, useT } from "substrate-platform-ui";
+import { Button, CheckField, confirmDialog, Icon, IconButton, invokeCommand, pt, reportError, TextField, useDraggable, useT } from "substrate-platform-ui";
 import "./PublishWindow.css";
-import { invokeYog } from "../invokeYog";
+import { yog } from "../plugins.generated";
 
 interface PublishProfile {
   id: string;
@@ -47,7 +47,7 @@ export function PublishWindow({ projectRoot, onClose }: { projectRoot: string; o
   }
 
   function reload() {
-    invokeYog<PublishProfile[]>("run", "publish_profiles_list", { projectRoot })
+    invokeCommand<PublishProfile[]>(yog.run.publishProfilesList, { projectRoot })
       .then(setProfiles)
       .catch((err) => {
         setProfiles([]);
@@ -77,7 +77,7 @@ export function PublishWindow({ projectRoot, onClose }: { projectRoot: string; o
     // Editing keeps the profile's id, so the save overwrites its file.
     const profile: PublishProfile = { id: editingId ?? randomId(), name: name.trim(), mode, dryRun: mode === "exports" && dryRun };
     try {
-      await invokeYog("run", "publish_profile_save", { projectRoot, profile });
+      await invokeCommand(yog.run.publishProfileSave, { projectRoot, profile });
     } catch (err) {
       fail(t('Failed to save profile "{name}"', { name: profile.name }), err);
       return;
@@ -90,7 +90,7 @@ export function PublishWindow({ projectRoot, onClose }: { projectRoot: string; o
   async function deleteProfile(profile: PublishProfile) {
     if (!(await confirmDialog({ title: t("Delete Profile"), message: t('Delete publish profile "{name}"?', { name: profile.name }), confirmLabel: t("Delete") }))) return;
     try {
-      await invokeYog("run", "publish_profile_delete", { projectRoot, id: profile.id });
+      await invokeCommand(yog.run.publishProfileDelete, { projectRoot, id: profile.id });
       if (editingId === profile.id) resetForm();
       setError(null);
     } catch (err) {
@@ -101,7 +101,7 @@ export function PublishWindow({ projectRoot, onClose }: { projectRoot: string; o
 
   async function runProfile(profile: PublishProfile) {
     try {
-      await invokeYog("run", "publish_run", { projectRoot, profile });
+      await invokeCommand(yog.run.publishRun, { projectRoot, profile });
       setError(null);
     } catch (err) {
       fail(t('Failed to run profile "{name}"', { name: profile.name }), err);

@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-import { invokeYog } from "./invokeYog";
+import { yog } from "./plugins.generated";
+import { invokeCommand } from "substrate-platform-ui";
 
 export interface ProjectInfo {
   name: string;
@@ -93,7 +94,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
 
   async function openPath(path: string, kind: OpenKind) {
     try {
-      const opened = await invokeYog<ProjectInfo>("project", "project_open", { path });
+      const opened = await invokeCommand<ProjectInfo>(yog.project.projectOpen, { path });
       setProject(opened);
       setError(null);
       const entry: RecentEntry = { root: opened.root, name: kind === "project" ? opened.name : baseName(opened.root) };

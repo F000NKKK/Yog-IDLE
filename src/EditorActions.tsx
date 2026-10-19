@@ -20,6 +20,7 @@ import {
   editorUncommentSelection,
   editorUndo,
   extensionOf,
+  invokeCommand,
   type MenuBarDropdownEntry,
   MenuBarItem,
   reportError,
@@ -37,7 +38,7 @@ import { useActiveFileTab, useOpenFiles } from "./OpenFilesContext";
 
 import { openCodeSearch, openFindInFiles } from "./search/searchUi";
 import { formatYui } from "./designer/yuiText";
-import { invokeYog } from "./invokeYog";
+import { yog } from "./plugins.generated";
 
 // Formats done here rather than by an external tool (`format_document`).
 const LOCAL_FORMATTERS: Record<string, (text: string) => string> = { yui: formatYui };
@@ -51,7 +52,7 @@ function formatSupported(path: string): Promise<boolean> {
   const ext = extensionOf(path);
   let known = formatSupport.get(ext);
   if (!known) {
-    known = invokeYog<boolean>("code", "format_supported", { path }).catch(() => false);
+    known = invokeCommand<boolean>(yog.code.formatSupported, { path }).catch(() => false);
     formatSupport.set(ext, known);
   }
   return known;
@@ -96,7 +97,7 @@ export function useEditorActions() {
     if (!view || !tab || !canFormat) return;
     const contents = view.state.doc.toString();
     try {
-      const formatted = localFormatter ? localFormatter(contents) : await invokeYog<string>("code", "format_document", { path: tab.path, contents });
+      const formatted = localFormatter ? localFormatter(contents) : await invokeCommand<string>(yog.code.formatDocument, { path: tab.path, contents });
       // Skipped if the user typed while the formatter ran — its output
       // would silently undo that.
       if (view.state.doc.toString() === contents) editorSetText(view, formatted);

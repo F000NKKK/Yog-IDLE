@@ -1,8 +1,8 @@
 import { useState, type CSSProperties, type ReactNode } from "react";
-import { Button, formatShortcut, t, useT } from "substrate-platform-ui";
+import { Button, formatShortcut, invokeCommand, t, useT } from "substrate-platform-ui";
 import { useDebugSessionContext } from "../DebugSessionContext";
 import { AutosView, LocalsView, useLocals, WatchView } from "../debugger/VariableWindows";
-import { invokeYog } from "../invokeYog";
+import { yog } from "../plugins.generated";
 
 const muted: CSSProperties = { padding: "var(--sp-space-sm)", color: "var(--sp-text-muted)" };
 const mono: CSSProperties = { fontFamily: "var(--sp-font-mono)", fontSize: "var(--sp-font-size-sm)" };
@@ -83,7 +83,7 @@ export function DebugPanel() {
         {granted && (
           <>
             <div style={{ color: "var(--sp-text)" }}>{t("Granted — it applies from the next start of Yog-IDLE.")}</div>
-            <Button variant="ghost" onClick={() => invokeYog("app", "app_restart")} style={{ alignSelf: "flex-start" }}>
+            <Button variant="ghost" onClick={() => invokeCommand(yog.app.appRestart)} style={{ alignSelf: "flex-start" }}>
               {t("Restart Yog-IDLE")}
             </Button>
           </>

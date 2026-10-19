@@ -1,7 +1,7 @@
 // Project Explorer's commands: what each does, its keys and its menus.
 
 import type { KeyboardEvent, MouseEvent } from "react";
-import { type ContextMenuItem, editorProvidersFor, fileNameOf, type FileTreeMenuItem, type FileTreeNode, generalEditorProviders, matchesShortcut, openFile, t, ToolbarButton } from "substrate-platform-ui";
+import { type ContextMenuItem, editorProvidersFor, fileNameOf, type FileTreeMenuItem, type FileTreeNode, generalEditorProviders, type HostCommand, matchesShortcut, openFile, t, ToolbarButton } from "substrate-platform-ui";
 import { openWithItems } from "../../openFiles/tabViews";
 import { parentOf } from "../../paths";
 import { boundCommands, commandLabel, explorerCommand, type ExplorerCommandId } from "./commands";
@@ -12,6 +12,7 @@ import type { ExplorerOperations } from "./useExplorerOperations";
 import type { ExplorerTreeView } from "./useExplorerTreeView";
 import type { ExplorerTreeProps } from "../ProjectExplorer";
 import { runModCommand } from "../../runModCommand";
+import { yog } from "../../plugins.generated";
 
 /** Project Explorer's commands: what each does, its keys and its menus. */
 export function useExplorerCommands(props: ExplorerTreeProps, explorerTreeView: ExplorerTreeView, explorerOperations: ExplorerOperations) {
@@ -24,8 +25,8 @@ export function useExplorerCommands(props: ExplorerTreeProps, explorerTreeView: 
     openWith: () => {},
     viewCode: (n) => viewCode(n),
     viewDesigner: (n) => viewDesigner(n),
-    build: () => void runBuild("mod_build", t("Build")),
-    clean: () => void runBuild("mod_clean", t("Clean")),
+    build: () => void runBuild(yog.run.modBuild, t("Build")),
+    clean: () => void runBuild(yog.run.modClean, t("Clean")),
     add: () => {},
     newItem: (n) => setNewItem({ folder: folderOf(n), full: true }),
     quickAdd: (n) => setNewItem({ folder: folderOf(n), full: false }),
@@ -71,7 +72,7 @@ export function useExplorerCommands(props: ExplorerTreeProps, explorerTreeView: 
     requestAnimationFrame(() => run[id](focusedNode()));
   }, main);
 
-  const runBuild = (command: string, what: string) => runModCommand(command, project.root, what);
+  const runBuild = (command: HostCommand, what: string) => runModCommand(command, project.root, what);
 
   /** A menu entry for a command — its name and shortcut from the table, run on `node`. */
   function item(id: ExplorerCommandId, node: FileTreeNode, extra: Partial<FileTreeMenuItem> = {}): FileTreeMenuItem {

@@ -5,6 +5,7 @@ import {
   fileNameOf,
   fileTypeOf,
   getCurrentSelection,
+  invokeCommand,
   joinPath,
   PROPERTIES_KIND,
   type PropertyDescriptor,
@@ -27,7 +28,7 @@ import { samePath, validateEntryName } from "../paths";
 import { files } from "../files";
 import { editManifest } from "../projectProperties/manifestHistory";
 import "./Properties.css";
-import { invokeYog } from "../invokeYog";
+import { yog } from "../plugins.generated";
 
 /** The history of what Properties changes outside any document: renames, yog.toml fields. */
 const PROPERTIES_HISTORY = "properties";
@@ -140,7 +141,7 @@ export function Properties() {
         let error: string | null = null;
         if (info.isModProject) {
           try {
-            manifest = await invokeYog<Manifest>("project", "mod_manifest_read", { projectRoot: path });
+            manifest = await invokeCommand<Manifest>(yog.project.modManifestRead, { projectRoot: path });
           } catch (err) {
             error = String(err);
           }
@@ -249,7 +250,7 @@ export function Properties() {
           // saving that tab would silently undo this change.
           const manifestTab = tabs.find((t) => samePath(t.path, `${shownPath}/yog.toml`) && t.dirty);
           if (manifestTab) return t("yog.toml has unsaved changes in the editor — save or discard them first.");
-          const manifest = await editManifest(PROPERTIES_HISTORY, shownPath, () => invokeYog<Manifest>("project", "mod_manifest_set", { projectRoot: shownPath, key, value }), () => {
+          const manifest = await editManifest(PROPERTIES_HISTORY, shownPath, () => invokeCommand<Manifest>(yog.project.modManifestSet, { projectRoot: shownPath, key, value }), () => {
             reload();
             void recheckDisk();
           });
@@ -332,7 +333,7 @@ function fileProperties(path: string, info: PathInfo, rename: (value: unknown) =
       value: info.readOnly,
       description: t("Whether the file is write-protected on disk (the owner's write permission)."),
       onCommit: async (value) => {
-        await invokeYog("project", "path_set_readonly", { path, readOnly: value === true });
+        await invokeCommand(yog.project.pathSetReadonly, { path, readOnly: value === true });
         reload();
       },
     },

@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
-import { Button, CommitTextField, FormField, FormPage, FormSection, useT, errorText } from "substrate-platform-ui";
+import { Button, CommitTextField, errorText, FormField, FormPage, FormSection, invokeCommand, useT } from "substrate-platform-ui";
 import { projectApi } from "./api";
 import { checkPlain } from "./ApplicationPages";
 import type { PageProps } from "./ProjectPropertiesWindow";
-import { invokeYog } from "../invokeYog";
+import { yog } from "../plugins.generated";
 
 interface PublishProfile {
   id: string;
@@ -19,7 +19,7 @@ export function PublishPage({ root, props, apply, onOpenPublish }: PageProps & {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    invokeYog<PublishProfile[]>("run", "publish_profiles_list", { projectRoot: root })
+    invokeCommand<PublishProfile[]>(yog.run.publishProfilesList, { projectRoot: root })
       .then(setProfiles)
       .catch((err) => setError(errorText(err)));
   }, [root]);
