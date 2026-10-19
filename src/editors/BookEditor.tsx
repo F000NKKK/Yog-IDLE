@@ -28,6 +28,7 @@ import {
 import "./BookEditor.css";
 import { modRootOf } from "../paths";
 import { useDataFile } from "../data/useDataFile";
+import { kind as KIND } from "../data/yogIds.generated";
 
 /** The code view of a `.ybook` (registered in `editors/index.tsx`). */
 export const BOOK_SOURCE_VIEW = "yog.book.source";
@@ -281,9 +282,9 @@ export function BookEditor({ path, content, onChange, readOnly }: EditorProps) {
     const id = typeof v === "string" ? refId(v) : "";
     const image =
       id && !id.startsWith("@")
-        ? f.kind === "item"
+        ? f.kind === KIND.ITEM
           ? imagePreview(path, iconSource(id)) ?? undefined
-          : f.kind === "entity"
+          : f.kind === KIND.ENTITY
             ? imagePreview(path, `item:${id}_spawn_egg`) ?? undefined
             : f.kind === "image"
               ? imagePreview(path, id) ?? undefined

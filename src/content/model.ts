@@ -4,6 +4,7 @@
 
 import type { DataFormat } from "../data/useDataFile";
 import { formatData, patchData, readObject } from "../data/yogData";
+import { kind as KIND } from "../data/yogIds.generated";
 
 export type Dir = "down" | "up" | "north" | "south" | "west" | "east";
 export const DIRS: Dir[] = ["down", "up", "north", "south", "west", "east"];
@@ -141,8 +142,8 @@ export interface ContentFile {
   [key: string]: unknown;
 }
 
-export type Kind = "block" | "item";
-export const kindOf = (path: string): Kind | null => (/\.yblock$/i.test(path) ? "block" : /\.yitem$/i.test(path) ? "item" : null);
+export type Kind = typeof KIND.BLOCK | typeof KIND.ITEM;
+export const kindOf = (path: string): Kind | null => (/\.yblock$/i.test(path) ? KIND.BLOCK : /\.yitem$/i.test(path) ? KIND.ITEM : null);
 
 /** The game's tools and tiers by short name; a mod's are `@tag:block:…` tags. */
 export const TOOLS = ["pickaxe", "axe", "shovel", "hoe"];
@@ -278,7 +279,7 @@ export const FACE_SHADE: Record<Dir, number> = { up: 1, down: 0.5, north: 0.8, s
 
 /** The display transforms a model inherits from vanilla's `block/block` or `item/generated|handheld`. */
 export function defaultDisplay(kind: "block" | "generated" | "handheld"): Partial<Record<DisplaySlot, DisplayTransform>> {
-  if (kind === "block") {
+  if (kind === KIND.BLOCK) {
     return {
       gui: { rotation: [30, 225, 0], translation: [0, 0, 0], scale: [0.625, 0.625, 0.625] },
       ground: { rotation: [0, 0, 0], translation: [0, 3, 0], scale: [0.25, 0.25, 0.25] },

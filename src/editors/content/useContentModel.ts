@@ -13,6 +13,7 @@ import { useContentRefs } from "../../data/contentRefs";
 import { useTyped } from "../../data/typed";
 import { useDataFile } from "../../data/useDataFile";
 import { type AnimationEdit, type BuiltInBlockKind, type Choices, type Edited, ensureModel, type LoadedTexture, type ModelKey, modelOf, NO_CHOICES, type ParentModel, resolve, stateModelKey, type StateSel } from "./contentModel";
+import { kind as KIND } from "../../data/yogIds.generated";
 
 /** The file, the model edited, what's selected and shown, and the edits — the .yblock/.yitem editor's state. */
 export function useContentModel(props: EditorProps) {
@@ -44,9 +45,9 @@ export function useContentModel(props: EditorProps) {
   const [choices, setChoices] = useState<Choices>(NO_CHOICES);
   const [blockKinds, setBlockKinds] = useState<BuiltInBlockKind[]>([]);
   const rootRef = useRef<HTMLDivElement>(null);
-  const blockRefs = useContentRefs(path, "block");
-  const entityRefs = useContentRefs(path, "entity");
-  const effectRefs = useContentRefs(path, "effect");
+  const blockRefs = useContentRefs(path, KIND.BLOCK);
+  const entityRefs = useContentRefs(path, KIND.ENTITY);
+  const effectRefs = useContentRefs(path, KIND.EFFECT);
 
   useEffect(() => setPaintSlot(null), [path]);
 
@@ -82,7 +83,7 @@ export function useContentModel(props: EditorProps) {
   // A model key that no longer exists (the arm removed, say) → the main model.
   const effectiveKey: ModelKey = modelOf(file, modelKey) || modelKey === "model" ? modelKey : "model";
   const model = modelOf(file, effectiveKey);
-  const modelKind: Kind = effectiveKey === "item_model" || kind === "item" ? "item" : "block";
+  const modelKind: Kind = effectiveKey === "item_model" || kind === KIND.ITEM ? "item" : "block";
   const resolved = useMemo(() => resolve(model, modelKind, parents), [model, modelKind, parents]);
   const mainResolved = useMemo(() => resolve(file.model, kind, parents), [file.model, kind, parents]);
   useEffect(() => {
@@ -92,7 +93,7 @@ export function useContentModel(props: EditorProps) {
   const potionEffects = JSON.stringify(file.item?.potion?.effects ?? []);
   const [potionTint, setPotionTint] = useState<string>();
   useEffect(() => {
-    if (kind !== "item" || !file.item?.potion) {
+    if (kind !== KIND.ITEM || !file.item?.potion) {
       setPotionTint(undefined);
       return;
     }
@@ -116,7 +117,7 @@ export function useContentModel(props: EditorProps) {
 
   // Block states: every property, the state shown, what's picked.
   const states = file.states;
-  const stateProps = useMemo(() => (kind === "block" ? stateProperties(states) : []), [kind, states]);
+  const stateProps = useMemo(() => (kind === KIND.BLOCK ? stateProperties(states) : []), [kind, states]);
   const shownState = useMemo<BlockState | null>(() => {
     if (!previewState || !stateProps.length) return null;
     const st = defaultState(stateProps);

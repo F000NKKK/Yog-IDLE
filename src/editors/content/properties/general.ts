@@ -3,6 +3,7 @@
 import { type PropertyDescriptor, t } from "substrate-platform-ui";
 import type { ContentFile } from "../../../content/model";
 import type { PropertiesContext } from "./context";
+import { kind as KIND } from "../../../data/yogIds.generated";
 
 /** General: id, name, tooltip, registration, tags, required mods. */
 export function generalRows(ctx: PropertiesContext, out: PropertyDescriptor[]): void {
@@ -27,7 +28,7 @@ export function generalRows(ctx: PropertiesContext, out: PropertyDescriptor[]): 
     list("tags", t("Tags"), general, file.tags, (v) => update((d) => void (d.tags = v)), {
       suggestions: choices.tags,
       description:
-        kind === "block"
+        kind === KIND.BLOCK
           ? t("Tags it's in, comma-separated: Yog's common tags (yog:logs — the game's or each loader's tag of that meaning), the game's (minecraft:logs) or the mod's own by name. A block joins the block tag and its item the item tag.")
           : t("Tags it's in, comma-separated: Yog's common tags (yog:ingots/iron — the game's or each loader's tag of that meaning), the game's (minecraft:planks) or the mod's own by name."),
     }),

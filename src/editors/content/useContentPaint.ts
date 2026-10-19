@@ -55,7 +55,7 @@ export function useContentPaint(props: EditorProps, m: ContentModel, tx: Content
   /** A new texture of the mod for `slot` — `@texture:<mod>:item/<file>`, `…:block/<file>_<slot>` and the like, not yet taken. */
   const newTexturePath = (slot: string): string => {
     const stem = (stemOf(path) || "texture").toLowerCase().replace(/[^a-z0-9_.-]/g, "_");
-    const folder = modelKind === "item" || resolved.sprite ? "item" : "block";
+    const folder = modelKind === KIND.ITEM || resolved.sprite ? "item" : "block";
     const state = stateModelOf(effectiveKey);
     const several = paintSlots.length > 1 || effectiveKey === "arm" || state !== null;
     const base = `${folder}/${stem}${state !== null ? `_${state}` : ""}${several ? `_${slot}` : ""}`;

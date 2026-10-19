@@ -5,6 +5,7 @@ import { ANGLES, type Axis, type Dir, DIRS, type DisplayTransform, type Element,
 import { ensureModel } from "../contentModel";
 import { vecText } from "../fieldText";
 import type { PropertiesContext } from "./context";
+import { kind as KIND } from "../../../data/yogIds.generated";
 
 /** The model edited: its parent, textures, display, and the selected element and face. */
 export function modelRows(ctx: PropertiesContext, out: PropertyDescriptor[]): void {
@@ -15,7 +16,7 @@ export function modelRows(ctx: PropertiesContext, out: PropertyDescriptor[]): vo
   const setM = (edit: (m: Model) => void) => update((d) => edit(ensureModel(d, effectiveKey)));
   out.push(
     text("parent", t("Parent"), mc, model?.parent, (v) => setM((m) => void (m.parent = v)), {
-      suggestions: TEMPLATES.filter((x) => (modelKind === "item" ? true : !x.sprite)).map((x) => x.name),
+      suggestions: TEMPLATES.filter((x) => (modelKind === KIND.ITEM ? true : !x.sprite)).map((x) => x.name),
       description: t("A template (cube_all, cube_column, …, generated, handheld for items) or any model id. Empty: the model's own elements."),
     })
   );

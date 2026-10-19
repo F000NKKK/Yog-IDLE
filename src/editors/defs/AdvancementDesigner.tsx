@@ -11,6 +11,7 @@ import { DefLayout, type DefProps } from "./DefLayout";
 import { GameStage } from "./GamePanel";
 import { GAME_NAMESPACE } from "../../data/yogFormat";
 import "./defs.css";
+import { kind as KIND } from "../../data/yogIds.generated";
 
 const FRAME_LABELS: Record<(typeof FRAMES)[number], string> = { task: "Task", goal: "Goal", challenge: "Challenge" };
 const CRITERION_LABELS: Record<Criterion, string> = { granted: "Granted by the Mod", has_item: "Has an Item", used_item: "Used an Item" };
@@ -41,8 +42,8 @@ export function AdvancementDesigner({ path, file, update, readOnly, kindLabel }:
   const t = useT();
   useDesignResources(modRootOf(path));
   const defs = useContentDefs(path, "advancement");
-  const advancements = useContentRefs(path, "advancement");
-  const items = useContentRefs(path, "item");
+  const advancements = useContentRefs(path, KIND.ADVANCEMENT);
+  const items = useContentRefs(path, KIND.ITEM);
   const [strings, setStrings] = useState<string[]>([]);
   const [hover, setHover] = useState<string | null>(null);
   useEffect(() => {
@@ -51,7 +52,7 @@ export function AdvancementDesigner({ path, file, update, readOnly, kindLabel }:
 
   const ns = defs[0]?.id.split(":")[0] ?? advancements.own[0]?.id.split(":")[0] ?? GAME_NAMESPACE;
   const thisId = qualify(file.id ?? path.split(/[\\/]/).pop()!.replace(/\.ydef$/, ""), ns);
-  const parentOf = (v: Record<string, unknown>) => (typeof v.parent === "string" ? refId(v.parent, "advancement") : null);
+  const parentOf = (v: Record<string, unknown>) => (typeof v.parent === "string" ? refId(v.parent, KIND.ADVANCEMENT) : null);
 
   // The mod's advancements, this one as it's being edited; a parent outside the mod drawn too.
   const nodes = useMemo<Shown[]>(() => {
@@ -218,14 +219,14 @@ export function AdvancementDesigner({ path, file, update, readOnly, kindLabel }:
 /** An advancement's criteria: each how it's earned and, for items, which. */
 function CriteriaEditor({ criteria, items, readOnly, onChange }: { criteria: Record<string, unknown>[]; items: RefChoices; readOnly: boolean; onChange: (c: Record<string, unknown>[]) => void }) {
   const t = useT();
-  const suggestions = refSuggestions(items, "item");
+  const suggestions = refSuggestions(items, KIND.ITEM);
   const set = (i: number, c: Record<string, unknown>) => onChange(criteria.map((x, j) => (j === i ? c : x)));
   return (
     <div className="item-list">
       {criteria.map((c, i) => {
         const kind = criterionKind(c);
         const value = kind === "granted" ? "" : String(c[kind] ?? "");
-        const problem = kind === "granted" ? null : refMessage(t, refProblem(value, "item", items, kind === "has_item"), "item");
+        const problem = kind === "granted" ? null : refMessage(t, refProblem(value, KIND.ITEM, items, kind === "has_item"), KIND.ITEM);
         return (
           <div key={i} className="crit-row">
             <SelectField

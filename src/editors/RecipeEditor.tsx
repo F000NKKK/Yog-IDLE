@@ -13,6 +13,7 @@ import { readObject } from "../data/yogData";
 import { recipeOf, switchedTo, typeOf, withRecipe, type Recipe, type RecipeFields, type RecipeKind, type RecipeSlot } from "./recipeModel";
 import "./RecipeEditor.css";
 import { fileTypeId, formats } from "../yogFileTypes";
+import { kind as KIND } from "../data/yogIds.generated";
 
 /** The code view of a `.yrecipe` (registered in `editors/index.tsx`). */
 export const RECIPE_SOURCE_VIEW = "yog.recipe.source";
@@ -102,7 +103,7 @@ export function RecipeEditor({ path, content, onChange, readOnly }: EditorProps)
     const t = useT();
   useSyncExternalStore(subscribeImageSources, imageSourcesVersion);
   const [kinds, reloadKinds] = useRecipeKinds(path);
-  const itemRefs = useContentRefs(path, "item");
+  const itemRefs = useContentRefs(path, KIND.ITEM);
   const all = useMemo(() => (kinds ? [...kinds.game, ...kinds.own] : []), [kinds]);
   const { parsed, update: edit } = useDataFile(content, onChange, RECIPE_FORMAT, readOnly);
   const object = parsed?.ok ? parsed.file : null;

@@ -28,6 +28,7 @@ import { useDataFile } from "../data/useDataFile";
 import { inspectorRows } from "./inspector";
 import { ItemList } from "./ItemList";
 import "./designers.css";
+import { kind as KIND } from "../data/yogIds.generated";
 
 export const ENTITY_SOURCE_VIEW = "yog.yentity.source";
 
@@ -66,7 +67,7 @@ export function EntityEditor({ path, content, onChange, readOnly }: EditorProps)
   const kind = kindOf(file);
   const living = isLiving(kind);
   const body = useBody(path, file.model, file.animations);
-  const attributes = useContentRefs(path, "attribute");
+  const attributes = useContentRefs(path, KIND.ATTRIBUTE);
   const sounds = useContentRefs(path, "sound");
   const [strings, setStrings] = useState<string[]>([]);
   const [hitbox, setHitbox] = useState(true);

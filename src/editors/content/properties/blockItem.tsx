@@ -8,13 +8,14 @@ import { refMessage } from "../../inspector";
 import type { PotionEffectRow } from "../contentModel";
 import { parseVec, vecText } from "../fieldText";
 import type { PropertiesContext } from "./context";
+import { kind as KIND } from "../../../data/yogIds.generated";
 
 /** The block's or item's own properties. */
 export function blockItemRows(ctx: PropertiesContext, out: PropertyDescriptor[]): void {
   const { file, kind, update, choices, blockKinds, blockRefs, effectRefs, entityRefs, num, text, choice, flag, vec, prune, yesNoProperties } = ctx;
   const ro = ctx.readOnly;
   // Block / item properties.
-  if (kind === "block") {
+  if (kind === KIND.BLOCK) {
     const c = t("Block");
     const b = file.block ?? {};
     const blockKind = blockKinds.find((candidate) => candidate.name === file.kind);
@@ -137,8 +138,8 @@ export function blockItemRows(ctx: PropertiesContext, out: PropertyDescriptor[])
       }),
       ...(blockKind?.takes.includes("base")
         ? [text("kind_base", t("Kind Base Block"), c, b.base, (v) => setB((x) => void (x.base = v)), {
-            suggestions: refSuggestions(blockRefs, "block"),
-            validate: (v) => refMessage(t, refProblem(String(v), "block", blockRefs), "block"),
+            suggestions: refSuggestions(blockRefs, KIND.BLOCK),
+            validate: (v) => refMessage(t, refProblem(String(v), KIND.BLOCK, blockRefs), KIND.BLOCK),
             description: t("The block this kind is based on, as @block:namespace:id (for example, a stair or slab's material block)."),
           })]
         : []),
@@ -276,7 +277,7 @@ export function blockItemRows(ctx: PropertiesContext, out: PropertyDescriptor[])
                     }
                   })}
                   columns={[
-                    { key: "effect", label: t("Effect"), kind: "text", grow: 3, suggestions: refSuggestions(effectRefs, "effect"), validate: (v) => refMessage(t, refProblem(v, "effect", effectRefs), "effect") },
+                    { key: "effect", label: t("Effect"), kind: "text", grow: 3, suggestions: refSuggestions(effectRefs, KIND.EFFECT), validate: (v) => refMessage(t, refProblem(v, KIND.EFFECT, effectRefs), KIND.EFFECT) },
                     { key: "duration", label: t("Ticks"), kind: "number", min: 1, int: true },
                     { key: "amplifier", label: t("Level"), kind: "number", min: 0, int: true, placeholder: "0" },
                   ]}
@@ -290,8 +291,8 @@ export function blockItemRows(ctx: PropertiesContext, out: PropertyDescriptor[])
           if (!v) delete x.hangs;
           else x.hangs = { ...(x.hangs ?? {}), entity: v };
         }), {
-        suggestions: refSuggestions(entityRefs, "entity"),
-        validate: (v) => refMessage(t, refProblem(String(v), "entity", entityRefs), "entity"),
+        suggestions: refSuggestions(entityRefs, KIND.ENTITY),
+        validate: (v) => refMessage(t, refProblem(String(v), KIND.ENTITY, entityRefs), KIND.ENTITY),
         description: t("A hanging entity this item places, as @entity:namespace:id; it must have kind: hanging."),
       }),
       ...(it.hangs

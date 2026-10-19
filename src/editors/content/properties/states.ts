@@ -6,13 +6,14 @@ import { isWord, modelNames, modelNamesValue, parseVariantKey, PROPERTY_KIND_LAB
 import { ARM_TEMPLATE, stateModelKey } from "../contentModel";
 import { parseRotations, rotationsText } from "../fieldText";
 import type { PropertiesContext } from "./context";
+import { kind as KIND } from "../../../data/yogIds.generated";
 
 /** A block's states: its properties and variants, how it's placed, and what's picked in the outliner. */
 export function stateRows(ctx: PropertiesContext, out: PropertyDescriptor[]): void {
   const { file, kind, update, editStates, effectiveKey, modelKey, mainResolved, pickedState, setModelKey, setPreviewState, setStateSel, stateModelNames, stateProps, states, num, text, choice, flag, list, prune } = ctx;
   const ro = ctx.readOnly;
   // States.
-  if (kind === "block") {
+  if (kind === KIND.BLOCK) {
     const c = t("States");
     out.push(
       text(
@@ -64,7 +65,7 @@ export function stateRows(ctx: PropertiesContext, out: PropertyDescriptor[]): vo
   }
 
   // How it's placed.
-  if (kind === "block") {
+  if (kind === KIND.BLOCK) {
     const c = t("States");
     const st = file.states ?? {};
     const setS = (edit: (s: NonNullable<ContentFile["states"]>) => void) =>
@@ -95,7 +96,7 @@ export function stateRows(ctx: PropertiesContext, out: PropertyDescriptor[]): vo
   }
 
   // The property, state model or variant picked in the outliner.
-  if (kind === "block" && pickedState && states) {
+  if (kind === KIND.BLOCK && pickedState && states) {
     const key = pickedState.key;
     if (pickedState.kind === "property") {
       const c = `${t("State Property")}: ${key}`;

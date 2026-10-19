@@ -45,6 +45,7 @@ import { useContentModel } from "./content/useContentModel";
 import { useContentTextures } from "./content/useContentTextures";
 import { useContentPaint } from "./content/useContentPaint";
 import { useContentCommands } from "./content/useContentCommands";
+import { kind as KIND } from "../data/yogIds.generated";
 
 export const CONTENT_SOURCE_VIEW = "yog.content.source";
 
@@ -82,12 +83,12 @@ export function ContentEditor(props: EditorProps) {
       </div>
     ) : null;
 
-  const modelChoices: { value: ModelKey; label: string }[] = [{ value: "model", label: kind === "block" ? t("Block Model") : t("Item Model") }];
-  if (kind === "block") {
+  const modelChoices: { value: ModelKey; label: string }[] = [{ value: "model", label: kind === KIND.BLOCK ? t("Block Model") : t("Item Model") }];
+  if (kind === KIND.BLOCK) {
     modelChoices.push({ value: "item_model", label: file.item_model ? t("Item Model") : t("Item Model (add)") });
     if (file.states?.connect) modelChoices.push({ value: "arm", label: t("Connection Arm") });
   }
-  for (const n of kind === "block" ? stateModelNames : []) modelChoices.push({ value: stateModelKey(n), label: t("State Model: {name}", { name: n }) });
+  for (const n of kind === KIND.BLOCK ? stateModelNames : []) modelChoices.push({ value: stateModelKey(n), label: t("State Model: {name}", { name: n }) });
   const pickModel = (v: ModelKey) => {
     if (shownVariant && variantModelKey(shownVariant.models) !== v) setPreviewState(null);
     const state = stateModelOf(v);
@@ -99,7 +100,7 @@ export function ContentEditor(props: EditorProps) {
   };
   const applyItemPreset = (id: string) => {
     const preset = ITEM_MODEL_PRESETS.find((p) => p.id === id);
-    if (!preset || kind !== "item") return;
+    if (!preset || kind !== KIND.ITEM) return;
     setModelKey("model");
     setSelected(null);
     setFace(null);
@@ -254,7 +255,7 @@ export function ContentEditor(props: EditorProps) {
   const isPicked = (what: StateSel["kind"], key: string) => pickedState?.kind === what && pickedState.key === key;
   const pickedVariant = pickedState?.kind === "variant" ? pickedState.key : null;
   const variantKeys = Object.keys(states?.variants ?? {});
-  const statesPanel = kind === "block" && (
+  const statesPanel = kind === KIND.BLOCK && (
     <>
       <div className="content-pane-header">
         <span>{t("State Properties")}</span>
@@ -407,7 +408,7 @@ export function ContentEditor(props: EditorProps) {
       : pickedState
         ? pickedState.key || t("Every state")
         : (file.name ?? path.split(/[\\/]/).pop()),
-    objectType: selEl ? t("Element") : pickedState ? t(STATE_SEL_TYPES[pickedState.kind]) : kind === "block" ? t("Block") : t("Item"),
+    objectType: selEl ? t("Element") : pickedState ? t(STATE_SEL_TYPES[pickedState.kind]) : kind === KIND.BLOCK ? t("Block") : t("Item"),
     objectKey: `${effectiveKey}:${sel ?? "-"}:${face ?? "-"}:${pickedState ? `${pickedState.kind}:${pickedState.key}` : "-"}`,
     properties: uvRow ? [...properties, uvRow] : properties,
   });
@@ -445,7 +446,7 @@ export function ContentEditor(props: EditorProps) {
             ]}
           />
         </ToolbarGroup>
-        {kind === "item" && (
+        {kind === KIND.ITEM && (
           <ToolbarGroup>
             <ToolbarSelect
               value=""

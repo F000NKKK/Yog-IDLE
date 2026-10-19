@@ -10,6 +10,7 @@ import { RowsEditor } from "../RowsEditor";
 import { asList, EFFECT_CATEGORIES, modifierText, OPERATIONS, type Operation } from "./defModel";
 import { DefLayout, type DefProps } from "./DefLayout";
 import { GameStage } from "./GamePanel";
+import { kind as KIND } from "../../data/yogIds.generated";
 
 const CATEGORY_LABELS: Record<(typeof EFFECT_CATEGORIES)[number], string> = { beneficial: "Beneficial", harmful: "Harmful", neutral: "Neutral" };
 const OPERATION_LABELS: Record<Operation, string> = { add: "Add", multiply_base: "Multiply Base", multiply_total: "Multiply Total" };
@@ -24,7 +25,7 @@ function effectName(id: string): string {
 
 /** An attribute's shown name: its text (`attribute.name.<ns>.<id>`), else its id's last part. */
 function attributeName(ref: string): string {
-  const id = refId(ref, "attribute") ?? ref;
+  const id = refId(ref, KIND.ATTRIBUTE) ?? ref;
   const [ns, p] = id.includes(":") ? id.split(":") : ["minecraft", id];
   const key = `attribute.name.${ns}.${p}`;
   const text = designText(`@lang:${key}`);
@@ -47,7 +48,7 @@ export function EffectDesigner({ path, file, update, readOnly, kindLabel }: DefP
   useTyped();
   const t = useT();
   useDesignResources(modRootOf(path));
-  const attributes = useContentRefs(path, "attribute");
+  const attributes = useContentRefs(path, KIND.ATTRIBUTE);
   const ns = attributes.own[0]?.id.split(":")[0] ?? "minecraft";
   const id = typeof file.id === "string" ? file.id : "";
   const full = id.includes(":") ? id : `${ns}:${id}`;
@@ -80,7 +81,7 @@ export function EffectDesigner({ path, file, update, readOnly, kindLabel }: DefP
             blank={() => ({ attribute: "@attribute:minecraft:generic.movement_speed", amount: 0.1, operation: "multiply_total" })}
             onChange={(m) => update((d) => void (d.modifiers = m.length ? m : undefined))}
             columns={[
-              { key: "attribute", label: t("Attribute"), kind: "text", grow: 3, suggestions: refSuggestions(attributes, "attribute"), validate: (v) => refMessage(t, refProblem(v, "attribute", attributes), "attribute") },
+              { key: "attribute", label: t("Attribute"), kind: "text", grow: 3, suggestions: refSuggestions(attributes, KIND.ATTRIBUTE), validate: (v) => refMessage(t, refProblem(v, KIND.ATTRIBUTE, attributes), KIND.ATTRIBUTE) },
               { key: "amount", label: t("Amount"), kind: "number" },
               { key: "operation", label: t("Operation"), kind: "enum", grow: 2, options: OPERATIONS.map((o) => ({ value: o, label: t(OPERATION_LABELS[o]) })) },
             ]}

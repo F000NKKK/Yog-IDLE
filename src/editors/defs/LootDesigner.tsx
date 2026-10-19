@@ -7,6 +7,7 @@ import { ItemList } from "../ItemList";
 import { RowsEditor } from "../RowsEditor";
 import { asList, chanceOf, countRange, type LootAdd } from "./defModel";
 import { DefLayout, type DefProps } from "./DefLayout";
+import { kind as KIND } from "../../data/yogIds.generated";
 
 interface LootScale {
   item?: string;
@@ -32,8 +33,8 @@ export function LootDesigner({ path, file, update, readOnly, kindLabel }: DefPro
   useTyped();
   const t = useT();
   const modifier = file.kind === "loot_modifier";
-  const items = useContentRefs(path, "item");
-  const tables = useContentRefs(path, "loot_table");
+  const items = useContentRefs(path, KIND.ITEM);
+  const tables = useContentRefs(path, KIND.LOOT_TABLE);
   const add = asList<LootAdd>(file.add);
   const scale = modifier ? asList<LootScale>(file.scale) : [];
   const addRows: LootAddRow[] = add.map((entry) => {
@@ -86,9 +87,9 @@ export function LootDesigner({ path, file, update, readOnly, kindLabel }: DefPro
             <ItemList
               items={asList<string>(file.tables)}
               readOnly={readOnly}
-              suggestions={refSuggestions(tables, "loot_table")}
-              validate={(v) => refMessage(t, refProblem(v, "loot_table", tables), "loot_table")}
-              label={(v) => refId(v, "loot_table") ?? v}
+              suggestions={refSuggestions(tables, KIND.LOOT_TABLE)}
+              validate={(v) => refMessage(t, refProblem(v, KIND.LOOT_TABLE, tables), KIND.LOOT_TABLE)}
+              label={(v) => refId(v, KIND.LOOT_TABLE) ?? v}
               onChange={(v) => update((d) => void (d.tables = v))}
             />
           </section>
@@ -106,7 +107,7 @@ export function LootDesigner({ path, file, update, readOnly, kindLabel }: DefPro
             blank={() => ({ item: "@item:minecraft:stick", min: 1, max: 1, chance: 1 })}
             onChange={setAddRows}
             columns={[
-              { key: "item", label: t("Item"), kind: "text", grow: 3, suggestions: refSuggestions(items, "item"), validate: (v) => refMessage(t, refProblem(v, "item", items), "item") },
+              { key: "item", label: t("Item"), kind: "text", grow: 3, suggestions: refSuggestions(items, KIND.ITEM), validate: (v) => refMessage(t, refProblem(v, KIND.ITEM, items), KIND.ITEM) },
               { key: "min", label: t("Min"), kind: "number", min: -64, max: 64, int: true },
               { key: "max", label: t("Max"), kind: "number", min: -64, max: 64, int: true },
               { key: "chance", label: t("Chance"), kind: "number", min: 0, max: 1 },
@@ -128,7 +129,7 @@ export function LootDesigner({ path, file, update, readOnly, kindLabel }: DefPro
               blank={() => ({ item: "@item:minecraft:stick", by: 0.5 })}
               onChange={setScaleRows}
               columns={[
-                { key: "item", label: t("Item"), kind: "text", grow: 3, suggestions: refSuggestions(items, "item"), validate: (v) => refMessage(t, refProblem(v, "item", items), "item") },
+                { key: "item", label: t("Item"), kind: "text", grow: 3, suggestions: refSuggestions(items, KIND.ITEM), validate: (v) => refMessage(t, refProblem(v, KIND.ITEM, items), KIND.ITEM) },
                 { key: "by", label: t("Factor"), kind: "number", min: 0, max: 64 },
               ]}
             />

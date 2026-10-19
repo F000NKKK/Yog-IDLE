@@ -6,6 +6,7 @@ import type { TextureAnimation } from "../../content/animation";
 import { type ContentFile, defaultDisplay, type Dir, DIRS, type DisplaySlot, type DisplayTransform, type Element, type Model, templateElements, templateOf } from "../../content/model";
 import type { PixelImage } from "../../content/paint/pixels";
 import { GAME_NAMESPACE } from "../../data/yogFormat";
+import { kind as KIND } from "../../data/yogIds.generated";
 
 /** What the pickers offer, from the mod and the game. */
 export interface Choices {
@@ -117,7 +118,7 @@ export function resolve(model: Model | undefined, kind: "block" | "item", parent
   let display: Resolved["display"];
   if (tpl?.sprite) display = defaultDisplay(parent === "handheld" ? "handheld" : "generated");
   else if (raw) display = raw.display ?? {};
-  else if (kind === "item" && !m.elements?.length && !tpl) display = defaultDisplay("generated");
+  else if (kind === KIND.ITEM && !m.elements?.length && !tpl) display = defaultDisplay("generated");
   else display = defaultDisplay("block");
   display = { ...display, ...(m.display ?? {}) };
   if (m.elements?.length) return { elements: m.elements, textures: resolved, slots, own: true, display };

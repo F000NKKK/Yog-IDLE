@@ -16,6 +16,7 @@ import { modelRows } from "./properties/model";
 import { propertyRows } from "./properties/rows";
 import { stateRows } from "./properties/states";
 import { CONTENT_SOURCE_VIEW } from "../ContentEditor";
+import { kind as KIND } from "../../data/yogIds.generated";
 
 /** Element and block-state commands, the keyboard and Edit menu, and the Properties rows. */
 export function useContentCommands(props: EditorProps, m: ContentModel, pt: ContentPaint) {
@@ -271,7 +272,7 @@ export function useContentCommands(props: EditorProps, m: ContentModel, pt: Cont
     modelRows(ctx, out);
 
     // A picked property, state model or variant is the object shown: its rows (a model's with its model's).
-    if (kind === "block" && pickedState && states) {
+    if (kind === KIND.BLOCK && pickedState && states) {
       const file = new Set([t("General"), t("Block"), t("Item"), t("States")]);
       return out.filter((r) => !file.has(r.category ?? "") && (pickedState.kind === "model" || /^s[pmv]\./.test(r.id)));
     }

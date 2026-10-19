@@ -3,6 +3,7 @@ import { bodyId, bodyRef, eyeHeight, kindOf, moved, pushable, type EntityFile } 
 import { editData, readFile } from "../test/data";
 import { prefetchTyped } from "../data/typed";
 import { NO_REFS, refProblem, type RefChoices } from "../data/contentRefs";
+import { kind as KIND } from "../data/yogIds.generated";
 
 const FILE = `// A wisp.
 {
@@ -46,13 +47,13 @@ describe("yentity", () => {
   it("checks references", async () => {
     await prefetchTyped(["@entity:mymod:wisp", "@entity:create:seat", "@entity:minecraft:cow", "@item:minecraft:pig", "@tag:entity:minecraft:raiders", "@entity:other:x"]);
     const c: RefChoices = { own: [{ id: "mymod:wisp", file: "" }], external: ["create:seat"], game: ["minecraft:pig"] };
-    expect(refProblem("@entity:mymod:wisp", "entity", c)).toBeNull();
-    expect(refProblem("@entity:create:seat", "entity", c)).toBeNull();
-    expect(refProblem("@entity:minecraft:cow", "entity", c)).toEqual({ t: "unknown", id: "minecraft:cow" });
-    expect(refProblem("@item:minecraft:pig", "entity", c)).toEqual({ t: "syntax", kind: "entity" });
-    expect(refProblem("@tag:entity:minecraft:raiders", "entity", c, true)).toBeNull();
+    expect(refProblem("@entity:mymod:wisp", KIND.ENTITY, c)).toBeNull();
+    expect(refProblem("@entity:create:seat", KIND.ENTITY, c)).toBeNull();
+    expect(refProblem("@entity:minecraft:cow", KIND.ENTITY, c)).toEqual({ t: "unknown", id: "minecraft:cow" });
+    expect(refProblem("@item:minecraft:pig", KIND.ENTITY, c)).toEqual({ t: "syntax", kind: "entity" });
+    expect(refProblem("@tag:entity:minecraft:raiders", KIND.ENTITY, c, true)).toBeNull();
     // Without a client jar the game's ids can't be checked; nothing is known before the list arrives.
-    expect(refProblem("@entity:minecraft:cow", "entity", { ...c, game: [] })).toBeNull();
-    expect(refProblem("@entity:other:x", "entity", NO_REFS)).toBeNull();
+    expect(refProblem("@entity:minecraft:cow", KIND.ENTITY, { ...c, game: [] })).toBeNull();
+    expect(refProblem("@entity:other:x", KIND.ENTITY, NO_REFS)).toBeNull();
   });
 });
