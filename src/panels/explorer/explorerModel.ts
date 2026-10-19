@@ -2,10 +2,9 @@
 // id, code-behind pairs, generated code, changed files, what's being typed.
 
 import { useEffect, useMemo, useState } from "react";
-import { type ChangeKind, type FileTreeNode, reportError, type RepoStatus, t } from "substrate-platform-ui";
+import { type ChangeKind, type FileTreeNode, reportError, type RepoStatus, t, useFilesChanged } from "substrate-platform-ui";
 import type { ProjectInfo } from "../../ProjectContext";
 import { files, readModId } from "../../files";
-import { useFsChanged } from "../../fsWatch";
 import { generatedCodePath } from "../../paths";
 
 export async function attempt(what: string, op: () => Promise<void>) {
@@ -84,7 +83,7 @@ export function useGeneratedCode(project: ProjectInfo, nodes: FileTreeNode[]): R
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key, checks]);
-  useFsChanged(() => setChecks((n) => n + 1));
+  useFilesChanged(() => setChecks((n) => n + 1));
   useEffect(() => {
     const again = () => setChecks((n) => n + 1);
     window.addEventListener("focus", again);

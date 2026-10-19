@@ -12,9 +12,6 @@ pub const OUTPUT_GAME: &str = "game-output";
 #[cfg_attr(not(target_os = "linux"), allow(dead_code))]
 pub const OUTPUT_DEBUG: &str = "debug-output";
 
-/// Files or folders changed outside the IDE, in folders `fs_watch` named —
-/// a batch of paths.
-pub const FS_CHANGED: &str = "fs-changed";
 
 /// A Build/Publish workflow (or a run's build) started, for project `root`.
 pub const WORKFLOW_START: &str = "workflow-start";

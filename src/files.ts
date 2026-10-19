@@ -1,8 +1,8 @@
-// The backend's file-system commands (`src-tauri/src/lib.rs`), typed — and
-// the one way to read a mod's id.
+// Files as Yog IDLE reads them: the platform's (`hostFiles`), a path's
+// properties, the project's items — and the one way to read a mod's id.
 
 import { invoke } from "@tauri-apps/api/core";
-import type { DirEntry } from "substrate-platform-ui";
+import { hostFiles, type DirEntry } from "substrate-platform-ui";
 
 /** `path_info`'s answer (see `properties.rs`). */
 export interface PathInfo {
@@ -16,15 +16,8 @@ export interface PathInfo {
 }
 
 export const files = {
-  read: (path: string) => invoke<string>("file_read", { path }),
-  write: (path: string, contents: string) => invoke<void>("file_write", { path, contents }),
+  ...hostFiles,
   info: (path: string) => invoke<PathInfo>("path_info", { path }),
-  list: (path: string) => invoke<DirEntry[]>("dir_list", { path }),
-  createFile: (path: string) => invoke<void>("dir_create_file", { path }),
-  createDir: (path: string) => invoke<void>("dir_create_dir", { path }),
-  rename: (from: string, to: string) => invoke<void>("dir_rename", { from, to }),
-  copy: (from: string, to: string) => invoke<void>("dir_copy", { from, to }),
-  remove: (path: string) => invoke<void>("dir_remove", { path }),
   /** Every file and folder of the project (git-ignored ones, build output and VCS metadata left out) — `search.rs`. */
   projectItems: (root: string) => invoke<DirEntry[]>("project_items", { root }),
   /** The project's files whose text contains `pattern` (ignoring case). */

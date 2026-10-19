@@ -26,9 +26,11 @@ import {
   t,
   type TabMenuContext,
   useEditorProviders,
+  useFilesChanged,
   useKeybinding,
   useLocale,
   useShell,
+  useWatchedFolders,
 } from "substrate-platform-ui";
 import { useBreakpoints } from "./BreakpointsContext";
 import { useDebugSessionContext } from "./DebugSessionContext";
@@ -40,7 +42,6 @@ import { selectDocument } from "./ideSelection";
 import { addCloseGuard } from "./windowClose";
 import { useGlobalStateStore } from "./WorkspaceContext";
 import { files } from "./files";
-import { useFsChanged, useWatchedFolders } from "./fsWatch";
 import { askToSave, isViewMap, newTabId, nextRevealSeq, openWithItems, regenerateScreen, tabViews, VIEWS_KEY } from "./openFiles/tabViews";
 
 export interface FileTab {
@@ -418,7 +419,7 @@ export function OpenFilesProvider({ children }: { children: ReactNode }) {
   // folder, not the file — editors that save by replacing the file would
   // leave a file watch behind).
   useWatchedFolders("open-files", tabs.map((t) => parentOf(t.path)));
-  useFsChanged((paths) => void recheckDisk(new Set(paths)));
+  useFilesChanged((paths) => void recheckDisk(new Set(paths)));
 
   function getComponent(tabId: string): ComponentType {
     let component = componentCache.current.get(tabId);

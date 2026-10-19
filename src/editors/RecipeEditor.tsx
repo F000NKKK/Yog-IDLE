@@ -2,13 +2,12 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, use
 import { useTyped } from "../data/typed";
 import { cli } from "../cli";
 import { ItemHeader, ItemIcons } from "../designer/ItemIcons";
-import { type EditorProps, fileTypeOf, openFile, type PropertyDescriptor, type PropertySet, type PropertyValue, Toolbar, ToolbarButton, ToolbarGroup, ToolbarInput, ToolbarLabel, ToolbarSelect, usePropertyContext, useT } from "substrate-platform-ui";
+import { type EditorProps, fileTypeOf, openFile, type PropertyDescriptor, type PropertySet, type PropertyValue, Toolbar, ToolbarButton, ToolbarGroup, ToolbarInput, ToolbarLabel, ToolbarSelect, useFilesChanged, usePropertyContext, useT } from "substrate-platform-ui";
 import { DataEditor } from "./DataEditor";
 import { useContentRefs } from "../data/contentRefs";
 import { alternativesOf, isTag } from "../data/ingredients";
 import { MAX_STACK_SIZE } from "../data/yogFormat";
 import { iconSource, imagePreview, imageSources, imageSourcesVersion, ingredientItems, subscribeImageSources } from "../designer/imageSources";
-import { useFsChanged } from "../fsWatch";
 import { useDataFile, type DataFormat } from "../data/useDataFile";
 import { readObject } from "../data/yogData";
 import { recipeOf, switchedTo, typeOf, withRecipe, type Recipe, type RecipeFields, type RecipeKind, type RecipeSlot } from "./recipeModel";
@@ -65,7 +64,7 @@ function useRecipeKinds(path: string): [Kinds | null, () => void] {
       live = false;
     };
   }, [path, asked]);
-  useFsChanged((paths) => {
+  useFilesChanged((paths) => {
     if (paths.some((p) => [fileTypeId(formats.def), fileTypeId(formats.ui)].includes(fileTypeOf(p)?.id ?? ""))) reload();
   });
   return [kinds, reload];

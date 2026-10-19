@@ -16,6 +16,7 @@ import {
   gitSettingsKeywords,
   GitSettingsPage,
   GitStatusBar,
+  hostFiles,
   InternationalSettings,
   internationalSettingsKeywords,
   isGitDocument,
@@ -276,7 +277,7 @@ function FileMenu({ editor }: { editor: EditorActions }) {
     const chosen = await open({ multiple: false });
     if (typeof chosen !== "string") return;
     const dir = chosen.slice(0, Math.max(chosen.lastIndexOf("/"), chosen.lastIndexOf("\\")));
-    await invoke("allow_path", { path: dir }).catch(() => {});
+    await hostFiles.allow(dir).catch(() => {});
     openFile({ path: chosen, name: chosen.split(/[/\\]/).pop() ?? chosen });
   }
 

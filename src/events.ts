@@ -15,8 +15,6 @@ export const EVENT = {
   /** IDE-side messages (`reportError`, the Project Explorer, the designer) — Substrate's General output. */
   ideOutput: substrateEvents.ideOutput,
 
-  /** Paths changed outside the IDE, in the folders `fs_watch` names (see `fsWatch.tsx`). */
-  fsChanged: "fs-changed",
 
   workflowStart: "workflow-start",
   workflowExit: "workflow-exit",
@@ -79,7 +77,6 @@ type Payloads = {
   "workflow-output": string;
   "game-output": string;
   "debug-output": string;
-  "fs-changed": string[];
   /** The project the run builds. */
   "workflow-start": { root: string } | null;
   /** A game exiting fires this too, with no payload. */

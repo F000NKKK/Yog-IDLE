@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import type { RunTarget } from "substrate-platform-ui";
 import { EVENT, listenAll, listenTo } from "./events";
-import { useFsChanged, useWatchedFolders } from "./fsWatch";
+import { useFilesChanged, useWatchedFolders } from "substrate-platform-ui";
 
 /** What `mod_run_targets` gives: `yog run --list --json`, plus where to change it. */
 export interface ModRunTargets {
@@ -42,7 +42,7 @@ export function useModRunTargets(projectRoot: string) {
 
   useEffect(reload, [reload]);
   useWatchedFolders("run-targets", list.sources);
-  useFsChanged((paths) => {
+  useFilesChanged((paths) => {
     if (paths.some((p) => list.sources.some((s) => p.startsWith(s)))) reload();
   });
 

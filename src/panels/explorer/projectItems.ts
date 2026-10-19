@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import type { DirEntry } from "substrate-platform-ui";
 import { files } from "../../files";
-import { useFsChanged } from "../../fsWatch";
+import { useFilesChanged } from "substrate-platform-ui";
 
 /** Outside changes this close together are one re-listing. */
 const RELIST_DEBOUNCE_MS = 300;
@@ -16,7 +16,7 @@ const CONTENT_SEARCH_DEBOUNCE_MS = 250;
 export function useProjectItems(root: string, revision: number): DirEntry[] | null {
   const [entries, setEntries] = useState<DirEntry[] | null>(null);
   const [changes, setChanges] = useState(0);
-  useFsChanged(() => setChanges((n) => n + 1));
+  useFilesChanged(() => setChanges((n) => n + 1));
   useEffect(() => {
     let live = true;
     const timer = setTimeout(

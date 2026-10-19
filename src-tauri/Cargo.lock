@@ -4994,7 +4994,7 @@ dependencies = [
 name = "yog-data"
 version = "0.6.0"
 dependencies = [
- "base64 0.22.1",
+ "base64 0.23.1",
  "bumpalo",
  "serde_spanned 1.1.2",
  "toml 1.1.8+spec-1.1.0",

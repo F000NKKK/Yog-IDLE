@@ -1,10 +1,9 @@
 // The tree as shown: its scope, filters and search, selection, what changed, what's open.
 
 import { type FocusEvent, useEffect, useMemo, useRef, useState } from "react";
-import { type ChangeKind, changeKindLabel, changeLetter, fileNameOf, fileTreeFromEntries, type FileTreeNode, filterFileTree, joinPath, nestFiles, t, useContextMenu, useDirectoryTree, useGit, useShell, useStoredState, useT } from "substrate-platform-ui";
+import { type ChangeKind, changeKindLabel, changeLetter, fileNameOf, fileTreeFromEntries, type FileTreeNode, filterFileTree, joinPath, nestFiles, t, useContextMenu, useDirectoryTree, useFilesChanged, useGit, useShell, useStoredState, useT, useWatchedFolders } from "substrate-platform-ui";
 import { useActiveFileTab, useOpenFiles } from "../../OpenFilesContext";
 import { files } from "../../files";
-import { useFsChanged, useWatchedFolders } from "../../fsWatch";
 import { registerExplorerRename, selectMultiple, selectPath } from "../../ideSelection";
 import { isWithin, renamedPath } from "../../paths";
 import { changedFiles, type Editing, explorerClipboard, type ListFilter, type ScopeHistory, useGeneratedCode } from "./explorerModel";
@@ -25,7 +24,7 @@ export function useExplorerTreeView(props: ExplorerTreeProps) {
   const tree = useDirectoryTree(scopeRoot, scoped ? fileNameOf(scopeRoot) : project.name, files, reportListError, main && !scoped ? "explorer.expanded" : undefined);
   // Changes from outside (a terminal, git, a build) show up as they happen.
   useWatchedFolders(`explorer:${main ? "main" : "view"}:${project.root}`, tree.loadedFolders);
-  useFsChanged((paths) => void tree.refreshPaths(paths));
+  useFilesChanged((paths) => void tree.refreshPaths(paths));
   const { tabs, pathRenamed, pathRemoved } = useOpenFiles();
   const activeTab = useActiveFileTab();
   const git = useGit();

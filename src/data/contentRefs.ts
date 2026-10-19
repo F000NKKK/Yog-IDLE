@@ -6,8 +6,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { cli } from "../cli";
-import { fileTypeOf } from "substrate-platform-ui";
-import { useFsChanged } from "../fsWatch";
+import { fileTypeOf, useFilesChanged } from "substrate-platform-ui";
 import { classify } from "./typed";
 import { fileTypeId, formats } from "../yogFileTypes";
 
@@ -41,7 +40,7 @@ const CONTENT_TYPES = new Set([fileTypeId(formats.block), fileTypeId(formats.ite
 function useContentReload(): [number, () => void] {
   const [asked, setAsked] = useState(0);
   const reload = useCallback(() => setAsked((n) => n + 1), []);
-  useFsChanged((paths) => {
+  useFilesChanged((paths) => {
     if (paths.some((p) => CONTENT_TYPES.has(fileTypeOf(p)?.id ?? "") || /yog\.toml$/.test(p))) reload();
   });
   return [asked, reload];
