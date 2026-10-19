@@ -9,7 +9,7 @@ import { cli } from "../cli";
 import { fileTypeOf, useFilesChanged } from "substrate-platform-ui";
 import { classify } from "./typed";
 import { fileTypeId, formats } from "../yogFileTypes";
-import { gameId } from "./yogFormat";
+import { gameId, TYPED_WORDS } from "./yogFormat";
 
 /** One of the mod's own: its id and the file that defines it. */
 export interface OwnRef {
@@ -126,7 +126,7 @@ export function refProblem(value: string, kind: string, c: RefChoices, tags = fa
   }
   // Not classified yet: nothing to say until it is.
   if (v.t === "pending") return null;
-  if (tags && v.t === "tag" && v.kind === kind) return null;
+  if (tags && v.t === TYPED_WORDS.TAG && v.kind === kind) return null;
   if (v.t !== "ref" || v.kind !== kind) return { t: "syntax", kind };
   if (c === NO_REFS) return null;
   const known = refIds(c).includes(v.id) || (v.id.startsWith(gameId("")) && c.game.length === 0);

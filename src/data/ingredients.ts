@@ -4,7 +4,7 @@
 // reference (`@tag:item:c:dusts`) or a list of them.
 
 import { classify } from "./typed";
-import { KINDS, TYPED, formatRef, formatTag } from "./yogFormat";
+import { formatRef, formatTag, KINDS, TYPED, TYPED_WORDS } from "./yogFormat";
 import { str } from "./values";
 
 /** What marks a tag where an ingredient is shown: `#c:dusts`. */
@@ -23,7 +23,7 @@ export const alternativesOf = (shown: string): string[] => shown.split(ALTERNATI
 export function shownOf(ref: string): string {
   try {
     const v = classify(ref);
-    if (v.t === "tag") return `${TAG_MARK}${v.id}`;
+    if (v.t === TYPED_WORDS.TAG) return `${TAG_MARK}${v.id}`;
     if (v.t === "ref") return v.id;
   } catch {
     // Not a reference: shown as written.

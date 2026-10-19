@@ -1,4 +1,5 @@
 import type { Diagnostic, DiagnosticOrigin } from "substrate-platform-ui";
+import { program } from "../data/yogIds.generated";
 
 /** `a/b/../c` → `a/c`, either separator; keeps a leading `/` or drive. */
 export function normalizePath(path: string): string {
@@ -62,7 +63,7 @@ export function createYogParser({ root, project, origin = "build" }: YogParserOp
       file: resolveFrom(root, m[1]),
       line: line ? Number(line) : undefined,
       project,
-      tool: "yog",
+      tool: program.CLI,
       origin,
     };
   }
@@ -74,7 +75,7 @@ export function createYogParser({ root, project, origin = "build" }: YogParserOp
         const text = line.slice(ERROR.length);
         inErrorList = text.endsWith(":") && !LOCATED.test(text);
         if (inErrorList || CARGO_SUMMARY.test(text)) return [];
-        return [diagnostic("error", text) ?? { severity: "error", message: text, project, tool: "yog", origin }];
+        return [diagnostic("error", text) ?? { severity: "error", message: text, project, tool: program.CLI, origin }];
       }
       const trimmed = line.trimStart();
       if (trimmed.startsWith("warning: ") && line !== trimmed) {

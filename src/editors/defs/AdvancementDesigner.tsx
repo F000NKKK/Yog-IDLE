@@ -41,7 +41,7 @@ export function AdvancementDesigner({ path, file, update, readOnly, kindLabel }:
   useTyped();
   const t = useT();
   useDesignResources(modRootOf(path));
-  const defs = useContentDefs(path, "advancement");
+  const defs = useContentDefs(path, KIND.ADVANCEMENT);
   const advancements = useContentRefs(path, KIND.ADVANCEMENT);
   const items = useContentRefs(path, KIND.ITEM);
   const [strings, setStrings] = useState<string[]>([]);
@@ -123,7 +123,7 @@ export function AdvancementDesigner({ path, file, update, readOnly, kindLabel }:
     const c = t("Advancement");
     const out: PropertyDescriptor[] = [
       row("id", t("Id"), c, file.id, (v) => update((d) => void (d.id = v)), { description: t("Its id: a path of the mod's (lore/cardamom1).") }),
-      ref("parent", t("Parent"), c, file.parent as string | undefined, "advancement", { ...advancements, own: advancements.own.filter((o) => o.id !== thisId) }, (v) => update((d) => void (d.parent = v)), {
+      ref("parent", t("Parent"), c, file.parent as string | undefined, KIND.ADVANCEMENT, { ...advancements, own: advancements.own.filter((o) => o.id !== thisId) }, (v) => update((d) => void (d.parent = v)), {
         description: t("The advancement it hangs under; none: the root of a tab of its own."),
       }),
       ref("icon", t("Icon"), c, file.icon as string | undefined, KIND.ITEM, items, (v) => update((d) => void (d.icon = v)), { description: t("The item drawn in its frame.") }),
