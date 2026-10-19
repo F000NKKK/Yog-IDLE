@@ -1,5 +1,5 @@
 import { belowButton, ContextMenu, type ContextMenuItem, Spacer, Toolbar, ToolbarButton, ToolbarCheck, ToolbarGroup, ToolbarModes, ToolbarSelect, withShortcut } from "substrate-platform-ui";
-import { DISPLAY_SLOTS, type DisplaySlot, ITEM_MODEL_PRESETS, NEW_ITEM_TEXTURE } from "../../content/model";
+import { DISPLAY_SLOTS, type DisplaySlot, ITEM_MODEL_PRESETS, NEW_ITEM_TEXTURE, textureRef } from "../../content/model";
 import { defaultState } from "../../content/states";
 import type { ViewName } from "../../content/Viewport";
 import { kind as KIND } from "../../data/yogIds.generated";
@@ -58,7 +58,7 @@ function ModelPicker({ view }: { view: ContentView }) {
     if (shownVariant && variantModelKey(shownVariant.models) !== v) setPreviewState(null);
     const state = stateModelOf(v);
     setStateSel(state !== null ? { kind: STATE_PICK.model, key: state } : null);
-    if (v === MODEL.item && !file.item_model) update((d) => void (d.item_model = { parent: "generated", textures: { layer0: mainResolved.textures[mainResolved.slots[0]] ?? NEW_ITEM_TEXTURE } }));
+    if (v === MODEL.item && !file.item_model) update((d) => void (d.item_model = { parent: "generated", textures: { layer0: textureRef(mainResolved.textures[mainResolved.slots[0]] ?? NEW_ITEM_TEXTURE) } }));
     setModelKey(v);
     setSelected(null);
     setFace(null);

@@ -1,7 +1,7 @@
 // The model edited: its parent, textures, display, and the selected element and face.
 
 import { PROPERTY_KIND, type PropertyDescriptor, t } from "substrate-platform-ui";
-import { ANGLES, AXES, type Axis, BLOCK_CENTER, BLOCK_PIXELS, type Dir, DIRS, DISPLAY_LIMITS, type DisplayTransform, type Element, ELEMENT_MAX, ELEMENT_MIN, GUI_LIGHTS, type Model, TEMPLATES, type Uv, UV_ROTATIONS, type Vec3 } from "../../../content/model";
+import { ANGLES, AXES, type Axis, BLOCK_CENTER, BLOCK_PIXELS, type Dir, DIRS, DISPLAY_LIMITS, type DisplayTransform, type Element, ELEMENT_MAX, ELEMENT_MIN, GUI_LIGHTS, type Model, TEMPLATES, textureRef, type Uv, UV_ROTATIONS, type Vec3 } from "../../../content/model";
 import { kind as KIND } from "../../../data/yogIds.generated";
 import { ensureModel } from "../contentModel";
 import { vecText } from "../fieldText";
@@ -77,7 +77,7 @@ function textureRows(ctx: PropertiesContext, out: PropertyDescriptor[]) {
         setM((m) => {
           const s = String(v).trim();
           m.textures ??= {};
-          if (s) m.textures[slot] = s;
+          if (s) m.textures[slot] = textureRef(s);
           else delete m.textures[slot];
           if (!Object.keys(m.textures).length) delete m.textures;
         }),

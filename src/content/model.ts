@@ -4,7 +4,7 @@
 
 import type { DataFormat } from "../data/useDataFile";
 import { formatData, patchData, readObject } from "../data/yogData";
-import { kind as KIND } from "../data/yogIds.generated";
+import { kind as KIND, reference, sep } from "../data/yogIds.generated";
 import { gameId } from "../data/yogFormat";
 
 export type Dir = "down" | "up" | "north" | "south" | "west" | "east";
@@ -354,9 +354,21 @@ export const clone = <T>(v: T): T => JSON.parse(JSON.stringify(v)) as T;
 
 // ── New files ────────────────────────────────────────────────────────────────
 
+/**
+ * A texture as a model's `textures` hold it: a `#slot` or `@texture:` ref
+ * kept, a bare texture id (`minecraft:block/stone`, as a parent model or a
+ * picker gives it) made a `@texture:` ref.
+ */
+export function textureRef(value: string): string {
+  return value.startsWith(SLOT_REF) || value.startsWith(sep.TYPED) ? value : `${reference.TEXTURE}${value}`;
+}
+
+/** A `#slot` reference's mark. */
+export const SLOT_REF = "#";
+
 /** What a new block and a new item look like until they get their own textures. */
-export const NEW_BLOCK_TEXTURE = gameId("block/stone");
-export const NEW_ITEM_TEXTURE = gameId("item/apple");
+export const NEW_BLOCK_TEXTURE = textureRef(gameId("block/stone"));
+export const NEW_ITEM_TEXTURE = textureRef(gameId("item/apple"));
 
 export function newBlockFile(name: string): Promise<string> {
   return serializeContent({

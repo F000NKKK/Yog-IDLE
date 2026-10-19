@@ -3,7 +3,7 @@
 
 import type { TextureSource } from "../../content/Viewport";
 import type { TextureAnimation } from "../../content/animation";
-import { type ContentFile, defaultDisplay, type Dir, DIRS, type DisplaySlot, type DisplayTransform, type Element, type Model, templateElements, templateOf, type Kind } from "../../content/model";
+import { type ContentFile, defaultDisplay, type Dir, DIRS, type DisplaySlot, type DisplayTransform, type Element, type Model, SLOT_REF, templateElements, templateOf, type Kind } from "../../content/model";
 import type { PixelImage } from "../../content/paint/pixels";
 import { GAME_NAMESPACE } from "../../data/yogFormat";
 import { kind as KIND } from "../../data/yogIds.generated";
@@ -110,8 +110,8 @@ export function resolve(model: Model | undefined, kind: Kind, parents: Record<st
   const raw = parent && !tpl ? parents[parent] : undefined;
   const textures: Record<string, string> = { ...(raw?.textures ?? {}), ...(m.textures ?? {}) };
   const follow = (v: string | undefined): string | undefined => {
-    for (let i = 0; i < MAX_TEXTURE_REFS && v?.startsWith("#"); i++) v = textures[v.slice(1)];
-    return v?.startsWith("#") ? undefined : v;
+    for (let i = 0; i < MAX_TEXTURE_REFS && v?.startsWith(SLOT_REF); i++) v = textures[v.slice(1)];
+    return v?.startsWith(SLOT_REF) ? undefined : v;
   };
   const resolved: Record<string, string> = {};
   for (const k of Object.keys(textures)) {

@@ -1,7 +1,7 @@
 // A block's states: its properties and variants, how it's placed, and what's picked in the outliner.
 
 import { PROPERTY_KIND, type PropertyDescriptor, t } from "substrate-platform-ui";
-import { type ContentFile, FACING_LABELS, FACINGS, NEW_BLOCK_TEXTURE, PLACEMENTS } from "../../../content/model";
+import { type ContentFile, FACING_LABELS, FACINGS, NEW_BLOCK_TEXTURE, PLACEMENTS, textureRef } from "../../../content/model";
 import { isWord, modelNames, modelNamesValue, parseVariantKey, PROPERTY_KIND_LABELS, PROPERTY_KINDS, propertyKind, STATE_PROPERTY_KIND, type PropertyKind, propertyNameProblem, rangeValues, renameModel, renameProperty, setVariantKey, stateCount, statesShowing, valuesProblem, variantKey, variantProblems, withDefault, YES_NO } from "../../../content/states";
 import { ARM_TEMPLATE, MODEL, STATE_PICK, stateModelKey } from "../contentModel";
 import { parseRotations, rotationsText } from "../fieldText";
@@ -65,7 +65,7 @@ function blockStateRows(ctx: PropertiesContext, out: PropertyDescriptor[]) {
         update((d) => {
           if (v) {
             d.states ??= {};
-            d.states.connect ??= { arm: ARM_TEMPLATE(mainResolved.textures[mainResolved.slots[0]] ?? NEW_BLOCK_TEXTURE) };
+            d.states.connect ??= { arm: ARM_TEMPLATE(textureRef(mainResolved.textures[mainResolved.slots[0]] ?? NEW_BLOCK_TEXTURE)) };
           } else if (d.states) {
             delete d.states.connect;
             if (prune(d.states as Record<string, unknown>)) delete d.states;
