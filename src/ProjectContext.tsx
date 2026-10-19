@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-import { invoke } from "@tauri-apps/api/core";
+import { invokeYog } from "./invokeYog";
 
 export interface ProjectInfo {
   name: string;
@@ -93,7 +93,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
 
   async function openPath(path: string, kind: OpenKind) {
     try {
-      const opened = await invoke<ProjectInfo>("project_open", { path });
+      const opened = await invokeYog<ProjectInfo>("project", "project_open", { path });
       setProject(opened);
       setError(null);
       const entry: RecentEntry = { root: opened.root, name: kind === "project" ? opened.name : baseName(opened.root) };

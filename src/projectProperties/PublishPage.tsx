@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
-import { invoke } from "@tauri-apps/api/core";
 import { Button, CommitTextField, FormField, FormPage, FormSection, useT, errorText } from "substrate-platform-ui";
 import { projectApi } from "./api";
 import { checkPlain } from "./ApplicationPages";
 import type { PageProps } from "./ProjectPropertiesWindow";
+import { invokeYog } from "../invokeYog";
 
 interface PublishProfile {
   id: string;
@@ -19,7 +19,7 @@ export function PublishPage({ root, props, apply, onOpenPublish }: PageProps & {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    invoke<PublishProfile[]>("publish_profiles_list", { projectRoot: root })
+    invokeYog<PublishProfile[]>("run", "publish_profiles_list", { projectRoot: root })
       .then(setProfiles)
       .catch((err) => setError(errorText(err)));
   }, [root]);

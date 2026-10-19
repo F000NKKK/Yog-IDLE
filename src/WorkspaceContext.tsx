@@ -1,8 +1,8 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type Dispatch, type ReactNode, type SetStateAction } from "react";
-import { invoke } from "@tauri-apps/api/core";
 import { StateStoreProvider, useStoredState, type StateStore } from "substrate-platform-ui";
 import { useProject } from "./ProjectContext";
 import { addCloseFlush } from "./windowClose";
+import { invokeYog } from "./invokeYog";
 
 /**
  * A `StateStore` backed by one JSON file: reads come from memory, writes
@@ -86,10 +86,10 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let cancelled = false;
-    invoke<unknown>("app_state_load")
+    invokeYog<unknown>("app", "app_state_load")
       .catch(() => ({}))
       .then((data) => {
-        if (!cancelled) setGlobalStore(createFileStore("global", data, (value) => invoke("app_state_save", { value })));
+        if (!cancelled) setGlobalStore(createFileStore("global", data, (value) => invokeYog("app", "app_state_save", { value })));
       });
     return () => {
       cancelled = true;
@@ -108,11 +108,11 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     setWorkspace({ scope: `loading:${root}`, get: () => undefined, set: () => {}, flush: async () => {} });
     let cancelled = false;
     let loaded: FileStateStore | null = null;
-    invoke<unknown>("workspace_load", { projectRoot: root })
+    invokeYog<unknown>("app", "workspace_load", { projectRoot: root })
       .catch(() => ({}))
       .then((data) => {
         if (cancelled) return;
-        loaded = createFileStore(root, data, (value) => invoke("workspace_save", { projectRoot: root, value }));
+        loaded = createFileStore(root, data, (value) => invokeYog("app", "workspace_save", { projectRoot: root, value }));
         setWorkspace(loaded);
       });
     return () => {

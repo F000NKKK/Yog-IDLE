@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { invoke } from "@tauri-apps/api/core";
+import { invokeYog } from "../invokeYog";
 
 /** Tools > Options > Build (`tools::Settings`). */
 export interface BuildSettings {
@@ -24,7 +24,7 @@ export function normalizeBuildSettings(value: unknown): BuildSettings {
 
 /** Hands the options to the backend, for every `yog`/cargo it starts. */
 export function applyBuildSettings(settings: BuildSettings): Promise<void> {
-  return invoke("tools_settings_set", { settings });
+  return invokeYog("app", "tools_settings_set", { settings });
 }
 
 /** `tools::Status` — what Yog needs here and has. */
@@ -36,7 +36,7 @@ export interface ToolsStatus {
 }
 
 export function toolsStatus(): Promise<ToolsStatus> {
-  return invoke<ToolsStatus>("tools_status");
+  return invokeYog<ToolsStatus>("app", "tools_status");
 }
 
 /** What Yog needs and this machine hasn't (English names, shown through `t`). */
@@ -55,5 +55,5 @@ export function useToolsStatus(): ToolsStatus | null {
 
 /** Tools > Yog Installer: starts it, or opens where to download it. */
 export function openInstaller(): Promise<void> {
-  return invoke<void>("open_installer");
+  return invokeYog<void>("app", "open_installer");
 }

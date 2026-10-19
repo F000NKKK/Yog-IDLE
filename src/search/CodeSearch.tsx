@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { invoke } from "@tauri-apps/api/core";
 import { formatShortcut, getEditorView, Icon, IconButton, openFile, QuickPick, type QuickPickFilter, type QuickPickItem, revealLine, SymbolIcon, useT } from "substrate-platform-ui";
 import { useActiveFileTab, useOpenFiles } from "../OpenFilesContext";
 import { useProject } from "../ProjectContext";
 import { bufferText } from "./FindInFilesWindow";
 import { searchDrafts, useSearchUi } from "./searchUi";
 import "./search.css";
+import { invokeYog } from "../invokeYog";
 
 type Mode = "all" | "files" | "types" | "members" | "text";
 
@@ -101,7 +101,7 @@ export function CodeSearch({ onClose, onDock, embedded, focusKey }: { onClose?: 
       const refresh = !refreshed.current;
       refreshed.current = true;
       const documents = mode === "text" ? tabs.filter((tab) => tab.textLoaded).map((tab) => ({ path: tab.path, text: bufferText(tab) })) : [];
-      invoke<CodeSearchResult[]>("code_search", { request: { root, query, mode, refresh, limit: mode === "text" ? 100 : 200, documents } })
+      invokeYog<CodeSearchResult[]>("code", "code_search", { request: { root, query, mode, refresh, limit: mode === "text" ? 100 : 200, documents } })
         .then((found) => {
           if (seq !== requestSeq.current) return;
           setResults(found);
@@ -118,7 +118,7 @@ export function CodeSearch({ onClose, onDock, embedded, focusKey }: { onClose?: 
   useEffect(() => {
     if (!root) return;
     refreshed.current = true;
-    void invoke("code_search", { request: { root, query: "", mode: "types", refresh: true, limit: 1 } }).catch(() => {});
+    void invokeYog("code", "code_search", { request: { root, query: "", mode: "types", refresh: true, limit: 1 } }).catch(() => {});
   }, [root]);
 
   const items = useMemo<Item[]>(

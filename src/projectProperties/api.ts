@@ -1,4 +1,4 @@
-import { invoke } from "@tauri-apps/api/core";
+import { invokeYog } from "../invokeYog";
 
 /** `project_properties::Dependency` — one `[dependencies]` / `[dependencies.exports]` entry. */
 export interface Dependency {
@@ -36,14 +36,14 @@ export interface CrateHit {
 
 /** Every write re-reads yog.toml and returns the result — the window just shows what comes back. */
 export const projectApi = {
-  read: (projectRoot: string) => invoke<ProjectProps>("project_properties_read", { projectRoot }),
-  setField: (projectRoot: string, key: string, value: string | string[]) => invoke<ProjectProps>("project_properties_set_field", { projectRoot, key, value }),
-  setYogApi: (projectRoot: string, which: "version" | "path", value: string) => invoke<ProjectProps>("project_properties_set_yog_api", { projectRoot, which, value }),
+  read: (projectRoot: string) => invokeYog<ProjectProps>("project", "project_properties_read", { projectRoot }),
+  setField: (projectRoot: string, key: string, value: string | string[]) => invokeYog<ProjectProps>("project", "project_properties_set_field", { projectRoot, key, value }),
+  setYogApi: (projectRoot: string, which: "version" | "path", value: string) => invokeYog<ProjectProps>("project", "project_properties_set_yog_api", { projectRoot, which, value }),
   setDependency: (projectRoot: string, mods: boolean, original: string | null, dependency: Dependency) =>
-    invoke<ProjectProps>("project_dependency_set", { projectRoot, mods, original, dependency }),
-  removeDependency: (projectRoot: string, mods: boolean, name: string) => invoke<ProjectProps>("project_dependency_remove", { projectRoot, mods, name }),
-  setBuildTargets: (projectRoot: string, targets: string[]) => invoke<ProjectProps>("project_build_targets_set", { projectRoot, targets }),
-  searchCrates: (query: string, mods: boolean) => invoke<CrateHit[]>("crates_search", { query, mods }),
+    invokeYog<ProjectProps>("project", "project_dependency_set", { projectRoot, mods, original, dependency }),
+  removeDependency: (projectRoot: string, mods: boolean, name: string) => invokeYog<ProjectProps>("project", "project_dependency_remove", { projectRoot, mods, name }),
+  setBuildTargets: (projectRoot: string, targets: string[]) => invokeYog<ProjectProps>("project", "project_build_targets_set", { projectRoot, targets }),
+  searchCrates: (query: string, mods: boolean) => invokeYog<CrateHit[]>("project", "crates_search", { query, mods }),
 };
 
 export function emptyDependency(name = ""): Dependency {

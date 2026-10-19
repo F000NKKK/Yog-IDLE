@@ -8,6 +8,8 @@ use substrate_platform::project::ProjectStandard;
 use substrate_platform::run::{Level, LogLine, LogSink, WorkflowFile, WorkflowHandle, WorkflowResult};
 use tauri::{AppHandle, Emitter, Manager, State};
 
+mod plugin_names;
+mod plugins;
 mod path_commands;
 use path_commands::*;
 mod project_commands;
@@ -42,7 +44,7 @@ pub(crate) use tauri_plugin_substrate::Workspace;
 /// Restarts Yog-IDLE — e.g. after `debug_grant_ptrace_capability`, which
 /// only takes effect for a fresh `exec()`.
 #[tauri::command]
-fn app_restart(app: AppHandle) {
+pub(crate) fn app_restart(app: AppHandle) {
     app.restart();
 }
 
@@ -144,65 +146,14 @@ pub fn run() {
         .manage(search::SearchState::default())
         .manage(symbols::SymbolIndexState::default());
 
-    let builder = builder.manage(debugger::DebugState::default());
-
-    let builder = builder.invoke_handler(tauri::generate_handler![
-        cli,
-        path_info,
-        path_set_readonly,
-        mod_manifest_read,
-        mod_manifest_set,
-        project_open,
-        project_close,
-        workspace_load,
-        workspace_save,
-        app_state_load,
-        app_state_save,
-        format_supported,
-        format_document,
-        workflow_list,
-        workflow_run,
-        workflow_cancel,
-        mod_run_targets,
-        mod_run,
-        mod_build,
-        mod_clean,
-        mod_hot_reload,
-        mod_hot_reload_decide,
-        publish_profiles_list,
-        publish_profile_save,
-        publish_profile_delete,
-        publish_run,
-        debugger::debug_stop,
-        debugger::debug_set_breakpoint,
-        debugger::debug_clear_breakpoint,
-        debugger::debug_continue,
-        debugger::debug_step,
-        debugger::debug_select_thread,
-        debugger::debug_variables,
-        debugger::debug_evaluate,
-        debugger::debug_children,
-        debugger::debug_pause,
-        debugger::debug_grant_ptrace_capability,
-        app_restart,
-        debug_supported,
-        search::find_in_files,
-        search::project_items,
-        search::project_files_containing,
-        search::find_cancel,
-        search::replace_in_files,
-        symbols::code_search,
-        tools::tools_settings_set,
-        tools::tools_status,
-        tools::open_installer,
-        project_properties_read,
-        project_properties_set_field,
-        project_properties_set_yog_api,
-        project_dependency_set,
-        project_dependency_remove,
-        project_build_targets_set,
-        crates_search,
-    ]);
+    let builder = builder
+        .manage(debugger::DebugState::default())
+        // Yog IDLE's own commands, a plugin per domain.
+        .plugin(plugins::project())
+        .plugin(plugins::run())
+        .plugin(plugins::debug())
+        .plugin(plugins::code())
+        .plugin(plugins::app());
 
     builder
         .build(context)

@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import { invoke } from "@tauri-apps/api/core";
 import { getVersion } from "@tauri-apps/api/app";
 import { message, open, save as saveDialog } from "@tauri-apps/plugin-dialog";
 import { getCurrentWindow } from "@tauri-apps/api/window";
@@ -29,7 +28,6 @@ import {
   OutputWindow,
   PlatformShell,
   pt,
-  reportError,
   SettingsWindow,
   t,
   TerminalPanel,
@@ -86,6 +84,8 @@ import { OutputSourceSync } from "./outputSource";
 import { OpenWithPickerHost } from "./OpenWithPicker";
 import { SourceControl } from "./SourceControl";
 import "./App.css";
+import { invokeYog } from "./invokeYog";
+import { runModCommand } from "./runModCommand";
 
 // Everything below is Yog-IDLE-specific: which panels exist, where they
 // start docked, and what the menu/settings contain. The shell itself
@@ -192,12 +192,7 @@ function useWorkflowActive(): boolean {
 /** Build > Cancel Build — stops every Build/Publish still running (`workflow_cancel`). */
 function useCancelBuildItem() {
   const active = useWorkflowActive();
-  return { label: t("Cancel Build"), onClick: () => invoke("workflow_cancel"), disabled: !active, separatorBefore: true };
-}
-
-/** Runs a `mod_*` build command — one that's refused outright (e.g. the project isn't open anymore) never starts a workflow, so say why here. */
-function runModCommand(command: string, root: string, what: string) {
-  invoke(command, { projectRoot: root }).catch((err) => reportError(t("{action} failed to start: {error}", { action: what, error: String(err) })));
+  return { label: t("Cancel Build"), onClick: () => invokeYog("run", "workflow_cancel"), disabled: !active, separatorBefore: true };
 }
 
 function ModBuildMenu({ root, onOpenPublish }: { root: string; onOpenPublish: () => void }) {
@@ -512,7 +507,7 @@ function Shell({ onOpenSettings, onOpenPublish }: { onOpenSettings: () => void; 
     // else still running — a `workflow.toml` target, a mod run that hasn't
     // launched its game yet — is a workflow run, cancelled as such.
     onRestart: gameUp ? restart : () => void restartWorkflow(),
-    onStop: gameUp ? stop : () => void invoke("workflow_cancel"),
+    onStop: gameUp ? stop : () => void invokeYog("run", "workflow_cancel"),
   };
   return (
     <PlatformShell

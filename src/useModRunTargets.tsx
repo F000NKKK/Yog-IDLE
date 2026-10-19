@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
-import { invoke } from "@tauri-apps/api/core";
 import type { RunTarget } from "substrate-platform-ui";
 import { EVENT, listenAll, listenTo } from "./events";
 import { useFilesChanged, useWatchedFolders } from "substrate-platform-ui";
+import { invokeYog } from "./invokeYog";
 
 /** What `mod_run_targets` gives: `yog run --list --json`, plus where to change it. */
 export interface ModRunTargets {
@@ -29,7 +29,7 @@ export function useModRunTargets(projectRoot: string) {
   const [running, setRunning] = useState(false);
 
   const reload = useCallback(() => {
-    invoke<ModRunTargets>("mod_run_targets", { projectRoot })
+    invokeYog<ModRunTargets>("run", "mod_run_targets", { projectRoot })
       .then((l) => {
         setList(l);
         setError(null);
@@ -63,7 +63,7 @@ export function useModRunTargets(projectRoot: string) {
   const run = useCallback(
     (name: string, mode: string) => {
       setRunning(true);
-      return invoke("mod_run", { projectRoot, name, mode }).catch((err) => {
+      return invokeYog("run", "mod_run", { projectRoot, name, mode }).catch((err) => {
         setRunning(false);
         throw err;
       });

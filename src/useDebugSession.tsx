@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { invoke } from "@tauri-apps/api/core";
 import { openFile, t } from "substrate-platform-ui";
 import { EVENT, listenAll, listenTo, type DebugStackFrame, type DebugStoppedEvent } from "./events";
+import { invokeYog } from "./invokeYog";
 
 export type StepKind = "over" | "into" | "out";
 
@@ -108,7 +108,7 @@ export function useDebugSession() {
   }, []);
 
   const stop = useCallback(() => {
-    return invoke("debug_stop").finally(() => {
+    return invokeYog("debug", "debug_stop").finally(() => {
       setDebugging(false);
       setAttaching(false);
       setStopped(null);
@@ -134,7 +134,7 @@ export function useDebugSession() {
     // Listening before cancelling, so the exit can't slip past.
     const unlisten = await listenTo(EVENT.workflowExit, () => exit());
     try {
-      await invoke("workflow_cancel");
+      await invokeYog("run", "workflow_cancel");
       await exited;
       await relaunch();
     } catch (err) {
@@ -156,7 +156,7 @@ export function useDebugSession() {
     resumingRef.current = true;
     stoppedRef.current = null;
     setStopped(null);
-    invoke(command, args)
+    invokeYog("debug", command, args)
       .catch((err) => setError(String(err)))
       .finally(() => {
         resumingRef.current = false;
@@ -169,7 +169,7 @@ export function useDebugSession() {
 
   /** Break All — stops the running game wherever it is; the stop arrives as a `debug-stopped` with reason `"pause"`. */
   const pause = useCallback(() => {
-    invoke("debug_pause").catch((err) => setError(String(err)));
+    invokeYog("debug", "debug_pause").catch((err) => setError(String(err)));
   }, []);
 
   const selectFrame = useCallback(
@@ -186,11 +186,11 @@ export function useDebugSession() {
   const executionLocation = stopped && stopped.reason !== "exited" ? (stopped.stackTrace[selectedFrame] ?? null) : null;
 
   const selectThread = useCallback((thread: number) => {
-    invoke("debug_select_thread", { thread }).catch((err) => setError(String(err)));
+    invokeYog("debug", "debug_select_thread", { thread }).catch((err) => setError(String(err)));
   }, []);
 
   const grantPtraceAccess = useCallback(() => {
-    return invoke("debug_grant_ptrace_capability");
+    return invokeYog("debug", "debug_grant_ptrace_capability");
   }, []);
 
   return {

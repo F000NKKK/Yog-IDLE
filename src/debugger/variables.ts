@@ -1,4 +1,4 @@
-import { invoke } from "@tauri-apps/api/core";
+import { invokeYog } from "../invokeYog";
 
 /** One value row — a local, a watch result or a member of either — as the backend (debugger.rs `VariableOut`) returns it. */
 export interface Variable {
@@ -25,19 +25,19 @@ export function canExpand(v: Variable): boolean {
 
 /** The selected frame's locals; `frame` is the stack frame's id. */
 export function fetchLocals(frame: number): Promise<Variable[]> {
-  return invoke<Variable[]>("debug_variables", { frame });
+  return invokeYog<Variable[]>("debug", "debug_variables", { frame });
 }
 
 /** The members of an expandable value (`handle`) at the current stop. */
 export function fetchChildren(handle: number): Promise<Variable[]> {
-  return invoke<Variable[]>("debug_children", { handle });
+  return invokeYog<Variable[]>("debug", "debug_children", { handle });
 }
 
 /** Evaluates watch expressions in a frame. A failure of the request itself becomes every expression's error. */
 export async function evaluate(frame: number, exprs: string[]): Promise<WatchResult[]> {
   if (exprs.length === 0) return [];
   try {
-    return await invoke<WatchResult[]>("debug_evaluate", { frame, exprs });
+    return await invokeYog<WatchResult[]>("debug", "debug_evaluate", { frame, exprs });
   } catch (err) {
     return exprs.map(() => ({ value: null, error: String(err) }));
   }

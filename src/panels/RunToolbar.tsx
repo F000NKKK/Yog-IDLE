@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
-import { invoke } from "@tauri-apps/api/core";
 import { RunBar, useWorkflowRunner, type RunMode } from "substrate-platform-ui";
 import { useProject } from "../ProjectContext";
 import { useModRunTargets } from "../useModRunTargets";
 import { useDebugSessionContext } from "../DebugSessionContext";
 import { useWorkspaceState } from "../WorkspaceContext";
+import { invokeYog } from "../invokeYog";
 
 export interface RunToolbarProps {
   /** Reports the run-target source's live `running` state up to the shell, so it can conditionally show Restart/Stop instead of leaving them permanently visible-but-disabled. */
@@ -39,7 +39,7 @@ const MOD_RUN_MODES: RunMode[] = [
 function useDebugSupported(): boolean {
   const [supported, setSupported] = useState(false);
   useEffect(() => {
-    invoke<boolean>("debug_supported")
+    invokeYog<boolean>("debug", "debug_supported")
       .then(setSupported)
       .catch(() => setSupported(false));
   }, []);

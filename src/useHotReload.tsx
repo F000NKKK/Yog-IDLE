@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { invoke } from "@tauri-apps/api/core";
 import { showDialog, useT } from "substrate-platform-ui";
 import { EVENT, emitTo, listenTo, type HotReloadEvent } from "./events";
 import "./useHotReload.css";
+import { invokeYog } from "./invokeYog";
 
 /**
  * The toolbar's Hot Reload action — `mod_hot_reload` rebuilds the project
@@ -67,13 +67,13 @@ export function useHotReload(restart: () => void) {
         { id: "cancel", label: t("Cancel"), cancel: true },
       ],
     });
-    await invoke("mod_hot_reload_decide", { choice: button }).catch((err) => emitTo(EVENT.buildOutput, `[error] hot reload: ${err}`));
+    await invokeYog("run", "mod_hot_reload_decide", { choice: button }).catch((err) => emitTo(EVENT.buildOutput, `[error] hot reload: ${err}`));
     if (button === "restart") restartRef.current();
   }
 
   const trigger = useCallback((projectRoot: string) => {
     setBusy(true);
-    invoke("mod_hot_reload", { projectRoot }).catch((err) => {
+    invokeYog("run", "mod_hot_reload", { projectRoot }).catch((err) => {
       setBusy(false);
       // Refused before anything started (not running, already busy, ...) —
       // no `hot-reload` event will follow, so report it here.

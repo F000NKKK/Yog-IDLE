@@ -8,6 +8,11 @@
   "permissions": [
     "core:default",
     "substrate:default",
+    "yog-app:default",
+    "yog-code:default",
+    "yog-debug:default",
+    "yog-run:default",
+    "yog-project:default",
     "dialog:default",
     "core:window:allow-close",
     "core:window:allow-destroy",

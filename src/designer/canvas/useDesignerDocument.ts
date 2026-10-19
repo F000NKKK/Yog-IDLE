@@ -1,6 +1,5 @@
 // The designer's document: its tree, the edit session, selection, history and view settings.
 
-import { invoke } from "@tauri-apps/api/core";
 import { useCallback, useRef, useState } from "react";
 import { type ContextMenuItem, notifyDocumentCommands, useContextMenu, useT } from "substrate-platform-ui";
 import { useActiveFileTab } from "../../OpenFilesContext";
@@ -9,6 +8,7 @@ import { adoptUids, findNode, newScreen, nodeAtPath, parseYui, serializeYui, wit
 import { patchYui } from "../yuiText";
 import { rememberSelection, screenIdOf, type Session, sessions, settings, type ViewSettings } from "./designerModel";
 import type { ScreenDesignerProps } from "../ScreenDesigner";
+import { invokeYog } from "../../invokeYog";
 
 /** The designer's document: its tree, the edit session, selection, history and view settings. */
 export function useDesignerDocument(props: ScreenDesignerProps) {
@@ -55,7 +55,7 @@ export function useDesignerDocument(props: ScreenDesignerProps) {
           if (!readOnly) onChange(s.text);
         };
         if (root)
-          invoke<{ fields: { id?: string } }>("mod_manifest_read", { projectRoot: root })
+          invokeYog<{ fields: { id?: string } }>("project", "mod_manifest_read", { projectRoot: root })
             .then((m) => finish(m.fields.id ?? null))
             .catch(() => finish(null));
         else void Promise.resolve().then(() => finish(null));
