@@ -2,6 +2,7 @@ import { Button, type EditorProps } from "substrate-platform-ui";
 import { Viewport } from "../content/Viewport";
 import { kind as KIND } from "../data/yogIds.generated";
 import "./ContentEditor.css";
+export { CONTENT_SOURCE_VIEW } from "./content/contentModel";
 import { ContentToolbar } from "./content/ContentToolbar";
 import type { ContentView } from "./content/contentView";
 import { PaintPane } from "./content/PaintPane";
@@ -14,8 +15,6 @@ import { useContentModel } from "./content/useContentModel";
 import { useContentPaint } from "./content/useContentPaint";
 import { useContentProperties } from "./content/useContentProperties";
 import { useContentTextures } from "./content/useContentTextures";
-
-export const CONTENT_SOURCE_VIEW = "yog.content.source";
 
 /**
  * The `.yblock` / `.yitem` editor: the block's or item's 3D model in a

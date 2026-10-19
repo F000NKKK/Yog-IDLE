@@ -34,6 +34,9 @@ export interface PotionEffectRow extends Record<string, unknown> {
 }
 
 /** The file's own models: the block's or item's, its item form's, the connection arm. */
+/** The `.yblock`/`.yitem` source view's id (View Code, F7). */
+export const CONTENT_SOURCE_VIEW = "yog.content.source";
+
 export const MODEL = { main: "model", item: "item_model", arm: "arm" } as const;
 
 /** A new state model's name, before it's made unique. */

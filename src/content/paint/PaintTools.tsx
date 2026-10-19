@@ -42,7 +42,7 @@ export function usePaintState(storageKey: string) {
         color: isRgba(saved.color) ? saved.color : DEFAULTS.color,
         palette: Array.isArray(saved.palette) ? saved.palette.filter(isRgba) : DEFAULTS.palette,
         recent: Array.isArray(saved.recent) ? saved.recent.filter(isRgba) : [],
-        size: Math.min(4, Math.max(1, Number(saved.size) || 1)),
+        size: Math.min(MAX_BRUSH, Math.max(1, Number(saved.size) || 1)),
       };
     } catch {
       return DEFAULTS;
@@ -60,7 +60,11 @@ export function usePaintState(storageKey: string) {
   return { state, set, used };
 }
 
-const PAINT_TOOLS: { tool: PaintTool; icon: string; label: string; key: string }[] = [
+/** The brush sizes: 1 to this many pixels. */
+export const MAX_BRUSH = 4;
+
+/** The tools, with their buttons' icons and labels and their keys. */
+export const PAINT_TOOLS: { tool: PaintTool; icon: string; label: string; key: string }[] = [
   { tool: "pencil", icon: "paintPencil", label: "Pencil", key: "B" },
   { tool: "eraser", icon: "paintEraser", label: "Eraser", key: "E" },
   { tool: "fill", icon: "paintFill", label: "Fill", key: "F" },
@@ -68,6 +72,11 @@ const PAINT_TOOLS: { tool: PaintTool; icon: string; label: string; key: string }
   { tool: "line", icon: "paintLine", label: "Line", key: "L" },
   { tool: "rect", icon: "paintRect", label: "Rectangle", key: "R" },
 ];
+
+/** `tool`'s key. */
+export function toolKey(tool: PaintTool): string {
+  return PAINT_TOOLS.find((p) => p.tool === tool)?.key ?? "";
+}
 
 function ColorChip({ color, active, title, onClick, onContextMenu }: { color: Rgba; active?: boolean; title: string; onClick: () => void; onContextMenu?: (e: React.MouseEvent) => void }) {
   return (
@@ -126,7 +135,7 @@ export function PaintTools({ paint, onChange, disabled }: { paint: PaintState; o
         <SelectField
           aria-label={t("Brush Size")}
           value={String(paint.size)}
-          options={[1, 2, 3, 4].map((n) => ({ value: String(n), label: `${n} px` }))}
+          options={Array.from({ length: MAX_BRUSH }, (_, i) => i + 1).map((n) => ({ value: String(n), label: `${n} px` }))}
           onChange={(v) => onChange({ size: Number(v) })}
         />
       </div>
