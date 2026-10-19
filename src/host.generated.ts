@@ -47,11 +47,6 @@ export const yog = {
     debugGrantPtraceCapability: { plugin: "yog-debug", command: "debug_grant_ptrace_capability" },
   },
   code: {
-    findInFiles: { plugin: "yog-code", command: "find_in_files" },
-    projectItems: { plugin: "yog-code", command: "project_items" },
-    projectFilesContaining: { plugin: "yog-code", command: "project_files_containing" },
-    findCancel: { plugin: "yog-code", command: "find_cancel" },
-    replaceInFiles: { plugin: "yog-code", command: "replace_in_files" },
     codeSearch: { plugin: "yog-code", command: "code_search" },
     formatSupported: { plugin: "yog-code", command: "format_supported" },
     formatDocument: { plugin: "yog-code", command: "format_document" },

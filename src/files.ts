@@ -1,7 +1,7 @@
 // Files as Yog IDLE reads them: the platform's (`hostFiles`), a path's
 // properties, the project's items — and the one way to read a mod's id.
 
-import { type DirEntry, hostFiles, invokeCommand } from "substrate-platform-ui";
+import { type DirEntry, hostFiles, invokeCommand, substrate } from "substrate-platform-ui";
 import { yog } from "./host.generated";
 
 /** `path_info`'s answer (see `properties.rs`). */
@@ -19,9 +19,9 @@ export const files = {
   ...hostFiles,
   info: (path: string) => invokeCommand<PathInfo>(yog.project.pathInfo, { path }),
   /** Every file and folder of the project (git-ignored ones, build output and VCS metadata left out) — `search.rs`. */
-  projectItems: (root: string) => invokeCommand<DirEntry[]>(yog.code.projectItems, { root }),
+  projectItems: (root: string) => invokeCommand<DirEntry[]>(substrate.search.projectItems, { root }),
   /** The project's files whose text contains `pattern` (ignoring case). */
-  filesContaining: (root: string, pattern: string) => invokeCommand<string[]>(yog.code.projectFilesContaining, { root, query: { pattern } }),
+  filesContaining: (root: string, pattern: string) => invokeCommand<string[]>(substrate.search.projectFilesContaining, { root, query: { pattern } }),
 };
 
 /** The `[mod] id` of the project at `root` — `null` without a readable `yog.toml`. */

@@ -12,6 +12,7 @@ import {
   SearchField,
   type SearchOptions,
   SelectField,
+  substrate,
   t as translate,
   TextField,
   tn,
@@ -25,7 +26,6 @@ import { useGlobalState } from "../WorkspaceContext";
 import { runFind, showReplaceResults, type FindQuery, type LookIn, type OpenDocument, type ReplaceSummary } from "./findStore";
 import { FIND_IN_FILES_PANEL, searchDrafts, useSearchUi, type FindWindowMode } from "./searchUi";
 import "./search.css";
-import { yog } from "../host.generated";
 
 /** The Find Results tool window's id (declared in `App`). */
 export const FIND_RESULTS_PANEL = "findResults";
@@ -160,7 +160,7 @@ export function FindInFilesWindow() {
     if (!ok) return;
     setBusy(true);
     try {
-      const summary = await invokeCommand<ReplaceSummary>(yog.code.replaceInFiles, {
+      const summary = await invokeCommand<ReplaceSummary>(substrate.search.replaceInFiles, {
         request: { root: project?.root ?? null, scope: lookIn === "project" ? "project" : "documents", query: query(), replacement, documents: documents() },
       });
       for (const doc of summary.documents) {

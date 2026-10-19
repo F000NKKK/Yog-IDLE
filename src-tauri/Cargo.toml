@@ -32,16 +32,14 @@ toml = "1"
 toml_edit = "0.25"
 # Where the Environment options and IDE-installed tools live.
 dirs = "7"
-substrate-platform = { path = "../../Substrate-Platform", features = ["fs", "git", "project", "run"] }
+substrate-platform = { path = "../../Substrate-Platform", features = ["fs", "git", "project", "run", "search"] }
 # Substrate's host commands (the workspace, Source Control), as its UI calls them.
-tauri-plugin-substrate = { path = "../../Substrate-Platform/tauri-plugin", features = ["fs", "git", "terminal"] }
+tauri-plugin-substrate = { path = "../../Substrate-Platform/tauri-plugin", features = ["fs", "git", "search", "terminal"] }
 tauri-plugin-window-state = "2"
 # Find in Files / Code Search (`search.rs`, `symbols.rs`): a .gitignore-aware
 # walk, the pattern engine, file-type masks, and the Rust symbol index
 # (`span-locations` gives parsed items their line/column outside a proc macro).
-ignore = "0.4.33"
 regex = "1.13.1"
-globset = "0.4.20"
 syn = { version = "3.0.9", default-features = false, features = ["full", "parsing", "visit"] }
 proc-macro2 = { version = "1.0.107", features = ["span-locations"] }
 # Generated TypeScript of Yog's ids, and the one `yog` program name.

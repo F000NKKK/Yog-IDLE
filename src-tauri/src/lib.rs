@@ -27,7 +27,6 @@ pub mod events;
 mod manifest;
 mod project_properties;
 mod properties;
-mod search;
 mod symbols;
 
 mod debugger;
@@ -54,7 +53,7 @@ pub fn run() -> tauri::Result<()> {
 
     let builder = tauri::Builder::default()
         // Substrate's own commands (the workspace, Source Control): what its UI calls.
-        .plugin(tauri_plugin_substrate::init())
+        .plugin(tauri_plugin_substrate::init_with(tauri_plugin_substrate::Options { search: manifest::SEARCH_LAYOUT.clone() }))
         .plugin(tauri_plugin_dialog::init())
         // Window size/position/maximized, restored on launch and saved on
         // close (into the app config dir). Not visibility or decorations —
@@ -70,7 +69,6 @@ pub fn run() -> tauri::Result<()> {
         )
         .manage(WorkflowState::default())
         .manage(tools::ToolsState::new(build_settings))
-        .manage(search::SearchState::default())
         .manage(symbols::SymbolIndexState::default())
         .manage(debugger::DebugState::default());
 

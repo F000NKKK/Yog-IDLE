@@ -166,12 +166,16 @@ pub(super) fn text_items(
         include_generated: false,
     };
     let mut items = Vec::new();
-    search::run_search(
-        Some(root),
-        Scope::Project,
-        &q,
+    let search = Search {
+        root: Some(root),
+        scope: Scope::Project,
+        query: &q,
         documents,
-        limit,
+        max_lines: limit,
+        layout: &crate::manifest::SEARCH_LAYOUT,
+    };
+    search::run_search(
+        &search,
         &|| true,
         &mut |file| {
             for hit in file.hits {
@@ -188,7 +192,8 @@ pub(super) fn text_items(
                 });
             }
         },
-    )?;
+    )
+    .map_err(|m| m.to_string())?;
     Ok(items)
 }
 

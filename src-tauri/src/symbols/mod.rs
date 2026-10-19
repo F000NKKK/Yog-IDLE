@@ -21,7 +21,7 @@ use syn::visit::{self, Visit};
 use tauri::State;
 
 use crate::Workspace;
-use crate::search::{self, FileMask, OpenDocument, Scope, SearchQuery};
+use substrate_platform::search::{self, FileMask, OpenDocument, Scope, Search, SearchQuery};
 
 mod extract;
 pub use extract::*;

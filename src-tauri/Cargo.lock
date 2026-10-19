@@ -3471,9 +3471,12 @@ name = "substrate-platform"
 version = "0.2.1"
 dependencies = [
  "anyhow",
+ "globset",
+ "ignore",
  "libc",
  "notify",
  "portable-pty",
+ "regex",
  "serde",
  "toml 1.1.8+spec-1.1.0",
 ]
@@ -5047,8 +5050,6 @@ version = "2.1.1"
 dependencies = [
  "criterion",
  "dirs",
- "globset",
- "ignore",
  "nix 0.31.3",
  "proc-macro2",
  "regex",

@@ -1,9 +1,12 @@
 //! The backend's hot paths for `benches/backend.rs` — not an API; built
 //! only with the `bench` feature.
 
+/// The root the benches' documents are under.
+const BENCH_ROOT: &str = "/bench";
+
 use std::path::{Path, PathBuf};
 
-pub use crate::search::OpenDocument;
+pub use substrate_platform::search::OpenDocument;
 pub use crate::symbols::{extract_symbols, fuzzy_match};
 
 /// A call of the CLI service, as the front end makes it.
@@ -35,7 +38,7 @@ impl CodeIndex {
 
 /// Find in Files over open documents, every batch as sent to the frontend.
 pub fn find_in_documents(documents: &[OpenDocument], pattern: &str) -> String {
-    let query = crate::search::SearchQuery {
+    let query = substrate_platform::search::SearchQuery {
         pattern: pattern.to_string(),
         match_case: false,
         whole_word: false,
@@ -43,17 +46,17 @@ pub fn find_in_documents(documents: &[OpenDocument], pattern: &str) -> String {
         file_mask: String::new(),
         include_generated: false,
     };
-    let mut files = Vec::new();
-    let _ = crate::search::run_search(
-        Some("/bench"),
-        crate::search::Scope::Documents,
-        &query,
+    let search = substrate_platform::search::Search {
+        root: Some(BENCH_ROOT),
+        scope: substrate_platform::search::Scope::Documents,
+        query: &query,
         documents,
-        crate::search::DEFAULT_MAX_LINES,
-        &|| true,
-        &mut |file| files.push(file),
-    );
-    serde_json::to_string(&crate::search::FindBatch { files }).unwrap_or_default()
+        max_lines: substrate_platform::search::DEFAULT_MAX_LINES,
+        layout: &crate::manifest::SEARCH_LAYOUT,
+    };
+    let mut files = Vec::new();
+    let _ = substrate_platform::search::run_search(&search, &|| true, &mut |file| files.push(file));
+    serde_json::to_string(&files).unwrap_or_default()
 }
 
 /// `git status` output parsed into Git Changes' model, as sent to the frontend.

@@ -11,6 +11,23 @@ pub const BUILD_DIR: &str = yog_ids::project::BUILD;
 /// Yog-IDLE's own per-project data (publish profiles, workspace state).
 pub const IDLE_DIR: &str = ".yog-idle";
 
+/// Where `yog` generates screen code (`.yui` → `.g.rs`), in the build folder.
+const GENERATED_DIR: &str = "generated";
+/// The generated code's files.
+const GENERATED_EXTENSION: &str = "rs";
+
+/// A Yog project as a search sees it: the build folder and IDLE's own data
+/// skipped, the generated screen code searchable on request.
+pub static SEARCH_LAYOUT: std::sync::LazyLock<substrate_platform::search::Layout> = std::sync::LazyLock::new(|| {
+    substrate_platform::search::Layout {
+        skip_dirs: vec![BUILD_DIR.to_string(), IDLE_DIR.to_string()],
+        generated: vec![substrate_platform::search::Generated {
+            dir: std::path::Path::new(BUILD_DIR).join(GENERATED_DIR),
+            extension: GENERATED_EXTENSION.to_string(),
+        }],
+    }
+});
+
 /// `<root>/yog.toml`.
 pub fn path(root: &Path) -> PathBuf {
     root.join(MANIFEST)
