@@ -9,7 +9,7 @@ import { inspectorRows, refMessage } from "../inspector";
 import { asList, CRITERIA, criterionKind, FRAMES, rootOf, tabOf, type AdvNode, type Criterion } from "./defModel";
 import { DefLayout, type DefProps } from "./DefLayout";
 import { GameStage } from "./GamePanel";
-import { GAME_NAMESPACE } from "../../data/yogFormat";
+import { GAME_NAMESPACE, idParts } from "../../data/yogFormat";
 import "./defs.css";
 import { kind as KIND } from "../../data/yogIds.generated";
 
@@ -50,7 +50,8 @@ export function AdvancementDesigner({ path, file, update, readOnly, kindLabel }:
     cli<string[]>("content_strings", { path }).then((s) => setStrings(s ?? []), () => setStrings([]));
   }, [path]);
 
-  const ns = defs[0]?.id.split(":")[0] ?? advancements.own[0]?.id.split(":")[0] ?? GAME_NAMESPACE;
+  const first = defs[0]?.id ?? advancements.own[0]?.id;
+  const ns = first ? idParts(first)[0] : GAME_NAMESPACE;
   const thisId = qualify(file.id ?? path.split(/[\\/]/).pop()!.replace(/\.ydef$/, ""), ns);
   const parentOf = (v: Record<string, unknown>) => (typeof v.parent === "string" ? refId(v.parent, KIND.ADVANCEMENT) : null);
 

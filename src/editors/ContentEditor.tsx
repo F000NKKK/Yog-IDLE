@@ -24,8 +24,9 @@ import {
   autoUv,
   DIRS,
   DISPLAY_SLOTS,
-  ITEM_MODEL_PRESETS,
   type DisplaySlot,
+  ITEM_MODEL_PRESETS,
+  NEW_ITEM_TEXTURE,
 } from "../content/model";
 import {
   defaultState,
@@ -93,7 +94,7 @@ export function ContentEditor(props: EditorProps) {
     if (shownVariant && variantModelKey(shownVariant.models) !== v) setPreviewState(null);
     const state = stateModelOf(v);
     setStateSel(state !== null ? { kind: STATE_PICK.model, key: state } : null);
-    if (v === MODEL.item && !file.item_model) update((d) => void (d.item_model = { parent: "generated", textures: { layer0: mainResolved.textures[mainResolved.slots[0]] ?? "minecraft:item/apple" } }));
+    if (v === MODEL.item && !file.item_model) update((d) => void (d.item_model = { parent: "generated", textures: { layer0: mainResolved.textures[mainResolved.slots[0]] ?? NEW_ITEM_TEXTURE } }));
     setModelKey(v);
     setSelected(null);
     setFace(null);

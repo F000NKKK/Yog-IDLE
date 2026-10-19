@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef } from "react";
 import { type EditorProps, notify, notifyDocumentCommands, promptDialog, type PropertyDescriptor, registerDocumentCommands, useKeybinding } from "substrate-platform-ui";
 import type { GizmoMode } from "../../content/Viewport";
-import { clone, type ContentFile, DIRS, type Element, serializeContent } from "../../content/model";
+import { clone, type ContentFile, DIRS, type Element, NEW_BLOCK_TEXTURE, serializeContent } from "../../content/model";
 import { type BlockState, defaultState, freeName, isWord, moveVariant, newVariantKey, parseVariantKey, propertyNameProblem, removeModel, removeProperty, stateModelFrom, type States, variantOf, YES_NO } from "../../content/states";
 import { readData } from "../../data/yogData";
 import type { ContentModel } from "./useContentModel";
@@ -29,7 +29,7 @@ export function useContentCommands(props: EditorProps, m: ContentModel, pt: Cont
   const addElement = () => {
     const slot = firstSlot ?? "0";
     editElements((els, m) => {
-      if (!firstSlot) m.textures = { ...(m.textures ?? {}), [slot]: "minecraft:block/stone" };
+      if (!firstSlot) m.textures = { ...(m.textures ?? {}), [slot]: NEW_BLOCK_TEXTURE };
       els.push({
         name: `cube${els.length + 1}`,
         from: [4, 0, 4],
@@ -71,7 +71,7 @@ export function useContentCommands(props: EditorProps, m: ContentModel, pt: Cont
       confirmLabel: t("Add"),
       validate: (v) => (/^[a-z0-9_]+$/.test(v) ? (resolved.slots.includes(v) ? t("This slot already exists.") : null) : t("Lowercase letters, digits and _.")),
     });
-    if (slot) update((d) => void (ensureModel(d, effectiveKey).textures = { ...(ensureModel(d, effectiveKey).textures ?? {}), [slot]: "minecraft:block/stone" }));
+    if (slot) update((d) => void (ensureModel(d, effectiveKey).textures = { ...(ensureModel(d, effectiveKey).textures ?? {}), [slot]: NEW_BLOCK_TEXTURE }));
   };
 
   // ── Block states ──────────────────────────────────────────────────────────

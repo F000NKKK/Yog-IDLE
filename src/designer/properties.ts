@@ -10,6 +10,7 @@ import { AXES, formatLength, gridDefs, parseLength, shiftCells, withGridDefs, ty
 import { editDefinitions } from "./GridAdorner";
 import { colorRefs, designColor, designText, extractColor } from "../lang/designResources";
 import { modRootOf } from "../paths";
+import { gameId } from "../data/yogFormat";
 
 type AttrKind = "text" | "number" | "units" | "color" | "bool" | "enum" | "padding" | "uv" | "image" | "tracks" | "index" | "span";
 
@@ -42,14 +43,14 @@ const TEXT_KINDS = [yui.LABEL, yui.BUTTON, yui.TEXT_BOX];
 /** Text that wraps (a text box scrolls its one line instead). */
 const WRAP_KINDS = [yui.LABEL, yui.BUTTON];
 /** Vanilla's fonts; a resource pack can add more (`namespace:name`). */
-const FONTS = ["minecraft:default", "minecraft:uniform", "minecraft:alt", "minecraft:illageralt"] as const;
+const FONTS = [gameId("default"), gameId("uniform"), gameId("alt"), gameId("illageralt")] as const;
 const ANCHORS = ["center", "top_left", "top", "top_right", "left", "right", "bottom_left", "bottom", "bottom_right", "fill"] as const;
 
 const SPECS: AttrSpec[] = [
   { attr: "id", name: "(Name)", category: "Design", kind: "text", description: "The widget's id — a constant in the generated `ids` module, and what `find_mut` looks it up by. The screen's own id is its UI id, `<modid>:<name>`." },
   { attr: "width", name: "Width", category: "Screen", kind: "number", fallback: "176", only: [yui.SCREEN], description: "The screen's width in GUI pixels." },
   { attr: "height", name: "Height", category: "Screen", kind: "number", fallback: "166", only: [yui.SCREEN], description: "The screen's height in GUI pixels." },
-  { attr: "theme", name: "Theme", category: "Screen", kind: "enum", options: ["", "minecraft:vanilla"], fallback: "", only: [yui.SCREEN], description: "The look of the screen's elements where they don't set it themselves: none is yog-ui's plain look, minecraft:vanilla the game's windows, buttons and slots." },
+  { attr: "theme", name: "Theme", category: "Screen", kind: "enum", options: ["", gameId("vanilla")], fallback: "", only: [yui.SCREEN], description: "The look of the screen's elements where they don't set it themselves: none is yog-ui's plain look, minecraft:vanilla the game's windows, buttons and slots." },
   { attr: "anchor", name: "Anchor", category: "Screen", kind: "enum", options: ANCHORS, fallback: "center", only: [yui.SCREEN], description: "Where the screen sits in the game window; fill stretches it over the whole window." },
   { attr: "modal", name: "Modal", category: "Screen", kind: "bool", fallback: "true", only: [yui.SCREEN], description: "Whether the screen takes the mouse and keyboard while open (open_ui's modal)." },
   { attr: "pause", name: "Pauses Game", category: "Screen", kind: "bool", fallback: "false", only: [yui.SCREEN], description: "Whether single-player pauses while the screen is open." },
@@ -80,7 +81,7 @@ const SPECS: AttrSpec[] = [
   { attr: "placeholder", name: "Placeholder", category: "Appearance", kind: "text", only: [yui.TEXT_BOX], description: "Greyed hint shown while the text box is empty." },
   { attr: "bg", name: "Background", category: "Appearance", kind: "color", description: "Background color — `#RRGGBB` or `#AARRGGBB`. Empty draws none." },
   { attr: "color", name: "Text Color", category: "Appearance", kind: "color", fallback: "#FFCCCCAA", only: TEXT_KINDS, description: "Text color — `#RRGGBB` or `#AARRGGBB`." },
-  { attr: "font", name: "Font", category: "Appearance", kind: "text", fallback: "minecraft:default", only: TEXT_KINDS, suggestions: FONTS, description: "The font, as a font id: minecraft:default, minecraft:uniform (Unifont), minecraft:alt (enchanting table), minecraft:illageralt, or one from a resource pack." },
+  { attr: "font", name: "Font", category: "Appearance", kind: "text", fallback: gameId("default"), only: TEXT_KINDS, suggestions: FONTS, description: "The font, as a font id: minecraft:default, minecraft:uniform (Unifont), minecraft:alt (enchanting table), minecraft:illageralt, or one from a resource pack." },
   { attr: "font_scale", name: "Font Scale", category: "Appearance", kind: "number", fallback: "1", only: TEXT_KINDS, description: "Text size multiplier." },
   { attr: "shadow", name: "Text Shadow", category: "Appearance", kind: "bool", fallback: "true", only: TEXT_KINDS, description: "Draws the text with Minecraft's drop shadow." },
   { attr: "no_wrap", name: "No Wrap", category: "Appearance", kind: "bool", fallback: "false", only: WRAP_KINDS, description: "Keeps the text on one line instead of wrapping it to the width." },

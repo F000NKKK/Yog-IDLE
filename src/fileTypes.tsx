@@ -1,6 +1,10 @@
 import { jsonLanguage, registerFileTypes } from "substrate-platform-ui";
 import "./content/icons";
 import { fileTypeId, formats } from "./yogFileTypes";
+import { GAME_NAMESPACE } from "./data/yogFormat";
+
+/** The game's language files (`lang/<locale>.json`): their file type. */
+export const LANG_FILE_TYPE = `${GAME_NAMESPACE}.lang`;
 
 // Yog's formats and the Minecraft files the IDE knows — the one place each
 // is named and recognised; editors (`editors/index.tsx`) open them by id.
@@ -11,8 +15,8 @@ function isLangFile(path: string): boolean {
 }
 
 registerFileTypes([
-  { id: "minecraft.lang", name: "Minecraft Language", extensions: ["json"], match: isLangFile, language: jsonLanguage },
-  { id: "minecraft.lang.legacy", name: "Minecraft Language", extensions: ["lang"] },
+  { id: LANG_FILE_TYPE, name: "Minecraft Language", extensions: ["json"], match: isLangFile, language: jsonLanguage },
+  { id: `${LANG_FILE_TYPE}.legacy`, name: "Minecraft Language", extensions: ["lang"] },
   { id: fileTypeId(formats.ui), name: "Yog Screen", extensions: [formats.ui.ext], icon: "window" },
   { id: fileTypeId(formats.res), name: "Yog Resources", extensions: [formats.res.ext], icon: "table", language: jsonLanguage },
   { id: fileTypeId(formats.block), name: "Yog Block", extensions: [formats.block.ext], icon: "yogBlock", language: jsonLanguage },

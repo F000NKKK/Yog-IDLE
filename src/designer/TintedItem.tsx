@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { cli } from "../cli";
+import { gameId } from "../data/yogFormat";
 
 /** The game's spawn egg: its base, tinted by the first color, and its spots, by the second (item layers 0 and 1). */
-const SPAWN_EGG = ["minecraft:item/spawn_egg", "minecraft:item/spawn_egg_overlay"] as const;
+const SPAWN_EGG = [gameId("item/spawn_egg"), gameId("item/spawn_egg_overlay")] as const;
 
 /** Its color that leaves a layer as it is. */
 export const NO_TINT = 0xffffff;

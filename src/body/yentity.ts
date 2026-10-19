@@ -5,6 +5,7 @@
 
 import type { DataFormat } from "../data/useDataFile";
 import { readObject } from "../data/yogData";
+import { gameId } from "../data/yogFormat";
 
 /** What kind of entity a type is (`EntityKind`), in the format's order. */
 export const ENTITY_KINDS = ["object", "living", "mob", "hanging"] as const;
@@ -32,8 +33,8 @@ export const ENTITY_DEFAULTS = {
   tracking_range: 8,
   update_interval: 3,
   /** A hanging thing's sounds: a painting's. */
-  place_sound: "minecraft:entity.painting.place",
-  break_sound: "minecraft:entity.painting.break",
+  place_sound: gameId("entity.painting.place"),
+  break_sound: gameId("entity.painting.break"),
 } as const;
 
 export interface EntityFile {

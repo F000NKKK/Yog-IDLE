@@ -19,6 +19,15 @@ export const MAX_STACK_SIZE = 64;
 /** The game's namespace: ids without one are its. */
 export const GAME_NAMESPACE = ns.MINECRAFT;
 
+/** The game's own id of `path`: `minecraft:<path>`. */
+export const gameId = (path: string) => `${GAME_NAMESPACE}${sep.NAMESPACE}${path}`;
+
+/** An id's namespace and path; a bare id is the game's. */
+export function idParts(id: string): [string, string] {
+  const at = id.indexOf(sep.NAMESPACE);
+  return at < 0 ? [GAME_NAMESPACE, id] : [id.slice(0, at), id.slice(at + sep.NAMESPACE.length)];
+}
+
 /** `@<kind>:<id>` — a reference to content. */
 export const formatRef = (k: string, id: string) => `${TYPED}${k}${sep.NAMESPACE}${id}`;
 

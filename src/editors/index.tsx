@@ -15,6 +15,7 @@ import { ENTITY_SOURCE_VIEW, EntityEditor } from "./EntityEditor";
 import { ANIM_SOURCE_VIEW, AnimEditor } from "./AnimEditor";
 import { TEXTURE_SOURCE_VIEW, TextureEditor } from "./TextureEditor";
 import { fileTypeId, formats } from "../yogFileTypes";
+import { LANG_FILE_TYPE } from "../fileTypes";
 
 // Yog-specific editors, on top of the platform's built-in ones — imported
 // once for its side effect, before any file opens.
@@ -23,7 +24,7 @@ registerEditorProvider({
   id: "yog.lang",
   label: "Translations",
   name: "Translations Designer",
-  fileTypes: ["minecraft.lang"],
+  fileTypes: [LANG_FILE_TYPE],
   component: LangFileEditor,
   priority: 10,
   kind: "designer",

@@ -5,6 +5,7 @@
 import type { DataFormat } from "../data/useDataFile";
 import { formatData, patchData, readObject } from "../data/yogData";
 import { kind as KIND } from "../data/yogIds.generated";
+import { gameId } from "../data/yogFormat";
 
 export type Dir = "down" | "up" | "north" | "south" | "west" | "east";
 export const DIRS: Dir[] = ["down", "up", "north", "south", "west", "east"];
@@ -173,10 +174,10 @@ export interface ItemModelPreset {
 
 /** Minecraft's standard item model families, resolved from the game assets. */
 export const ITEM_MODEL_PRESETS: ItemModelPreset[] = [
-  { id: "generated", label: "Layered Item", parent: "minecraft:item/generated" },
-  { id: "handheld", label: "Handheld Item", parent: "minecraft:item/handheld" },
-  { id: "potion", label: "Potion Bottle", parent: "minecraft:item/potion" },
-  { id: "cube", label: "3D Cube Item", parent: "minecraft:block/cube_all" },
+  { id: "generated", label: "Layered Item", parent: gameId("item/generated") },
+  { id: "handheld", label: "Handheld Item", parent: gameId("item/handheld") },
+  { id: "potion", label: "Potion Bottle", parent: gameId("item/potion") },
+  { id: "cube", label: "3D Cube Item", parent: gameId("block/cube_all") },
 ];
 
 export const TEMPLATES: Template[] = [
@@ -340,11 +341,15 @@ export const clone = <T>(v: T): T => JSON.parse(JSON.stringify(v)) as T;
 
 // ── New files ────────────────────────────────────────────────────────────────
 
+/** What a new block and a new item look like until they get their own textures. */
+export const NEW_BLOCK_TEXTURE = gameId("block/stone");
+export const NEW_ITEM_TEXTURE = gameId("item/apple");
+
 export function newBlockFile(name: string): Promise<string> {
   return serializeContent({
     name,
     block: { hardness: 1.5, resistance: 6, sound: "stone", tool: "pickaxe" },
-    model: { parent: "cube_all", textures: { all: "minecraft:block/stone" } },
+    model: { parent: "cube_all", textures: { all: NEW_BLOCK_TEXTURE } },
   });
 }
 
@@ -352,7 +357,7 @@ export function newItemFile(name: string): Promise<string> {
   return serializeContent({
     name,
     item: { stack_size: 64 },
-    model: { parent: "generated", textures: { layer0: "minecraft:item/apple" } },
+    model: { parent: "generated", textures: { layer0: NEW_ITEM_TEXTURE } },
   });
 }
 
@@ -361,8 +366,8 @@ export function newBlockWithItemFile(name: string): Promise<string> {
   return serializeContent({
     name,
     block: { hardness: 1.5, resistance: 6, sound: "stone", tool: "pickaxe" },
-    model: { parent: "cube_all", textures: { all: "minecraft:block/stone" } },
-    item_model: { parent: "generated", textures: { layer0: "minecraft:item/apple" } },
+    model: { parent: "cube_all", textures: { all: NEW_BLOCK_TEXTURE } },
+    item_model: { parent: "generated", textures: { layer0: NEW_ITEM_TEXTURE } },
   });
 }
 

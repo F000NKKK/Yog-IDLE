@@ -11,13 +11,14 @@ import { asList, EFFECT_CATEGORIES, modifierText, OPERATIONS, type Operation } f
 import { DefLayout, type DefProps } from "./DefLayout";
 import { GameStage } from "./GamePanel";
 import { kind as KIND } from "../../data/yogIds.generated";
+import { idParts, GAME_NAMESPACE } from "../../data/yogFormat";
 
 const CATEGORY_LABELS: Record<(typeof EFFECT_CATEGORIES)[number], string> = { beneficial: "Beneficial", harmful: "Harmful", neutral: "Neutral" };
 const OPERATION_LABELS: Record<Operation, string> = { add: "Add", multiply_base: "Multiply Base", multiply_total: "Multiply Total" };
 
 /** `mymod:clarity` → its translation key's text (`effect.mymod.clarity`), else its name. */
 function effectName(id: string): string {
-  const [ns, p] = id.includes(":") ? id.split(":") : ["minecraft", id];
+  const [ns, p] = idParts(id);
   const key = `effect.${ns}.${p.replace(/\//g, ".")}`;
   const text = designText(`@lang:${key}`);
   return text === key ? p.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()) : text;
@@ -26,7 +27,7 @@ function effectName(id: string): string {
 /** An attribute's shown name: its text (`attribute.name.<ns>.<id>`), else its id's last part. */
 function attributeName(ref: string): string {
   const id = refId(ref, KIND.ATTRIBUTE) ?? ref;
-  const [ns, p] = id.includes(":") ? id.split(":") : ["minecraft", id];
+  const [ns, p] = idParts(id);
   const key = `attribute.name.${ns}.${p}`;
   const text = designText(`@lang:${key}`);
   return text === key ? p.split(".").pop()!.replace(/_/g, " ") : text;
@@ -49,7 +50,7 @@ export function EffectDesigner({ path, file, update, readOnly, kindLabel }: DefP
   const t = useT();
   useDesignResources(modRootOf(path));
   const attributes = useContentRefs(path, KIND.ATTRIBUTE);
-  const ns = attributes.own[0]?.id.split(":")[0] ?? "minecraft";
+  const ns = attributes.own[0] ? idParts(attributes.own[0].id)[0] : GAME_NAMESPACE;
   const id = typeof file.id === "string" ? file.id : "";
   const full = id.includes(":") ? id : `${ns}:${id}`;
   const icon = useTexture(path, `${full.split(":")[0]}:mob_effect/${full.split(":")[1]}`);

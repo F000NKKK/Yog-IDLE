@@ -1,4 +1,5 @@
 import { yui } from "../data/yogIds.generated";
+import { gameId } from "../data/yogFormat";
 // The `.yui` screen format — a XAML-like XML form of a `yog-ui` widget tree
 // (see docs/yui.md). `yog build` / `yog ui gen` turn it into Rust builder
 // code; this module is the designer's side: parse, edit as a tree of nodes,
@@ -438,14 +439,14 @@ export const KIND_INFO: Record<YuiKind, KindInfo> = {
     label: "Item Slot",
     group: "Minecraft",
     description: "An item icon in an 18×18 slot.",
-    defaults: { item: "minecraft:diamond" },
+    defaults: { item: gameId("diamond") },
   },
   [yui.INV_SLOT]: {
     kind: yui.INV_SLOT,
     label: "Inventory Slot",
     group: "Minecraft",
     description: "A vanilla-looking inventory slot with an item and a stack count.",
-    defaults: { item: "minecraft:diamond", count: "1" },
+    defaults: { item: gameId("diamond"), count: "1" },
   },
   [yui.SLOT]: {
     kind: yui.SLOT,
@@ -480,14 +481,14 @@ export const KIND_INFO: Record<YuiKind, KindInfo> = {
     label: "Recipe Slot",
     group: "Recipe Layout",
     description: "A place for one of the recipe's ingredients: a slot of its kind (`slot`), the n-th of it (`index`), framed or not.",
-    defaults: { slot: "input", frame: "true", "d:item": "minecraft:iron_ore" },
+    defaults: { slot: "input", frame: "true", "d:item": gameId("iron_ore") },
   },
   [yui.RECIPE_RESULT]: {
     kind: yui.RECIPE_RESULT,
     label: "Recipe Result",
     group: "Recipe Layout",
     description: "Where the recipe's result is shown.",
-    defaults: { frame: "true", "d:item": "minecraft:iron_ingot" },
+    defaults: { frame: "true", "d:item": gameId("iron_ingot") },
   },
   [yui.RECIPE_COUNT]: {
     kind: yui.RECIPE_COUNT,
