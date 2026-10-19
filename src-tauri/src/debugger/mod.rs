@@ -15,6 +15,7 @@
 //! The same channel carries hot reload the other way: `hot_reload` rebuilds
 //! the project and asks the runtime to swap in the new `.yog` in place.
 
+use substrate_platform::sync::Locked;
 use std::io::{BufRead, BufReader, Write};
 use std::net::TcpStream;
 use std::path::{Path, PathBuf};
@@ -131,7 +132,7 @@ impl DebugStoppedEvent {
 fn mark_exited(app: &AppHandle, session_id: u64) {
     let had_session = {
         let debug_state = app.state::<DebugState>();
-        let mut guard = debug_state.0.lock().unwrap();
+        let mut guard = debug_state.0.locked();
         if guard.as_ref().is_some_and(|s| s.id == session_id) {
             *guard = None;
             true
@@ -170,7 +171,7 @@ fn spawn_exit_watcher(app: AppHandle, session_id: u64) {
         loop {
             std::thread::sleep(Duration::from_secs(1));
             let debug_state = app.state::<DebugState>();
-            let mut guard = debug_state.0.lock().unwrap();
+            let mut guard = debug_state.0.locked();
             let Some(session) = guard.as_mut().filter(|s| s.id == session_id) else {
                 return;
             };
@@ -209,7 +210,7 @@ fn emit_failed(app: &AppHandle, message: impl Into<String>) {
 /// own tool for that).
 #[tauri::command]
 pub fn debug_stop(app: AppHandle, state: State<DebugState>) -> Result<(), String> {
-    let session = state.inner().0.lock().unwrap().take();
+    let session = state.inner().0.locked().take();
     let Some(mut session) = session else {
         return Ok(());
     };
@@ -263,8 +264,7 @@ pub fn detach_on_exit(app: &AppHandle) {
     let sent = app
         .state::<DebugState>()
         .0
-        .lock()
-        .unwrap()
+        .locked()
         .as_ref()
         .and_then(|s| s.tracer.as_ref())
         .is_some_and(|tracer| tracer.send(TracerCmd::Detach { done }));

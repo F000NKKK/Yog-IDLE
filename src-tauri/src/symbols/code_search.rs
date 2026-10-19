@@ -1,5 +1,6 @@
 //! Code Search: files, symbols and text matching a query, ranked.
 
+use substrate_platform::sync::Locked;
 use super::*;
 
 /// Per project root, built on first use.
@@ -214,7 +215,7 @@ pub async fn code_search(
     // Parsing a large project the first time takes a moment — off the async pool.
     tauri::async_runtime::spawn_blocking(move || {
         let root = PathBuf::from(&request.root);
-        let mut roots = roots.lock().unwrap();
+        let mut roots = roots.locked();
         let built = roots.contains_key(&root);
         let entry = roots.entry(root.clone()).or_default();
         if request.refresh || !built {

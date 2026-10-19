@@ -1,5 +1,6 @@
 //! The debugger's commands: breakpoints, continue, step, pause, threads, the ptrace capability.
 
+use substrate_platform::sync::Locked;
 use super::*;
 
 pub(super) fn warn(app: &AppHandle, message: String) {
@@ -32,8 +33,7 @@ pub(super) fn map_rust_src(path: &str) -> String {
     };
     static CACHE: Mutex<Option<HashMap<String, Option<PathBuf>>>> = Mutex::new(None);
     let library = CACHE
-        .lock()
-        .unwrap()
+        .locked()
         .get_or_insert_with(HashMap::new)
         .entry(commit.to_string())
         .or_insert_with(|| rust_src_library(commit))
@@ -77,7 +77,7 @@ pub(super) fn rust_src_library(commit: &str) -> Option<PathBuf> {
 }
 
 pub(super) fn tracer_send(state: &State<DebugState>, cmd: TracerCmd) -> bool {
-    let guard = state.inner().0.lock().unwrap();
+    let guard = state.inner().0.locked();
     guard
         .as_ref()
         .and_then(|s| s.tracer.as_ref())
@@ -91,7 +91,7 @@ pub fn debug_set_breakpoint(
     line: u32,
 ) -> Result<(), String> {
     {
-        let mut breakpoints = BREAKPOINTS.lock().unwrap();
+        let mut breakpoints = BREAKPOINTS.locked();
         if !breakpoints.iter().any(|(f, l)| f == &file && *l == line) {
             breakpoints.push((file.clone(), line));
         }
@@ -109,8 +109,7 @@ pub fn debug_clear_breakpoint(
     line: u32,
 ) -> Result<(), String> {
     BREAKPOINTS
-        .lock()
-        .unwrap()
+        .locked()
         .retain(|(f, l)| !(f == &file && *l == line));
     tracer_send(&state, TracerCmd::ClearBreakpoint { file, line });
     Ok(())
@@ -143,7 +142,7 @@ pub(super) async fn tracer_query<T: Send + 'static>(
 ) -> Result<T, String> {
     let (reply, answer) = mpsc::channel();
     {
-        let guard = state.inner().0.lock().unwrap();
+        let guard = state.inner().0.locked();
         let tracer = guard
             .as_ref()
             .and_then(|s| s.tracer.as_ref())
@@ -209,7 +208,7 @@ pub fn debug_continue(state: State<DebugState>) -> Result<(), String> {
 /// Continue/Step: rejected unless the tracer is paused (see
 /// `TracerHandle::resume`).
 pub(super) fn tracer_resume(state: &State<DebugState>, cmd: TracerCmd) -> Result<(), String> {
-    let guard = state.inner().0.lock().unwrap();
+    let guard = state.inner().0.locked();
     guard
         .as_ref()
         .and_then(|s| s.tracer.as_ref())

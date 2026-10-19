@@ -1,5 +1,6 @@
 //! Hot reload: build the mod, ask the game, apply or roll back, and say what changed.
 
+use substrate_platform::sync::Locked;
 use super::*;
 
 /// Only one hot reload at a time — a second click while the first is still
@@ -78,7 +79,7 @@ pub fn hot_reload(app: AppHandle, project_root: String) -> Result<(), String> {
 
     let (session_id, debug_mode) = {
         let debug_state = app.state::<DebugState>();
-        let guard = debug_state.0.lock().unwrap();
+        let guard = debug_state.0.locked();
         let session = guard.as_ref().ok_or("the game isn't running")?;
         if session.control.is_none() {
             return Err(
@@ -132,7 +133,7 @@ pub(super) fn finish_hot_reload(app: &AppHandle, mod_id: &str, outcome: Outcome)
 /// `"apply"` reloads what can be (code, resources, data) anyway; anything
 /// else drops it (`"restart"`: the IDE restarts the game itself).
 pub fn decide_hot_reload(app: AppHandle, choice: String) -> Result<(), String> {
-    let pending = PENDING_RELOAD.lock().unwrap().take().ok_or("no hot reload is waiting")?;
+    let pending = PENDING_RELOAD.locked().take().ok_or("no hot reload is waiting")?;
     std::thread::spawn(move || {
         let outcome = if choice == "apply" {
             Outcome::Done(apply_reload(&app, &pending.mod_id, pending.session_id, &pending.yog_path))
@@ -150,7 +151,7 @@ pub(super) fn ask_control(app: &AppHandle, session_id: u64, request: &serde_json
     let (tx, rx) = mpsc::channel();
     {
         let debug_state = app.state::<DebugState>();
-        let mut guard = debug_state.0.lock().unwrap();
+        let mut guard = debug_state.0.locked();
         let session = guard.as_mut().filter(|s| s.id == session_id).ok_or("the game exited")?;
         let control = session.control.as_mut().ok_or("control socket is gone")?;
         send_control(control, request).map_err(|e| format!("writing to the control socket: {e}"))?;
@@ -174,7 +175,7 @@ pub(super) fn run_hot_reload(
         Err(e) => Outcome::Done(Err(e)),
         Ok((yog_path, changes)) if changes.is_empty() => Outcome::Done(apply_reload(app, mod_id, session_id, &yog_path)),
         Ok((yog_path, changes)) => {
-            *PENDING_RELOAD.lock().unwrap() = Some(PendingReload { mod_id: mod_id.to_string(), session_id, yog_path });
+            *PENDING_RELOAD.locked() = Some(PendingReload { mod_id: mod_id.to_string(), session_id, yog_path });
             let n = changes.added.len() + changes.removed.len() + changes.changed.len();
             let _ = app.emit(crate::events::OUTPUT_BUILD, format!("hot reload: {n} change(s) only a restart applies"));
             let _ = app.emit(
@@ -289,7 +290,7 @@ pub(super) fn apply_reload(app: &AppHandle, mod_id: &str, session_id: u64, yog_p
         ));
     }
     let debug_state = app.state::<DebugState>();
-    let mut guard = debug_state.0.lock().unwrap();
+    let mut guard = debug_state.0.locked();
     if let Some(session) = guard.as_mut().filter(|s| s.id == session_id) {
         #[cfg(target_os = "linux")]
         if let Some(tracer) = &session.tracer {

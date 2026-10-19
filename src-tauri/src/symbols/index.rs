@@ -16,7 +16,7 @@ pub(crate) struct RootIndex {
 
 impl RootIndex {
     pub(super) fn refresh(&mut self, root: &Path) {
-        let all = FileMask::parse("").expect("empty mask");
+        let all = FileMask::all();
         // Generated screen code (`.g.rs`) too, so its `ids`/`events`/`render`
         // show up in Code Search as in VS (`MainWindow.g.cs`).
         let mut files = search::project_files(root, &all);
@@ -52,6 +52,8 @@ impl RootIndex {
     }
 }
 
+/// The benches' entry points (feature `bench`).
+#[cfg(feature = "bench")]
 impl RootIndex {
     /// An index over in-memory files (`(absolute, relative, source)`), for `crate::bench`.
     pub(crate) fn from_sources(files: &[(PathBuf, String, String)]) -> Self {

@@ -1,5 +1,6 @@
 //! A tracing session: started on the game, its thread, the failures it reports.
 
+use substrate_platform::sync::Locked;
 use super::*;
 
 /// An attached session's tracer gave up mid-session — reported as
@@ -12,8 +13,7 @@ pub(super) fn emit_session_failed(app: &AppHandle, session_id: u64, real_pid: i3
     let current = app
         .state::<DebugState>()
         .0
-        .lock()
-        .unwrap()
+        .locked()
         .as_ref()
         .is_some_and(|s| s.id == session_id);
     if !current {
@@ -57,7 +57,7 @@ pub(crate) fn start_tracer(
     let pause_request = Arc::new(AtomicBool::new(false));
     {
         let debug_state = app.state::<DebugState>();
-        let mut guard = debug_state.0.lock().unwrap();
+        let mut guard = debug_state.0.locked();
         match guard.as_mut() {
             Some(session) if session.id == session_id => {
                 session.tracer = Some(TracerHandle {

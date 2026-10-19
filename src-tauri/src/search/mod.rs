@@ -52,7 +52,7 @@ const BINARY_SNIFF_BYTES: usize = 8000;
 /// A result line longer than this is shown as a window around its first match.
 const MAX_LINE_CHARS: usize = 400;
 /// Default cap on matching lines per search.
-const DEFAULT_MAX_LINES: usize = 20_000;
+pub(crate) const DEFAULT_MAX_LINES: usize = 20_000;
 
 /// What to look for — shared by Find in Files, Replace in Files and Code Search's text mode.
 #[derive(Clone, Deserialize)]
@@ -174,6 +174,11 @@ pub struct FileMask {
 }
 
 impl FileMask {
+    /// Every file.
+    pub fn all() -> Self {
+        Self { include: None, exclude: None }
+    }
+
     pub fn parse(mask: &str) -> Result<Self, String> {
         let mut include = GlobSetBuilder::new();
         let mut exclude = GlobSetBuilder::new();

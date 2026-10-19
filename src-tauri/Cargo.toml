@@ -49,12 +49,21 @@ yog-ids = "0.2.1"
 # Yog's home on the machine (~/.yog): where its local patch is.
 yog-home = "0.2.2"
 
+[features]
+# The benches' entry points into the backend (`src/bench.rs`).
+bench = []
+
 [dev-dependencies]
 criterion = { version = "0.8", default-features = false, features = ["cargo_bench_support"] }
 
 [[bench]]
 name = "backend"
 harness = false
+required-features = ["bench"]
+
+[[example]]
+name = "designer_bridge"
+required-features = ["bench"]
 
 # Debugger integration (Linux-only, matching yog-debugger's own scope) —
 # ordinary crates.io deps, no path/git coupling to the Yog-Mod-Loader repo.

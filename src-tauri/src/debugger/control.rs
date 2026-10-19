@@ -1,5 +1,6 @@
 //! Running the game under the IDE: the mod's id, the control connection, its events and the session's status.
 
+use substrate_platform::sync::Locked;
 use super::*;
 
 /// `[mod] id` of the mod at `root`.
@@ -81,7 +82,7 @@ pub fn run_with_mode(
     let output = crate::stream_yog_run(&app, log);
 
     let id = NEXT_SESSION_ID.fetch_add(1, Ordering::Relaxed);
-    *app.state::<DebugState>().0.lock().unwrap() = Some(RunSession {
+    *app.state::<DebugState>().0.locked() = Some(RunSession {
         id,
         wrapper: child,
         _output: output,
@@ -148,7 +149,7 @@ pub(super) fn connect_and_watch(app: AppHandle, session_id: u64, addr: String, t
     // runtime — minutes, not seconds. Waits for as long as the run lives.
     let alive = || {
         let state = app.state::<DebugState>();
-        let guard = state.0.lock().unwrap();
+        let guard = state.0.locked();
         guard.as_ref().is_some_and(|s| s.id == session_id)
     };
     let stream = loop {
@@ -205,7 +206,7 @@ pub(super) fn connect_and_watch(app: AppHandle, session_id: u64, addr: String, t
 
     {
         let debug_state = app.state::<DebugState>();
-        let mut guard = debug_state.0.lock().unwrap();
+        let mut guard = debug_state.0.locked();
         match guard.as_mut() {
             Some(session) if session.id == session_id => {
                 session.real_pid = Some(real_pid);
@@ -293,7 +294,7 @@ pub(super) fn handle_control_event(
     // An answer someone's waiting for.
     {
         let debug_state = app.state::<DebugState>();
-        let mut guard = debug_state.0.lock().unwrap();
+        let mut guard = debug_state.0.locked();
         if let Some(session) = guard.as_mut().filter(|s| s.id == session_id)
             && session.reply_waiter.as_ref().is_some_and(|(want, _)| Some(*want) == name)
             && let Some((_, waiter)) = session.reply_waiter.take()

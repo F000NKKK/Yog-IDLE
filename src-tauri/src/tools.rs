@@ -3,6 +3,7 @@
 //! project's platforms, or this machine's only), `YOG_API_PATH` — and what
 //! Tools > Yog Installer opens. Installing anything is Yog Installer's job.
 
+use substrate_platform::sync::ReadWrite;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::RwLock;
@@ -49,7 +50,7 @@ impl ToolsState {
     }
 
     pub fn settings(&self) -> Settings {
-        self.0.read().expect("tools settings lock").clone()
+        self.0.read_locked().clone()
     }
 }
 
@@ -130,7 +131,7 @@ pub fn apply_to_process_at_startup(settings: &Settings) {
 
 #[tauri::command]
 pub fn tools_settings_set(state: State<'_, ToolsState>, settings: Settings) {
-    *state.0.write().expect("tools settings lock") = settings;
+    *state.0.write_locked() = settings;
 }
 
 /// What Yog needs here and has: the CLI, a loader SDK (installed, or the

@@ -94,7 +94,9 @@ pub(super) async fn format_document(path: String, contents: String) -> Result<St
         // Written from its own thread: a large document can fill the stdout
         // pipe before stdin is fully consumed, which would deadlock a
         // write-then-read on one thread.
-        let mut stdin = child.stdin.take().expect("stdin is piped");
+        let Some(mut stdin) = child.stdin.take() else {
+            return Err(format!("{program} has no input"));
+        };
         let writer = std::thread::spawn(move || stdin.write_all(contents.as_bytes()));
         let output = child.wait_with_output().map_err(|e| e.to_string())?;
         let _ = writer.join();

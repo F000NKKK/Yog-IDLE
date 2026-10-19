@@ -1,5 +1,6 @@
 //! Running `yog` and workflows, their output streamed to the IDE.
 
+use substrate_platform::sync::Locked;
 use super::*;
 
 /// A generic escape hatch open to any project (regardless of `kind`): if it
@@ -209,13 +210,12 @@ pub(super) fn run_and_stream(
     let handle = substrate_platform::run::run_workflow(file, name, vars, root, sink);
     let state = app.state::<WorkflowState>();
     let id = state.next_id.fetch_add(1, Ordering::Relaxed);
-    state.running.lock().unwrap().insert(id, handle.clone());
+    state.running.locked().insert(id, handle.clone());
     std::thread::spawn(move || {
         let result = handle.wait();
         app.state::<WorkflowState>()
             .running
-            .lock()
-            .unwrap()
+            .locked()
             .remove(&id);
         let _ = app.emit(
             crate::events::WORKFLOW_EXIT,
@@ -232,7 +232,7 @@ pub(super) fn run_and_stream(
 /// `workflow-exit` with `cancelled: true`. A no-op when nothing is running.
 #[tauri::command]
 pub(super) fn workflow_cancel(state: State<WorkflowState>) {
-    for handle in state.running.lock().unwrap().values() {
+    for handle in state.running.locked().values() {
         handle.cancel();
     }
 }

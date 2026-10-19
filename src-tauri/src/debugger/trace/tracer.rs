@@ -1,5 +1,6 @@
 //! The tracer at work: breakpoints, stops, stepping, frames and values.
 
+use substrate_platform::sync::Locked;
 use super::*;
 
 impl Tracer {
@@ -44,7 +45,7 @@ impl Tracer {
             values: HashMap::new(),
             next_value: 1,
         };
-        for (file, line) in BREAKPOINTS.lock().unwrap().clone() {
+        for (file, line) in BREAKPOINTS.locked().clone() {
             tracer.set_breakpoint(app, file, line);
         }
         Ok(tracer)

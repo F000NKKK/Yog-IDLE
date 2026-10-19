@@ -205,14 +205,17 @@ impl<'ast> Visit<'ast> for Collector<'_> {
     }
 }
 
-pub(super) static ITEM_RE: LazyLock<Regex> = LazyLock::new(|| {
+/// The item a line declares (`syn` couldn't parse the file) — `None` only if
+/// the pattern itself were wrong, which the tests rule out.
+pub(super) static ITEM_RE: LazyLock<Option<Regex>> = LazyLock::new(|| {
     Regex::new(
         r#"^\s*(?:pub(?:\s*\([^)]*\))?\s+)?(?:(?:default|const|async|unsafe|safe)\s+|extern\s+(?:"[^"]*"\s+)?)*(fn|struct|enum|trait|type|union|mod|const|static(?:\s+mut)?|macro_rules!)\s*([A-Za-z_][A-Za-z0-9_]*)"#,
     )
-    .unwrap()
+    .ok()
 });
-pub(super) static IMPL_RE: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"^\s*(?:unsafe\s+)?impl\b(?:\s*<[^{]*?>)?\s+(?:([A-Za-z_][\w:]*)(?:<[^{]*>)?\s+for\s+)?&?(?:mut\s+)?(?:[\w]+::)*([A-Za-z_]\w*)").unwrap()
+/// The type (and trait) an `impl` line is for.
+pub(super) static IMPL_RE: LazyLock<Option<Regex>> = LazyLock::new(|| {
+    Regex::new(r"^\s*(?:unsafe\s+)?impl\b(?:\s*<[^{]*?>)?\s+(?:([A-Za-z_][\w:]*)(?:<[^{]*>)?\s+for\s+)?&?(?:mut\s+)?(?:[\w]+::)*([A-Za-z_]\w*)").ok()
 });
 
 /// Best-effort extraction for a file `syn` can't parse: items declared at
@@ -220,6 +223,9 @@ pub(super) static IMPL_RE: LazyLock<Regex> = LazyLock::new(|| {
 /// get their type as container.
 pub fn extract_with_regex(source: &str) -> Vec<Symbol> {
     let mut symbols = Vec::new();
+    let (Some(item_re), Some(impl_re)) = (ITEM_RE.as_ref(), IMPL_RE.as_ref()) else {
+        return symbols;
+    };
     let mut impl_block: Option<(usize, String)> = None;
     for (index, line) in source.lines().enumerate() {
         let indent = line.len() - line.trim_start().len();
@@ -230,7 +236,7 @@ pub fn extract_with_regex(source: &str) -> Vec<Symbol> {
         {
             impl_block = None;
         }
-        if let Some(caps) = IMPL_RE.captures(line) {
+        if let Some(caps) = impl_re.captures(line) {
             let ty = caps[2].to_string();
             let name = match caps.get(1) {
                 Some(tr) => format!(
@@ -242,11 +248,12 @@ pub fn extract_with_regex(source: &str) -> Vec<Symbol> {
             impl_block = Some((indent, name));
             continue;
         }
-        let Some(caps) = ITEM_RE.captures(line) else {
+        let Some(caps) = item_re.captures(line) else {
             continue;
         };
-        let keyword = &caps[1];
-        let ident = caps.get(2).unwrap();
+        let (keyword, Some(ident)) = (&caps[1], caps.get(2)) else {
+            continue;
+        };
         let in_impl = impl_block
             .as_ref()
             .filter(|(i, _)| indent > *i)
