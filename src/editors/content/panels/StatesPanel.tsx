@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { Icon, IconButton, Spacer } from "substrate-platform-ui";
-import { modelNames, propertyKind, statesShowing, variantProblems } from "../../../content/states";
+import { modelNames, propertyKind, STATE_PROPERTY_KIND, statesShowing, variantProblems } from "../../../content/states";
 import { STATE_PICK, stateModelKey, type StateSel } from "../contentModel";
 import type { ContentView } from "../contentView";
 
@@ -52,7 +52,7 @@ function StatePropertiesList({ view }: { view: ContentView }) {
       <ul className="content-elements" role="listbox" aria-label={t("State Properties")}>
         {stateProps.map((p) => {
           const pk = propertyKind(p.values);
-          const summary = pk === "bool" ? t("yes/no") : pk === "range" ? `${Math.min(...p.values.map(Number))}–${Math.max(...p.values.map(Number))}` : p.values.join(", ");
+          const summary = pk === STATE_PROPERTY_KIND.bool ? t("yes/no") : pk === STATE_PROPERTY_KIND.range ? `${Math.min(...p.values.map(Number))}–${Math.max(...p.values.map(Number))}` : p.values.join(", ");
           const isPicked = picked(view, STATE_PICK.property, p.name);
           return p.own ? (
             <li key={p.name} role="option" aria-selected={isPicked} className={isPicked ? "selected" : undefined} title={p.values.join(", ")} onClick={() => pickState({ kind: STATE_PICK.property, key: p.name })}>

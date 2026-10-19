@@ -28,8 +28,10 @@ export const YES_NO = ["false", "true"] as const;
 export const BUILT_IN_PROPERTIES = ["facing", "face", "waterlogged"] as const;
 
 /** How a property's values are edited: yes/no, a run of whole numbers, or names. */
-export const PROPERTY_KINDS = ["bool", "range", "values"] as const;
-export type PropertyKind = (typeof PROPERTY_KINDS)[number];
+/** What a state property's values are: false/true, a number range, or names of its own. */
+export const STATE_PROPERTY_KIND = { bool: "bool", range: "range", values: "values" } as const;
+export type PropertyKind = (typeof STATE_PROPERTY_KIND)[keyof typeof STATE_PROPERTY_KIND];
+export const PROPERTY_KINDS: readonly PropertyKind[] = Object.values(STATE_PROPERTY_KIND);
 /** How the kinds are shown (translated). */
 export const PROPERTY_KIND_LABELS: Record<PropertyKind, string> = { bool: "Yes/No", range: "Number Range", values: "Values" };
 
@@ -41,12 +43,12 @@ const NUMBER = /^(0|[1-9]\d*)$/;
 /** What the values are: yes/no, every whole number from one to another, else names. */
 export function propertyKind(values: readonly string[]): PropertyKind {
   const set = new Set(values);
-  if (set.size === 2 && set.has("false") && set.has("true")) return "bool";
+  if (set.size === 2 && set.has("false") && set.has("true")) return STATE_PROPERTY_KIND.bool;
   if (values.length >= 2 && values.every((v) => NUMBER.test(v))) {
     const ns = values.map(Number);
-    if (Math.max(...ns) - Math.min(...ns) === values.length - 1 && set.size === values.length) return "range";
+    if (Math.max(...ns) - Math.min(...ns) === values.length - 1 && set.size === values.length) return STATE_PROPERTY_KIND.range;
   }
-  return "values";
+  return STATE_PROPERTY_KIND.values;
 }
 
 /** `min`…`max`, `def` first (the default) when it's in it. */
