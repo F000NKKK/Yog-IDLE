@@ -28,7 +28,7 @@ import { samePath, validateEntryName } from "../paths";
 import { files } from "../files";
 import { editManifest } from "../projectProperties/manifestHistory";
 import "./Properties.css";
-import { yog } from "../plugins.generated";
+import { yog } from "../host.generated";
 
 /** The history of what Properties changes outside any document: renames, yog.toml fields. */
 const PROPERTIES_HISTORY = "properties";

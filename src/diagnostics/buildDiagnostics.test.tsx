@@ -2,6 +2,7 @@ import { act, createElement } from "react";
 import { createRoot } from "react-dom/client";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { getDiagnostics } from "substrate-platform-ui";
+import { yogEvents } from "../host.generated";
 
 const handlers = new Map<string, ((payload: unknown) => void)[]>();
 vi.mock("../events", async (original) => ({
@@ -12,7 +13,7 @@ vi.mock("../events", async (original) => ({
   },
 }));
 const fire = (event: string, payload: unknown) => handlers.get(event)?.forEach((h) => h(payload));
-const output = (log: string) => log.split("\n").forEach((line) => fire("workflow-output", line));
+const output = (log: string) => log.split("\n").forEach((line) => fire(yogEvents.buildOutput, line));
 
 const ROOT = "/p/vlsi";
 /** One platform's share of a failing `yog build`, as the Build output shows it. */

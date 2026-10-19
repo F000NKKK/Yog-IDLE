@@ -86,7 +86,7 @@ import { OpenWithPickerHost } from "./OpenWithPicker";
 import { SourceControl } from "./SourceControl";
 import "./App.css";
 import { runModCommand } from "./runModCommand";
-import { yog } from "./plugins.generated";
+import { yog } from "./host.generated";
 
 // Everything below is Yog-IDLE-specific: which panels exist, where they
 // start docked, and what the menu/settings contain. The shell itself

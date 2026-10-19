@@ -23,7 +23,7 @@ mod publish;
 
 mod cli;
 mod tools;
-mod events;
+pub mod events;
 mod manifest;
 mod project_properties;
 mod properties;

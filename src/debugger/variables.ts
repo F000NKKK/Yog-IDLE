@@ -1,4 +1,4 @@
-import { yog } from "../plugins.generated";
+import { yog } from "../host.generated";
 import { invokeCommand } from "substrate-platform-ui";
 
 /** One value row — a local, a watch result or a member of either — as the backend (debugger.rs `VariableOut`) returns it. */

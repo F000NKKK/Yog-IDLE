@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from "react";
 import { Channel } from "@tauri-apps/api/core";
-import { yog } from "../plugins.generated";
+import { yog } from "../host.generated";
 import { invokeCommand } from "substrate-platform-ui";
 
 // Find Results' contents — module-level, like the Output buffers: a search

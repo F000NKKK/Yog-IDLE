@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { RunTarget } from "substrate-platform-ui";
 import { EVENT, listenAll, listenTo } from "./events";
 import { invokeCommand, useFilesChanged, useWatchedFolders } from "substrate-platform-ui";
-import { yog } from "./plugins.generated";
+import { yog } from "./host.generated";
 
 /** What `mod_run_targets` gives: `yog run --list --json`, plus where to change it. */
 export interface ModRunTargets {

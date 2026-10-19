@@ -5,7 +5,7 @@ import { useProject } from "../ProjectContext";
 import { bufferText } from "./FindInFilesWindow";
 import { searchDrafts, useSearchUi } from "./searchUi";
 import "./search.css";
-import { yog } from "../plugins.generated";
+import { yog } from "../host.generated";
 
 type Mode = "all" | "files" | "types" | "members" | "text";
 

@@ -2,7 +2,7 @@
 // properties, the project's items — and the one way to read a mod's id.
 
 import { type DirEntry, hostFiles, invokeCommand } from "substrate-platform-ui";
-import { yog } from "./plugins.generated";
+import { yog } from "./host.generated";
 
 /** `path_info`'s answer (see `properties.rs`). */
 export interface PathInfo {

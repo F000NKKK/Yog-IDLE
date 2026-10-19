@@ -38,7 +38,7 @@ import { useActiveFileTab, useOpenFiles } from "./OpenFilesContext";
 
 import { openCodeSearch, openFindInFiles } from "./search/searchUi";
 import { formatYui } from "./designer/yuiText";
-import { yog } from "./plugins.generated";
+import { yog } from "./host.generated";
 
 // Formats done here rather than by an external tool (`format_document`).
 const LOCAL_FORMATTERS: Record<string, (text: string) => string> = { yui: formatYui };

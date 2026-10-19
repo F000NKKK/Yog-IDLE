@@ -2,7 +2,7 @@ import { useState, type CSSProperties, type ReactNode } from "react";
 import { Button, formatShortcut, invokeCommand, t, useT } from "substrate-platform-ui";
 import { useDebugSessionContext } from "../DebugSessionContext";
 import { AutosView, LocalsView, useLocals, WatchView } from "../debugger/VariableWindows";
-import { yog } from "../plugins.generated";
+import { yog } from "../host.generated";
 
 const muted: CSSProperties = { padding: "var(--sp-space-sm)", color: "var(--sp-text-muted)" };
 const mono: CSSProperties = { fontFamily: "var(--sp-font-mono)", fontSize: "var(--sp-font-size-sm)" };

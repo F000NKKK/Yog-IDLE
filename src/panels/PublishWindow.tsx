@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Button, CheckField, confirmDialog, Icon, IconButton, invokeCommand, pt, reportError, TextField, useDraggable, useT } from "substrate-platform-ui";
 import "./PublishWindow.css";
-import { yog } from "../plugins.generated";
+import { yog } from "../host.generated";
 
 interface PublishProfile {
   id: string;

@@ -4,7 +4,7 @@ import { useProject } from "../ProjectContext";
 import { useModRunTargets } from "../useModRunTargets";
 import { useDebugSessionContext } from "../DebugSessionContext";
 import { useWorkspaceState } from "../WorkspaceContext";
-import { yog } from "../plugins.generated";
+import { yog } from "../host.generated";
 
 export interface RunToolbarProps {
   /** Reports the run-target source's live `running` state up to the shell, so it can conditionally show Restart/Stop instead of leaving them permanently visible-but-disabled. */

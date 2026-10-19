@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import { invokeCommand, type StateStore, StateStoreProvider, useStoredState } from "substrate-platform-ui";
 import { useProject } from "./ProjectContext";
 import { addCloseFlush } from "./windowClose";
-import { yog } from "./plugins.generated";
+import { yog } from "./host.generated";
 
 /**
  * A `StateStore` backed by one JSON file: reads come from memory, writes

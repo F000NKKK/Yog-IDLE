@@ -1,7 +1,7 @@
 // The CLI as a service (`yog serve`, through the backend's `cli` command):
 // how the front end reads and writes every Yog format — the formats live
 // in the CLI, so a new one needs a new `yog`, not a new IDE.
-import { yog } from "./plugins.generated";
+import { yog } from "./host.generated";
 import { invokeCommand } from "substrate-platform-ui";
 
 /** Calls `method` of the CLI service; rejects with its error (a message, or `{ message, line }`). */

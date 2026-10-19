@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { yog } from "../plugins.generated";
+import { yog } from "../host.generated";
 import { invokeCommand } from "substrate-platform-ui";
 
 /** Tools > Options > Build (`tools::Settings`). */

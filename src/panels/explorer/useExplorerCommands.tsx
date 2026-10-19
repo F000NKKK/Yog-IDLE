@@ -12,7 +12,7 @@ import type { ExplorerOperations } from "./useExplorerOperations";
 import type { ExplorerTreeView } from "./useExplorerTreeView";
 import type { ExplorerTreeProps } from "../ProjectExplorer";
 import { runModCommand } from "../../runModCommand";
-import { yog } from "../../plugins.generated";
+import { yog } from "../../host.generated";
 
 /** Project Explorer's commands: what each does, its keys and its menus. */
 export function useExplorerCommands(props: ExplorerTreeProps, explorerTreeView: ExplorerTreeView, explorerOperations: ExplorerOperations) {

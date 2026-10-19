@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { invokeCommand, showDialog, useT } from "substrate-platform-ui";
 import { EVENT, emitTo, listenTo, type HotReloadEvent } from "./events";
 import "./useHotReload.css";
-import { yog } from "./plugins.generated";
+import { yog } from "./host.generated";
 
 /**
  * The toolbar's Hot Reload action — `mod_hot_reload` rebuilds the project

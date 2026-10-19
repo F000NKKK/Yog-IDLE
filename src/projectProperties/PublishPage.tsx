@@ -3,7 +3,7 @@ import { Button, CommitTextField, errorText, FormField, FormPage, FormSection, i
 import { projectApi } from "./api";
 import { checkPlain } from "./ApplicationPages";
 import type { PageProps } from "./ProjectPropertiesWindow";
-import { yog } from "../plugins.generated";
+import { yog } from "../host.generated";
 
 interface PublishProfile {
   id: string;

@@ -1,6 +1,6 @@
-//! Every event the backend emits to the frontend, by name — the frontend
-//! listens for the same strings (mirrored in its own constants), so a
-//! rename has to happen on both sides at once.
+//! Every event the backend emits to the front end, by name — the one list:
+//! `build.rs` includes this file and writes the front end's copy
+//! (`src/host.generated.ts`, `yogEvents`).
 
 // The Output panel's sources — one event each, picked from its "Show output
 // from" dropdown. Each payload is one line of text.
@@ -9,9 +9,7 @@ pub const OUTPUT_BUILD: &str = "workflow-output";
 /// The running game's own output.
 pub const OUTPUT_GAME: &str = "game-output";
 /// The debugger's messages (Linux only so far; the frontend lists it everywhere).
-#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
 pub const OUTPUT_DEBUG: &str = "debug-output";
-
 
 /// A Build/Publish workflow (or a run's build) started, for project `root`.
 pub const WORKFLOW_START: &str = "workflow-start";
@@ -20,19 +18,28 @@ pub const WORKFLOW_EXIT: &str = "workflow-exit";
 /// The launched game's lifecycle stage (starting/running/exited) and mods.
 pub const GAME_STATUS: &str = "game-status";
 /// A hot reload's result.
-#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
 pub const HOT_RELOAD: &str = "hot-reload";
 
 /// The debugger attached to the game.
-#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
 pub const DEBUG_ATTACHED: &str = "debug-attached";
 /// Attaching the debugger failed.
-#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
 pub const DEBUG_ATTACH_FAILED: &str = "debug-attach-failed";
 /// The debuggee stopped (breakpoint, step, pause, signal) or exited.
-#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
 pub const DEBUG_STOPPED: &str = "debug-stopped";
 /// The debugger itself failed mid-session.
-#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
 pub const DEBUG_FAILED: &str = "debug-failed";
 
+/// Every event, for the front end's copy: (name in code, event).
+pub const ALL: &[(&str, &str)] = &[
+    ("buildOutput", OUTPUT_BUILD),
+    ("gameOutput", OUTPUT_GAME),
+    ("debugOutput", OUTPUT_DEBUG),
+    ("workflowStart", WORKFLOW_START),
+    ("workflowExit", WORKFLOW_EXIT),
+    ("gameStatus", GAME_STATUS),
+    ("hotReload", HOT_RELOAD),
+    ("debugAttached", DEBUG_ATTACHED),
+    ("debugAttachFailed", DEBUG_ATTACH_FAILED),
+    ("debugStopped", DEBUG_STOPPED),
+    ("debugFailed", DEBUG_FAILED),
+];

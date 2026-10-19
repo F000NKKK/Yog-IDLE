@@ -1,4 +1,4 @@
-import { yog } from "../plugins.generated";
+import { yog } from "../host.generated";
 import { invokeCommand } from "substrate-platform-ui";
 
 /** `project_properties::Dependency` — one `[dependencies]` / `[dependencies.exports]` entry. */

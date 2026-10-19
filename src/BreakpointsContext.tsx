@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, type ReactNode } from "react";
 import { useWorkspaceState } from "./WorkspaceContext";
-import { yog } from "./plugins.generated";
+import { yog } from "./host.generated";
 import { invokeCommand } from "substrate-platform-ui";
 
 interface BreakpointsContextValue {

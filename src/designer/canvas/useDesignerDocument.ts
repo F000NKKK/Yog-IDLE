@@ -8,7 +8,7 @@ import { adoptUids, findNode, newScreen, nodeAtPath, parseYui, serializeYui, wit
 import { patchYui } from "../yuiText";
 import { rememberSelection, screenIdOf, type Session, sessions, settings, type ViewSettings } from "./designerModel";
 import type { ScreenDesignerProps } from "../ScreenDesigner";
-import { yog } from "../../plugins.generated";
+import { yog } from "../../host.generated";
 
 /** The designer's document: its tree, the edit session, selection, history and view settings. */
 export function useDesignerDocument(props: ScreenDesignerProps) {

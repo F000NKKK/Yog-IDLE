@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { type HostCommand, invokeCommand, openFile, t } from "substrate-platform-ui";
 import { EVENT, listenAll, listenTo, type DebugStackFrame, type DebugStoppedEvent } from "./events";
-import { yog } from "./plugins.generated";
+import { yog } from "./host.generated";
 
 export type StepKind = "over" | "into" | "out";
 

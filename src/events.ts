@@ -1,29 +1,17 @@
-// The Tauri events the IDE listens to and emits — names as in
-// `src-tauri/src/events.rs`, with their payloads, so `listenTo`/`emitTo`
-// can't get either wrong. (Terminals and Source Control send Substrate's.)
+// The Tauri events the IDE listens to and emits — the backend's
+// (`yogEvents`, generated) and Substrate's — with their payloads, so
+// `listenTo`/`emitTo` can't get either wrong.
 
 import { emit, listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { events as substrateEvents, type BackendMessage } from "substrate-platform-ui";
+import { yogEvents } from "./host.generated";
 
 export const EVENT = {
-  /** Output sources: one line of text each. */
-  buildOutput: "workflow-output",
-  gameOutput: "game-output",
-  debugOutput: "debug-output",
+  ...yogEvents,
   /** Source Control's runs — Substrate's event. */
   gitOutput: substrateEvents.gitOutput,
   /** IDE-side messages (`reportError`, the Project Explorer, the designer) — Substrate's General output. */
   ideOutput: substrateEvents.ideOutput,
-
-
-  workflowStart: "workflow-start",
-  workflowExit: "workflow-exit",
-  gameStatus: "game-status",
-  hotReload: "hot-reload",
-  debugAttached: "debug-attached",
-  debugAttachFailed: "debug-attach-failed",
-  debugFailed: "debug-failed",
-  debugStopped: "debug-stopped",
 } as const;
 
 export interface GameStatusEvent {
@@ -41,7 +29,7 @@ export interface HotReloadEvent {
   changes?: { added: string[]; removed: string[]; changed: string[] };
 }
 
-/** `workflow-exit`'s payload when a Build/Publish run (not a game) ended. */
+/** `yogEvents.workflowExit`'s payload when a Build/Publish run (not a game) ended. */
 export interface WorkflowExitEvent {
   success: boolean;
   cancelled: boolean;
@@ -74,20 +62,20 @@ export interface DebugStoppedEvent {
 
 
 type Payloads = {
-  "workflow-output": string;
-  "game-output": string;
-  "debug-output": string;
+  [yogEvents.buildOutput]: string;
+  [yogEvents.gameOutput]: string;
+  [yogEvents.debugOutput]: string;
   /** The project the run builds. */
-  "workflow-start": { root: string } | null;
+  [yogEvents.workflowStart]: { root: string } | null;
   /** A game exiting fires this too, with no payload. */
-  "workflow-exit": WorkflowExitEvent | null;
-  "game-status": GameStatusEvent;
-  "hot-reload": HotReloadEvent;
+  [yogEvents.workflowExit]: WorkflowExitEvent | null;
+  [yogEvents.gameStatus]: GameStatusEvent;
+  [yogEvents.hotReload]: HotReloadEvent;
   /** The debugged process's pid. */
-  "debug-attached": number;
-  "debug-attach-failed": string;
-  "debug-failed": string;
-  "debug-stopped": DebugStoppedEvent;
+  [yogEvents.debugAttached]: number;
+  [yogEvents.debugAttachFailed]: string;
+  [yogEvents.debugFailed]: string;
+  [yogEvents.debugStopped]: DebugStoppedEvent;
 } & {
   /** Lines as Substrate's messages (and the IDE's own as text). */
   [K in typeof substrateEvents.gitOutput]: string | BackendMessage;
