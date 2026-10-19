@@ -3,7 +3,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import type { KeyboardEvent, MouseEvent } from "react";
 import { type ContextMenuItem, editorProvidersFor, fileNameOf, type FileTreeMenuItem, type FileTreeNode, generalEditorProviders, matchesShortcut, openFile, reportError, t, ToolbarButton } from "substrate-platform-ui";
-import { openWithItems } from "../../OpenFilesContext";
+import { openWithItems } from "../../openFiles/tabViews";
 import { parentOf } from "../../paths";
 import { boundCommands, commandLabel, explorerCommand, type ExplorerCommandId } from "./commands";
 import { openExplorerView, PROJECT_EXPLORER_VIEW_PANEL, useExplorerRequests } from "./explorerBus";

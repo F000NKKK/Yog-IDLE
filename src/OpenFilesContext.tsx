@@ -1,8 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ComponentType, type ReactNode } from "react";
-import { cli } from "./cli";
-import { openWithPicker } from "./OpenWithPicker";
 import { invalidateDesignResources } from "./lang/designResources";
-import { setSavedFileDiagnostics } from "./diagnostics/buildDiagnostics";
 import {
   type CodeEditorProps,
   type ContextMenuItem,
@@ -10,13 +7,11 @@ import {
   type EditorProvider,
   editorProviderById,
   editorProviderIcon,
-  editorProvidersFor,
   extensionOf,
   fileNameOf,
   type FileOpenRequest,
   forgetDocumentHistory,
   formatShortcut,
-  generalEditorProviders,
   getEditorView,
   InfoBar,
   isBinaryFile,
@@ -28,7 +23,6 @@ import {
   type PanelDef,
   reportError,
   revealLine,
-  showDialog,
   t,
   type TabMenuContext,
   useEditorProviders,
@@ -47,6 +41,7 @@ import { addCloseGuard } from "./windowClose";
 import { useGlobalStateStore } from "./WorkspaceContext";
 import { files } from "./files";
 import { useFsChanged, useWatchedFolders } from "./fsWatch";
+import { askToSave, isViewMap, newTabId, nextRevealSeq, openWithItems, regenerateScreen, tabViews, VIEWS_KEY } from "./openFiles/tabViews";
 
 interface FileTab {
   /** Stable for the tab's lifetime (survives a rename) — the dock panel id. */
@@ -130,131 +125,6 @@ export interface SideState {
 const OpenFilesContext = createContext<OpenFilesContextValue | null>(null);
 
 /** Global state key: the view last chosen for each file extension — the next file of that kind opens in it. */
-const VIEWS_KEY = "editor.views";
-
-function isViewMap(value: unknown): boolean {
-  return !!value && typeof value === "object" && Object.values(value).every((v) => typeof v === "string");
-}
-
-
-/**
- * The views a tab can show — its file's own editors, plus one picked through
- * "Open With…" that isn't among them (labelled by its full name, to tell it
- * from the file's own "Code") — and the one it shows: its own choice, else
- * the one last chosen for its extension, else the default.
- */
-function tabViews(tab: FileTab, remembered: Record<string, string>): { providers: EditorProvider[]; active: EditorProvider } {
-  const matching = editorProvidersFor(tab.path);
-  const view = tab.view ?? remembered[extensionOf(tab.name)];
-  const picked = tab.view && !matching.some((p) => p.id === tab.view) ? editorProviderById(tab.view) : undefined;
-  const providers = picked ? [...matching, { ...picked, label: picked.name ?? picked.label }] : matching;
-  return { providers, active: providers.find((p) => p.id === view) ?? providers[0] };
-}
-
-/** Plain enough to be both a dock tab's `ContextMenuItem` and Project Explorer's `FileTreeMenuItem`. */
-interface OpenWithItem {
-  label: string;
-  checked: boolean;
-  separatorBefore: boolean;
-  onSelect: () => void;
-}
-
-/** How many editors "Open With" lists before "Full List…". */
-const OPEN_WITH_SHOWN = 5;
-
-/**
- * "Open With…" entries for `path`, the likeliest first: the editors made
- * for it (the default marked), then plain text, then the other general
- * editors — any text editor can open any file; designers and viewers made
- * for one format only appear for their own files. At most
- * {@link OPEN_WITH_SHOWN} of them, then "Full List…" with all of them (and
- * the one in use, if it isn't among the first).
- */
-export function openWithItems(path: string, current: string | undefined, pick: (view: string) => void): OpenWithItem[] {
-  const matching = editorProvidersFor(path);
-  const general = generalEditorProviders().filter((p) => !matching.includes(p));
-  // Plain text is the likeliest of the general ones; the rest by name.
-  general.sort((a, b) => Number(b.id === "substrate.text") - Number(a.id === "substrate.text"));
-  const all = [
-    ...matching.map((p, i) => ({ provider: p, label: i === 0 ? t("{name} (default)", { name: t(p.name ?? p.label) }) : t(p.name ?? p.label) })),
-    ...general.map((p) => ({ provider: p, label: t(p.name ?? p.label) })),
-  ];
-  const shown = all.slice(0, OPEN_WITH_SHOWN);
-  const items: OpenWithItem[] = shown.map(({ provider, label }, i) => ({
-    label,
-    checked: provider.id === current,
-    // A line between the file's own editors and the general ones.
-    separatorBefore: i > 0 && i === matching.length,
-    onSelect: () => pick(provider.id),
-  }));
-  if (all.length > shown.length) {
-    items.push({
-      label: t("Full List…"),
-      checked: !shown.some((s) => s.provider.id === current) && all.some((a) => a.provider.id === current),
-      separatorBefore: true,
-      onSelect: () => openWithPicker({ providers: all, current, pick }),
-    });
-  }
-  return items;
-}
-
-let nextTabId = 0;
-let nextRevealSeq = 0;
-
-/** Save / Don't Save / Cancel about `names` — resolves `"save"`, `"discard"` or `"cancel"`. */
-async function askToSave(names: string[]): Promise<string> {
-  const many = names.length > 1;
-  const result = await showDialog({
-    title: t("Unsaved Changes"),
-    message: many ? (
-      <>
-        {t("Save changes to the following files?")}
-        <ul>
-          {names.map((n) => (
-            <li key={n}>{n}</li>
-          ))}
-        </ul>
-      </>
-    ) : (
-      t("Save changes to {name}?", { name: names[0] })
-    ),
-    buttons: [
-      { id: "cancel", label: t("Cancel"), cancel: true },
-      { id: "discard", label: t("Don't Save") },
-      { id: "save", label: many ? t("Save All") : t("Save"), variant: "primary" },
-    ],
-  });
-  return result.button;
-}
-
-/**
- * A saved `.yui` screen, `.yres` resource file or `.yblock`/`.yitem`: regenerate its
- * `.yog-build/generated/**` code (`yog ui gen` / `yog res check` / `yog content check`),
- * so the code-behind sees it without a build.
- */
-function regenerateScreen(path: string) {
-  const fail = (error: string) =>
-    notify({ level: "warn", message: t("Couldn't generate the code for {name}: {error}", { name: fileNameOf(path), error }) });
-  cli<{ error: string | null; log: string; root: string }>("yui_codegen", { path })
-    .then(({ error, log, root }) => {
-      setSavedFileDiagnostics(path, root, log);
-      if (error) fail(error);
-    })
-    .catch((err) => fail(String(err)));
-}
-
-/**
- * Owns every open file tab — subscribes to Substrate's `onOpenFileRequest` (since Project
- * Explorer, the debugger and others request opens from unrelated parts of
- * the component tree), and hands out one real dock `PanelDef` per tab so
- * the shell's own center-dock tab strip *is* the file tab strip, with no
- * extra nesting.
- *
- * Unsaved work is never dropped silently: closing a dirty tab (or the
- * window) asks first, a failed save keeps the tab dirty, and a file changed
- * on disk only reloads into a tab without edits (checked whenever the
- * window regains focus).
- */
 export function OpenFilesProvider({ children }: { children: ReactNode }) {
   const [tabs, setTabs] = useState<FileTab[]>([]);
   // Tab titles, tab menus and view buttons are built here — rebuilt in a new locale.
@@ -272,7 +142,7 @@ export function OpenFilesProvider({ children }: { children: ReactNode }) {
   const open = useCallback(async (request: FileOpenRequest, options: OpenOptions = {}): Promise<string | null> => {
     const { path, line, column, view } = request;
     const activate = options.activate ?? true;
-    const reveal = { seq: ++nextRevealSeq, line, column, activate };
+    const reveal = { seq: nextRevealSeq(), line, column, activate };
     const existing = tabsRef.current.find((t) => t.path === path);
     if (existing) {
       setTabs((prev) => prev.map((t) => (t.id === existing.id ? { ...t, reveal } : t)));
@@ -295,7 +165,7 @@ export function OpenFilesProvider({ children }: { children: ReactNode }) {
         if (!options.silent) reportError(t("Failed to open {path}: {error}", { path, error: String(err) }));
         return null;
       }
-      const id = `file-${++nextTabId}`;
+      const id = newTabId();
       const tab: FileTab = { id, path, name, content, diskContent: content, dirty: false, sideDirty: false, contentVersion: 0, missing: false, textLoaded, pinned: false, view, reveal };
       // Into the ref right away, not on the next render: once this promise
       // settles `pendingOpens` forgets the path, and an `open` of the same
