@@ -158,6 +158,19 @@ export const TOOL_LEVELS = ["wood", "stone", "iron", "diamond", "netherite"];
 export const RENDER_LAYERS = ["solid", "cutout", "cutout_mipped", "translucent"];
 /** Element rotation angles Minecraft allows. */
 export const ANGLES = [-45, -22.5, 0, 22.5, 45];
+/** Minecraft's limits on an element: each corner within these pixels on every axis. */
+export const ELEMENT_MIN = -16;
+export const ELEMENT_MAX = 32;
+/** A block's pixels along an edge, and its center — the default rotation origin. */
+export const BLOCK_PIXELS = 16;
+export const BLOCK_CENTER: Vec3 = [8, 8, 8];
+/** An element's rotation axes, and a face's UV rotations (degrees). */
+export const AXES: Axis[] = ["x", "y", "z"];
+export const UV_ROTATIONS = [0, 90, 180, 270];
+/** How a model is lit in the GUI. */
+export const GUI_LIGHTS = ["front", "side"];
+/** A display transform's limits, as the game clamps them: rotation (degrees), translation (pixels), scale. */
+export const DISPLAY_LIMITS = { rotation: [-180, 180], translation: [-80, 80], scale: [0, 4] } as const;
 
 export interface Template {
   name: string;

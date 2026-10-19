@@ -2,14 +2,11 @@
 // element's new bounds, snapped to the pixel grid.
 
 import * as THREE from "three";
-import type { Element, Vec3 } from "../model";
+import { type Element, ELEMENT_MAX, ELEMENT_MIN, type Vec3 } from "../model";
 import { axisVector } from "./camera";
 import { type Handle, stateMatrix } from "./scene";
 import type { Part } from "./viewportTypes";
 
-/** How far an element may reach outside its block, in model pixels (Minecraft's limits). */
-const MIN_COORD = -16;
-const MAX_COORD = 32;
 /** The snap: a pixel, a quarter with Shift, free (a thousandth) with Ctrl. */
 const STEP = 1;
 const FINE_STEP = 0.25;
@@ -43,7 +40,7 @@ export function startHandleDrag({ object, handle }: { object: THREE.Object3D; ha
   return { handle, el, start, screenAxis: d.normalize(), pxPerUnit: len };
 }
 
-const clampCoord = (v: number) => Math.min(MAX_COORD, Math.max(MIN_COORD, Math.round(v * PRECISION) / PRECISION));
+const clampCoord = (v: number) => Math.min(ELEMENT_MAX, Math.max(ELEMENT_MIN, Math.round(v * PRECISION) / PRECISION));
 
 /** The element's bounds with the pointer at `x`, `y`: moved along the axis, or one side resized. */
 export function draggedBounds({ handle, el, start, screenAxis, pxPerUnit }: HandleDrag, x: number, y: number, fine: boolean, free: boolean): { from: Vec3; to: Vec3 } {
@@ -57,9 +54,9 @@ export function draggedBounds({ handle, el, start, screenAxis, pxPerUnit }: Hand
     const size = to[i] - from[i];
     from[i] = clampCoord(from[i] + delta);
     to[i] = from[i] + size;
-    if (to[i] > MAX_COORD) {
-      to[i] = MAX_COORD;
-      from[i] = MAX_COORD - size;
+    if (to[i] > ELEMENT_MAX) {
+      to[i] = ELEMENT_MAX;
+      from[i] = ELEMENT_MAX - size;
     }
   } else if (handle.side === 1) to[i] = clampCoord(Math.max(from[i], to[i] + delta));
   else from[i] = clampCoord(Math.min(to[i], from[i] + delta));

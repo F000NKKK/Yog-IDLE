@@ -1,7 +1,7 @@
 // The block's or item's own properties.
 
 import { PROPERTY_KIND, type PropertyDescriptor, pt, t } from "substrate-platform-ui";
-import { ARMOR_SLOTS, type ArmorSlot, type ContentFile, RENDER_LAYERS, TOOL_KINDS, TOOL_LEVELS, TOOLS } from "../../../content/model";
+import { ARMOR_SLOTS, type ArmorSlot, BLOCK_PIXELS, type ContentFile, RENDER_LAYERS, TOOL_KINDS, TOOL_LEVELS, TOOLS } from "../../../content/model";
 import { refProblem, refSuggestions } from "../../../data/contentRefs";
 import { RowsEditor } from "../../RowsEditor";
 import { refMessage } from "../../inspector";
@@ -10,9 +10,8 @@ import { parseVec, vecText } from "../fieldText";
 import type { PropertiesContext } from "./context";
 import { kind as KIND, reference } from "../../../data/yogIds.generated";
 
-/** A box: x1, y1, z1, x2, y2, z2, within a block's 16 pixels. */
+/** A box: x1, y1, z1, x2, y2, z2, within a block's pixels. */
 const BOX_COORDS = 6;
-const BLOCK_PIXELS = 16;
 /** A new potion effect: speed, for three minutes (in ticks). */
 const DEFAULT_EFFECT = "@effect:minecraft:speed";
 const DEFAULT_EFFECT_TICKS = 3600;

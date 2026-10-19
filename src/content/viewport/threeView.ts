@@ -2,13 +2,12 @@
 // compass, axes gizmo.
 
 import * as THREE from "three";
+import { BLOCK_PIXELS } from "../model";
 import { type AnimatedTexture, AXIS_COLORS, boxEdges, CENTER, checkerTexture, label } from "./scene";
 import { axisVector, DEFAULT_DISTANCE, FAR, FOV, NEAR, ORTHO_DEPTH, type OrbitCam } from "./camera";
 
-/** A block, in model pixels. */
-const BLOCK = 16;
 /** The grid around the block: three blocks wide, a line per block. */
-const OUTER_GRID = BLOCK * 3;
+const OUTER_GRID = BLOCK_PIXELS * 3;
 const GRID_COLOR = 0x5a5a5a;
 const GRID_SUB_COLOR = 0x3a3a3a;
 const OUTER_GRID_COLOR = 0x4a4a4a;
@@ -33,11 +32,11 @@ export function cssHex(color: number): string {
 
 function grid(): THREE.Group {
   const group = new THREE.Group();
-  const inner = new THREE.GridHelper(BLOCK, BLOCK, GRID_COLOR, GRID_SUB_COLOR);
-  const outer = new THREE.GridHelper(OUTER_GRID, OUTER_GRID / BLOCK, OUTER_GRID_COLOR, OUTER_GRID_COLOR);
-  inner.position.set(BLOCK / 2, 0, BLOCK / 2);
-  outer.position.set(BLOCK / 2, 0, BLOCK / 2);
-  group.add(inner, outer, boxEdges([0, 0, 0], [BLOCK, BLOCK, BLOCK], BOUNDS_COLOR));
+  const inner = new THREE.GridHelper(BLOCK_PIXELS, BLOCK_PIXELS, GRID_COLOR, GRID_SUB_COLOR);
+  const outer = new THREE.GridHelper(OUTER_GRID, OUTER_GRID / BLOCK_PIXELS, OUTER_GRID_COLOR, OUTER_GRID_COLOR);
+  inner.position.set(BLOCK_PIXELS / 2, 0, BLOCK_PIXELS / 2);
+  outer.position.set(BLOCK_PIXELS / 2, 0, BLOCK_PIXELS / 2);
+  group.add(inner, outer, boxEdges([0, 0, 0], [BLOCK_PIXELS, BLOCK_PIXELS, BLOCK_PIXELS], BOUNDS_COLOR));
   return group;
 }
 
@@ -65,13 +64,13 @@ export function createThree() {
   // fixed on-screen size each frame (see NORTH_MARKER_PX) rather than
   // scaling with the model.
   const north = label("N", NORTH_COLOR);
-  north.position.set(BLOCK / 2, 0, -NORTH_OFFSET);
+  north.position.set(BLOCK_PIXELS / 2, 0, -NORTH_OFFSET);
   gridGroup.add(north);
   const cam: OrbitCam = { theta: START_THETA, phi: START_PHI, dist: DEFAULT_DISTANCE, target: CENTER.clone() };
   return {
     scene,
     persp: new THREE.PerspectiveCamera(FOV, 1, NEAR, FAR),
-    orth: new THREE.OrthographicCamera(-BLOCK, BLOCK, BLOCK, -BLOCK, -ORTHO_DEPTH, ORTHO_DEPTH),
+    orth: new THREE.OrthographicCamera(-BLOCK_PIXELS, BLOCK_PIXELS, BLOCK_PIXELS, -BLOCK_PIXELS, -ORTHO_DEPTH, ORTHO_DEPTH),
     model,
     overlay,
     grid: gridGroup,
