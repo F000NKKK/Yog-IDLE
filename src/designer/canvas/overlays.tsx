@@ -4,7 +4,8 @@
 import type { CSSProperties, ReactNode } from "react";
 import type { DesignRect } from "substrate-platform-ui";
 import { yui } from "../../data/yogIds.generated";
-import { charWidth, LINE_GAP, LINE_H, type LNode, type LWidget, strWidth, textLines } from "../layout";
+import { charWidth, LINE_GAP, LINE_H, strWidth, textLines } from "../layoutText";
+import type { LNode, LWidget } from "../layoutWidget";
 import { cssColor, isContainer, type YuiNode } from "../yui";
 import type { Geo } from "./designerModel";
 

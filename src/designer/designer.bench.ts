@@ -1,6 +1,7 @@
 import { bench, describe } from "vitest";
 import { yuiText } from "../bench/fixtures";
-import { compute, screenWidget } from "./layout";
+import { compute } from "./layout";
+import { screenWidget } from "./layoutWidget";
 import { parseYui, serializeYui, withAttrs, mapNode, type YuiDoc } from "./yui";
 import { patchYui, scanYui } from "./yuiText";
 

@@ -1,7 +1,8 @@
 import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { yuiText } from "../bench/fixtures";
-import { compute, screenWidget } from "./layout";
+import { compute } from "./layout";
+import { screenWidget } from "./layoutWidget";
 import { parseYui } from "./yui";
 
 const CASES: [depth: number, width: number, w: number, h: number][] = [

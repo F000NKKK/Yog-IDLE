@@ -4,7 +4,7 @@
 import { type DesignRect, stemOf } from "substrate-platform-ui";
 import { yui } from "../../data/yogIds.generated";
 import { cellAttrs, cellOf, gridDefs } from "../grid";
-import type { LNode, LWidget } from "../layout";
+import type { LNode, LWidget } from "../layoutWidget";
 import { formatNumber, isCanvas, isGrid, pathOf, withAttrs, type YuiDoc, type YuiNode } from "../yui";
 
 /** Common GUI sizes — the game window divided by its GUI scale. */
