@@ -14,7 +14,7 @@ pub fn plugin() -> TauriPlugin<Wry> {
             crate::tools::tools_settings_set,
             crate::tools::tools_status,
             crate::tools::open_installer,
-            crate::app_restart,
+            crate::state_files::app_restart,
         ])
         .build()
 }

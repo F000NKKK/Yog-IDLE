@@ -12,17 +12,14 @@ pub mod plugins;
 mod path_commands;
 use path_commands::*;
 mod project_commands;
-use project_commands::*;
 mod state_files;
 use state_files::*;
 mod format;
-use format::*;
 mod workflow;
 use workflow::*;
 mod mod_commands;
 use mod_commands::*;
 mod publish;
-use publish::*;
 
 mod cli;
 mod tools;
@@ -40,12 +37,6 @@ mod debugger;
 /// against it; IDLE's commands check theirs with [`validate_within_roots`].
 pub(crate) use tauri_plugin_substrate::Workspace;
 
-/// Restarts Yog-IDLE — e.g. after `debug_grant_ptrace_capability`, which
-/// only takes effect for a fresh `exec()`.
-#[tauri::command]
-pub(crate) fn app_restart(app: AppHandle) {
-    app.restart();
-}
 
 /// The backend's hot paths for `benches/backend.rs` — not an API.
 #[doc(hidden)]

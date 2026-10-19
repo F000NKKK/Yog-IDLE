@@ -27,19 +27,19 @@ fn kind_names_match_serde() {
 
 const SAMPLE: &str = r#"
 pub mod net {
-pub struct Client {
-    pub url: String,
-    r#type: u8,
-}
+    pub struct Client {
+        pub url: String,
+        r#type: u8,
+    }
 
-impl Client {
-    pub const MAX: usize = 4;
-    pub fn connect(&self) {}
-}
+    impl Client {
+        pub const MAX: usize = 4;
+        pub fn connect(&self) {}
+    }
 
-impl std::fmt::Display for Client {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { Ok(()) }
-}
+    impl std::fmt::Display for Client {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { Ok(()) }
+    }
 }
 
 enum Shape { Circle { radius: f32 }, Square(f32) }

@@ -1,4 +1,5 @@
-//! What IDLE remembers: per project (`.idle/`) and app-wide (`state.json`).
+//! What IDLE remembers: per project (`.idle/`) and app-wide (`state.json`);
+//! restarting the app.
 
 use super::*;
 
@@ -88,4 +89,11 @@ pub(super) fn app_state_load(app: AppHandle) -> Result<serde_json::Value, String
 #[tauri::command]
 pub(super) fn app_state_save(app: AppHandle, value: serde_json::Value) -> Result<(), String> {
     write_state_file(&app_state_file(&app)?, &value)
+}
+
+/// Restarts Yog-IDLE — e.g. after `debug_grant_ptrace_capability`, which
+/// only takes effect for a fresh `exec()`.
+#[tauri::command]
+pub(super) fn app_restart(app: AppHandle) {
+    app.restart();
 }
