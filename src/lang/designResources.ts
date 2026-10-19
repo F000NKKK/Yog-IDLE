@@ -6,7 +6,7 @@
  * resolve them (see docs/yres.md).
  */
 import { cli } from "../cli";
-import { file } from "../data/yogIds.generated";
+import { file, resKind } from "../data/yogIds.generated";
 import { classify, prefetchTyped, type Typed } from "../data/typed";
 import { useEffect, useSyncExternalStore } from "react";
 import { resolvedLocale, type DirEntry } from "substrate-platform-ui";
@@ -77,7 +77,7 @@ async function load(root: string) {
       entry.relDir = file.rel;
     } else {
       const texts = new Map<string, string>();
-      for (const e of parsed.entries) if (e.type === "string" && typeof e.value === "string" && e.value !== "") texts.set(e.name, e.value);
+      for (const e of parsed.entries) if (e.type === resKind.STRING && typeof e.value === "string" && e.value !== "") texts.set(e.name, e.value);
       entry.cultures.set(locale, texts);
     }
     sets.set(set, entry);
@@ -150,7 +150,7 @@ function lookup(ref: string): { set: ResourceSet; entry: YresEntry } | undefined
 function resolveText(ref: string): string | undefined {
   const found = lookup(ref);
   if (!found) return undefined;
-  if (found.entry.type === "string") return cultureFor(found.set.cultures)?.get(found.entry.name) ?? String(found.entry.value);
+  if (found.entry.type === resKind.STRING) return cultureFor(found.set.cultures)?.get(found.entry.name) ?? String(found.entry.value);
   return String(found.entry.value);
 }
 
@@ -193,14 +193,14 @@ export function designImage(value: string): string {
 export function designColor(value: string): string {
   if (!value.startsWith("@") || value.startsWith("@@")) return value;
   const found = lookup(value.slice(1));
-  return found?.entry.type === "color" && typeof found.entry.value === "string" ? found.entry.value : value;
+  return found?.entry.type === resKind.COLOR && typeof found.entry.value === "string" ? found.entry.value : value;
 }
 
 /** Every color resource of the mod as `@Set.name` — what a color property offers. */
 export function colorRefs(): string[] {
   if (!loaded) return [];
   const out: string[] = [];
-  for (const [set, rs] of loaded.sets) for (const e of rs.neutral) if (e.type === "color") out.push(`@${set}.${e.name}`);
+  for (const [set, rs] of loaded.sets) for (const e of rs.neutral) if (e.type === resKind.COLOR) out.push(`@${set}.${e.name}`);
   return out.sort();
 }
 

@@ -4,7 +4,7 @@ import { cli } from "../cli";
 import { ItemHeader, ItemIcons } from "../designer/ItemIcons";
 import { type EditorProps, fileTypeOf, openFile, type PropertyDescriptor, type PropertySet, type PropertyValue, Toolbar, ToolbarButton, ToolbarGroup, ToolbarInput, ToolbarLabel, ToolbarSelect, useFilesChanged, usePropertyContext, useT } from "substrate-platform-ui";
 import { DataEditor } from "./DataEditor";
-import { useContentRefs } from "../data/contentRefs";
+import { typedRef, useContentRefs } from "../data/contentRefs";
 import { alternativesOf, isTag } from "../data/ingredients";
 import { MAX_STACK_SIZE } from "../data/yogFormat";
 import { iconSource, imagePreview, imageSources, imageSourcesVersion, ingredientItems, subscribeImageSources } from "../designer/imageSources";
@@ -322,7 +322,7 @@ export function RecipeEditor({ path, content, onChange, readOnly }: EditorProps)
             category: targetLabel,
             name: t("Matches"),
             value: null,
-            render: () => <ItemIcons path={path} items={ingredientItems(path, current)} onPick={ro ? undefined : (id) => put(target, id)} empty={t("No item matches it (yet).")} />,
+            render: () => <ItemIcons path={path} items={ingredientItems(path, current)} onPick={ro ? undefined : (id) => put(target, typedRef(KIND.ITEM, id))} empty={t("No item matches it (yet).")} />,
           } satisfies PropertyDescriptor,
         ]
       : []),

@@ -4,8 +4,9 @@
 
 import type { DataFormat } from "../data/useDataFile";
 import { formatData, patchData, readObject } from "../data/yogData";
-import { kind as KIND, reference, sep } from "../data/yogIds.generated";
+import { kind as KIND, reference } from "../data/yogIds.generated";
 import { gameId } from "../data/yogFormat";
+import { typedRef } from "../data/contentRefs";
 
 export type Dir = "down" | "up" | "north" | "south" | "west" | "east";
 export const DIRS: Dir[] = ["down", "up", "north", "south", "west", "east"];
@@ -360,7 +361,7 @@ export const clone = <T>(v: T): T => JSON.parse(JSON.stringify(v)) as T;
  * picker gives it) made a `@texture:` ref.
  */
 export function textureRef(value: string): string {
-  return value.startsWith(SLOT_REF) || value.startsWith(sep.TYPED) ? value : `${reference.TEXTURE}${value}`;
+  return value.startsWith(SLOT_REF) ? value : typedRef(KIND.TEXTURE, value);
 }
 
 /** A `#slot` reference's mark. */
@@ -394,6 +395,29 @@ export function newBlockWithItemFile(name: string): Promise<string> {
     model: { parent: "cube_all", textures: { all: NEW_BLOCK_TEXTURE } },
     item_model: { parent: "generated", textures: { layer0: NEW_ITEM_TEXTURE } },
   });
+}
+
+/** A recipe that builds as it is: the game's crafting table from four planks, to change. */
+export function newRecipeFile(): string {
+  const recipe = {
+    type: "shaped",
+    pattern: ["##", "##"],
+    key: { "#": `${reference.ITEM}${gameId("oak_planks")}` },
+    result: `${reference.ITEM}${gameId("crafting_table")}`,
+  };
+  return `${JSON.stringify(recipe, null, 2)}\n`;
+}
+
+/** A book `id` (the item that opens it) with one category and a welcome entry. */
+export function newBookFile(id: string, name: string): string {
+  const category = "basics";
+  const book = {
+    id,
+    name,
+    categories: [{ id: category, name: "Basics" }],
+    entries: [{ id: "welcome", name: "Welcome", category: `${reference.CATEGORY}${category}`, pages: [{ type: "text", text: "" }] }],
+  };
+  return `${JSON.stringify(book, null, 2)}\n`;
 }
 
 /** `ruby_ore` → `Ruby Ore`. */

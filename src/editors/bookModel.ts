@@ -6,6 +6,7 @@
 
 import type { DataFormat } from "../data/useDataFile";
 import { readObject } from "../data/yogData";
+import { reference } from "../data/yogIds.generated";
 
 export type Json = null | boolean | number | string | Json[] | { [k: string]: Json };
 export type Obj = { [k: string]: Json };
@@ -224,7 +225,7 @@ export function refId(v: string): string {
 
 /** The reference an entry names its category `id` by. */
 export function categoryRef(id: string): string {
-  return `@category:${id}`;
+  return `${reference.CATEGORY}${id}`;
 }
 
 /** The entries of category `id`, in the order the book lists them. */

@@ -10,6 +10,7 @@ import { fileTypeOf, useFilesChanged } from "substrate-platform-ui";
 import { classify } from "./typed";
 import { fileTypeId, formats } from "../yogFileTypes";
 import { gameId, TYPED_WORDS } from "./yogFormat";
+import { sep } from "./yogIds.generated";
 
 /** One of the mod's own: its id and the file that defines it. */
 export interface OwnRef {
@@ -89,12 +90,17 @@ export function refIds(c: RefChoices): string[] {
 
 /** `@<kind>:<id>` for each id a picker offers, the mod's first. */
 export function refSuggestions(c: RefChoices, kind: string): string[] {
-  return refIds(c).map((id) => `@${kind}:${id}`);
+  return refIds(c).map((id) => typedRef(kind, id));
+}
+
+/** `value` as a reference of `kind`: a bare id (`minecraft:stick`) made `@kind:id`; a typed value (`@…`) kept. */
+export function typedRef(kind: string, value: string): string {
+  return value.startsWith(sep.TYPED) ? value : `${sep.TYPED}${kind}${sep.NAMESPACE}${value}`;
 }
 
 /** `id` with the namespace `ns` when it has none (`wisp` → `mymod:wisp`). */
 export function qualify(id: string, ns: string): string {
-  return id.includes(":") ? id : `${ns}:${id}`;
+  return id.includes(sep.NAMESPACE) ? id : `${ns}${sep.NAMESPACE}${id}`;
 }
 
 /** The id a reference names (`@item:minecraft:stick` → `minecraft:stick`), `null` if it isn't a reference of `kind`. */

@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type SyntheticEvent } from "react";
 import { Button, FloatingWindow, Icon, SearchField, TextField, useT } from "substrate-platform-ui";
-import { newBlockFile, newBlockWithItemFile, newItemFile, titleOf } from "../content/model";
+import { newBlockFile, newBlockWithItemFile, newBookFile, newItemFile, newRecipeFile, titleOf } from "../content/model";
 import { validateEntryName } from "../paths";
 import { pascalName } from "../designer/components";
 import "./NewItemDialog.css";
@@ -126,7 +126,7 @@ const ITEM_TEMPLATES: ItemTemplate[] = [
     extension: dotExt(formats.recipe),
     baseName: "recipe",
     rootFolder: "content",
-    files: (stem) => [[`${stem}.yrecipe`, `{\n  "type": "shaped",\n  "pattern": [],\n  "key": {},\n  "result": ""\n}\n`]],
+    files: (stem) => [[`${stem}.yrecipe`, newRecipeFile()]],
   },
   {
     id: "yog-book",
@@ -139,7 +139,7 @@ const ITEM_TEMPLATES: ItemTemplate[] = [
     files: (stem) => [
       [
         `${stem}.ybook`,
-        `{\n  "id": "${stem}",\n  "name": "${titleOf(stem)}",\n  "categories": [{ "id": "basics", "name": "Basics" }],\n  "entries": [\n    {\n      "id": "welcome",\n      "name": "Welcome",\n      "category": "basics",\n      "pages": [{ "type": "text", "text": "" }]\n    }\n  ]\n}\n`,
+        newBookFile(stem, titleOf(stem)),
       ],
     ],
   },
@@ -247,7 +247,7 @@ function QuickAdd({ folder, onAddPlain, onClose, onShowAll }: NewItemDialogProps
   const plain = name.trim().replace(/[/\\]+$/, "");
   const error = validateEntryName(plain) ?? (taken?.has(plain.toLowerCase()) ? t("\"{name}\" already exists here.", { name: plain }) : null);
 
-  async function submit(e: FormEvent) {
+  async function submit(e: SyntheticEvent) {
     e.preventDefault();
     if (error !== null || busy) return;
     setBusy(true);
@@ -315,7 +315,7 @@ function AllTemplates({ folder, onAdd, onClose }: NewItemDialogProps) {
     input.setSelectionRange(0, Math.max(0, input.value.length - template.extension.length));
   }, [template, suggested, edited]);
 
-  async function submit(e?: FormEvent) {
+  async function submit(e?: SyntheticEvent) {
     e?.preventDefault();
     if (error !== null || busy || !taken) return;
     setBusy(true);
