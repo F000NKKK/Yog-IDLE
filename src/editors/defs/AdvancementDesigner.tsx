@@ -125,7 +125,7 @@ export function AdvancementDesigner({ path, file, update, readOnly, kindLabel }:
       ref("parent", t("Parent"), c, file.parent as string | undefined, "advancement", { ...advancements, own: advancements.own.filter((o) => o.id !== thisId) }, (v) => update((d) => void (d.parent = v)), {
         description: t("The advancement it hangs under; none: the root of a tab of its own."),
       }),
-      ref("icon", t("Icon"), c, file.icon as string | undefined, "item", items, (v) => update((d) => void (d.icon = v)), { description: t("The item drawn in its frame.") }),
+      ref("icon", t("Icon"), c, file.icon as string | undefined, KIND.ITEM, items, (v) => update((d) => void (d.icon = v)), { description: t("The item drawn in its frame.") }),
       row("title", t("Title"), c, file.title as string | undefined, (v) => update((d) => void (d.title = v)), { suggestions: strings, description: t("A .yres text (@Lang.…), a translation key or words.") }),
       row("description", t("Description"), c, file.description as string | undefined, (v) => update((d) => void (d.description = v)), { suggestions: strings }),
       choice("frame", t("Frame"), c, file.frame as string | undefined, FRAMES, (v) => update((d) => void (d.frame = v === "task" ? undefined : v)), {

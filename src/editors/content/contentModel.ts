@@ -3,7 +3,7 @@
 
 import type { TextureSource } from "../../content/Viewport";
 import type { TextureAnimation } from "../../content/animation";
-import { type ContentFile, defaultDisplay, type Dir, DIRS, type DisplaySlot, type DisplayTransform, type Element, type Model, templateElements, templateOf } from "../../content/model";
+import { type ContentFile, defaultDisplay, type Dir, DIRS, type DisplaySlot, type DisplayTransform, type Element, type Model, templateElements, templateOf, type Kind } from "../../content/model";
 import type { PixelImage } from "../../content/paint/pixels";
 import { GAME_NAMESPACE } from "../../data/yogFormat";
 import { kind as KIND } from "../../data/yogIds.generated";
@@ -100,7 +100,7 @@ export function ensureModel(f: ContentFile, key: ModelKey): Model {
 /** Every model of the file: the block's or item's, the item form's, the arm, the state models. */
 export const allModels = (f: ContentFile): (Model | undefined)[] => [f.model, f.item_model, f.states?.connect?.arm, ...Object.values(f.states?.models ?? {})];
 
-export function resolve(model: Model | undefined, kind: "block" | "item", parents: Record<string, ParentModel | null>): Resolved {
+export function resolve(model: Model | undefined, kind: Kind, parents: Record<string, ParentModel | null>): Resolved {
   const m = model ?? {};
   const parent = m.parent;
   const tpl = templateOf(parent);

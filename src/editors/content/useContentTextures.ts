@@ -10,6 +10,7 @@ import { decodeImage, type PixelImage, sameImage } from "../../content/paint/pix
 import { GAME_NAMESPACE } from "../../data/yogFormat";
 import type { ContentModel } from "./useContentModel";
 import { allModels, type Edited, type LoadedTexture, MODEL, namedTextures, type ParentModel, stateModelOf } from "./contentModel";
+import { kind as KIND } from "../../data/yogIds.generated";
 
 /** The pickers' choices, parent models and textures: loading, painting state, saving; what the view draws. */
 export function useContentTextures(props: EditorProps, m: ContentModel) {
@@ -23,7 +24,7 @@ export function useContentTextures(props: EditorProps, m: ContentModel) {
       cli<{ value: string }[]>("content_textures", { path }).catch(() => []),
       cli<string[]>("content_strings", { path }).catch(() => []),
       cli<string[]>("content_sound_groups", { path }).catch(() => []),
-      cli<string[]>("content_tags", { path, registry: kindOf(path) ?? "item" }).catch(() => []),
+      cli<string[]>("content_tags", { path, registry: kindOf(path) ?? KIND.ITEM }).catch(() => []),
       cli<string[]>("content_tool_materials", { path }).catch(() => []),
       cli<string[]>("content_armor_materials", { path }).catch(() => []),
       cli<string | null>("content_mod_id", { path }).catch(() => null),

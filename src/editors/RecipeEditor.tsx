@@ -136,7 +136,7 @@ export function RecipeEditor({ path, content, onChange, readOnly }: EditorProps)
         ...itemRefs.external,
         ...itemRefs.game,
         ...imageSources(path)
-          .filter((c) => c.group === "item" || c.group === "block")
+          .filter((c) => c.group === KIND.ITEM || c.group === KIND.BLOCK)
           .map((c) => c.source.replace(/^(item|block):/, "")),
       ].filter((id, i, list) => list.indexOf(id) === i),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- image sources change by version

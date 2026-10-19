@@ -1,6 +1,7 @@
 import { cli } from "../cli";
 import { open } from "@tauri-apps/plugin-dialog";
 import { confirmDialog, notify, promptDialog, reportError, showDialog, t } from "substrate-platform-ui";
+import { kind as KIND } from "../data/yogIds.generated";
 
 // Project > Import…: blocks and items from a resource pack (a folder or a
 // .zip — one model or all of them) or a Blockbench .bbmodel, into the mod's
@@ -50,12 +51,12 @@ export async function importContent(modRoot: string): Promise<void> {
       message: t("Import {name} as a block or as an item?", { name: model }),
       buttons: [
         { id: "cancel", label: t("Cancel") },
-        { id: "item", label: t("Item") },
-        { id: "block", label: t("Block"), variant: "primary" },
+        { id: KIND.ITEM, label: t("Item") },
+        { id: KIND.BLOCK, label: t("Block"), variant: "primary" },
       ],
     });
     if (as.button === "cancel") return;
-    kind = as.button === "item" ? "bbmodel-item" : "bbmodel";
+    kind = as.button === KIND.ITEM ? "bbmodel-item" : "bbmodel";
   } else {
     kind = "resourcepack";
     model = await promptDialog({

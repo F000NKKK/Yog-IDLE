@@ -7,13 +7,14 @@ import { ItemList } from "../ItemList";
 import { asList, TAG_KINDS } from "./defModel";
 import { DefLayout, type DefProps } from "./DefLayout";
 import { ItemIcon } from "./GamePanel";
+import { kind as KIND } from "../../data/yogIds.generated";
 /** Kinds of content drawn as their item's icon. */
-const ICONS = new Set(["item", "block"]);
+const ICONS = new Set<string>([KIND.ITEM, KIND.BLOCK]);
 export function TagDesigner({ path, file, update, readOnly, kindLabel }: DefProps) {
   // Typed values (`@item:…`) classified by the CLI come in: draw again.
   useTyped();
   const t = useT();
-  const of = typeof file.of === "string" ? file.of : "item";
+  const of = typeof file.of === "string" ? file.of : KIND.ITEM;
   const refs = useContentRefs(path, of);
   const tags = useContentRefs(path, `tag:${of}`);
   const values = asList<string>(file.values);

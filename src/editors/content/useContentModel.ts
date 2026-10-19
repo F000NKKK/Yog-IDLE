@@ -22,7 +22,7 @@ export function useContentModel(props: EditorProps) {
   useTyped();
   const t = useT();
   const { tabs, setView, setSideState } = useOpenFiles();
-  const kind = kindOf(path) ?? "block";
+  const kind = kindOf(path) ?? KIND.BLOCK;
   const { parsed, update: updateFile } = useDataFile(content, onChange, CONTENT_FORMAT, readOnly);
   const file = useMemo<ContentFile>(() => (parsed?.ok ? parsed.file : {}), [parsed]);
 
@@ -83,7 +83,7 @@ export function useContentModel(props: EditorProps) {
   // A model key that no longer exists (the arm removed, say) → the main model.
   const effectiveKey: ModelKey = modelOf(file, modelKey) || modelKey === MODEL.main ? modelKey : MODEL.main;
   const model = modelOf(file, effectiveKey);
-  const modelKind: Kind = effectiveKey === MODEL.item || kind === KIND.ITEM ? "item" : "block";
+  const modelKind: Kind = effectiveKey === MODEL.item || kind === KIND.ITEM ? KIND.ITEM : KIND.BLOCK;
   const resolved = useMemo(() => resolve(model, modelKind, parents), [model, modelKind, parents]);
   const mainResolved = useMemo(() => resolve(file.model, kind, parents), [file.model, kind, parents]);
   useEffect(() => {

@@ -6,6 +6,7 @@ import { list, num } from "../../data/values";
 
 import type { DataFormat } from "../../data/useDataFile";
 import { readObject } from "../../data/yogData";
+import { kind as KIND } from "../../data/yogIds.generated";
 
 export type DefFile = Record<string, unknown> & { kind?: string; id?: string };
 
@@ -36,7 +37,7 @@ export const FOLIAGE_SHAPES = ["blob", "spruce", "pine", "acacia", "bush", "fanc
 /** Foliage shapes that take a `height`. */
 export const FOLIAGE_WITH_HEIGHT = ["blob", "fancy", "bush", "jungle"] as const;
 /** Kinds of content a tag groups; any of the game's registries by name too. */
-export const TAG_KINDS = ["item", "block", "entity", "fluid", "biome", "damage_type"] as const;
+export const TAG_KINDS = [KIND.ITEM, KIND.BLOCK, KIND.ENTITY, KIND.FLUID, KIND.BIOME, KIND.DAMAGE_TYPE] as const;
 
 // ── Advancements: a tab laid out as the game does ───────────────────────────
 

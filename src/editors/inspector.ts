@@ -8,6 +8,7 @@
 import type { PropertyDescriptor, useT } from "substrate-platform-ui";
 import { iconSource, imagePreview } from "../designer/imageSources";
 import { refProblem, refSuggestions, type RefChoices } from "../data/contentRefs";
+import { kind as KIND } from "../data/yogIds.generated";
 
 type T = ReturnType<typeof useT>;
 type Extra = Partial<PropertyDescriptor>;
@@ -25,7 +26,7 @@ export function parseColor(s: string): number | null {
 }
 
 /** Kinds of reference whose ids draw as an item's icon. */
-const ICON_KINDS = new Set(["item", "block"]);
+const ICON_KINDS = new Set<string>([KIND.ITEM, KIND.BLOCK]);
 
 /**
  * The row builders for one inspector: `ro` makes every row read only;
