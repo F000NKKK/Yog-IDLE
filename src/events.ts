@@ -12,8 +12,8 @@ export const EVENT = {
   debugOutput: "debug-output",
   /** Source Control's runs — Substrate's event. */
   gitOutput: substrateEvents.gitOutput,
-  /** IDE-side messages (`reportError`, the Project Explorer, the designer) — emitted by the front end only. */
-  ideOutput: "ide-output",
+  /** IDE-side messages (`reportError`, the Project Explorer, the designer) — Substrate's General output. */
+  ideOutput: substrateEvents.ideOutput,
 
   /** Paths changed outside the IDE, in the folders `fs_watch` names (see `fsWatch.tsx`). */
   fsChanged: "fs-changed",
@@ -79,7 +79,6 @@ type Payloads = {
   "workflow-output": string;
   "game-output": string;
   "debug-output": string;
-  "ide-output": string;
   "fs-changed": string[];
   /** The project the run builds. */
   "workflow-start": { root: string } | null;
@@ -95,6 +94,8 @@ type Payloads = {
 } & {
   /** Lines as Substrate's messages (and the IDE's own as text). */
   [K in typeof substrateEvents.gitOutput]: string | BackendMessage;
+} & {
+  [K in typeof substrateEvents.ideOutput]: string;
 };
 
 export type EventName = keyof Payloads;

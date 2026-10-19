@@ -1,6 +1,5 @@
-import { joinPath, pushDocumentStep, t } from "substrate-platform-ui";
+import { joinPath, pushDocumentStep, reportError, t } from "substrate-platform-ui";
 import { files } from "../files";
-import { reportError } from "../reportError";
 
 /**
  * Runs an edit of mod `root`'s yog.toml as a step of history `scope`: the

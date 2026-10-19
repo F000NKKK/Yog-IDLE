@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
-import { DiffEditor, Icon, IconButton, useT, type DiffLayout, Spacer, errorText } from "substrate-platform-ui";
-import { openFile } from "../fileOpenBus";
+import { DiffEditor, type DiffLayout, errorText, Icon, IconButton, openFile, Spacer, useT } from "substrate-platform-ui";
 import { gitApi, type DiffTexts } from "./gitApi";
 import type { DiffRequest } from "./gitDocuments";
 import { useGit } from "./gitStore";

@@ -4,35 +4,31 @@ import { getVersion } from "@tauri-apps/api/app";
 import { message, open, save as saveDialog } from "@tauri-apps/plugin-dialog";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import {
-  PlatformShell,
-  MenuBar,
-  MenuBarItem,
-  TerminalPanel,
-  OutputPanel,
-  clearOutputBuffer,
-  ContextMenu,
-  useContextMenu,
-  SettingsWindow,
   AppearanceSettings,
   appearanceSettingsKeywords,
   EditorSettings,
   editorSettingsKeywords,
   InternationalSettings,
   internationalSettingsKeywords,
-  WindowControls,
-  Toolbar,
-  ToolbarButton,
-  ToolbarLabel,
-  useWorkflowRunner,
+  MenuBar,
+  MenuBarItem,
+  notify,
+  openFile,
+  openLink,
+  OutputWindow,
+  PlatformShell,
   pt,
+  reportError,
+  SettingsWindow,
   t,
+  TerminalPanel,
+  Toolbar,
+  type ToolbarSection,
+  useKeybinding,
   useLocale,
   useT,
-  useKeybinding,
-  notify,
-  openLink,
-  type ToolbarSection,
-  Spacer,
+  useWorkflowRunner,
+  WindowControls,
 } from "substrate-platform-ui";
 import type { PanelDef, SettingsSection } from "substrate-platform-ui";
 
@@ -67,15 +63,13 @@ import {
 import { ViewMenu } from "./ViewMenu";
 import { WorkspaceProvider } from "./WorkspaceContext";
 import { installCloseHandler } from "./windowClose";
-import { reportError } from "./reportError";
-import { openFile } from "./fileOpenBus";
 import { BuildSettingsPage, BuildSettingsSync, buildSettingsKeywords } from "./tools/BuildSettings";
 import { missingTools, openInstaller, toolsStatus } from "./tools/toolsStore";
 import { ProjectPropertiesWindow } from "./projectProperties/ProjectPropertiesWindow";
 import { onOpenProjectProperties, openProjectProperties, type ProjectPropertiesPage } from "./projectProperties/bus";
 import { ErrorListPanel } from "./panels/ErrorListPanel";
 import { BuildDiagnosticsSync } from "./diagnostics/buildDiagnostics";
-import { OUTPUT_SOURCES, OutputSourceSync, setOutputSource, useOutputSource, type OutputSource } from "./outputSource";
+import { OutputSourceSync } from "./outputSource";
 
 import { GitChangesWindow, GIT_CHANGES_PANEL } from "./git/GitChangesWindow";
 import { GitHost } from "./git/GitHost";
@@ -105,45 +99,6 @@ const mainPanel: PanelDef = { id: "editor-empty", title: "", component: EmptyEdi
  * one. The buffers live outside the panel (`outputBuffer`), so they keep
  * filling while it's hidden.
  */
-function OutputToolWindow() {
-  const t = useT();
-  const source = useOutputSource();
-  const menu = useContextMenu<void>();
-  const current = OUTPUT_SOURCES.find((s) => s.id === source) ?? OUTPUT_SOURCES[0];
-  return (
-    <div className="output-panel">
-      <Toolbar>
-        <ToolbarLabel>{t("Show output from:")}</ToolbarLabel>
-        <div className="output-panel-source-anchor">
-          <ToolbarButton label={t(current.label)} dropdown onClick={() => menu.openAtAnchor()} />
-          <ContextMenu
-            target={menu.target ? { mode: "anchor" } : null}
-            items={OUTPUT_SOURCES.map((s) => ({
-              label: t(s.label),
-              checked: s.id === source,
-              onSelect: () => setOutputSource(s.id),
-            }))}
-            onClose={menu.close}
-          />
-        </div>
-        <Spacer />
-        <ToolbarButton icon="trash" label={t("Clear {source} Output", { source: t(current.label) })} onClick={() => clearOutputBuffer(current.event)} />
-      </Toolbar>
-      <div className="output-panel-body">
-        <OutputPanel key={current.event} eventName={current.event} emptyLabel={t(EMPTY_LABELS[current.id])} />
-      </div>
-    </div>
-  );
-}
-
-const EMPTY_LABELS: Record<OutputSource, string> = {
-  build: "Run a Build command to see output here.",
-  game: "Start the game to see its output here.",
-  debug: "Debugger messages appear here.",
-  ide: "No messages.",
-  git: "Fetch, pull, push and other Git operations show their output here.",
-};
-
 /** The tool windows, titled in the active locale — rebuilt when it changes. */
 function makeToolWindows() {
   return {
@@ -160,7 +115,7 @@ function makeToolWindows() {
     ],
     bottom: [
       { id: "errorList", title: t("Error List"), component: ErrorListPanel } satisfies PanelDef,
-      { id: "output", title: t("Output"), component: OutputToolWindow } satisfies PanelDef,
+      { id: "output", title: t("Output"), component: OutputWindow } satisfies PanelDef,
       { id: "terminal", title: t("Terminal"), component: TerminalPanel } satisfies PanelDef,
       { id: "debug", title: t("Debug"), component: DebugPanel } satisfies PanelDef,
       { id: FIND_RESULTS_PANEL, title: t("Find Results"), component: FindResultsPanel } satisfies PanelDef,

@@ -1,6 +1,6 @@
 // Project > Properties can be asked for from the menu bar, Alt+Enter, or the
 // Project Explorer's context menu on the project node — none of which share
-// a prop channel with `App`, which owns the window. Like `fileOpenBus`.
+// a prop channel with `App`, which owns the window. Like Substrate's `openFile`.
 
 /** The page ids of the Project Properties window. */
 export type ProjectPropertiesPage = "application" | "build" | "debug" | "dependencies" | "publish";

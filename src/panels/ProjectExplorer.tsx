@@ -2,40 +2,40 @@ import { useEffect, useMemo, useRef, useState, type FocusEvent, type KeyboardEve
 import { invoke } from "@tauri-apps/api/core";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import {
+  confirmDialog,
   ContextMenu,
+  type ContextMenuItem,
+  editorProvidersFor,
+  errorText,
+  fileNameOf,
   FileTree,
+  fileTreeFromEntries,
+  type FileTreeMenuItem,
+  type FileTreeNode,
+  filterFileTree,
+  generalEditorProviders,
+  joinPath,
+  matchesShortcut,
+  nestFiles,
+  openFile,
+  openPath,
+  openTerminalIn,
+  reportError,
+  revealPath,
   SearchField,
+  t,
   Toolbar,
   ToolbarButton,
   ToolbarGroup,
-  confirmDialog,
-  errorText,
-  openPath,
-  revealPath,
-  editorProvidersFor,
-  fileTreeFromEntries,
-  filterFileTree,
-  generalEditorProviders,
-  matchesShortcut,
-  nestFiles,
-  openTerminalIn,
   useContextMenu,
   useDirectoryTree,
   useShell,
   useStoredState,
-  t,
   useT,
   withShortcut,
-  type ContextMenuItem,
-  type FileTreeMenuItem,
-  type FileTreeNode,
-  fileNameOf,
-  joinPath,
 } from "substrate-platform-ui";
 import { useProject, type ProjectInfo } from "../ProjectContext";
 import { openWithItems, useActiveFileTab, useOpenFiles } from "../OpenFilesContext";
-import { openFile } from "../fileOpenBus";
-import { reportError } from "../reportError";
 import { EVENT, emitTo } from "../events";
 import { generatedCodePath, isWithin, parentOf, renamedPath, validateEntryName as validateName } from "../paths";
 import { openProjectProperties } from "../projectProperties/bus";

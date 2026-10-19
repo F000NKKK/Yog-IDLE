@@ -1,48 +1,19 @@
-import { useEffect, useSyncExternalStore } from "react";
-import { startOutputBuffer } from "substrate-platform-ui";
-import { EVENT, listenAll, listenTo, type OutputEvent } from "./events";
+import { useEffect } from "react";
+import { onOutputSourceChange, outputSource, outputSources, registerOutputSources, setOutputSource, startOutputBuffer } from "substrate-platform-ui";
+import { EVENT, listenAll, listenTo } from "./events";
 import { useWorkspaceState } from "./WorkspaceContext";
 
-/**
- * The Output panel's sources, like Visual Studio's "Show output from:" —
- * each its own event (see `OUTPUT_*` in `src-tauri/src/lib.rs`), buffered
- * from startup so switching to one shows everything it has said so far.
- */
-export const OUTPUT_SOURCES = [
-  { id: "build", label: "Build", event: EVENT.buildOutput },
-  { id: "game", label: "Game", event: EVENT.gameOutput },
-  { id: "debug", label: "Debug", event: EVENT.debugOutput },
-  { id: "ide", label: "General", event: EVENT.ideOutput },
-  { id: "git", label: "Source Control - Git", event: EVENT.gitOutput },
-] as const satisfies readonly { id: string; label: string; event: OutputEvent }[];
+/** Yog IDLE's own Output sources, before the platform's (General, Source Control). */
+const SOURCE = { build: "build", game: "game", debug: "debug" } as const;
 
-export type OutputSource = (typeof OUTPUT_SOURCES)[number]["id"];
+registerOutputSources([
+  { id: SOURCE.build, label: "Build", event: EVENT.buildOutput, emptyLabel: "Run a Build command to see output here." },
+  { id: SOURCE.game, label: "Game", event: EVENT.gameOutput, emptyLabel: "Start the game to see its output here." },
+  { id: SOURCE.debug, label: "Debug", event: EVENT.debugOutput, emptyLabel: "Debugger messages appear here." },
+]);
 
-function isOutputSource(value: unknown): value is OutputSource {
-  return OUTPUT_SOURCES.some((s) => s.id === value);
-}
-
-// Module-level, like `outputBuffer`: the Output panel is only mounted while
-// shown, but the source still has to follow a build or a launch meanwhile.
-let current: OutputSource = "build";
-const subscribers = new Set<() => void>();
-
-export function setOutputSource(source: OutputSource): void {
-  if (source === current) return;
-  current = source;
-  subscribers.forEach((notify) => notify());
-}
-
-function subscribe(notify: () => void) {
-  subscribers.add(notify);
-  return () => {
-    subscribers.delete(notify);
-  };
-}
-
-/** The source the Output panel shows. */
-export function useOutputSource(): OutputSource {
-  return useSyncExternalStore(subscribe, () => current);
+function isOutputSource(value: unknown): value is string {
+  return outputSources().some((s) => s.id === value);
 }
 
 /**
@@ -52,34 +23,34 @@ export function useOutputSource(): OutputSource {
  * first), Game once the launched game prints, Debug when an attach fails.
  */
 export function OutputSourceSync() {
-  const [stored, setStored] = useWorkspaceState<OutputSource>("output.source", "build", isOutputSource);
+  const [stored, setStored] = useWorkspaceState<string>("output.source", SOURCE.build, isOutputSource);
 
   useEffect(() => {
-    for (const source of OUTPUT_SOURCES) startOutputBuffer(source.event);
+    for (const source of outputSources()) startOutputBuffer(source.event);
   }, []);
 
   useEffect(() => setOutputSource(stored), [stored]);
-  useEffect(() => subscribe(() => setStored(current)), [setStored]);
+  useEffect(() => onOutputSourceChange(() => setStored(outputSource())), [setStored]);
 
   useEffect(() => {
     // Only the first game line of a run switches over — after that the
     // user's own pick sticks.
     let awaitingGame = false;
     return listenAll([
-      listenTo(EVENT.workflowStart, () => setOutputSource("build")),
+      listenTo(EVENT.workflowStart, () => setOutputSource(SOURCE.build)),
       listenTo(EVENT.gameStatus, (status) => {
         if (status.stage === "starting") {
-          setOutputSource("build");
+          setOutputSource(SOURCE.build);
           awaitingGame = true;
         }
       }),
       listenTo(EVENT.gameOutput, () => {
         if (!awaitingGame) return;
         awaitingGame = false;
-        setOutputSource("game");
+        setOutputSource(SOURCE.game);
       }),
-      listenTo(EVENT.debugAttachFailed, () => setOutputSource("debug")),
-      listenTo(EVENT.debugFailed, () => setOutputSource("debug")),
+      listenTo(EVENT.debugAttachFailed, () => setOutputSource(SOURCE.debug)),
+      listenTo(EVENT.debugFailed, () => setOutputSource(SOURCE.debug)),
     ]);
   }, []);
 

@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { t } from "substrate-platform-ui";
+import { openFile, t } from "substrate-platform-ui";
 import { EVENT, listenAll, listenTo, type DebugStackFrame, type DebugStoppedEvent } from "./events";
-import { openFile } from "./fileOpenBus";
 
 export type StepKind = "over" | "into" | "out";
 

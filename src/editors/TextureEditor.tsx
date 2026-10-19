@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Toolbar, ToolbarButton, ToolbarCheck, ToolbarGroup, pushDocumentStep, usePropertyContext, useT, type EditorProps } from "substrate-platform-ui";
+import { type EditorProps, pushDocumentStep, reportError, Toolbar, ToolbarButton, ToolbarCheck, ToolbarGroup, usePropertyContext, useT } from "substrate-platform-ui";
 import { cli } from "../cli";
 import { cropFrame, frameNow, pasteFrame, stillAnimation, type TextureAnimation } from "../content/animation";
 import { FrameStrip } from "../content/paint/FrameStrip";
@@ -11,7 +11,6 @@ import { readObject } from "../data/yogData";
 import { shapeProperties, type Described } from "../data/shapeGrid";
 import { formatShape } from "./DataEditor";
 import { formats } from "../yogFileTypes";
-import { reportError } from "../reportError";
 import "./TextureEditor.css";
 
 // A `.ytexture`, as an image editor shows a picture: the picture painted in

@@ -1,10 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTyped } from "../../data/typed";
 import { cli } from "../../cli";
-import { Icon, IconButton, SelectField, TextField, ToolbarCheck, ToolbarGroup, ToolbarSelect, useT, type PropertyDescriptor } from "substrate-platform-ui";
+import { Icon, IconButton, openFile, type PropertyDescriptor, SelectField, TextField, ToolbarCheck, ToolbarGroup, ToolbarSelect, useT } from "substrate-platform-ui";
 import { qualify, refId, refProblem, refSuggestions, useContentDefs, useContentRefs, type RefChoices } from "../../data/contentRefs";
 import { designText, useDesignResources } from "../../lang/designResources";
-import { openFile } from "../../fileOpenBus";
 import { modRootOf } from "../../paths";
 import { inspectorRows, refMessage } from "../inspector";
 import { asList, CRITERIA, criterionKind, FRAMES, rootOf, tabOf, type AdvNode, type Criterion } from "./defModel";

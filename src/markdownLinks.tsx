@@ -1,6 +1,4 @@
-import { errorText, openLink, setMarkdownLinkHandler } from "substrate-platform-ui";
-import { openFile } from "./fileOpenBus";
-import { reportError } from "./reportError";
+import { errorText, openFile, openLink, reportError, setMarkdownLinkHandler } from "substrate-platform-ui";
 
 // Links clicked in a Markdown preview: local files open in a tab, anything
 // else in the system browser — imported once for its side effect.

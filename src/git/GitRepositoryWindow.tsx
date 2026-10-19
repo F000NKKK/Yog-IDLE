@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState, type MouseEvent } from "react";
-import { Button, ContextMenu, Icon, IconButton, useContextMenu, useT, type ContextMenuItem, Spacer, errorText } from "substrate-platform-ui";
-import { openFile } from "../fileOpenBus";
+import { Button, ContextMenu, type ContextMenuItem, errorText, Icon, IconButton, openFile, Spacer, useContextMenu, useT } from "substrate-platform-ui";
 import { checkoutBranch, localNameOf } from "./BranchPicker";
 import { changeKindLabel, changeLetter, gitApi, splitRepoPath, type BranchInfo, type CommitInfo, type FileChange } from "./gitApi";
 import { commitDiff, openDiff } from "./gitDocuments";

@@ -4,37 +4,37 @@ import { useTyped } from "../data/typed";
 import { cli } from "../cli";
 import { invoke } from "@tauri-apps/api/core";
 import {
-  ContextMenu,
-  DesignSurface,
-  eventKey,
   activatePropertyContext,
-  notifyDocumentCommands,
-  registerDocumentCommands,
-  setPropertyContext,
-  tn,
-  useContextMenu,
-  useKeybinding,
-  useT,
+  ContextMenu,
   type ContextMenuItem,
   type DesignChange,
   type DesignItem,
   type DesignPoint,
   type DesignRect,
+  DesignSurface,
   type EditorProps,
+  eventKey,
+  notifyDocumentCommands,
+  openFile,
   type PropertySet,
   pt,
+  registerDocumentCommands,
+  reportError,
+  setPropertyContext,
+  stemOf,
+  tn,
   Toolbar,
   ToolbarButton,
   ToolbarCheck,
   ToolbarGroup,
   ToolbarLabel,
   ToolbarSelect,
-  stemOf,
+  useContextMenu,
+  useKeybinding,
+  useT,
 } from "substrate-platform-ui";
-import { openFile } from "../fileOpenBus";
 import { useActiveFileTab } from "../OpenFilesContext";
 import { EVENT, emitTo } from "../events";
-import { reportError } from "../reportError";
 import { clearActiveDesigner, setActiveDesigner, TOOLBOX_MIME } from "./activeDesigner";
 import { charWidth, compute, LINE_GAP, LINE_H, screenWidget, strWidth, textLines, type LNode, type LWidget } from "./layout";
 import { imageSourcesVersion, subscribeImageSources } from "./imageSources";

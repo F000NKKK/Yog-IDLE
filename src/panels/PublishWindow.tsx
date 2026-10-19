@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { Button, CheckField, IconButton, TextField, Icon, useDraggable, confirmDialog, pt, useT } from "substrate-platform-ui";
-import { reportError } from "../reportError";
+import { Button, CheckField, confirmDialog, Icon, IconButton, pt, reportError, TextField, useDraggable, useT } from "substrate-platform-ui";
 import "./PublishWindow.css";
 
 interface PublishProfile {

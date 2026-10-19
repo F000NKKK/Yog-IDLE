@@ -1,8 +1,6 @@
 import { useMemo } from "react";
-import { ErrorList, errorText, openLink, useDiagnostics, type Diagnostic } from "substrate-platform-ui";
-import { openFile } from "../fileOpenBus";
+import { type Diagnostic, ErrorList, errorText, openFile, openLink, reportError, useDiagnostics } from "substrate-platform-ui";
 import { useActiveFileTab, useOpenFiles } from "../OpenFilesContext";
-import { reportError } from "../reportError";
 
 function navigate(d: Diagnostic) {
   if (d.file) openFile({ path: d.file, line: d.line, column: d.column });

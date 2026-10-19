@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { formatShortcut, getEditorView, Icon, IconButton, QuickPick, revealLine, SymbolIcon, useT, type QuickPickFilter, type QuickPickItem } from "substrate-platform-ui";
-import { openFile } from "../fileOpenBus";
+import { formatShortcut, getEditorView, Icon, IconButton, openFile, QuickPick, type QuickPickFilter, type QuickPickItem, revealLine, SymbolIcon, useT } from "substrate-platform-ui";
 import { useActiveFileTab, useOpenFiles } from "../OpenFilesContext";
 import { useProject } from "../ProjectContext";
 import { bufferText } from "./FindInFilesWindow";

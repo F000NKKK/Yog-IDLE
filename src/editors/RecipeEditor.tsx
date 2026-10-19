@@ -2,13 +2,12 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, use
 import { useTyped } from "../data/typed";
 import { cli } from "../cli";
 import { ItemHeader, ItemIcons } from "../designer/ItemIcons";
-import { Toolbar, ToolbarButton, ToolbarGroup, ToolbarInput, ToolbarLabel, ToolbarSelect, usePropertyContext, useT, type EditorProps, type PropertyDescriptor, type PropertySet, type PropertyValue, fileTypeOf } from "substrate-platform-ui";
+import { type EditorProps, fileTypeOf, openFile, type PropertyDescriptor, type PropertySet, type PropertyValue, Toolbar, ToolbarButton, ToolbarGroup, ToolbarInput, ToolbarLabel, ToolbarSelect, usePropertyContext, useT } from "substrate-platform-ui";
 import { DataEditor } from "./DataEditor";
 import { useContentRefs } from "../data/contentRefs";
 import { alternativesOf, isTag } from "../data/ingredients";
 import { MAX_STACK_SIZE } from "../data/yogFormat";
 import { iconSource, imagePreview, imageSources, imageSourcesVersion, ingredientItems, subscribeImageSources } from "../designer/imageSources";
-import { openFile } from "../fileOpenBus";
 import { useFsChanged } from "../fsWatch";
 import { useDataFile, type DataFormat } from "../data/useDataFile";
 import { readObject } from "../data/yogData";

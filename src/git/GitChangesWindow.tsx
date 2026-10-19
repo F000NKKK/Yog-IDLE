@@ -1,6 +1,5 @@
 import { useEffect, useState, type KeyboardEvent, type MouseEvent, type ReactNode } from "react";
-import { Button, CheckField, ContextMenu, formatShortcut, Icon, IconButton, Toolbar, ToolbarButton, useContextMenu, useT, type ContextMenuItem, Spacer } from "substrate-platform-ui";
-import { openFile } from "../fileOpenBus";
+import { Button, CheckField, ContextMenu, type ContextMenuItem, formatShortcut, Icon, IconButton, openFile, Spacer, Toolbar, ToolbarButton, useContextMenu, useT } from "substrate-platform-ui";
 import { openBranchPicker } from "./BranchPicker";
 import { changeKindLabel, changeLetter, gitApi, splitRepoPath, type FileChange, type StashInfo } from "./gitApi";
 import { changeDiff, openDiff, openGitRepository } from "./gitDocuments";

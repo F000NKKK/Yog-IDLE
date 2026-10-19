@@ -2,23 +2,24 @@ import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import {
   activatePropertyContext,
+  extensionOf,
+  fileNameOf,
   fileTypeOf,
   getCurrentSelection,
+  joinPath,
   PROPERTIES_KIND,
+  type PropertyDescriptor,
   PropertyGrid,
+  type PropertySet,
+  pushDocumentStep,
+  reportError,
+  type ShellSelection,
   t,
   tn,
+  UndoScope,
   useHasPropertyContext,
   useLocale,
   useSelection,
-  type PropertyDescriptor,
-  type PropertySet,
-  type ShellSelection,
-  fileNameOf,
-  extensionOf,
-  joinPath,
-  pushDocumentStep,
-  UndoScope,
 } from "substrate-platform-ui";
 import { useActiveFileTab, useOpenFiles } from "../OpenFilesContext";
 import { useProject } from "../ProjectContext";
@@ -26,7 +27,6 @@ import { renamePath, selectDocument, type IdeSelectionData } from "../ideSelecti
 import { samePath, validateEntryName } from "../paths";
 import { files } from "../files";
 import { editManifest } from "../projectProperties/manifestHistory";
-import { reportError } from "../reportError";
 import "./Properties.css";
 
 /** The history of what Properties changes outside any document: renames, yog.toml fields. */

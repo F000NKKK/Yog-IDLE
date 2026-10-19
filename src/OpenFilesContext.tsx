@@ -4,42 +4,44 @@ import { openWithPicker } from "./OpenWithPicker";
 import { invalidateDesignResources } from "./lang/designResources";
 import { setSavedFileDiagnostics } from "./diagnostics/buildDiagnostics";
 import {
-  editorProviderById,
-  editorProviderIcon,
-  editorProvidersFor,
-  formatShortcut,
-  InfoBar,
-  generalEditorProviders,
-  getEditorView,
-  isBinaryFile,
-  MultiViewEditor,
-  notify,
-  revealLine,
-  showDialog,
-  t,
-  useEditorProviders,
-  useLocale,
-  useShell,
   type CodeEditorProps,
   type ContextMenuItem,
   type EditorProps,
   type EditorProvider,
+  editorProviderById,
+  editorProviderIcon,
+  editorProvidersFor,
+  extensionOf,
+  fileNameOf,
+  type FileOpenRequest,
+  forgetDocumentHistory,
+  formatShortcut,
+  generalEditorProviders,
+  getEditorView,
+  InfoBar,
+  isBinaryFile,
+  MultiViewEditor,
+  notify,
+  onOpenFileRequest,
+  openFile,
   type PanelAction,
   type PanelDef,
+  reportError,
+  revealLine,
+  showDialog,
+  t,
   type TabMenuContext,
+  useEditorProviders,
   useKeybinding,
-  fileNameOf,
-  extensionOf,
-  forgetDocumentHistory,
+  useLocale,
+  useShell,
 } from "substrate-platform-ui";
 import { useBreakpoints } from "./BreakpointsContext";
 import { useDebugSessionContext } from "./DebugSessionContext";
 import { addWatchItem, dataTipProvider } from "./debugger/DataTip";
 import { useWatches } from "./debugger/WatchesContext";
 import { samePath } from "./paths";
-import { onOpenFileRequest, openFile, type FileOpenRequest } from "./fileOpenBus";
 import { generatedSource, isGeneratedCode, isWithin, parentOf } from "./paths";
-import { reportError } from "./reportError";
 import { selectDocument } from "./ideSelection";
 import { addCloseGuard } from "./windowClose";
 import { useGlobalStateStore } from "./WorkspaceContext";
@@ -81,7 +83,7 @@ interface OpenOptions {
 
 interface OpenFilesContextValue {
   tabs: FileTab[];
-  /** Opens (or re-reveals) a file — resolves with its tab id, or `null` if it couldn't be read. `openFile` from `fileOpenBus` is the same thing for callers outside this context. */
+  /** Opens (or re-reveals) a file — resolves with its tab id, or `null` if it couldn't be read. Substrate's `openFile` is the same thing for callers outside this context. */
   open: (request: FileOpenRequest, options?: OpenOptions) => Promise<string | null>;
   updateContent: (id: string, content: string) => void;
   /**
@@ -242,7 +244,7 @@ function regenerateScreen(path: string) {
 }
 
 /**
- * Owns every open file tab — subscribes to `fileOpenBus` (since Project
+ * Owns every open file tab — subscribes to Substrate's `onOpenFileRequest` (since Project
  * Explorer, the debugger and others request opens from unrelated parts of
  * the component tree), and hands out one real dock `PanelDef` per tab so
  * the shell's own center-dock tab strip *is* the file tab strip, with no

@@ -1,7 +1,6 @@
 import { cli } from "../cli";
 import { open } from "@tauri-apps/plugin-dialog";
-import { confirmDialog, notify, promptDialog, showDialog, t, errorText } from "substrate-platform-ui";
-import { reportError } from "../reportError";
+import { confirmDialog, errorText, notify, promptDialog, reportError, showDialog, t } from "substrate-platform-ui";
 
 // Project > Import…: blocks and items from a resource pack (a folder or a
 // .zip — one model or all of them) or a Blockbench .bbmodel, into the mod's

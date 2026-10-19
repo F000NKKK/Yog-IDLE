@@ -1,6 +1,5 @@
-import { Button, FormPage, FormSection, Icon, formatShortcut, useT } from "substrate-platform-ui";
+import { Button, formatShortcut, FormPage, FormSection, Icon, openFile, useT } from "substrate-platform-ui";
 import type { RunTarget } from "substrate-platform-ui";
-import { openFile } from "../fileOpenBus";
 import { useModRunTargets } from "../useModRunTargets";
 import type { PageProps } from "./ProjectPropertiesWindow";
 

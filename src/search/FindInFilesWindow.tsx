@@ -2,26 +2,26 @@ import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import {
   Button,
-  SearchField,
-  TextField,
+  CheckField,
   confirmDialog,
   editorSetText,
   eventKey,
   getEditorView,
   notify,
+  reportError,
+  SearchField,
+  type SearchOptions,
+  SelectField,
   t as translate,
+  TextField,
   tn,
+  ToolbarModes,
   useShell,
   useT,
-  type SearchOptions,
-  CheckField,
-  SelectField,
-  ToolbarModes,
 } from "substrate-platform-ui";
 import { useActiveFileTab, useOpenFiles } from "../OpenFilesContext";
 import { useProject } from "../ProjectContext";
 import { useGlobalState } from "../WorkspaceContext";
-import { reportError } from "../reportError";
 import { runFind, showReplaceResults, type FindQuery, type LookIn, type OpenDocument, type ReplaceSummary } from "./findStore";
 import { FIND_IN_FILES_PANEL, searchDrafts, useSearchUi, type FindWindowMode } from "./searchUi";
 import "./search.css";

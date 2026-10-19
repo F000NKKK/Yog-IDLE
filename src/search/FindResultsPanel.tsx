@@ -1,6 +1,5 @@
 import { useMemo } from "react";
-import { formatShortcut, SearchResults, SymbolIcon, Toolbar, ToolbarButton, ToolbarLabel, useT, type SearchResultGroup, type SearchResultHit, Spacer } from "substrate-platform-ui";
-import { openFile } from "../fileOpenBus";
+import { formatShortcut, openFile, type SearchResultGroup, type SearchResultHit, SearchResults, Spacer, SymbolIcon, Toolbar, ToolbarButton, ToolbarLabel, useT } from "substrate-platform-ui";
 import { cancelFind, clearFindResults, useFindResults } from "./findStore";
 import { openFindInFiles } from "./searchUi";
 import "./search.css";

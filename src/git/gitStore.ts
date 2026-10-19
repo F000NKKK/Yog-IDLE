@@ -1,8 +1,6 @@
 import { useSyncExternalStore } from "react";
-import { confirmDialog, notify, promptDialog, t, errorText } from "substrate-platform-ui";
+import { PLATFORM_OUTPUT, confirmDialog, errorText, notify, promptDialog, reportError, setOutputSource, t } from "substrate-platform-ui";
 import { EVENT } from "../events";
-import { setOutputSource } from "../outputSource";
-import { reportError } from "../reportError";
 import { gitApi, type BranchInfo, type FileChange, type RemoteOp, type RepoStatus, type StashInfo, type StashMode } from "./gitApi";
 
 /**
@@ -105,7 +103,7 @@ async function runGit<T>(label: string, action: (root: string) => Promise<T>, op
     return undefined;
   }
   set({ busy: label });
-  if (options.output) setOutputSource("git");
+  if (options.output) setOutputSource(PLATFORM_OUTPUT.git);
   try {
     return await action(root);
   } catch (err) {
@@ -299,7 +297,7 @@ export async function initRepository(): Promise<void> {
   });
   if (!ok) return;
   set({ busy: t("Creating repository…") });
-  setOutputSource("git");
+  setOutputSource(PLATFORM_OUTPUT.git);
   try {
     await gitApi.init(root, "");
     notify({ level: "info", message: t("Created a Git repository in {folder}.", { folder: root }) });
@@ -318,7 +316,7 @@ export async function cloneRepository(url: string, parent: string): Promise<stri
     return null;
   }
   set({ busy: t("Cloning…") });
-  setOutputSource("git");
+  setOutputSource(PLATFORM_OUTPUT.git);
   try {
     return await gitApi.clone(url, parent, "");
   } catch (err) {
