@@ -33,6 +33,13 @@ export interface Row {
 
 export const NEW_ROW_ID = "__new__";
 export const CULTURE_COLUMN = "loc:";
+/** The grid's own columns' keys (a culture's is `CULTURE_COLUMN` + its locale). */
+export const COLUMN = { name: "name", value: "value", type: "type", comment: "comment" } as const;
+/** What marks a cell: an invalid value, or a text that's missing. */
+export const CELL_CLASS = { invalid: "yres-invalid", missing: "yres-missing" } as const;
+/** The `.yres` source view's id (View Code, F7). */
+export const YRES_SOURCE_VIEW = "yog.yres.source";
+
 export const SHOW_ALL_KEY = "yog.yres.showAllLanguages";
 
 export const TYPE_LABELS: Record<ResourceType, string> = {

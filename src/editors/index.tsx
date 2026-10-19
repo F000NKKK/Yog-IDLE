@@ -6,7 +6,8 @@ import { CONTENT_SOURCE_VIEW, ContentEditor } from "./ContentEditor";
 import { LangFileEditor } from "./LangFileEditor";
 import { BOOK_SOURCE_VIEW, BookEditor } from "./BookEditor";
 import { RECIPE_SOURCE_VIEW, RecipeEditor } from "./RecipeEditor";
-import { YRES_SOURCE_VIEW, YresEditor } from "./YresEditor";
+import { YresEditor } from "./YresEditor";
+import { YRES_SOURCE_VIEW } from "./yres/yresModel";
 import { DEF_SOURCE_VIEW, DefEditor } from "./defs/DefEditor";
 
 import { YdataViewer } from "./YdataViewer";
