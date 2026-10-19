@@ -3,7 +3,6 @@ import { invoke } from "@tauri-apps/api/core";
 import { getVersion } from "@tauri-apps/api/app";
 import { message, open, save as saveDialog } from "@tauri-apps/plugin-dialog";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { openUrl } from "@tauri-apps/plugin-opener";
 import {
   PlatformShell,
   MenuBar,
@@ -31,6 +30,7 @@ import {
   useT,
   useKeybinding,
   notify,
+  openLink,
   type ToolbarSection,
   Spacer,
 } from "substrate-platform-ui";
@@ -425,8 +425,8 @@ function HelpMenu() {
       label={t("Help")}
       items={[
         { label: t("About Yog IDLE"), onClick: about },
-        { label: t("Yog IDLE on GitHub"), onClick: () => openUrl(REPO_URL) },
-        { label: t("Yog Mod Loader on GitHub"), onClick: () => openUrl(YOG_URL) },
+        { label: t("Yog IDLE on GitHub"), onClick: () => void openLink(REPO_URL) },
+        { label: t("Yog Mod Loader on GitHub"), onClick: () => void openLink(YOG_URL) },
       ]}
     />
   );

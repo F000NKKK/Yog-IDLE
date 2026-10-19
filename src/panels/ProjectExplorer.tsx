@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type FocusEvent, type KeyboardEvent, type MouseEvent } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
-import { openPath, revealItemInDir } from "@tauri-apps/plugin-opener";
 import {
   ContextMenu,
   FileTree,
@@ -10,6 +9,9 @@ import {
   ToolbarButton,
   ToolbarGroup,
   confirmDialog,
+  errorText,
+  openPath,
+  revealPath,
   editorProvidersFor,
   fileTreeFromEntries,
   filterFileTree,
@@ -543,9 +545,7 @@ function ProjectExplorerTree({ project, initialScope, main = false }: { project:
   }
 
   function openInFileExplorer(node: FileTreeNode) {
-    void (node.kind === "folder" ? openPath(node.id) : revealItemInDir(node.id)).catch((err) =>
-      reportError(t("Couldn't open {path}: {error}", { path: node.id, error: String(err) }))
-    );
+    void (node.kind === "folder" ? openPath(node.id) : revealPath(node.id)).catch((err) => reportError(errorText(err)));
   }
 
   const relativePath = (path: string) => path.slice(project.root.replace(/[/\\]+$/, "").length + 1) || ".";

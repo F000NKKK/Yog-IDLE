@@ -10,6 +10,7 @@ use std::sync::RwLock;
 use serde::{Deserialize, Serialize};
 use tauri::State;
 use yog_home::Home;
+use substrate_platform::process;
 use yog_home::components::id;
 
 /// Key of the Build options in the app-wide `state.json` (written by the
@@ -156,20 +157,14 @@ pub fn tools_status() -> Status {
     }
 }
 
-/// Starts Yog Installer; none, or — when this machine has no Installer —
-/// the page to download it from.
+/// Starts Yog Installer — or, when this machine has none, opens the page
+/// to download it from.
 #[tauri::command]
-pub fn open_installer() -> Result<Option<&'static str>, String> {
+pub fn open_installer() -> Result<(), String> {
     let installer = Home::locate()?.components()?.newest(id::INSTALLER).map(|i| i.path.clone());
-    let Some(program) = installer.filter(|p| p.exists()) else {
-        return Ok(Some(INSTALLER_RELEASES));
-    };
-    let mut cmd = if cfg!(target_os = "macos") {
-        let mut open = substrate_platform::process::command("open");
-        open.arg(&program);
-        open
-    } else {
-        substrate_platform::process::command(&program)
-    };
-    cmd.spawn().map(|_| None).map_err(|e| format!("{}: {e}", program.display()))
+    match installer.filter(|p| p.exists()) {
+        Some(program) => process::start(&program),
+        None => process::open_link(INSTALLER_RELEASES),
+    }
+    .map_err(|m| m.to_string())
 }

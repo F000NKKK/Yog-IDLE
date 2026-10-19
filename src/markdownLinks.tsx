@@ -1,5 +1,4 @@
-import { openUrl } from "@tauri-apps/plugin-opener";
-import { setMarkdownLinkHandler, t } from "substrate-platform-ui";
+import { errorText, openLink, setMarkdownLinkHandler } from "substrate-platform-ui";
 import { openFile } from "./fileOpenBus";
 import { reportError } from "./reportError";
 
@@ -8,5 +7,5 @@ import { reportError } from "./reportError";
 
 setMarkdownLinkHandler((target, kind) => {
   if (kind === "file") openFile({ path: target });
-  else openUrl(target).catch((err) => reportError(t("Couldn't open {target}: {error}", { target, error: String(err) })));
+  else openLink(target).catch((err) => reportError(errorText(err)));
 });

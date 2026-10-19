@@ -1,6 +1,5 @@
 import { useMemo } from "react";
-import { openUrl } from "@tauri-apps/plugin-opener";
-import { ErrorList, t, useDiagnostics, type Diagnostic } from "substrate-platform-ui";
+import { ErrorList, errorText, openLink, useDiagnostics, type Diagnostic } from "substrate-platform-ui";
 import { openFile } from "../fileOpenBus";
 import { useActiveFileTab, useOpenFiles } from "../OpenFilesContext";
 import { reportError } from "../reportError";
@@ -10,7 +9,7 @@ function navigate(d: Diagnostic) {
 }
 
 function openHelp(href: string) {
-  openUrl(href).catch((err) => reportError(t("Couldn't open {target}: {error}", { target: href, error: String(err) })));
+  openLink(href).catch((err) => reportError(errorText(err)));
 }
 
 /** The Error List tool window: the last build's and the on-save checks' diagnostics. */

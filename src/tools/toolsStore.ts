@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { openUrl } from "@tauri-apps/plugin-opener";
 
 /** Tools > Options > Build (`tools::Settings`). */
 export interface BuildSettings {
@@ -55,7 +54,6 @@ export function useToolsStatus(): ToolsStatus | null {
 }
 
 /** Tools > Yog Installer: starts it, or opens where to download it. */
-export async function openInstaller(): Promise<void> {
-  const download = await invoke<string | null>("open_installer");
-  if (download) await openUrl(download);
+export function openInstaller(): Promise<void> {
+  return invoke<void>("open_installer");
 }

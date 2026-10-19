@@ -23,7 +23,6 @@ yog-ids = "0.2.1"
 
 [dependencies]
 tauri = { version = "2", features = ["protocol-asset"] }
-tauri-plugin-opener = "2"
 tauri-plugin-dialog = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
@@ -32,9 +31,9 @@ toml = "1"
 toml_edit = "0.25"
 # Where the Environment options and IDE-installed tools live.
 dirs = "7"
-substrate-platform = { path = "../../Substrate-Platform" }
+substrate-platform = { path = "../../Substrate-Platform", features = ["fs", "git", "project", "run", "terminal"] }
 # Substrate's host commands (the workspace, Source Control), as its UI calls them.
-tauri-plugin-substrate = { path = "../../Substrate-Platform/tauri-plugin" }
+tauri-plugin-substrate = { path = "../../Substrate-Platform/tauri-plugin", features = ["git"] }
 tauri-plugin-window-state = "2"
 # Find in Files / Code Search (`search.rs`, `symbols.rs`): a .gitignore-aware
 # walk, the pattern engine, file-type masks, and the Rust symbol index

@@ -4,10 +4,10 @@ use std::sync::Mutex;
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use serde::{Deserialize, Serialize};
-use substrate_platform::{
-    EntryKind, Level, LogLine, LogSink, ProjectStandard, PtyOptions, PtySession, ShellInfo,
-    WorkflowFile, WorkflowHandle, WorkflowResult,
-};
+use substrate_platform::fs::EntryKind;
+use substrate_platform::project::ProjectStandard;
+use substrate_platform::run::{Level, LogLine, LogSink, WorkflowFile, WorkflowHandle, WorkflowResult};
+use substrate_platform::terminal::{PtyOptions, PtySession, ShellInfo};
 use tauri::{AppHandle, Emitter, Manager, State};
 
 mod cli;
@@ -39,8 +39,8 @@ struct DirEntryOut {
     kind: &'static str,
 }
 
-impl From<substrate_platform::DirEntryInfo> for DirEntryOut {
-    fn from(entry: substrate_platform::DirEntryInfo) -> Self {
+impl From<substrate_platform::fs::DirEntryInfo> for DirEntryOut {
+    fn from(entry: substrate_platform::fs::DirEntryInfo) -> Self {
         DirEntryOut {
             name: entry.name,
             path: entry.path.to_string_lossy().into_owned(),
@@ -56,7 +56,7 @@ impl From<substrate_platform::DirEntryInfo> for DirEntryOut {
 fn dir_list(state: State<Workspace>, path: String) -> Result<Vec<DirEntryOut>, String> {
     let target = PathBuf::from(&path);
     validate_within_roots(&state, &target)?;
-    substrate_platform::dir::list_dir(&target)
+    substrate_platform::fs::dir::list_dir(&target)
         .map_err(|e| e.to_string())
         .map(|entries| entries.into_iter().map(DirEntryOut::from).collect())
 }
@@ -65,14 +65,14 @@ fn dir_list(state: State<Workspace>, path: String) -> Result<Vec<DirEntryOut>, S
 fn dir_create_file(state: State<Workspace>, path: String) -> Result<(), String> {
     let target = PathBuf::from(&path);
     validate_within_roots(&state, &target)?;
-    substrate_platform::dir::create_file(&target).map_err(|e| e.to_string())
+    substrate_platform::fs::dir::create_file(&target).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 fn dir_create_dir(state: State<Workspace>, path: String) -> Result<(), String> {
     let target = PathBuf::from(&path);
     validate_within_roots(&state, &target)?;
-    substrate_platform::dir::create_dir(&target).map_err(|e| e.to_string())
+    substrate_platform::fs::dir::create_dir(&target).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -81,14 +81,14 @@ fn dir_rename(state: State<Workspace>, from: String, to: String) -> Result<(), S
     let to_path = PathBuf::from(&to);
     validate_within_roots(&state, &from_path)?;
     validate_within_roots(&state, &to_path)?;
-    substrate_platform::dir::rename(&from_path, &to_path).map_err(|e| e.to_string())
+    substrate_platform::fs::dir::rename(&from_path, &to_path).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 fn dir_remove(state: State<Workspace>, path: String) -> Result<(), String> {
     let target = PathBuf::from(&path);
     validate_within_roots(&state, &target)?;
-    substrate_platform::dir::remove(&target).map_err(|e| e.to_string())
+    substrate_platform::fs::dir::remove(&target).map_err(|e| e.to_string())
 }
 
 /// Copies a file or a whole folder to `to`, which mustn't exist yet — the
@@ -123,7 +123,7 @@ fn copy_recursive(from: &Path, to: &Path) -> std::io::Result<()> {
 
 /// The watcher behind `fs_watch`, created on first use.
 #[derive(Default)]
-struct WatchState(std::sync::OnceLock<substrate_platform::DirWatcher>);
+struct WatchState(std::sync::OnceLock<substrate_platform::fs::DirWatcher>);
 
 /// Watches exactly `folders` (the Project Explorer's listed folders, the
 /// open files' folders) for changes made outside the IDE; each burst comes
@@ -133,7 +133,7 @@ fn fs_watch(app: AppHandle, state: State<WatchState>, folders: Vec<String>) -> R
     let watcher = match state.0.get() {
         Some(w) => w,
         None => {
-            let w = substrate_platform::DirWatcher::new(substrate_platform::watch::DEFAULT_QUIET, move |paths| {
+            let w = substrate_platform::fs::DirWatcher::new(substrate_platform::fs::watch::DEFAULT_QUIET, move |paths| {
                 let paths: Vec<String> = paths.iter().map(|p| p.to_string_lossy().into_owned()).collect();
                 let _ = app.emit(events::FS_CHANGED, paths);
             })
@@ -155,14 +155,14 @@ fn file_read(path: String) -> Result<String, String> {
     if !target.is_file() {
         return Err(format!("'{}' is not a file", target.display()));
     }
-    substrate_platform::dir::read_file(&target).map_err(|e| e.to_string())
+    substrate_platform::fs::dir::read_file(&target).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 fn file_write(state: State<Workspace>, path: String, contents: String) -> Result<(), String> {
     let target = PathBuf::from(&path);
     validate_within_roots(&state, &target)?;
-    substrate_platform::dir::write_file(&target, &contents).map_err(|e| e.to_string())
+    substrate_platform::fs::dir::write_file(&target, &contents).map_err(|e| e.to_string())
 }
 
 /// Size, timestamps, read-only flag (and, for a folder, its item count and
@@ -337,7 +337,10 @@ struct ProjectOut {
 #[tauri::command]
 fn project_open(state: State<Workspace>, path: String) -> Result<ProjectOut, String> {
     let canonical = state.open(Path::new(&path)).map_err(|m| m.to_string())?;
-    let kind = ProjectStandard::detect(&canonical, &built_in_standards());
+    let files: Vec<String> = substrate_platform::fs::dir::list_dir(&canonical)
+        .map(|entries| entries.into_iter().map(|e| e.name).collect())
+        .unwrap_or_default();
+    let kind = ProjectStandard::detect(&files, &built_in_standards());
     let name = canonical
         .file_name()
         .map(|n| n.to_string_lossy().into_owned())
@@ -763,7 +766,7 @@ fn run_and_stream(
 
     // Before the run starts, so none of its output precedes it.
     let _ = app.emit(crate::events::WORKFLOW_START, WorkflowStart::of(&root));
-    let handle = substrate_platform::run_workflow(file, name, vars, root, sink);
+    let handle = substrate_platform::run::run_workflow(file, name, vars, root, sink);
     let state = app.state::<WorkflowState>();
     let id = state.next_id.fetch_add(1, Ordering::Relaxed);
     state.running.lock().unwrap().insert(id, handle.clone());
@@ -826,9 +829,9 @@ fn single_step_workflow(
     let mut workflow = HashMap::new();
     workflow.insert(
         "run".to_string(),
-        substrate_platform::WorkflowDef {
+        substrate_platform::run::WorkflowDef {
             description: None,
-            steps: vec![substrate_platform::WorkflowStep::Run {
+            steps: vec![substrate_platform::run::WorkflowStep::Run {
                 run: program.to_string(),
                 args,
                 cwd: None,
@@ -1116,7 +1119,7 @@ fn publish_run(
 /// `ShellInfo` already serializes camelCase, ready for the frontend as-is.
 #[tauri::command]
 fn list_shells() -> Vec<ShellInfo> {
-    substrate_platform::detect_shells()
+    substrate_platform::terminal::detect_shells()
 }
 
 /// Every open integrated terminal, keyed by a frontend-chosen id, so the UI
@@ -1308,7 +1311,6 @@ pub fn run() {
     let builder = tauri::Builder::default()
         // Substrate's own commands (the workspace, Source Control): what its UI calls.
         .plugin(tauri_plugin_substrate::init())
-        .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         // Window size/position/maximized, restored on launch and saved on
         // close (into the app config dir). Not visibility or decorations —
