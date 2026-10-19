@@ -4,7 +4,7 @@
 import * as THREE from "three";
 import { frameRect, type TextureAnimation } from "../animation";
 import type { DisplayTransform, Element, Vec3 } from "../model";
-import type { TextureSource, ViewName } from "../Viewport";
+import type { TextureSource, ViewName } from "./viewportTypes";
 
 export const CENTER = new THREE.Vector3(8, 8, 8);
 export const ACCENT = 0x3b8eea;
