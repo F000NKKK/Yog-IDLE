@@ -1,10 +1,11 @@
+import { errorText } from "substrate-platform-ui";
 // A Yog Data file as a designer edits it: read through the CLI, shown as
 // the designer last changed it, and written back edit by edit — each on
 // the text the one before left, so quick edits (a drag) never undo each
 // other while the CLI writes.
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { reportError } from "../reportError";
-import { errorText, patchData, type Read } from "./yogData";
+import { patchData, type Read } from "./yogData";
 
 /** The file as a designer sees it: `undefined` while it's first read. */
 export type Parsed<T> = { ok: true; file: T } | { ok: false; error: string } | undefined;

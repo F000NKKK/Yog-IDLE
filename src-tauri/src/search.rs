@@ -18,7 +18,7 @@ use serde::{Deserialize, Serialize};
 use tauri::State;
 use tauri::ipc::Channel;
 
-use crate::AppState;
+use crate::Workspace;
 
 /// Directories never searched, ignored or not: build output, dependencies,
 /// VCS metadata, Yog's generated crates and Yog-IDLE's own per-project data.
@@ -626,7 +626,7 @@ pub struct FindBatch {
     pub files: Vec<FileResult>,
 }
 
-fn check_root(state: &State<AppState>, root: Option<&str>, scope: Scope) -> Result<(), String> {
+fn check_root(state: &State<Workspace>, root: Option<&str>, scope: Scope) -> Result<(), String> {
     match root {
         Some(root) => crate::validate_within_roots(state, Path::new(root)),
         None if scope == Scope::Project => Err("no project is open".to_string()),
@@ -638,7 +638,7 @@ fn check_root(state: &State<AppState>, root: Option<&str>, scope: Scope) -> Resu
 /// ~100 ms) and resolves with the totals once done or cancelled.
 #[tauri::command]
 pub async fn find_in_files(
-    state: State<'_, AppState>,
+    state: State<'_, Workspace>,
     search: State<'_, SearchState>,
     request: FindRequest,
     on_batch: Channel<FindBatch>,
@@ -683,7 +683,7 @@ const MAX_CONTAINING_FILES: usize = 5_000;
 /// Project Explorer's search and filters: the project's files and folders
 /// (`project_entries`), the ones the lazily listed tree hasn't opened too.
 #[tauri::command]
-pub async fn project_items(state: State<'_, AppState>, root: String) -> Result<Vec<ProjectEntry>, String> {
+pub async fn project_items(state: State<'_, Workspace>, root: String) -> Result<Vec<ProjectEntry>, String> {
     crate::validate_within_roots(&state, Path::new(&root))?;
     tauri::async_runtime::spawn_blocking(move || project_entries(Path::new(&root)))
         .await
@@ -695,7 +695,7 @@ pub async fn project_items(state: State<'_, AppState>, root: String) -> Result<V
 /// explorer never cancels a Find in Files still running.
 #[tauri::command]
 pub async fn project_files_containing(
-    state: State<'_, AppState>,
+    state: State<'_, Workspace>,
     root: String,
     query: SearchQuery,
 ) -> Result<Vec<String>, String> {
@@ -809,20 +809,13 @@ pub fn run_replace(
 /// Replace All in files — see `run_replace`.
 #[tauri::command]
 pub async fn replace_in_files(
-    state: State<'_, AppState>,
+    state: State<'_, Workspace>,
     request: ReplaceRequest,
 ) -> Result<ReplaceSummary, String> {
     check_root(&state, request.root.as_deref(), request.scope)?;
-    let roots = state.project_roots.lock().unwrap().clone();
+    let roots = state.roots();
     tauri::async_runtime::spawn_blocking(move || {
-        run_replace(&request, &|path| {
-            let canonical = path.canonicalize().map_err(|err| err.to_string())?;
-            if roots.iter().any(|root| canonical.starts_with(root)) {
-                Ok(())
-            } else {
-                Err("outside any open project".to_string())
-            }
-        })
+        run_replace(&request, &|path| roots.check(path).map_err(|m| m.to_string()))
     })
     .await
     .map_err(|err| err.to_string())?

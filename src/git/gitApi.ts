@@ -1,4 +1,4 @@
-import { invoke } from "@tauri-apps/api/core";
+import { invokeSubstrate } from "substrate-platform-ui";
 
 // The `git_*` commands (`src-tauri/src/git.rs`), typed. Paths in a
 // `FileChange` are repo-relative and `/`-separated; `absPath` is the file on
@@ -83,32 +83,32 @@ export interface GlobalConfig {
 }
 
 export const gitApi = {
-  status: (root: string) => invoke<RepoStatus | null>("git_status", { root }),
-  stage: (root: string, paths: string[]) => invoke<void>("git_stage", { root, paths }),
-  unstage: (root: string, paths: string[]) => invoke<void>("git_unstage", { root, paths }),
+  status: (root: string) => invokeSubstrate<RepoStatus | null>("git_status", { root }),
+  stage: (root: string, paths: string[]) => invokeSubstrate<void>("git_stage", { root, paths }),
+  unstage: (root: string, paths: string[]) => invokeSubstrate<void>("git_unstage", { root, paths }),
   discard: (root: string, items: { path: string; origPath: string | null; kind: ChangeKind; staged: boolean }[]) =>
-    invoke<void>("git_discard", { root, items }),
+    invokeSubstrate<void>("git_discard", { root, items }),
   commit: (root: string, message: string, amend: boolean, stageAll: boolean) =>
-    invoke<{ hash: string; subject: string }>("git_commit", { root, message, amend, stageAll }),
-  lastMessage: (root: string) => invoke<string>("git_last_message", { root }),
-  diffTexts: (root: string, left: DiffSide, right: DiffSide) => invoke<DiffTexts>("git_diff_texts", { root, left, right }),
-  headText: (root: string, path: string) => invoke<string | null>("git_head_text", { root, path }),
-  log: (root: string, rev: string, skip: number, max: number) => invoke<CommitInfo[]>("git_log", { root, rev, skip, max }),
-  commitFiles: (root: string, hash: string) => invoke<FileChange[]>("git_commit_files", { root, hash }),
-  branches: (root: string) => invoke<BranchInfo[]>("git_branches", { root }),
-  switchTo: (root: string, name: string, remote: boolean) => invoke<void>("git_switch", { root, name, remote }),
-  createBranch: (root: string, name: string, start: string, checkout: boolean) => invoke<void>("git_branch_create", { root, name, start, checkout }),
-  deleteBranch: (root: string, name: string, force: boolean) => invoke<void>("git_branch_delete", { root, name, force }),
-  remote: (root: string, op: RemoteOp) => invoke<void>("git_remote", { root, op }),
-  integrate: (root: string, op: "merge" | "rebase", branch: string) => invoke<void>("git_integrate", { root, op, branch }),
-  operation: (root: string, continue_: boolean) => invoke<void>("git_operation", { root, continue_ }),
-  clone: (url: string, parent: string, name: string) => invoke<string>("git_clone", { url, parent, name }),
-  init: (root: string, branch: string) => invoke<void>("git_init", { root, branch }),
-  stashList: (root: string) => invoke<StashInfo[]>("git_stash_list", { root }),
-  stashPush: (root: string, message: string, mode: StashMode) => invoke<void>("git_stash_push", { root, message, mode }),
-  stashOp: (root: string, index: number, op: "apply" | "pop" | "drop") => invoke<void>("git_stash_op", { root, index, op }),
-  configGet: () => invoke<GlobalConfig>("git_config_get"),
-  configSet: (key: string, value: string) => invoke<void>("git_config_set", { key, value }),
+    invokeSubstrate<{ hash: string; subject: string }>("git_commit", { root, message, amend, stageAll }),
+  lastMessage: (root: string) => invokeSubstrate<string>("git_last_message", { root }),
+  diffTexts: (root: string, left: DiffSide, right: DiffSide) => invokeSubstrate<DiffTexts>("git_diff_texts", { root, left, right }),
+  headText: (root: string, path: string) => invokeSubstrate<string | null>("git_head_text", { root, path }),
+  log: (root: string, rev: string, skip: number, max: number) => invokeSubstrate<CommitInfo[]>("git_log", { root, rev, skip, max }),
+  commitFiles: (root: string, hash: string) => invokeSubstrate<FileChange[]>("git_commit_files", { root, hash }),
+  branches: (root: string) => invokeSubstrate<BranchInfo[]>("git_branches", { root }),
+  switchTo: (root: string, name: string, remote: boolean) => invokeSubstrate<void>("git_switch", { root, name, remote }),
+  createBranch: (root: string, name: string, start: string, checkout: boolean) => invokeSubstrate<void>("git_branch_create", { root, name, start, checkout }),
+  deleteBranch: (root: string, name: string, force: boolean) => invokeSubstrate<void>("git_branch_delete", { root, name, force }),
+  remote: (root: string, op: RemoteOp) => invokeSubstrate<void>("git_remote", { root, op }),
+  integrate: (root: string, op: "merge" | "rebase", branch: string) => invokeSubstrate<void>("git_integrate", { root, op, branch }),
+  operation: (root: string, goOn: boolean) => invokeSubstrate<void>("git_operation", { root, goOn }),
+  clone: (url: string, parent: string, name: string) => invokeSubstrate<string>("git_clone", { url, parent, name }),
+  init: (root: string, branch: string) => invokeSubstrate<void>("git_init", { root, branch }),
+  stashList: (root: string) => invokeSubstrate<StashInfo[]>("git_stash_list", { root }),
+  stashPush: (root: string, message: string, mode: StashMode) => invokeSubstrate<void>("git_stash_push", { root, message, mode }),
+  stashOp: (root: string, index: number, op: "apply" | "pop" | "drop") => invokeSubstrate<void>("git_stash_op", { root, index, op }),
+  configGet: () => invokeSubstrate<GlobalConfig>("git_config_get"),
+  configSet: (key: string, value: string) => invokeSubstrate<void>("git_config_set", { key, value }),
 };
 
 /** The status letter Git Changes shows for a change, Visual Studio's. */

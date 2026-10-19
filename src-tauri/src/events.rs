@@ -11,8 +11,6 @@ pub const OUTPUT_GAME: &str = "game-output";
 /// The debugger's messages (Linux only so far; the frontend lists it everywhere).
 #[cfg_attr(not(target_os = "linux"), allow(dead_code))]
 pub const OUTPUT_DEBUG: &str = "debug-output";
-/// Source Control's git commands.
-pub const OUTPUT_GIT: &str = "git-output";
 
 /// Files or folders changed outside the IDE, in folders `fs_watch` named —
 /// a batch of paths.

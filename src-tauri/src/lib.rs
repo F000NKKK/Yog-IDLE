@@ -13,7 +13,6 @@ use tauri::{AppHandle, Emitter, Manager, State};
 mod cli;
 mod tools;
 mod events;
-mod git;
 mod manifest;
 mod project_properties;
 mod properties;
@@ -22,51 +21,14 @@ mod symbols;
 
 mod debugger;
 
-/// Every path a `dir_*`/`file_*` command may touch — and every project root a
-/// workflow/`mod_*`/`publish_*` command reads from or runs a process in —
-/// must resolve under one of these, populated by `project_open`. An IDE should never read/write
-/// outside a project the user actually opened; this boundary is deliberately
-/// enforced here rather than in `substrate-platform`, which stays
-/// path-policy-agnostic.
-#[derive(Default)]
-struct AppState {
-    project_roots: Mutex<Vec<PathBuf>>,
-    /// The project currently shown (set by `project_open`, cleared by
-    /// `project_close`) — new integrated terminals start in its root.
-    current_project: Mutex<Option<PathBuf>>,
-}
+/// The folders IDLE may touch — the projects the user opened and files they
+/// picked — kept by Substrate's plugin, which checks its own commands
+/// against it; IDLE's commands check theirs with [`validate_within_roots`].
+pub(crate) use tauri_plugin_substrate::Workspace;
 
-/// Walks up to the nearest existing ancestor of `path` (so this also covers
-/// not-yet-created paths — a new file/folder, or a rename's destination),
-/// canonicalizes it, and checks it falls under an open project root.
-fn validate_within_roots(state: &State<AppState>, path: &Path) -> Result<(), String> {
-    let roots = state.project_roots.lock().unwrap();
-    if roots.is_empty() {
-        return Err("no project is open".to_string());
-    }
-    let mut candidate = path.to_path_buf();
-    let canonical = loop {
-        if let Ok(resolved) = candidate.canonicalize() {
-            break resolved;
-        }
-        match candidate.parent() {
-            Some(parent) if !parent.as_os_str().is_empty() => candidate = parent.to_path_buf(),
-            _ => {
-                return Err(format!(
-                    "path '{}' does not resolve to anything on disk",
-                    path.display()
-                ));
-            }
-        }
-    };
-    if roots.iter().any(|root| canonical.starts_with(root)) {
-        Ok(())
-    } else {
-        Err(format!(
-            "path '{}' is outside any open project",
-            path.display()
-        ))
-    }
+/// `Ok` when `path` is in the workspace.
+fn validate_within_roots(state: &Workspace, path: &Path) -> Result<(), String> {
+    state.check(path).map_err(|m| m.to_string())
 }
 
 #[derive(Clone, Serialize)]
@@ -91,7 +53,7 @@ impl From<substrate_platform::DirEntryInfo> for DirEntryOut {
 }
 
 #[tauri::command]
-fn dir_list(state: State<AppState>, path: String) -> Result<Vec<DirEntryOut>, String> {
+fn dir_list(state: State<Workspace>, path: String) -> Result<Vec<DirEntryOut>, String> {
     let target = PathBuf::from(&path);
     validate_within_roots(&state, &target)?;
     substrate_platform::dir::list_dir(&target)
@@ -100,21 +62,21 @@ fn dir_list(state: State<AppState>, path: String) -> Result<Vec<DirEntryOut>, St
 }
 
 #[tauri::command]
-fn dir_create_file(state: State<AppState>, path: String) -> Result<(), String> {
+fn dir_create_file(state: State<Workspace>, path: String) -> Result<(), String> {
     let target = PathBuf::from(&path);
     validate_within_roots(&state, &target)?;
     substrate_platform::dir::create_file(&target).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-fn dir_create_dir(state: State<AppState>, path: String) -> Result<(), String> {
+fn dir_create_dir(state: State<Workspace>, path: String) -> Result<(), String> {
     let target = PathBuf::from(&path);
     validate_within_roots(&state, &target)?;
     substrate_platform::dir::create_dir(&target).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-fn dir_rename(state: State<AppState>, from: String, to: String) -> Result<(), String> {
+fn dir_rename(state: State<Workspace>, from: String, to: String) -> Result<(), String> {
     let from_path = PathBuf::from(&from);
     let to_path = PathBuf::from(&to);
     validate_within_roots(&state, &from_path)?;
@@ -123,7 +85,7 @@ fn dir_rename(state: State<AppState>, from: String, to: String) -> Result<(), St
 }
 
 #[tauri::command]
-fn dir_remove(state: State<AppState>, path: String) -> Result<(), String> {
+fn dir_remove(state: State<Workspace>, path: String) -> Result<(), String> {
     let target = PathBuf::from(&path);
     validate_within_roots(&state, &target)?;
     substrate_platform::dir::remove(&target).map_err(|e| e.to_string())
@@ -133,7 +95,7 @@ fn dir_remove(state: State<AppState>, path: String) -> Result<(), String> {
 /// explorer's Copy/Paste and Add Existing Item. The source may be anywhere
 /// (like `file_read`); only the destination must be in an open project.
 #[tauri::command]
-fn dir_copy(state: State<AppState>, from: String, to: String) -> Result<(), String> {
+fn dir_copy(state: State<Workspace>, from: String, to: String) -> Result<(), String> {
     let from_path = PathBuf::from(&from);
     let to_path = PathBuf::from(&to);
     validate_within_roots(&state, &to_path)?;
@@ -197,7 +159,7 @@ fn file_read(path: String) -> Result<String, String> {
 }
 
 #[tauri::command]
-fn file_write(state: State<AppState>, path: String, contents: String) -> Result<(), String> {
+fn file_write(state: State<Workspace>, path: String, contents: String) -> Result<(), String> {
     let target = PathBuf::from(&path);
     validate_within_roots(&state, &target)?;
     substrate_platform::dir::write_file(&target, &contents).map_err(|e| e.to_string())
@@ -213,7 +175,7 @@ fn path_info(path: String) -> Result<properties::PathInfo, String> {
 }
 
 #[tauri::command]
-fn path_set_readonly(state: State<AppState>, path: String, read_only: bool) -> Result<(), String> {
+fn path_set_readonly(state: State<Workspace>, path: String, read_only: bool) -> Result<(), String> {
     let target = PathBuf::from(&path);
     validate_within_roots(&state, &target)?;
     properties::set_read_only(&target, read_only)
@@ -229,7 +191,7 @@ fn mod_manifest_read(project_root: String) -> Result<properties::ManifestOut, St
 /// resolves the manifest as it now reads.
 #[tauri::command]
 fn mod_manifest_set(
-    state: State<AppState>,
+    state: State<Workspace>,
     project_root: String,
     key: String,
     value: properties::FieldValue,
@@ -243,7 +205,7 @@ fn mod_manifest_set(
 
 #[tauri::command]
 fn project_properties_read(
-    state: State<AppState>,
+    state: State<Workspace>,
     project_root: String,
 ) -> Result<project_properties::ProjectProps, String> {
     let root = PathBuf::from(project_root);
@@ -254,7 +216,7 @@ fn project_properties_read(
 /// A `[mod]` field or `authors`.
 #[tauri::command]
 fn project_properties_set_field(
-    state: State<AppState>,
+    state: State<Workspace>,
     project_root: String,
     key: String,
     value: properties::FieldValue,
@@ -267,7 +229,7 @@ fn project_properties_set_field(
 /// `which`: `"version"` (the `[dependencies]` pin) or `"path"` (`[dev] yog_api_path`).
 #[tauri::command]
 fn project_properties_set_yog_api(
-    state: State<AppState>,
+    state: State<Workspace>,
     project_root: String,
     which: String,
     value: String,
@@ -283,7 +245,7 @@ fn project_properties_set_yog_api(
 
 #[tauri::command]
 fn project_dependency_set(
-    state: State<AppState>,
+    state: State<Workspace>,
     project_root: String,
     mods: bool,
     original: Option<String>,
@@ -296,7 +258,7 @@ fn project_dependency_set(
 
 #[tauri::command]
 fn project_dependency_remove(
-    state: State<AppState>,
+    state: State<Workspace>,
     project_root: String,
     mods: bool,
     name: String,
@@ -308,7 +270,7 @@ fn project_dependency_remove(
 
 #[tauri::command]
 fn project_build_targets_set(
-    state: State<AppState>,
+    state: State<Workspace>,
     project_root: String,
     targets: Vec<String>,
 ) -> Result<project_properties::ProjectProps, String> {
@@ -335,15 +297,8 @@ async fn crates_search(
 /// whatever folder it's pointed at), unlike a path a script merely asked for
 /// on its own.
 #[tauri::command]
-fn allow_path(state: State<AppState>, path: String) -> Result<(), String> {
-    let canonical = PathBuf::from(&path)
-        .canonicalize()
-        .map_err(|e| e.to_string())?;
-    let mut roots = state.project_roots.lock().unwrap();
-    if !roots.iter().any(|root| canonical.starts_with(root)) {
-        roots.push(canonical);
-    }
-    Ok(())
+fn allow_path(state: State<Workspace>, path: String) -> Result<(), String> {
+    state.allow(Path::new(&path)).map(drop).map_err(|m| m.to_string())
 }
 
 /// Yog-IDLE's own recognized project standards, loaded from data
@@ -380,22 +335,14 @@ struct ProjectOut {
 /// `built_in_standards()` (in practice: does it have a `yog.toml`?). The
 /// root becomes an allowed path boundary for `dir_*`/workflow commands.
 #[tauri::command]
-fn project_open(state: State<AppState>, path: String) -> Result<ProjectOut, String> {
-    let requested = PathBuf::from(&path);
-    let canonical = requested.canonicalize().map_err(|e| e.to_string())?;
+fn project_open(state: State<Workspace>, path: String) -> Result<ProjectOut, String> {
+    let canonical = state.open(Path::new(&path)).map_err(|m| m.to_string())?;
     let kind = ProjectStandard::detect(&canonical, &built_in_standards());
     let name = canonical
         .file_name()
         .map(|n| n.to_string_lossy().into_owned())
         .unwrap_or_else(|| "Project".to_string());
 
-    {
-        let mut roots = state.project_roots.lock().unwrap();
-        if !roots.contains(&canonical) {
-            roots.push(canonical.clone());
-        }
-    }
-    *state.current_project.lock().unwrap() = Some(canonical.clone());
 
     Ok(ProjectOut {
         name,
@@ -409,8 +356,8 @@ fn project_open(state: State<AppState>, path: String) -> Result<ProjectOut, Stri
 /// path (a tab still open from it can be saved); it only stops being *the*
 /// project.
 #[tauri::command]
-fn project_close(state: State<AppState>) {
-    *state.current_project.lock().unwrap() = None;
+fn project_close(state: State<Workspace>) {
+    state.close();
 }
 
 /// The project-local folder Yog-IDLE keeps its own per-project data in
@@ -452,7 +399,7 @@ fn write_state_file(path: &Path, value: &serde_json::Value) -> Result<(), String
 /// arbitrary JSON object: the frontend owns its keys.
 #[tauri::command]
 fn workspace_load(
-    state: State<AppState>,
+    state: State<Workspace>,
     project_root: String,
 ) -> Result<serde_json::Value, String> {
     let root = PathBuf::from(project_root);
@@ -462,7 +409,7 @@ fn workspace_load(
 
 #[tauri::command]
 fn workspace_save(
-    state: State<AppState>,
+    state: State<Workspace>,
     project_root: String,
     value: serde_json::Value,
 ) -> Result<(), String> {
@@ -634,7 +581,7 @@ struct WorkflowSummary {
 
 #[tauri::command]
 fn workflow_list(
-    state: State<AppState>,
+    state: State<Workspace>,
     project_root: String,
 ) -> Result<Vec<WorkflowSummary>, String> {
     let root = PathBuf::from(project_root);
@@ -855,7 +802,7 @@ fn workflow_cancel(state: State<WorkflowState>) {
 #[tauri::command]
 fn workflow_run(
     app: AppHandle,
-    state: State<AppState>,
+    state: State<Workspace>,
     project_root: String,
     name: String,
     vars: HashMap<String, String>,
@@ -920,7 +867,7 @@ struct ModRunTargets {
 /// The run targets, as `yog run --list --json` gives them — they come
 /// from Yog's home (the loader SDK, `~/.yog/local.toml`), not the project.
 #[tauri::command]
-async fn mod_run_targets(state: State<'_, AppState>, project_root: String) -> Result<ModRunTargets, String> {
+async fn mod_run_targets(state: State<'_, Workspace>, project_root: String) -> Result<ModRunTargets, String> {
     validate_within_roots(&state, Path::new(&project_root))?;
     tauri::async_runtime::spawn_blocking(move || {
         let out = cli::command()
@@ -948,7 +895,7 @@ async fn mod_run_targets(state: State<'_, AppState>, project_root: String) -> Re
 #[tauri::command]
 fn mod_run(
     app: AppHandle,
-    state: State<AppState>,
+    state: State<Workspace>,
     project_root: String,
     name: String,
     mode: String,
@@ -977,7 +924,7 @@ fn mod_hot_reload_decide(app: AppHandle, choice: String) -> Result<(), String> {
 #[tauri::command]
 fn mod_hot_reload(
     app: AppHandle,
-    state: State<AppState>,
+    state: State<Workspace>,
     project_root: String,
 ) -> Result<(), String> {
     validate_within_roots(&state, Path::new(&project_root))?;
@@ -994,7 +941,7 @@ fn yog_workflow(app: &AppHandle, root: &Path, args: Vec<String>) -> WorkflowFile
 
 /// The Build menu's plain "Build" action for a `yog-mod` project — `yog build`.
 #[tauri::command]
-fn mod_build(app: AppHandle, state: State<AppState>, project_root: String) -> Result<(), String> {
+fn mod_build(app: AppHandle, state: State<Workspace>, project_root: String) -> Result<(), String> {
     let root = PathBuf::from(project_root);
     validate_within_roots(&state, &root)?;
     let file = yog_workflow(&app, &root, vec!["build".to_string()]);
@@ -1010,7 +957,7 @@ fn mod_build(app: AppHandle, state: State<AppState>, project_root: String) -> Re
 #[tauri::command]
 async fn mod_clean(
     app: AppHandle,
-    state: State<'_, AppState>,
+    state: State<'_, Workspace>,
     project_root: String,
 ) -> Result<(), String> {
     let root = PathBuf::from(project_root);
@@ -1084,7 +1031,7 @@ fn ensure_gitignored(project_root: &Path) {
 
 #[tauri::command]
 fn publish_profiles_list(
-    state: State<AppState>,
+    state: State<Workspace>,
     project_root: String,
 ) -> Result<Vec<PublishProfile>, String> {
     validate_within_roots(&state, Path::new(&project_root))?;
@@ -1108,7 +1055,7 @@ fn publish_profiles_list(
 
 #[tauri::command]
 fn publish_profile_save(
-    state: State<AppState>,
+    state: State<Workspace>,
     project_root: String,
     profile: PublishProfile,
 ) -> Result<(), String> {
@@ -1127,7 +1074,7 @@ fn publish_profile_save(
 
 #[tauri::command]
 fn publish_profile_delete(
-    state: State<AppState>,
+    state: State<Workspace>,
     project_root: String,
     id: String,
 ) -> Result<(), String> {
@@ -1143,7 +1090,7 @@ fn publish_profile_delete(
 #[tauri::command]
 fn publish_run(
     app: AppHandle,
-    state: State<AppState>,
+    state: State<Workspace>,
     project_root: String,
     profile: PublishProfile,
 ) -> Result<(), String> {
@@ -1196,7 +1143,7 @@ struct PtyExit {
 fn pty_spawn(
     app: AppHandle,
     state: State<PtyState>,
-    app_state: State<AppState>,
+    app_state: State<Workspace>,
     id: String,
     cols: u16,
     rows: u16,
@@ -1210,7 +1157,7 @@ fn pty_spawn(
             validate_within_roots(&app_state, &dir)?;
             Some(dir)
         }
-        None => app_state.current_project.lock().unwrap().clone(),
+        None => app_state.current(),
     };
     let out_app = app.clone();
     let out_id = id.clone();
@@ -1342,15 +1289,8 @@ pub mod bench {
 
     /// `git status` output parsed into Git Changes' model, as sent to the frontend.
     pub fn git_status(top: &Path, raw: &str) -> String {
-        let mut status = crate::git::parse_status(raw);
-        for file in status
-            .staged
-            .iter_mut()
-            .chain(&mut status.unstaged)
-            .chain(&mut status.conflicted)
-        {
-            file.abs_path = crate::git::absolute(top, &file.path);
-        }
+        let mut status = substrate_platform::git::status::parse_status(raw);
+        substrate_platform::git::status::set_abs_paths(&mut status, top);
         serde_json::to_string(&status).unwrap()
     }
 }
@@ -1366,6 +1306,8 @@ pub fn run() {
     tools::apply_to_process_at_startup(&build_settings);
 
     let builder = tauri::Builder::default()
+        // Substrate's own commands (the workspace, Source Control): what its UI calls.
+        .plugin(tauri_plugin_substrate::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         // Window size/position/maximized, restored on launch and saved on
@@ -1382,7 +1324,6 @@ pub fn run() {
         )
         .manage(PtyState::default())
         .manage(WorkflowState::default())
-        .manage(AppState::default())
         .manage(WatchState::default())
         .manage(tools::ToolsState::new(build_settings))
         .manage(search::SearchState::default())
@@ -1461,30 +1402,6 @@ pub fn run() {
         project_dependency_remove,
         project_build_targets_set,
         crates_search,
-        git::git_status,
-        git::git_stage,
-        git::git_unstage,
-        git::git_discard,
-        git::git_commit,
-        git::git_last_message,
-        git::git_diff_texts,
-        git::git_head_text,
-        git::git_log,
-        git::git_commit_files,
-        git::git_branches,
-        git::git_switch,
-        git::git_branch_create,
-        git::git_branch_delete,
-        git::git_remote,
-        git::git_integrate,
-        git::git_operation,
-        git::git_clone,
-        git::git_init,
-        git::git_stash_list,
-        git::git_stash_push,
-        git::git_stash_op,
-        git::git_config_get,
-        git::git_config_set,
     ]);
 
     builder

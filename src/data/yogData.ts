@@ -4,17 +4,12 @@
  * it. Reading gives plain JS values; writing changes a file's text to hold
  * a new value, keeping comments and layout of what didn't change.
  */
+import { errorText } from "substrate-platform-ui";
 import { cli } from "../cli";
 import { prefetchTyped, stringsOf } from "./typed";
 
 /** A file read: its value, or what's wrong with it (`line:col: message`). */
 export type Read<T = unknown> = { ok: true; value: T } | { ok: false; error: string };
-
-/** The CLI's error as text. */
-export function errorText(e: unknown): string {
-  if (e && typeof e === "object" && "message" in e) return String((e as { message: unknown }).message);
-  return String(e);
-}
 
 /**
  * Reads Yog Data `text`. `ordered`: maps as `Map`s in file order — for a

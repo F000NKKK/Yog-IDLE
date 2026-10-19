@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { Button, CommitTextField, FormField, FormPage, FormSection, useT } from "substrate-platform-ui";
-import { errorText, projectApi } from "./api";
+import { Button, CommitTextField, FormField, FormPage, FormSection, useT, errorText } from "substrate-platform-ui";
+import { projectApi } from "./api";
 import { checkPlain } from "./ApplicationPages";
 import type { PageProps } from "./ProjectPropertiesWindow";
 

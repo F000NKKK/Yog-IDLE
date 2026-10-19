@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from "react";
-import { confirmDialog, notify, promptDialog, t } from "substrate-platform-ui";
+import { confirmDialog, notify, promptDialog, t, errorText } from "substrate-platform-ui";
 import { EVENT } from "../events";
 import { setOutputSource } from "../outputSource";
 import { reportError } from "../reportError";
@@ -83,7 +83,7 @@ export async function refreshGit(): Promise<void> {
     set({ status, branches, stashes, loaded: true, error: null, revision: state.revision + 1 });
   } catch (err) {
     if (seq !== refreshSeq || root !== state.root) return;
-    set({ status: null, loaded: true, error: t(String(err)), revision: state.revision + 1 });
+    set({ status: null, loaded: true, error: errorText(err), revision: state.revision + 1 });
   }
 }
 
@@ -109,7 +109,7 @@ async function runGit<T>(label: string, action: (root: string) => Promise<T>, op
   try {
     return await action(root);
   } catch (err) {
-    reportError(t(String(err)), EVENT.gitOutput);
+    reportError(errorText(err), EVENT.gitOutput);
     return undefined;
   } finally {
     set({ busy: null });
@@ -230,7 +230,7 @@ export async function deleteBranch(name: string): Promise<void> {
     // Not merged anywhere — Visual Studio asks again before forcing it.
     const force = await confirmDialog({
       title: t("Delete Branch"),
-      message: `${t(String(err))} ${t("Delete {branch} anyway? Its unmerged commits will be lost.", { branch: name })}`,
+      message: `${errorText(err)} ${t("Delete {branch} anyway? Its unmerged commits will be lost.", { branch: name })}`,
       confirmLabel: t("Delete"),
     });
     if (force && root === state.root) await runGit(t("Deleting branch {branch}…", { branch: name }), (r) => gitApi.deleteBranch(r, name, true));
@@ -304,7 +304,7 @@ export async function initRepository(): Promise<void> {
     await gitApi.init(root, "");
     notify({ level: "info", message: t("Created a Git repository in {folder}.", { folder: root }) });
   } catch (err) {
-    reportError(t(String(err)), EVENT.gitOutput);
+    reportError(errorText(err), EVENT.gitOutput);
   } finally {
     set({ busy: null });
     await refreshGit();
@@ -322,7 +322,7 @@ export async function cloneRepository(url: string, parent: string): Promise<stri
   try {
     return await gitApi.clone(url, parent, "");
   } catch (err) {
-    reportError(t(String(err)), EVENT.gitOutput);
+    reportError(errorText(err), EVENT.gitOutput);
     return null;
   } finally {
     set({ busy: null });

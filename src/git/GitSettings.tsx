@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { CheckField, CommitTextField, FormField, FormPage, FormSection, pushDocumentStep, SelectField, SETTINGS_HISTORY, useT } from "substrate-platform-ui";
+import { CheckField, CommitTextField, FormField, FormPage, FormSection, pushDocumentStep, SelectField, SETTINGS_HISTORY, useT, errorText } from "substrate-platform-ui";
 import { gitApi, type GlobalConfig } from "./gitApi";
 import { refreshGit } from "./gitStore";
 
@@ -13,7 +13,7 @@ export function GitSettingsPage() {
     gitApi
       .configGet()
       .then(setConfig)
-      .catch((err) => setError(t(String(err))));
+      .catch((err) => setError(errorText(err)));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -24,7 +24,7 @@ export function GitSettingsPage() {
       if (key === "user.name" || key === "user.email") void refreshGit();
       return null;
     } catch (err) {
-      return t(String(err));
+      return errorText(err);
     }
   }
 

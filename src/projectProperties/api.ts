@@ -1,5 +1,4 @@
 import { invoke } from "@tauri-apps/api/core";
-import { t } from "substrate-platform-ui";
 
 /** `project_properties::Dependency` — one `[dependencies]` / `[dependencies.exports]` entry. */
 export interface Dependency {
@@ -33,12 +32,6 @@ export interface CrateHit {
   version: string;
   description: string;
   downloads: number;
-}
-
-/** The backend's (English) validation messages, in the active language. */
-export function errorText(err: unknown): string {
-  const text = err instanceof Error ? err.message : String(err);
-  return t(text);
 }
 
 /** Every write re-reads yog.toml and returns the result — the window just shows what comes back. */

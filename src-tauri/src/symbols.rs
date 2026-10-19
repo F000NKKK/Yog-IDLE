@@ -20,7 +20,7 @@ use serde::{Deserialize, Serialize};
 use syn::visit::{self, Visit};
 use tauri::State;
 
-use crate::AppState;
+use crate::Workspace;
 use crate::search::{self, FileMask, OpenDocument, Scope, SearchQuery};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
@@ -786,7 +786,7 @@ fn text_items(
 /// Code Search: ranked files/symbols (or text hits) for `query`.
 #[tauri::command]
 pub async fn code_search(
-    state: State<'_, AppState>,
+    state: State<'_, Workspace>,
     index: State<'_, SymbolIndexState>,
     request: CodeSearchRequest,
 ) -> Result<Vec<CodeSearchItem>, String> {

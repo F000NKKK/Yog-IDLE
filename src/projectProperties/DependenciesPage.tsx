@@ -1,21 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import {
-  Button,
-  CheckField,
-  CommitTextField,
-  FormField,
-  FormPage,
-  FormSection,
-  Icon,
-  IconButton,
-  StringListField,
-  TextField,
-  confirmDialog,
-  messageDialog,
-  useT,
-  Spacer,
-} from "substrate-platform-ui";
-import { emptyDependency, errorText, projectApi, type CrateHit, type Dependency } from "./api";
+import { Button, CheckField, CommitTextField, FormField, FormPage, FormSection, Icon, IconButton, StringListField, TextField, confirmDialog, messageDialog, useT, Spacer, errorText } from "substrate-platform-ui";
+import { emptyDependency, projectApi, type CrateHit, type Dependency } from "./api";
 import { checkPlain } from "./ApplicationPages";
 import type { PageProps } from "./ProjectPropertiesWindow";
 

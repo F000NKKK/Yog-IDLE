@@ -1,6 +1,6 @@
 import { cli } from "../cli";
 import { open } from "@tauri-apps/plugin-dialog";
-import { confirmDialog, notify, promptDialog, showDialog, t } from "substrate-platform-ui";
+import { confirmDialog, notify, promptDialog, showDialog, t, errorText } from "substrate-platform-ui";
 import { reportError } from "../reportError";
 
 // Project > Import…: blocks and items from a resource pack (a folder or a

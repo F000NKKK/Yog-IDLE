@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Button, Icon, SettingsWindow, useLocale, useT, type CommitResult, type SettingsSection } from "substrate-platform-ui";
+import { Button, Icon, SettingsWindow, useLocale, useT, type CommitResult, type SettingsSection, errorText } from "substrate-platform-ui";
 import { useOpenFiles } from "../OpenFilesContext";
 import { openFile } from "../fileOpenBus";
-import { errorText, projectApi, type ProjectProps } from "./api";
+import { projectApi, type ProjectProps } from "./api";
 import type { ProjectPropertiesPage } from "./bus";
 import { ApplicationPage, BuildPage } from "./ApplicationPages";
 import { DebugPage } from "./DebugPage";

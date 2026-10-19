@@ -3,13 +3,15 @@
 // can't get either wrong. (`pty-*` belong to the platform's terminal.)
 
 import { emit, listen, type UnlistenFn } from "@tauri-apps/api/event";
+import { events as substrateEvents, type BackendMessage } from "substrate-platform-ui";
 
 export const EVENT = {
   /** Output sources: one line of text each. */
   buildOutput: "workflow-output",
   gameOutput: "game-output",
   debugOutput: "debug-output",
-  gitOutput: "git-output",
+  /** Source Control's runs — Substrate's event. */
+  gitOutput: substrateEvents.gitOutput,
   /** IDE-side messages (`reportError`, the Project Explorer, the designer) — emitted by the front end only. */
   ideOutput: "ide-output",
 
@@ -77,7 +79,6 @@ type Payloads = {
   "workflow-output": string;
   "game-output": string;
   "debug-output": string;
-  "git-output": string;
   "ide-output": string;
   "fs-changed": string[];
   /** The project the run builds. */
@@ -91,6 +92,9 @@ type Payloads = {
   "debug-attach-failed": string;
   "debug-failed": string;
   "debug-stopped": DebugStoppedEvent;
+} & {
+  /** Lines as Substrate's messages (and the IDE's own as text). */
+  [K in typeof substrateEvents.gitOutput]: string | BackendMessage;
 };
 
 export type EventName = keyof Payloads;

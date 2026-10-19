@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { DiffEditor, Icon, IconButton, useT, type DiffLayout, Spacer } from "substrate-platform-ui";
+import { DiffEditor, Icon, IconButton, useT, type DiffLayout, Spacer, errorText } from "substrate-platform-ui";
 import { openFile } from "../fileOpenBus";
 import { gitApi, type DiffTexts } from "./gitApi";
 import type { DiffRequest } from "./gitDocuments";
@@ -32,7 +32,7 @@ export function DiffDocument({ request }: { request: DiffRequest }) {
         // Same texts — keep the editor (and its scroll position) as it is.
         setTexts((prev) => (prev && prev.left === next.left && prev.right === next.right && prev.binary === next.binary ? prev : next));
       })
-      .catch((err) => !cancelled && setError(t(String(err))));
+      .catch((err) => !cancelled && setError(errorText(err)));
     return () => {
       cancelled = true;
     };

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type MouseEvent } from "react";
-import { Button, ContextMenu, Icon, IconButton, useContextMenu, useT, type ContextMenuItem, Spacer } from "substrate-platform-ui";
+import { Button, ContextMenu, Icon, IconButton, useContextMenu, useT, type ContextMenuItem, Spacer, errorText } from "substrate-platform-ui";
 import { openFile } from "../fileOpenBus";
 import { checkoutBranch, localNameOf } from "./BranchPicker";
 import { changeKindLabel, changeLetter, gitApi, splitRepoPath, type BranchInfo, type CommitInfo, type FileChange } from "./gitApi";
@@ -53,7 +53,7 @@ export function GitRepositoryWindow() {
         setMore(list.length === PAGE);
         setCommit((current) => (current ? (list.find((c) => c.hash === current.hash) ?? null) : null));
       })
-      .catch((err) => !cancelled && setError(t(String(err))));
+      .catch((err) => !cancelled && setError(errorText(err)));
     return () => {
       cancelled = true;
     };
@@ -69,7 +69,7 @@ export function GitRepositoryWindow() {
         setCommits((prev) => [...prev, ...list]);
         setMore(list.length === PAGE);
       })
-      .catch((err) => setError(t(String(err))));
+      .catch((err) => setError(errorText(err)));
   }
 
   if (!root) return <div className="idle-git-empty">{t("Open a folder to use Git.")}</div>;
