@@ -7,6 +7,12 @@ import { cli } from "../cli";
 import { setSavedFileDiagnostics } from "../diagnostics/buildDiagnostics";
 import type { FileTab } from "../OpenFilesContext";
 
+/** Ctrl+Shift+V flips between a file's source and its preview/designer; Ctrl+K V opens the preview to the side (VS Code's Markdown keys). */
+export const TOGGLE_PREVIEW_KEYS = "Ctrl+Shift+V";
+export const PREVIEW_SIDE_KEYS = "Ctrl+K V";
+/** The icon of a provider that previews to the side. */
+export const PREVIEW_SIDE_ICON = "previewSide";
+
 export const VIEWS_KEY = "editor.views";
 
 export function isViewMap(value: unknown): boolean {

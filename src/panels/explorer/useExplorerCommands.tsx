@@ -1,7 +1,7 @@
 // Project Explorer's commands: what each does, its keys and its menus.
 
 import type { KeyboardEvent, MouseEvent } from "react";
-import { type ContextMenuItem, editorProvidersFor, fileNameOf, type FileTreeMenuItem, type FileTreeNode, generalEditorProviders, type HostCommand, matchesShortcut, openFile, t, ToolbarButton } from "substrate-platform-ui";
+import { type ContextMenuItem, editorProvidersFor, fileNameOf, type FileTreeMenuItem, type FileTreeNode, generalEditorProviders, type HostCommand, matchesShortcut, openFile, t, ToolbarButton, EDITOR_KIND } from "substrate-platform-ui";
 import { openWithItems } from "../../openFiles/tabViews";
 import { parentOf } from "../../paths";
 import { boundCommands, commandLabel, explorerCommand, type ExplorerCommandId } from "./commands";
@@ -147,7 +147,7 @@ export function useExplorerCommands(props: ExplorerTreeProps, explorerTreeView: 
 
   /** The file's designer view (`.yui`, `.yblock`…), if it has one. */
   function designerView(path: string) {
-    return editorProvidersFor(path).find((p) => p.kind === "designer");
+    return editorProvidersFor(path).find((p) => p.kind === EDITOR_KIND.designer);
   }
 
   /** F7, as in Visual Studio: a screen's code-behind, else the file in a code editor. */
@@ -158,7 +158,7 @@ export function useExplorerCommands(props: ExplorerTreeProps, explorerTreeView: 
       openFile({ path: pair.code, name: fileNameOf(pair.code) });
       return;
     }
-    const code = editorProvidersFor(node.id).find((p) => p.kind === "text") ?? generalEditorProviders().find((p) => p.kind === "text");
+    const code = editorProvidersFor(node.id).find((p) => p.kind === EDITOR_KIND.text) ?? generalEditorProviders().find((p) => p.kind === EDITOR_KIND.text);
     openFile({ path: node.id, name: node.name, view: code?.id });
   }
 

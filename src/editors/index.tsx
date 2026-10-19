@@ -1,4 +1,4 @@
-import { JsonEditor, registerEditorProvider } from "substrate-platform-ui";
+import { JsonEditor, registerEditorProvider, EDITOR_KIND } from "substrate-platform-ui";
 import "../fileTypes";
 import { ScreenDesigner } from "../designer/ScreenDesigner";
 import { YuiSourceEditor, YuiSplitEditor } from "../designer/YuiSplitEditor";
@@ -28,7 +28,7 @@ registerEditorProvider({
   fileTypes: [LANG_FILE_TYPE],
   component: LangFileEditor,
   priority: 10,
-  kind: "designer",
+  kind: EDITOR_KIND.designer,
 });
 
 // `.yui` screens, as Visual Studio shows XAML: Design and XAML split in one
@@ -42,7 +42,7 @@ registerEditorProvider({
   fileTypes: [fileTypeId(formats.ui)],
   component: YuiSplitEditor,
   priority: 20,
-  kind: "text",
+  kind: EDITOR_KIND.text,
   strict: true,
 });
 
@@ -53,7 +53,7 @@ registerEditorProvider({
   fileTypes: [fileTypeId(formats.ui)],
   component: ScreenDesigner,
   priority: 10,
-  kind: "designer",
+  kind: EDITOR_KIND.designer,
 });
 
 registerEditorProvider({
@@ -63,7 +63,7 @@ registerEditorProvider({
   fileTypes: [fileTypeId(formats.ui)],
   component: YuiSourceEditor,
   priority: 0,
-  kind: "text",
+  kind: EDITOR_KIND.text,
     // The JSON/XAML of this format only — other files have the general editors.
     strict: true,
 });
@@ -78,7 +78,7 @@ registerEditorProvider({
   fileTypes: [fileTypeId(formats.res)],
   component: YresEditor,
   priority: 20,
-  kind: "designer",
+  kind: EDITOR_KIND.designer,
 });
 
 registerEditorProvider({
@@ -88,7 +88,7 @@ registerEditorProvider({
   fileTypes: [fileTypeId(formats.res)],
   component: JsonEditor,
   priority: 0,
-  kind: "text",
+  kind: EDITOR_KIND.text,
     // The JSON/XAML of this format only — other files have the general editors.
     strict: true,
 });
@@ -103,7 +103,7 @@ registerEditorProvider({
   fileTypes: [fileTypeId(formats.block), fileTypeId(formats.item)],
   component: ContentEditor,
   priority: 20,
-  kind: "designer",
+  kind: EDITOR_KIND.designer,
 });
 
 registerEditorProvider({
@@ -113,7 +113,7 @@ registerEditorProvider({
   fileTypes: [fileTypeId(formats.block), fileTypeId(formats.item)],
   component: JsonEditor,
   priority: 0,
-  kind: "text",
+  kind: EDITOR_KIND.text,
     // The JSON/XAML of this format only — other files have the general editors.
     strict: true,
 });
@@ -127,7 +127,7 @@ registerEditorProvider({
   fileTypes: [fileTypeId(formats.recipe)],
   component: RecipeEditor,
   priority: 20,
-  kind: "designer",
+  kind: EDITOR_KIND.designer,
 });
 
 registerEditorProvider({
@@ -137,7 +137,7 @@ registerEditorProvider({
   fileTypes: [fileTypeId(formats.recipe)],
   component: JsonEditor,
   priority: 0,
-  kind: "text",
+  kind: EDITOR_KIND.text,
     // The JSON/XAML of this format only — other files have the general editors.
     strict: true,
 });
@@ -151,7 +151,7 @@ registerEditorProvider({
   fileTypes: [fileTypeId(formats.book)],
   component: BookEditor,
   priority: 20,
-  kind: "designer",
+  kind: EDITOR_KIND.designer,
 });
 
 registerEditorProvider({
@@ -161,7 +161,7 @@ registerEditorProvider({
   fileTypes: [fileTypeId(formats.book)],
   component: JsonEditor,
   priority: 0,
-  kind: "text",
+  kind: EDITOR_KIND.text,
     // The JSON/XAML of this format only — other files have the general editors.
     strict: true,
 });
@@ -177,7 +177,7 @@ registerEditorProvider({
   fileTypes: [fileTypeId(formats.def)],
   component: DefEditor,
   priority: 20,
-  kind: "designer",
+  kind: EDITOR_KIND.designer,
 });
 
 registerEditorProvider({
@@ -187,7 +187,7 @@ registerEditorProvider({
   fileTypes: [fileTypeId(formats.def)],
   component: JsonEditor,
   priority: 0,
-  kind: "text",
+  kind: EDITOR_KIND.text,
   strict: true,
 });
 
@@ -201,7 +201,7 @@ registerEditorProvider({
   fileTypes: [fileTypeId(formats.data)],
   component: YdataViewer,
   priority: 20,
-  kind: "binary",
+  kind: EDITOR_KIND.binary,
 });
 
 // `.ymodel` body models: the 3D designer by default, the code a click away.
@@ -213,7 +213,7 @@ registerEditorProvider({
   fileTypes: [fileTypeId(formats.model)],
   component: ModelEditor,
   priority: 20,
-  kind: "designer",
+  kind: EDITOR_KIND.designer,
 });
 
 registerEditorProvider({
@@ -223,7 +223,7 @@ registerEditorProvider({
   fileTypes: [fileTypeId(formats.model)],
   component: JsonEditor,
   priority: 0,
-  kind: "text",
+  kind: EDITOR_KIND.text,
   strict: true,
 });
 
@@ -237,7 +237,7 @@ registerEditorProvider({
   fileTypes: [fileTypeId(formats.entity)],
   component: EntityEditor,
   priority: 20,
-  kind: "designer",
+  kind: EDITOR_KIND.designer,
 });
 
 registerEditorProvider({
@@ -247,7 +247,7 @@ registerEditorProvider({
   fileTypes: [fileTypeId(formats.entity)],
   component: JsonEditor,
   priority: 0,
-  kind: "text",
+  kind: EDITOR_KIND.text,
   strict: true,
 });
 
@@ -261,7 +261,7 @@ registerEditorProvider({
   fileTypes: [fileTypeId(formats.anim)],
   component: AnimEditor,
   priority: 20,
-  kind: "designer",
+  kind: EDITOR_KIND.designer,
 });
 
 registerEditorProvider({
@@ -271,7 +271,7 @@ registerEditorProvider({
   fileTypes: [fileTypeId(formats.anim)],
   component: JsonEditor,
   priority: 0,
-  kind: "text",
+  kind: EDITOR_KIND.text,
   strict: true,
 });
 
@@ -285,7 +285,7 @@ registerEditorProvider({
   fileTypes: [fileTypeId(formats.texture)],
   component: TextureEditor,
   priority: 20,
-  kind: "designer",
+  kind: EDITOR_KIND.designer,
 });
 
 registerEditorProvider({
@@ -295,6 +295,6 @@ registerEditorProvider({
   fileTypes: [fileTypeId(formats.texture)],
   component: JsonEditor,
   priority: 0,
-  kind: "text",
+  kind: EDITOR_KIND.text,
   strict: true,
 });
