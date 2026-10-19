@@ -260,7 +260,7 @@ function QuickAdd({ folder, onAddPlain, onClose, onShowAll }: NewItemDialogProps
   }
 
   return (
-    <FloatingWindow title={t("Quick Add")} icon={<Icon name="file" size={14} />} onClose={onClose} width={440} className="new-item-dialog">
+    <FloatingWindow title={t("Quick Add")} icon={<Icon name="file" size={14} />} onClose={onClose} width={440} className="new-item-dialog" modal>
       <form className="new-item-body" onSubmit={submit}>
         <TextField autoFocus value={name} placeholder={t("Name (end with / for a folder)")} onChange={(e) => setName(e.target.value)} />
         {error && plain !== "" && <p className="new-item-error">{error}</p>}
@@ -328,7 +328,7 @@ function AllTemplates({ folder, onAdd, onClose }: NewItemDialogProps) {
   }
 
   return (
-    <FloatingWindow title={t("Add New Item")} icon={<Icon name="file" size={14} />} onClose={onClose} width={760} className="new-item-dialog">
+    <FloatingWindow title={t("Add New Item")} icon={<Icon name="file" size={14} />} onClose={onClose} width={760} className="new-item-dialog" modal>
       <form className="new-item-body" onSubmit={submit}>
         <div className="new-item-top">
           <SearchField value={query} onValueChange={setQuery} placeholder={t("Search templates")} />
