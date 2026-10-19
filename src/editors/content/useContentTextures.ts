@@ -9,7 +9,7 @@ import { type Dir, kindOf, templateOf, type Vec3 } from "../../content/model";
 import { decodeImage, type PixelImage, sameImage } from "../../content/paint/pixels";
 import { GAME_NAMESPACE } from "../../data/yogFormat";
 import type { ContentModel } from "./useContentModel";
-import { allModels, type Edited, type LoadedTexture, namedTextures, type ParentModel, stateModelOf } from "./contentModel";
+import { allModels, type Edited, type LoadedTexture, MODEL, namedTextures, type ParentModel, stateModelOf } from "./contentModel";
 
 /** The pickers' choices, parent models and textures: loading, painting state, saving; what the view draws. */
 export function useContentTextures(props: EditorProps, m: ContentModel) {
@@ -162,8 +162,8 @@ export function useContentTextures(props: EditorProps, m: ContentModel) {
   // ── What the view draws ───────────────────────────────────────────────────
 
   const rotations = file.states?.rotations ?? [];
-  const turnsWithState = effectiveKey === "model" || stateModelOf(effectiveKey) !== null;
-  const rot = shownVariant && turnsWithState ? shownVariant : effectiveKey === "model" ? rotations[variant] : undefined;
+  const turnsWithState = effectiveKey === MODEL.main || stateModelOf(effectiveKey) !== null;
+  const rot = shownVariant && turnsWithState ? shownVariant : effectiveKey === MODEL.main ? rotations[variant] : undefined;
   const parts = useMemo<Part[]>(() => {
     const own: Part = {
       elements: resolved.elements,
@@ -174,7 +174,7 @@ export function useContentTextures(props: EditorProps, m: ContentModel) {
       x: rot?.x,
       y: rot?.y,
     };
-    if (effectiveKey !== "arm") return [own];
+    if (effectiveKey !== MODEL.arm) return [own];
     return [{ elements: mainResolved.elements, textures: mainResolved.textures, sprite: mainResolved.sprite, ghost: true }, own];
   }, [resolved, mainResolved, effectiveKey, rot, previewTints]);
 

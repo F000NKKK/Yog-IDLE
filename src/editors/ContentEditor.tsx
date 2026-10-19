@@ -40,7 +40,7 @@ import { PaintCanvas } from "../content/paint/PaintCanvas";
 import { PaintTools } from "../content/paint/PaintTools";
 import "./ContentEditor.css";
 import { fmt } from "./content/fieldText";
-import { ensureModel, layerIndex, type ModelKey, STATE_SEL_TYPES, stateModelKey, stateModelOf, type StateSel } from "./content/contentModel";
+import { ensureModel, layerIndex, MODEL, type ModelKey, STATE_PICK, STATE_SEL_TYPES, stateModelKey, stateModelOf, type StateSel } from "./content/contentModel";
 import { useContentModel } from "./content/useContentModel";
 import { useContentTextures } from "./content/useContentTextures";
 import { useContentPaint } from "./content/useContentPaint";
@@ -83,17 +83,17 @@ export function ContentEditor(props: EditorProps) {
       </div>
     ) : null;
 
-  const modelChoices: { value: ModelKey; label: string }[] = [{ value: "model", label: kind === KIND.BLOCK ? t("Block Model") : t("Item Model") }];
+  const modelChoices: { value: ModelKey; label: string }[] = [{ value: MODEL.main, label: kind === KIND.BLOCK ? t("Block Model") : t("Item Model") }];
   if (kind === KIND.BLOCK) {
-    modelChoices.push({ value: "item_model", label: file.item_model ? t("Item Model") : t("Item Model (add)") });
-    if (file.states?.connect) modelChoices.push({ value: "arm", label: t("Connection Arm") });
+    modelChoices.push({ value: MODEL.item, label: file.item_model ? t("Item Model") : t("Item Model (add)") });
+    if (file.states?.connect) modelChoices.push({ value: MODEL.arm, label: t("Connection Arm") });
   }
   for (const n of kind === KIND.BLOCK ? stateModelNames : []) modelChoices.push({ value: stateModelKey(n), label: t("State Model: {name}", { name: n }) });
   const pickModel = (v: ModelKey) => {
     if (shownVariant && variantModelKey(shownVariant.models) !== v) setPreviewState(null);
     const state = stateModelOf(v);
-    setStateSel(state !== null ? { kind: "model", key: state } : null);
-    if (v === "item_model" && !file.item_model) update((d) => void (d.item_model = { parent: "generated", textures: { layer0: mainResolved.textures[mainResolved.slots[0]] ?? "minecraft:item/apple" } }));
+    setStateSel(state !== null ? { kind: STATE_PICK.model, key: state } : null);
+    if (v === MODEL.item && !file.item_model) update((d) => void (d.item_model = { parent: "generated", textures: { layer0: mainResolved.textures[mainResolved.slots[0]] ?? "minecraft:item/apple" } }));
     setModelKey(v);
     setSelected(null);
     setFace(null);
@@ -101,7 +101,7 @@ export function ContentEditor(props: EditorProps) {
   const applyItemPreset = (id: string) => {
     const preset = ITEM_MODEL_PRESETS.find((p) => p.id === id);
     if (!preset || kind !== KIND.ITEM) return;
-    setModelKey("model");
+    setModelKey(MODEL.main);
     setSelected(null);
     setFace(null);
     update((d) => {
@@ -253,7 +253,7 @@ export function ContentEditor(props: EditorProps) {
   // The block's states: its properties, its other models, which state shows which.
   const builtInOption: Record<string, string> = { facing: t("Facing"), face: t("Attaches"), waterlogged: t("Waterloggable") };
   const isPicked = (what: StateSel["kind"], key: string) => pickedState?.kind === what && pickedState.key === key;
-  const pickedVariant = pickedState?.kind === "variant" ? pickedState.key : null;
+  const pickedVariant = pickedState?.kind === STATE_PICK.variant ? pickedState.key : null;
   const variantKeys = Object.keys(states?.variants ?? {});
   const statesPanel = kind === KIND.BLOCK && (
     <>
@@ -263,7 +263,7 @@ export function ContentEditor(props: EditorProps) {
         <IconButton title={t("Add State Property")} disabled={readOnly} onClick={() => void addStateProperty()}>
           <Icon name="plus" />
         </IconButton>
-        <IconButton title={t("Remove State Property")} disabled={readOnly || pickedState?.kind !== "property"} onClick={() => pickedState && removeStateItem(pickedState)}>
+        <IconButton title={t("Remove State Property")} disabled={readOnly || pickedState?.kind !== STATE_PICK.property} onClick={() => pickedState && removeStateItem(pickedState)}>
           <Icon name="trash" />
         </IconButton>
       </div>
@@ -272,7 +272,7 @@ export function ContentEditor(props: EditorProps) {
           const pk = propertyKind(p.values);
           const summary = pk === "bool" ? t("yes/no") : pk === "range" ? `${Math.min(...p.values.map(Number))}–${Math.max(...p.values.map(Number))}` : p.values.join(", ");
           return p.own ? (
-            <li key={p.name} role="option" aria-selected={isPicked("property", p.name)} className={isPicked("property", p.name) ? "selected" : undefined} title={p.values.join(", ")} onClick={() => pickState({ kind: "property", key: p.name })}>
+            <li key={p.name} role="option" aria-selected={isPicked(STATE_PICK.property, p.name)} className={isPicked(STATE_PICK.property, p.name) ? "selected" : undefined} title={p.values.join(", ")} onClick={() => pickState({ kind: STATE_PICK.property, key: p.name })}>
               <Icon name="list" size={13} />
               <span className="content-element-name">{p.name}</span>
               <span className="content-element-size content-state-values">{summary}</span>
@@ -293,13 +293,13 @@ export function ContentEditor(props: EditorProps) {
         <IconButton title={t("Add State Model")} disabled={readOnly} onClick={() => void addStateModel()}>
           <Icon name="plus" />
         </IconButton>
-        <IconButton title={t("Remove State Model")} disabled={readOnly || pickedState?.kind !== "model"} onClick={() => pickedState && removeStateItem(pickedState)}>
+        <IconButton title={t("Remove State Model")} disabled={readOnly || pickedState?.kind !== STATE_PICK.model} onClick={() => pickedState && removeStateItem(pickedState)}>
           <Icon name="trash" />
         </IconButton>
       </div>
       <ul className="content-elements" role="listbox" aria-label={t("State Models")}>
         {stateModelNames.map((n) => (
-          <li key={n} role="option" aria-selected={isPicked("model", n)} className={isPicked("model", n) ? "selected" : undefined} onClick={() => pickState({ kind: "model", key: n })}>
+          <li key={n} role="option" aria-selected={isPicked(STATE_PICK.model, n)} className={isPicked(STATE_PICK.model, n) ? "selected" : undefined} onClick={() => pickState({ kind: STATE_PICK.model, key: n })}>
             <Icon name={effectiveKey === stateModelKey(n) ? "check" : "grid"} size={13} />
             <span className="content-element-name">{n}</span>
           </li>
@@ -333,10 +333,10 @@ export function ContentEditor(props: EditorProps) {
             <li
               key={k}
               role="option"
-              aria-selected={isPicked("variant", k)}
-              className={isPicked("variant", k) ? "selected" : undefined}
+              aria-selected={isPicked(STATE_PICK.variant, k)}
+              className={isPicked(STATE_PICK.variant, k) ? "selected" : undefined}
               title={problems.length ? problems.join("\n") : undefined}
-              onClick={() => pickState({ kind: "variant", key: k })}
+              onClick={() => pickState({ kind: STATE_PICK.variant, key: k })}
             >
               <Icon name={problems.length ? "warning" : shownVariant?.key === k ? "preview" : "split"} size={13} />
               <span className="content-element-name">{k || t("Every state")}</span>
@@ -484,7 +484,7 @@ export function ContentEditor(props: EditorProps) {
           {displaySlot && model?.display?.[displaySlot] && (
             <ToolbarButton label="Reset" disabled={readOnly} onClick={() => update((d) => void delete ensureModel(d, effectiveKey).display?.[displaySlot])} />
           )}
-          {rotations.length > 1 && effectiveKey === "model" && (
+          {rotations.length > 1 && effectiveKey === MODEL.main && (
             <ToolbarSelect
               value={String(Math.min(variant, rotations.length - 1))}
               options={rotations.map((r, i) => ({ value: String(i), label: `${t("Variant")} ${i + 1} (x${r.x ?? 0} y${r.y ?? 0})` }))}

@@ -8,7 +8,7 @@ import { type BlockState, defaultState, freeName, isWord, moveVariant, newVarian
 import { readData } from "../../data/yogData";
 import type { ContentModel } from "./useContentModel";
 import type { ContentPaint } from "./useContentPaint";
-import { ensureModel, stateModelKey, stateModelOf, type StateSel } from "./contentModel";
+import { ensureModel, MODEL, NEW_STATE_MODEL, STATE_PICK, stateModelKey, stateModelOf, type StateSel } from "./contentModel";
 import { blockItemRows } from "./properties/blockItem";
 import type { PropertiesContext } from "./properties/context";
 import { generalRows } from "./properties/general";
@@ -102,10 +102,10 @@ export function useContentCommands(props: EditorProps, m: ContentModel, pt: Cont
     setStateSel(picked);
     setSelected(null);
     setFace(null);
-    if (picked.kind === "model") {
+    if (picked.kind === STATE_PICK.model) {
       setModelKey(stateModelKey(picked.key));
       if (shownVariant && variantModelKey(shownVariant.models) !== stateModelKey(picked.key)) setPreviewState(null);
-    } else if (picked.kind === "variant") {
+    } else if (picked.kind === STATE_PICK.variant) {
       // The state it's for: its conditions over the default state.
       showState(Object.fromEntries(parseVariantKey(picked.key)));
     }
@@ -127,7 +127,7 @@ export function useContentCommands(props: EditorProps, m: ContentModel, pt: Cont
     });
     if (!name) return;
     editStates((st) => void (st.properties = { ...(st.properties ?? {}), [name]: [...YES_NO] }));
-    pickState({ kind: "property", key: name });
+    pickState({ kind: STATE_PICK.property, key: name });
   };
 
   /** A new state model, a copy of the block's model; edited in the view next. */
@@ -136,13 +136,13 @@ export function useContentCommands(props: EditorProps, m: ContentModel, pt: Cont
       title: t("Add State Model"),
       message: t("Another model of the block, for the states its variants pick. It starts as a copy of the block's model."),
       label: t("Name"),
-      defaultValue: freeName("variant", stateModelNames),
+      defaultValue: freeName(NEW_STATE_MODEL, stateModelNames),
       confirmLabel: t("Add"),
       validate: (v) => (!isWord(v) ? t("Lowercase letters, digits and _.") : stateModelNames.includes(v) ? t("The block already has a model of this name.") : null),
     });
     if (!name) return;
     editStates((st) => void (st.models = { ...(st.models ?? {}), [name]: stateModelFrom(file.model) }));
-    pickState({ kind: "model", key: name });
+    pickState({ kind: STATE_PICK.model, key: name });
   };
 
   /** A new variant for the first condition none has yet; a state model made for it if there's none. */
@@ -153,12 +153,12 @@ export function useContentCommands(props: EditorProps, m: ContentModel, pt: Cont
       return;
     }
     const current = stateModelOf(effectiveKey);
-    const name = current ?? stateModelNames[0] ?? "variant";
+    const name = current ?? stateModelNames[0] ?? NEW_STATE_MODEL;
     editStates((st) => {
       if (!st.models?.[name]) st.models = { ...(st.models ?? {}), [name]: stateModelFrom(file.model) };
       st.variants = { ...(st.variants ?? {}), [key]: name };
     });
-    setStateSel({ kind: "variant", key });
+    setStateSel({ kind: STATE_PICK.variant, key });
     setPreviewState(Object.fromEntries(parseVariantKey(key)));
     setModelKey(stateModelKey(name));
     setSelected(null);
@@ -167,11 +167,11 @@ export function useContentCommands(props: EditorProps, m: ContentModel, pt: Cont
 
   const removeStateItem = (picked: StateSel) => {
     editStates((st, d) => {
-      if (picked.kind === "property") removeProperty(st, d.block, picked.key);
-      else if (picked.kind === "model") removeModel(st, picked.key);
+      if (picked.kind === STATE_PICK.property) removeProperty(st, d.block, picked.key);
+      else if (picked.kind === STATE_PICK.model) removeModel(st, picked.key);
       else if (st.variants) delete st.variants[picked.key];
     });
-    if (picked.kind === "model" && effectiveKey === stateModelKey(picked.key)) setModelKey("model");
+    if (picked.kind === STATE_PICK.model && effectiveKey === stateModelKey(picked.key)) setModelKey(MODEL.main);
     setStateSel(null);
   };
 
@@ -274,7 +274,7 @@ export function useContentCommands(props: EditorProps, m: ContentModel, pt: Cont
     // A picked property, state model or variant is the object shown: its rows (a model's with its model's).
     if (kind === KIND.BLOCK && pickedState && states) {
       const file = new Set([t("General"), t("Block"), t("Item"), t("States")]);
-      return out.filter((r) => !file.has(r.category ?? "") && (pickedState.kind === "model" || /^s[pmv]\./.test(r.id)));
+      return out.filter((r) => !file.has(r.category ?? "") && (pickedState.kind === STATE_PICK.model || /^s[pmv]\./.test(r.id)));
     }
     return out;
     // `t` and the helpers read fresh state each render.

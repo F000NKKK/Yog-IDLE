@@ -33,10 +33,17 @@ export interface PotionEffectRow extends Record<string, unknown> {
   amplifier?: number;
 }
 
-/** Which model of the file is being edited: the block's or item's, its item form's, the connection arm, or a state model (`states.models`). */
-export type ModelKey = "model" | "item_model" | "arm" | `state:${string}`;
+/** The file's own models: the block's or item's, its item form's, the connection arm. */
+export const MODEL = { main: "model", item: "item_model", arm: "arm" } as const;
 
+/** A new state model's name, before it's made unique. */
+export const NEW_STATE_MODEL = "variant";
+
+/** A state model's key prefix (`states.models`). */
 export const STATE_MODEL = "state:";
+
+/** Which model of the file is being edited: one of [`MODEL`], or a state model. */
+export type ModelKey = (typeof MODEL)[keyof typeof MODEL] | `${typeof STATE_MODEL}${string}`;
 export const stateModelKey = (name: string): ModelKey => `${STATE_MODEL}${name}`;
 /** The state model's name a key stands for, if it's one. */
 export const stateModelOf = (key: ModelKey): string | null => (key.startsWith(STATE_MODEL) ? key.slice(STATE_MODEL.length) : null);
@@ -69,14 +76,14 @@ const MAX_TEXTURE_REFS = 16;
 export const isSpriteParent = (p?: string) => !!p && /(^|[:/])(generated|handheld)$|builtin\/generated/.test(p);
 
 export function modelOf(f: ContentFile, key: ModelKey): Model | undefined {
-  if (key === "arm") return f.states?.connect?.arm;
+  if (key === MODEL.arm) return f.states?.connect?.arm;
   const state = stateModelOf(key);
   if (state !== null) return f.states?.models?.[state];
-  return f[key as "model" | "item_model"];
+  return f[key as typeof MODEL.main | typeof MODEL.item];
 }
 
 export function ensureModel(f: ContentFile, key: ModelKey): Model {
-  if (key === "arm") {
+  if (key === MODEL.arm) {
     f.states ??= {};
     f.states.connect ??= { arm: {} };
     return f.states.connect.arm;
@@ -87,7 +94,7 @@ export function ensureModel(f: ContentFile, key: ModelKey): Model {
     f.states.models ??= {};
     return (f.states.models[state] ??= {});
   }
-  return (f[key as "model" | "item_model"] ??= {});
+  return (f[key as typeof MODEL.main | typeof MODEL.item] ??= {});
 }
 
 /** Every model of the file: the block's or item's, the item form's, the arm, the state models. */
@@ -130,9 +137,12 @@ export function resolve(model: Model | undefined, kind: "block" | "item", parent
   return { elements: [], textures: resolved, slots, own: !parent, display };
 }
 
+/** What can be picked in the outliner's States. */
+export const STATE_PICK = { property: "property", model: "model", variant: "variant" } as const;
+
 /** What's picked in the outliner's States. */
 export interface StateSel {
-  kind: "property" | "model" | "variant";
+  kind: (typeof STATE_PICK)[keyof typeof STATE_PICK];
   /** The property's, model's name; the variant's key. */
   key: string;
 }

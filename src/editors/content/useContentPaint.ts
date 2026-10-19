@@ -12,7 +12,7 @@ import { TYPED } from "../../data/yogFormat";
 import { kind as KIND, sep } from "../../data/yogIds.generated";
 import type { ContentModel } from "./useContentModel";
 import type { ContentTextures } from "./useContentTextures";
-import { ensureModel, LAYER, layerIndex, type LoadedTexture, stateModelOf } from "./contentModel";
+import { ensureModel, LAYER, layerIndex, type LoadedTexture, MODEL, stateModelOf } from "./contentModel";
 
 /** Painting textures in the view or the 2D canvas, and an item sprite's layers. */
 export function useContentPaint(props: EditorProps, m: ContentModel, tx: ContentTextures) {
@@ -57,7 +57,7 @@ export function useContentPaint(props: EditorProps, m: ContentModel, tx: Content
     const stem = (stemOf(path) || "texture").toLowerCase().replace(/[^a-z0-9_.-]/g, "_");
     const folder = modelKind === KIND.ITEM || resolved.sprite ? "item" : "block";
     const state = stateModelOf(effectiveKey);
-    const several = paintSlots.length > 1 || effectiveKey === "arm" || state !== null;
+    const several = paintSlots.length > 1 || effectiveKey === MODEL.arm || state !== null;
     const base = `${folder}/${stem}${state !== null ? `_${state}` : ""}${several ? `_${slot}` : ""}`;
     const taken = new Set([...choices.textures, ...Object.keys(editedRef.current), ...named]);
     const ref = (p: string) => `${TYPED}${KIND.TEXTURE}${sep.NAMESPACE}${choices.modId}${sep.NAMESPACE}${p}`;

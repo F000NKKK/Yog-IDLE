@@ -3,7 +3,7 @@
 import { type PropertyDescriptor, t } from "substrate-platform-ui";
 import { type ContentFile, FACING_LABELS, FACINGS, PLACEMENTS } from "../../../content/model";
 import { isWord, modelNames, modelNamesValue, parseVariantKey, PROPERTY_KIND_LABELS, PROPERTY_KINDS, propertyKind, type PropertyKind, propertyNameProblem, rangeValues, renameModel, renameProperty, setVariantKey, stateCount, statesShowing, valuesProblem, variantKey, variantProblems, withDefault, YES_NO } from "../../../content/states";
-import { ARM_TEMPLATE, stateModelKey } from "../contentModel";
+import { ARM_TEMPLATE, MODEL, STATE_PICK, stateModelKey } from "../contentModel";
 import { parseRotations, rotationsText } from "../fieldText";
 import type { PropertiesContext } from "./context";
 import { kind as KIND } from "../../../data/yogIds.generated";
@@ -54,7 +54,7 @@ export function stateRows(ctx: PropertiesContext, out: PropertyDescriptor[]): vo
             } else if (d.states) {
               delete d.states.connect;
               if (prune(d.states as Record<string, unknown>)) delete d.states;
-              if (modelKey === "arm") setModelKey("model");
+              if (modelKey === MODEL.arm) setModelKey(MODEL.main);
             }
           }),
       },
@@ -98,7 +98,7 @@ export function stateRows(ctx: PropertiesContext, out: PropertyDescriptor[]): vo
   // The property, state model or variant picked in the outliner.
   if (kind === KIND.BLOCK && pickedState && states) {
     const key = pickedState.key;
-    if (pickedState.kind === "property") {
+    if (pickedState.kind === STATE_PICK.property) {
       const c = `${t("State Property")}: ${key}`;
       const values = states.properties![key];
       const pk = propertyKind(values);
@@ -110,7 +110,7 @@ export function stateRows(ctx: PropertiesContext, out: PropertyDescriptor[]): vo
         text("sp.name", t("Name"), c, key, (v) => {
           if (!v || v === key) return;
           editStates((st, d) => renameProperty(st, d.block, key, v));
-          setStateSel({ kind: "property", key: v });
+          setStateSel({ kind: STATE_PICK.property, key: v });
         }, {
           validate: (v) => {
             const name = String(v).trim();
@@ -167,7 +167,7 @@ export function stateRows(ctx: PropertiesContext, out: PropertyDescriptor[]): vo
         description: pk === "bool" ? t("The value a placed block starts with. Powered and Comparator Property need false.") : t("The value a placed block starts with."),
         onCommit: (v) => setValues(withDefault(values, String(v))),
       });
-    } else if (pickedState.kind === "model") {
+    } else if (pickedState.kind === STATE_PICK.model) {
       const c = `${t("State Model")}: ${key}`;
       const users = Object.entries(states.variants ?? {})
         .filter(([, v]) => modelNames(v).includes(key))
@@ -176,7 +176,7 @@ export function stateRows(ctx: PropertiesContext, out: PropertyDescriptor[]): vo
         text("sm.name", t("Name"), c, key, (v) => {
           if (!v || v === key) return;
           editStates((st) => renameModel(st, key, v));
-          setStateSel({ kind: "model", key: v });
+          setStateSel({ kind: STATE_PICK.model, key: v });
           if (effectiveKey === stateModelKey(key)) setModelKey(stateModelKey(v));
         }, {
           validate: (v) => {
@@ -204,7 +204,7 @@ export function stateRows(ctx: PropertiesContext, out: PropertyDescriptor[]): vo
         if (next === key) return;
         if (states.variants && next in states.variants) return t("Another variant has these conditions.");
         editStates((st) => void setVariantKey(st, key, next));
-        setStateSel({ kind: "variant", key: next });
+        setStateSel({ kind: STATE_PICK.variant, key: next });
         setPreviewState(Object.fromEntries(parseVariantKey(next)));
       };
       for (const p of stateProps) {

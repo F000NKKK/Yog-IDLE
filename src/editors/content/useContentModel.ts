@@ -12,7 +12,7 @@ import { type BlockState, defaultState, stateProperties, variantOf } from "../..
 import { useContentRefs } from "../../data/contentRefs";
 import { useTyped } from "../../data/typed";
 import { useDataFile } from "../../data/useDataFile";
-import { type AnimationEdit, type BuiltInBlockKind, type Choices, type Edited, ensureModel, type LoadedTexture, type ModelKey, modelOf, NO_CHOICES, type ParentModel, resolve, stateModelKey, type StateSel } from "./contentModel";
+import { type AnimationEdit, type BuiltInBlockKind, type Choices, type Edited, ensureModel, type LoadedTexture, MODEL, type ModelKey, modelOf, NO_CHOICES, type ParentModel, resolve, STATE_PICK, stateModelKey, type StateSel } from "./contentModel";
 import { kind as KIND } from "../../data/yogIds.generated";
 
 /** The file, the model edited, what's selected and shown, and the edits — the .yblock/.yitem editor's state. */
@@ -26,7 +26,7 @@ export function useContentModel(props: EditorProps) {
   const { parsed, update: updateFile } = useDataFile(content, onChange, CONTENT_FORMAT, readOnly);
   const file = useMemo<ContentFile>(() => (parsed?.ok ? parsed.file : {}), [parsed]);
 
-  const [modelKey, setModelKey] = useState<ModelKey>("model");
+  const [modelKey, setModelKey] = useState<ModelKey>(MODEL.main);
   const [selected, setSelected] = useState<number | null>(null);
   const [face, setFace] = useState<Dir | null>(null);
   const [gizmo, setGizmo] = useState<GizmoMode>("move");
@@ -81,9 +81,9 @@ export function useContentModel(props: EditorProps) {
   const [playing, setPlaying] = useState(false);
 
   // A model key that no longer exists (the arm removed, say) → the main model.
-  const effectiveKey: ModelKey = modelOf(file, modelKey) || modelKey === "model" ? modelKey : "model";
+  const effectiveKey: ModelKey = modelOf(file, modelKey) || modelKey === MODEL.main ? modelKey : MODEL.main;
   const model = modelOf(file, effectiveKey);
-  const modelKind: Kind = effectiveKey === "item_model" || kind === KIND.ITEM ? "item" : "block";
+  const modelKind: Kind = effectiveKey === MODEL.item || kind === KIND.ITEM ? "item" : "block";
   const resolved = useMemo(() => resolve(model, modelKind, parents), [model, modelKind, parents]);
   const mainResolved = useMemo(() => resolve(file.model, kind, parents), [file.model, kind, parents]);
   useEffect(() => {
@@ -126,12 +126,12 @@ export function useContentModel(props: EditorProps) {
   }, [previewState, stateProps]);
   const shownVariant = useMemo(() => (shownState ? variantOf(states, shownState) : null), [shownState, states]);
   /** The model a variant's first model name is (the block's own when it names none or one that isn't there). */
-  const variantModelKey = (models: string[]): ModelKey => (models[0] && states?.models?.[models[0]] ? stateModelKey(models[0]) : "model");
+  const variantModelKey = (models: string[]): ModelKey => (models[0] && states?.models?.[models[0]] ? stateModelKey(models[0]) : MODEL.main);
   const pickedState: StateSel | null =
     stateSel &&
-    ((stateSel.kind === "property" && states?.properties?.[stateSel.key]) ||
-      (stateSel.kind === "model" && states?.models?.[stateSel.key]) ||
-      (stateSel.kind === "variant" && states?.variants && stateSel.key in states.variants))
+    ((stateSel.kind === STATE_PICK.property && states?.properties?.[stateSel.key]) ||
+      (stateSel.kind === STATE_PICK.model && states?.models?.[stateSel.key]) ||
+      (stateSel.kind === STATE_PICK.variant && states?.variants && stateSel.key in states.variants))
       ? stateSel
       : null;
 
