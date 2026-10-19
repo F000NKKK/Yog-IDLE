@@ -1,3 +1,4 @@
+import { resKind } from "../data/yogIds.generated";
 import { useEffect, useRef, useState } from "react";
 import { Icon, useT } from "substrate-platform-ui";
 import { sep, typed } from "../data/yogIds.generated";
@@ -23,7 +24,7 @@ function sizeText(n: number): string {
  * its size in pixels and bytes), a sound (a play button), a file (its size)
  * — not its base64.
  */
-export function MediaValue({ type, value }: { type: "image" | "sound" | "file"; value: string }) {
+export function MediaValue({ type, value }: { type: typeof resKind.IMAGE | typeof resKind.SOUND | typeof resKind.FILE; value: string }) {
   const t = useT();
   const b64 = value.startsWith(BYTES) ? value.slice(BYTES.length) : null;
   const [dims, setDims] = useState<string | null>(null);
@@ -32,7 +33,7 @@ export function MediaValue({ type, value }: { type: "image" | "sound" | "file"; 
   useEffect(() => () => audio.current?.pause(), []);
   if (b64 === null) return <span className="yres-value yres-na">{t("no bytes")}</span>;
   const size = sizeText(decodedSize(b64));
-  if (type === "image") {
+  if (type === resKind.IMAGE) {
     // The webview reads the picture's own format whatever the type says.
     const src = `data:image/png;base64,${b64}`;
     return (
@@ -42,7 +43,7 @@ export function MediaValue({ type, value }: { type: "image" | "sound" | "file"; 
       </span>
     );
   }
-  if (type === "sound") {
+  if (type === resKind.SOUND) {
     const toggle = (e: React.MouseEvent) => {
       e.stopPropagation();
       if (playing) {

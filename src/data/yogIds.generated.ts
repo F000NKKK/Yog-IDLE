@@ -70,6 +70,16 @@ export const typed = {
   BYTES: "bytes",
 } as const;
 
+export const resKind = {
+  STRING: "string",
+  IMAGE: "image",
+  FILE: "file",
+  SOUND: "sound",
+  COLOR: "color",
+  NUMBER: "number",
+  BOOL: "bool",
+} as const;
+
 export const imageScheme = {
   ITEM: "item",
   BLOCK: "block",

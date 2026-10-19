@@ -1,3 +1,4 @@
+import { resKind } from "../data/yogIds.generated";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import {
@@ -190,7 +191,7 @@ export function YresEditor({ path, content, onChange, readOnly }: EditorProps) {
   }, [entries, query, shownSiblings]);
 
   const newRow = useMemo<Row[]>(
-    () => (readOnly ? [] : [{ id: NEW_ROW_ID, index: -1, name: "", type: "string", value: "", comment: "", isNew: true }]),
+    () => (readOnly ? [] : [{ id: NEW_ROW_ID, index: -1, name: "", type: resKind.STRING, value: "", comment: "", isNew: true }]),
     [readOnly]
   );
 
@@ -209,12 +210,12 @@ export function YresEditor({ path, content, onChange, readOnly }: EditorProps) {
 
   const valueIssue = (row: Row): string | undefined => {
     if (row.isNew) return undefined;
-    if (isCulture && row.type !== "string") return t("A language file holds texts only.");
+    if (isCulture && row.type !== resKind.STRING) return t("A language file holds texts only.");
     // The CLI's check — the build's own.
     return row.valueProblem;
   };
 
-  const untranslated = (row: Row, s: Sibling) => !!s.entries && s.locale !== null && row.type === "string" && !s.texts.get(row.name);
+  const untranslated = (row: Row, s: Sibling) => !!s.entries && s.locale !== null && row.type === resKind.STRING && !s.texts.get(row.name);
 
   const errors = rows.reduce((n, r) => n + (nameProblem(r) || valueIssue(r) ? 1 : 0), 0);
   const missing = showAll
@@ -237,20 +238,20 @@ export function YresEditor({ path, content, onChange, readOnly }: EditorProps) {
     if (readOnly) return;
     if (column.startsWith(CULTURE_COLUMN)) {
       const sibling = siblings.find((s) => columnOf(s.locale) === column);
-      if (!sibling?.entries || !editableSibling(sibling) || row.isNew || row.type !== "string") return;
+      if (!sibling?.entries || !editableSibling(sibling) || row.isNew || row.type !== resKind.STRING) return;
       if ((sibling.texts.get(row.name) ?? "") === text) return;
       const has = sibling.entries.some((e) => e.name === row.name);
       void writeSibling(
         sibling,
         has
           ? sibling.entries.map((e) => (e.name === row.name ? { ...e, value: text } : e))
-          : [...sibling.entries, { name: row.name, type: "string", value: text }]
+          : [...sibling.entries, { name: row.name, type: resKind.STRING, value: text }]
       );
       return;
     }
     if (row.isNew) {
       if (text === "") return;
-      const created: YresEntry = { name: "", type: "string", value: "" };
+      const created: YresEntry = { name: "", type: resKind.STRING, value: "" };
       if (column === "name") created.name = text.trim();
       else if (column === "value") created.value = text;
       else if (column === "comment") created.comment = text;
@@ -270,15 +271,15 @@ export function YresEditor({ path, content, onChange, readOnly }: EditorProps) {
       next = { ...entry, name };
       if (showAll && !isCulture && name !== "" && !nameCounts.counts.has(name)) renameInSiblings(entry.name, name);
     } else if (column === "value") {
-      const value = entry.type === "number" || entry.type === "bool" ? coerceValue(entry.type, text) : text;
+      const value = entry.type === resKind.NUMBER || entry.type === resKind.BOOL ? coerceValue(entry.type, text) : text;
       if (value === entry.value) return;
       next = { ...entry, value };
     } else if (column === "type") {
       if (!(RESOURCE_TYPES as readonly string[]).includes(text) || text === entry.type) return;
       const type = text as ResourceType;
       next = { ...entry, type, value: coerceValue(type, entry.value) };
-      if (type !== "string") delete next.key;
-      if (type !== "sound") {
+      if (type !== resKind.STRING) delete next.key;
+      if (type !== resKind.SOUND) {
         delete next.event;
         delete next.subtitle;
       }
@@ -348,7 +349,7 @@ export function YresEditor({ path, content, onChange, readOnly }: EditorProps) {
       const name = (cells[0] ?? "").trim();
       if (!name) continue;
       const typed = (RESOURCE_TYPES as readonly string[]).includes(cells[2] ?? "");
-      const type = (typed ? cells[2] : "string") as ResourceType;
+      const type = (typed ? cells[2] : resKind.STRING) as ResourceType;
       const comment = typed ? cells[3] : cells[2];
       const at = next.findIndex((e) => e.name === name);
       const entry: YresEntry = { ...(at >= 0 ? next[at] : {}), name, type, value: coerceValue(type, cells[1] ?? "") };
@@ -382,8 +383,8 @@ export function YresEditor({ path, content, onChange, readOnly }: EditorProps) {
     const source = isCulture ? (neutral?.entries ?? []) : entries;
     const seen = new Set<string>();
     const texts = source
-      .filter((e) => e.type === "string" && e.name && !seen.has(e.name) && seen.add(e.name))
-      .map((e): YresEntry => ({ name: e.name, type: "string", value: "" }));
+      .filter((e) => e.type === resKind.STRING && e.name && !seen.has(e.name) && seen.add(e.name))
+      .map((e): YresEntry => ({ name: e.name, type: resKind.STRING, value: "" }));
     try {
       await files.write(target, await serializeYres(texts));
     } catch (err) {
@@ -405,9 +406,9 @@ export function YresEditor({ path, content, onChange, readOnly }: EditorProps) {
   /** A file picked from disk, taken into the entry by the CLI (`media.import`): its `@bytes:` value. */
   async function pickFile(row: Row): Promise<string | null> {
     const filters =
-      row.type === "image"
+      row.type === resKind.IMAGE
         ? [{ name: t("Images"), extensions: IMAGE_EXTENSIONS }]
-        : row.type === "sound"
+        : row.type === resKind.SOUND
           ? [{ name: t("Ogg Vorbis Sounds"), extensions: ["ogg"] }]
           : undefined;
     const picked = await openDialog({ defaultPath: dir, multiple: false, directory: false, filters });
@@ -462,18 +463,18 @@ export function YresEditor({ path, content, onChange, readOnly }: EditorProps) {
     if (row.isNew) return null;
     const v = row.value;
     switch (row.type) {
-      case "color":
+      case resKind.COLOR:
         return (
           <span className="yres-value">
             <span className="yres-swatch" style={{ background: cssColor(row.argb) }} />
             <span className="yres-mono">{String(v)}</span>
           </span>
         );
-      case "image":
-      case "sound":
-      case "file":
+      case resKind.IMAGE:
+      case resKind.SOUND:
+      case resKind.FILE:
         return <MediaValue type={row.type} value={String(v)} />;
-      case "bool":
+      case resKind.BOOL:
         return (
           <input
             type="checkbox"
@@ -485,7 +486,7 @@ export function YresEditor({ path, content, onChange, readOnly }: EditorProps) {
             onChange={(e) => commitCell(row, "value", String(e.target.checked))}
           />
         );
-      case "number":
+      case resKind.NUMBER:
         return <span className="yres-mono">{String(v)}</span>;
       default:
         return String(v);
@@ -494,14 +495,14 @@ export function YresEditor({ path, content, onChange, readOnly }: EditorProps) {
 
   function renderValueEdit(row: Row, commit: (value: string, move?: "down" | "next" | "prev") => void, cancel: () => void, initial?: string) {
     const value = String(row.value);
-    switch (row.isNew ? "string" : row.type) {
-      case "bool":
+    switch (row.isNew ? resKind.STRING : row.type) {
+      case resKind.BOOL:
         return <ImmediateCommit run={() => commit(String(row.value !== true))} />;
-      case "color":
+      case resKind.COLOR:
         return <ColorEdit value={value} argb={row.argb} initial={initial} commit={commit} cancel={cancel} />;
-      case "image":
-      case "file":
-      case "sound":
+      case resKind.IMAGE:
+      case resKind.FILE:
+      case resKind.SOUND:
         return <CellInput value={value} initial={initial} commit={commit} cancel={cancel} browse={() => pickFile(row)} browseTitle={t("Browse…")} />;
       default:
         return <CellInput value={value} initial={initial} commit={commit} cancel={cancel} />;
@@ -511,7 +512,7 @@ export function YresEditor({ path, content, onChange, readOnly }: EditorProps) {
   // ── Columns ──────────────────────────────────────────────────────────────
 
   const columns = useMemo<DataGridColumn<Row>[]>(() => {
-    const textOf = (s: Sibling) => (r: Row) => (r.type === "string" ? (s.texts.get(r.name) ?? "") : "");
+    const textOf = (s: Sibling) => (r: Row) => (r.type === resKind.STRING ? (s.texts.get(r.name) ?? "") : "");
     const cultureColumns: DataGridColumn<Row>[] = shownSiblings.map((s) => ({
       key: columnOf(s.locale),
       header: `${s.locale === null ? t("Neutral") : s.locale}${s.entries ? "" : ` (${t("invalid")})`}`,
@@ -521,8 +522,8 @@ export function YresEditor({ path, content, onChange, readOnly }: EditorProps) {
       editable: editableSibling(s),
       editValue: textOf(s),
       renderEdit: (r, commit, cancel, initial) =>
-        r.isNew || r.type !== "string" ? <ImmediateCommit run={cancel} /> : <CellInput value={textOf(s)(r)} initial={initial} commit={commit} cancel={cancel} />,
-      render: (r) => (r.isNew ? "" : r.type === "string" ? textOf(s)(r) : <span className="yres-na">—</span>),
+        r.isNew || r.type !== resKind.STRING ? <ImmediateCommit run={cancel} /> : <CellInput value={textOf(s)(r)} initial={initial} commit={commit} cancel={cancel} />,
+      render: (r) => (r.isNew ? "" : r.type === resKind.STRING ? textOf(s)(r) : <span className="yres-na">—</span>),
     }));
     return [
       {
@@ -616,7 +617,7 @@ export function YresEditor({ path, content, onChange, readOnly }: EditorProps) {
           cellClassName={(r, column) => {
             if (column === "name") return nameProblem(r) ? "yres-invalid" : undefined;
             if (r.isNew) return undefined;
-            if (column === "value") return valueIssue(r) ? "yres-invalid" : r.type === "string" && r.value === "" ? "yres-missing" : undefined;
+            if (column === "value") return valueIssue(r) ? "yres-invalid" : r.type === resKind.STRING && r.value === "" ? "yres-missing" : undefined;
             if (column.startsWith(CULTURE_COLUMN)) {
               const s = shownSiblings.find((x) => columnOf(x.locale) === column);
               return s && untranslated(r, s) ? "yres-missing" : undefined;

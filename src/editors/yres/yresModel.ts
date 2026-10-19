@@ -1,6 +1,7 @@
 // The resource editor's model: the set's other files, grid rows, column ids,
 // type labels, clipboard cells, colors.
 
+import { resKind } from "../../data/yogIds.generated";
 import { NEUTRAL_LOCALE, type ResourceType, type YresEntry } from "../../lang/yres";
 
 /** Another file of the same resource set — the neutral one or a culture variant: a column of texts. */
@@ -35,13 +36,13 @@ export const CULTURE_COLUMN = "loc:";
 export const SHOW_ALL_KEY = "yog.yres.showAllLanguages";
 
 export const TYPE_LABELS: Record<ResourceType, string> = {
-  string: "Text",
-  image: "Image",
-  file: "File",
-  sound: "Sound",
-  color: "Color",
-  number: "Number",
-  bool: "Boolean",
+  [resKind.STRING]: "Text",
+  [resKind.IMAGE]: "Image",
+  [resKind.FILE]: "File",
+  [resKind.SOUND]: "Sound",
+  [resKind.COLOR]: "Color",
+  [resKind.NUMBER]: "Number",
+  [resKind.BOOL]: "Boolean",
 };
 
 /** Tab-separated rows for the clipboard; tabs, newlines and backslashes escaped. */

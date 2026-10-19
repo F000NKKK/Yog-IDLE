@@ -5,9 +5,11 @@
  */
 
 import { cli } from "../cli";
+import { resKind } from "../data/yogIds.generated";
 
-export const RESOURCE_TYPES = ["string", "image", "file", "sound", "color", "number", "bool"] as const;
-export type ResourceType = (typeof RESOURCE_TYPES)[number];
+/** A `.yres` entry's type (yog-ids' `res_kind`). */
+export type ResourceType = (typeof resKind)[keyof typeof resKind];
+export const RESOURCE_TYPES: readonly ResourceType[] = Object.values(resKind);
 
 export interface YresEntry {
   name: string;
@@ -86,14 +88,14 @@ export const DEFAULT_COLOR = "#FFFFFFFF";
 /** A value of `type` converted from `value` (when the type of an entry changes, or from typed text). */
 export function coerceValue(type: ResourceType, value: string | number | boolean): string | number | boolean {
   switch (type) {
-    case "number": {
+    case resKind.NUMBER: {
       if (typeof value === "number") return value;
       const n = Number(String(value).trim());
       return String(value).trim() !== "" && Number.isFinite(n) ? n : 0;
     }
-    case "bool":
+    case resKind.BOOL:
       return typeof value === "boolean" ? value : /^(true|1|yes)$/i.test(String(value).trim());
-    case "color":
+    case resKind.COLOR:
       // Kept as typed: the CLI says whether it's a color (`valueProblem`).
       return typeof value === "string" && value.trim() ? value : DEFAULT_COLOR;
     default:
