@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { formatShortcut, getEditorView, Icon, IconButton, invokeCommand, openFile, QuickPick, type QuickPickFilter, type QuickPickItem, revealLine, SymbolIcon, useT } from "substrate-platform-ui";
+import { bufferText, formatShortcut, getEditorView, Icon, IconButton, invokeCommand, openFile, QuickPick, type QuickPickFilter, type QuickPickItem, revealLine, SymbolIcon, useT } from "substrate-platform-ui";
 import { useActiveFileTab, useOpenFiles } from "../OpenFilesContext";
 import { useProject } from "../ProjectContext";
-import { bufferText } from "./FindInFilesWindow";
 import { searchDrafts, useSearchUi } from "./searchUi";
 import "./search.css";
 import { yog } from "../host.generated";

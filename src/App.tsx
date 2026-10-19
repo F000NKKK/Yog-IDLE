@@ -42,6 +42,11 @@ import {
   useWorkflowRunner,
   WindowControls,
   WorkspaceProvider,
+  FIND_IN_FILES_PANEL,
+  FIND_RESULTS_PANEL,
+  FindHost,
+  FindInFilesWindow,
+  FindResultsPanel,
 } from "substrate-platform-ui";
 import type { PanelDef, SettingsSection } from "substrate-platform-ui";
 
@@ -64,15 +69,7 @@ import { EVENT, listenAll, listenTo } from "./events";
 import { useHotReload } from "./useHotReload";
 import { EditMenu, EditorKeybindings, editorToolbarSections, useEditorActions, type EditorActions } from "./EditorActions";
 import { OpenFilesPersistence } from "./OpenFilesPersistence";
-import {
-  CODE_SEARCH_PANEL,
-  CodeSearchPanel,
-  FIND_IN_FILES_PANEL,
-  FIND_RESULTS_PANEL,
-  FindInFilesWindow,
-  FindResultsPanel,
-  SearchHost,
-} from "./search/SearchHost";
+import { CODE_SEARCH_PANEL, CodeSearchPanel, SearchHost } from "./search/SearchHost";
 import { ViewMenu } from "./ViewMenu";
 import { BuildSettingsPage, BuildSettingsSync, buildSettingsKeywords } from "./tools/BuildSettings";
 import { missingTools, openInstaller, toolsStatus } from "./tools/toolsStore";
@@ -83,7 +80,7 @@ import { BuildDiagnosticsSync } from "./diagnostics/buildDiagnostics";
 import { OutputSourceSync } from "./outputSource";
 
 import { OpenWithPickerHost } from "./OpenWithPicker";
-import { SourceControl } from "./SourceControl";
+import { IdeHost } from "./IdeHost";
 import "./App.css";
 import { runModCommand } from "./runModCommand";
 import { yog } from "./host.generated";
@@ -474,6 +471,7 @@ function ShellChrome({ onOpenSettings, onOpenPublish, run, onRunningChange }: Om
       <Toolbar leading={<RunToolbar onRunningChange={onRunningChange} />} sections={[...editorToolbarSections(editor), ...runToolbarSections(run)]} />
       <EditorKeybindings actions={editor} />
       <ExplorerKeybindings />
+      <FindHost />
       <SearchHost />
       <GitHost />
       <OpenWithPickerHost />
@@ -598,13 +596,13 @@ function AppWithProviders() {
     <ProjectProvider>
       <ProjectWorkspace>
         <OpenFilesProvider>
-          <SourceControl>
+          <IdeHost>
             <BreakpointsProvider>
               <DebugSessionProvider>
                 <App />
               </DebugSessionProvider>
             </BreakpointsProvider>
-          </SourceControl>
+          </IdeHost>
         </OpenFilesProvider>
       </ProjectWorkspace>
     </ProjectProvider>

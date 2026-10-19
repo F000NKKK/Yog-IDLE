@@ -30,13 +30,14 @@ import {
   useDocumentCommands,
   useDocumentHistory,
   useEditorView,
+  openFindInFiles,
   useKeybinding,
   useT,
   withShortcut,
 } from "substrate-platform-ui";
 import { useActiveFileTab, useOpenFiles } from "./OpenFilesContext";
 
-import { openCodeSearch, openFindInFiles } from "./search/searchUi";
+import { openCodeSearch } from "./search/searchUi";
 import { formatYui } from "./designer/yuiText";
 import { yog } from "./host.generated";
 

@@ -1,18 +1,19 @@
 import { useMemo, type ReactNode } from "react";
 import { open } from "@tauri-apps/plugin-dialog";
-import { SourceControlProvider, type SourceControlHost } from "substrate-platform-ui";
+import { IdeHostProvider, type IdeHost as Host } from "substrate-platform-ui";
 import { useOpenFiles } from "./OpenFilesContext";
 import { useProject } from "./ProjectContext";
 
-/** Source Control (Substrate's) over Yog IDLE's project and open files. */
-export function SourceControl({ children }: { children: ReactNode }) {
+/** Substrate's modules (Source Control, Find in Files) over Yog IDLE's project and open files. */
+export function IdeHost({ children }: { children: ReactNode }) {
   const { project, openPath } = useProject();
-  const { tabs, recheckDisk, confirmUnsaved } = useOpenFiles();
+  const { tabs, updateContent, recheckDisk, confirmUnsaved } = useOpenFiles();
   const root = project?.root ?? null;
-  const host = useMemo<SourceControlHost>(
+  const host = useMemo<Host>(
     () => ({
       root,
-      openFiles: tabs,
+      documents: tabs,
+      setText: updateContent,
       reloadFromDisk: () => recheckDisk(),
       confirmUnsaved,
       openFolder: (folder) => openPath(folder, "folder"),
@@ -21,7 +22,7 @@ export function SourceControl({ children }: { children: ReactNode }) {
         return typeof folder === "string" ? folder : null;
       },
     }),
-    [root, tabs, recheckDisk, confirmUnsaved, openPath],
+    [root, tabs, updateContent, recheckDisk, confirmUnsaved, openPath],
   );
-  return <SourceControlProvider host={host}>{children}</SourceControlProvider>;
+  return <IdeHostProvider host={host}>{children}</IdeHostProvider>;
 }

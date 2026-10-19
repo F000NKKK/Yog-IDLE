@@ -1,26 +1,22 @@
 import { useEffect } from "react";
-import { useKeybinding, useShell } from "substrate-platform-ui";
+import { useFindRequest, useKeybinding, useShell } from "substrate-platform-ui";
 import { CodeSearch } from "./CodeSearch";
-import { CODE_SEARCH_PANEL, FIND_IN_FILES_PANEL, openCodeSearch, openFindInFiles, showCodeSearchPopup, useSearchUi } from "./searchUi";
+import { CODE_SEARCH_PANEL, openCodeSearch, showCodeSearchPopup, useSearchUi } from "./searchUi";
 
 /**
- * Find in Files (Ctrl+Shift+F), Replace in Files (Ctrl+Shift+H) and Code
- * Search (Ctrl+T, Ctrl+,) — their keybindings, and bringing up their
- * windows: Find and Replace is a tool window (floating at first, dockable
- * like any other), Code Search a popup unless it's been docked.
+ * Code Search (Ctrl+T, Ctrl+,) — its keybinding, and bringing it up: a
+ * popup unless it's been docked. Find in Files is Substrate's (`FindHost`).
  */
 export function SearchHost() {
   const ui = useSearchUi();
   const shell = useShell();
-  useKeybinding("Ctrl+Shift+F", () => openFindInFiles("find"), { id: "edit.findInFiles" });
-  useKeybinding("Ctrl+Shift+H", () => openFindInFiles("replace"), { id: "edit.replaceInFiles" });
+  const findRequest = useFindRequest();
   useKeybinding(["Ctrl+T", "Ctrl+,"], () => openCodeSearch(), { id: "edit.codeSearch" });
 
+  // Find in Files takes over from the popup.
   useEffect(() => {
-    if (ui.find) shell.showToolWindow(FIND_IN_FILES_PANEL);
-    // Only on a new request.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ui.find?.seq]);
+    if (findRequest) showCodeSearchPopup(false);
+  }, [findRequest]);
 
   useEffect(() => {
     if (!ui.codeSearch) return;
@@ -41,8 +37,5 @@ export function SearchHost() {
   ) : null;
 }
 
-export { FIND_IN_FILES_PANEL, CODE_SEARCH_PANEL } from "./searchUi";
-export { FindResultsPanel } from "./FindResultsPanel";
-export { FindInFilesWindow } from "./FindInFilesWindow";
+export { CODE_SEARCH_PANEL } from "./searchUi";
 export { CodeSearchPanel } from "./CodeSearch";
-export { FIND_RESULTS_PANEL } from "./FindInFilesWindow";
