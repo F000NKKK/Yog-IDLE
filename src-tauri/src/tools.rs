@@ -64,9 +64,9 @@ pub fn load_settings_from(state_file: &Path) -> Settings {
         .unwrap_or_default()
 }
 
-/// `state.json` in the app config dir (Tauri's is `<config>/<identifier>`).
+/// The app's remembered state in its config dir (Tauri's is `<config>/<identifier>`).
 pub fn default_state_file(identifier: &str) -> Option<PathBuf> {
-    Some(dirs::config_dir()?.join(identifier).join("state.json"))
+    Some(dirs::config_dir()?.join(identifier).join(substrate_platform::state::APP_STATE_FILE))
 }
 
 /// This computer's `yog build` platform tag (`linux-x86_64`, ...), if yog builds for it.

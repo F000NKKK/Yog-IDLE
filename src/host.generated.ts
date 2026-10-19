@@ -53,10 +53,6 @@ export const yog = {
     cli: { plugin: "yog-code", command: "cli" },
   },
   app: {
-    workspaceLoad: { plugin: "yog-app", command: "workspace_load" },
-    workspaceSave: { plugin: "yog-app", command: "workspace_save" },
-    appStateLoad: { plugin: "yog-app", command: "app_state_load" },
-    appStateSave: { plugin: "yog-app", command: "app_state_save" },
     toolsSettingsSet: { plugin: "yog-app", command: "tools_settings_set" },
     toolsStatus: { plugin: "yog-app", command: "tools_status" },
     openInstaller: { plugin: "yog-app", command: "open_installer" },

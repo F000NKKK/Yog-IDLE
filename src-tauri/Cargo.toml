@@ -32,9 +32,9 @@ toml = "1"
 toml_edit = "0.25"
 # Where the Environment options and IDE-installed tools live.
 dirs = "7"
-substrate-platform = { path = "../../Substrate-Platform", features = ["fs", "git", "project", "run", "search"] }
+substrate-platform = { path = "../../Substrate-Platform", features = ["fs", "git", "project", "run", "search", "state"] }
 # Substrate's host commands (the workspace, Source Control), as its UI calls them.
-tauri-plugin-substrate = { path = "../../Substrate-Platform/tauri-plugin", features = ["fs", "git", "search", "terminal"] }
+tauri-plugin-substrate = { path = "../../Substrate-Platform/tauri-plugin", features = ["fs", "git", "search", "state", "terminal"] }
 tauri-plugin-window-state = "2"
 # Find in Files / Code Search (`search.rs`, `symbols.rs`): a .gitignore-aware
 # walk, the pattern engine, file-type masks, and the Rust symbol index

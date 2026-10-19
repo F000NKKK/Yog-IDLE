@@ -13,28 +13,12 @@ pub(super) struct PublishProfile {
     pub(super) dry_run: bool,
 }
 
-pub(super) fn publish_profiles_dir(project_root: &Path) -> PathBuf {
-    idle_dir(project_root).join("publish-profiles")
-}
+/// Publish profiles: local developer configuration (as Visual Studio's own
+/// PublishProfiles are), in IDLE's private folder of the project.
+const PROFILES_DIR: &str = "publish-profiles";
 
-/// Adds `.yog-idle/` to the project's `.gitignore` the first time a profile
-/// is saved — publish profiles are local developer configuration (the same
-/// reason people gitignore Visual Studio's own PublishProfiles), not
-/// something that belongs in version control by default.
-pub(super) fn ensure_gitignored(project_root: &Path) {
-    let gitignore_path = project_root.join(".gitignore");
-    let entry = format!("{}/", manifest::IDLE_DIR);
-    let existing = std::fs::read_to_string(&gitignore_path).unwrap_or_default();
-    if existing.lines().any(|line| line.trim() == entry) {
-        return;
-    }
-    let mut updated = existing;
-    if !updated.is_empty() && !updated.ends_with('\n') {
-        updated.push('\n');
-    }
-    updated.push_str(&entry);
-    updated.push('\n');
-    let _ = std::fs::write(&gitignore_path, updated);
+pub(super) fn publish_profiles_dir(project_root: &Path) -> PathBuf {
+    project_root.join(manifest::IDLE_DIR).join(PROFILES_DIR)
 }
 
 #[tauri::command]
@@ -69,15 +53,14 @@ pub(super) fn publish_profile_save(
 ) -> Result<(), String> {
     let root = PathBuf::from(&project_root);
     validate_within_roots(&state, &root)?;
+    substrate_platform::state::private_dir(&root.join(manifest::IDLE_DIR)).map_err(|m| m.to_string())?;
     let dir = publish_profiles_dir(&root);
     std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
     let path = dir.join(format!("{}.json", profile.id));
     // `id` is caller-supplied — a `../` in it must not escape the project.
     validate_within_roots(&state, &path)?;
     let json = serde_json::to_string_pretty(&profile).map_err(|e| e.to_string())?;
-    std::fs::write(path, json).map_err(|e| e.to_string())?;
-    ensure_gitignored(&root);
-    Ok(())
+    std::fs::write(path, json).map_err(|e| e.to_string())
 }
 
 #[tauri::command]

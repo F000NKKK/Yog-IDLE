@@ -12,8 +12,7 @@ pub mod plugins;
 mod path_commands;
 use path_commands::*;
 mod project_commands;
-mod state_files;
-use state_files::*;
+mod app_commands;
 mod format;
 mod workflow;
 use workflow::*;
@@ -53,7 +52,10 @@ pub fn run() -> tauri::Result<()> {
 
     let builder = tauri::Builder::default()
         // Substrate's own commands (the workspace, Source Control): what its UI calls.
-        .plugin(tauri_plugin_substrate::init_with(tauri_plugin_substrate::Options { search: manifest::SEARCH_LAYOUT.clone() }))
+        .plugin(tauri_plugin_substrate::init_with(tauri_plugin_substrate::Options {
+            search: manifest::SEARCH_LAYOUT.clone(),
+            state: Some(tauri_plugin_substrate::StateOptions { project_dir: manifest::IDLE_DIR.to_string() }),
+        }))
         .plugin(tauri_plugin_dialog::init())
         // Window size/position/maximized, restored on launch and saved on
         // close (into the app config dir). Not visibility or decorations —
