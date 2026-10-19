@@ -6,6 +6,7 @@ import { cropFrame, pasteFrame, sameAnimation, stillAnimation, type TextureAnima
 import { FrameStrip } from "../content/paint/FrameStrip";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  belowButton,
   Button,
   confirmDialog,
   ContextMenu,
@@ -38,7 +39,6 @@ import {
   useT,
   withShortcut,
 } from "substrate-platform-ui";
-import { belowButton } from "../git/dropdown";
 import { useOpenFiles } from "../OpenFilesContext";
 import { refMessage } from "./inspector";
 import { refProblem, refSuggestions, useContentRefs } from "../data/contentRefs";

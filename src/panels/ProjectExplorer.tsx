@@ -2,6 +2,9 @@ import { useEffect, useMemo, useRef, useState, type FocusEvent, type KeyboardEve
 import { invoke } from "@tauri-apps/api/core";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import {
+  changeKindLabel,
+  changeLetter,
+  type ChangeKind,
   confirmDialog,
   ContextMenu,
   type ContextMenuItem,
@@ -19,9 +22,12 @@ import {
   nestFiles,
   openFile,
   openPath,
+  refreshGit,
+  type RepoStatus,
   openTerminalIn,
   reportError,
   revealPath,
+  useGit,
   SearchField,
   t,
   Toolbar,
@@ -43,8 +49,6 @@ import { registerExplorerRename, renamePath, selectionPathRemoved, selectionPath
 import { NewItemDialog, templateFiles, type ItemTemplate } from "./NewItemDialog";
 import { files, readModId } from "../files";
 import { useFsChanged, useWatchedFolders } from "../fsWatch";
-import { refreshGit, useGit } from "../git/gitStore";
-import { changeKindLabel, changeLetter, type ChangeKind, type RepoStatus } from "../git/gitApi";
 import { boundCommands, commandLabel, explorerCommand, type ExplorerCommandId } from "./explorer/commands";
 import { PROJECT_EXPLORER_VIEW_PANEL, openExplorerView, useExplorerRequests, useExplorerView } from "./explorer/explorerBus";
 import { useContentMatches, useProjectItems } from "./explorer/projectItems";
@@ -61,7 +65,6 @@ import {
   withProjectItems,
   withResourceIcons,
 } from "./explorer/projectTree";
-import "../git/git.css";
 import "./explorer/explorer.css";
 
 /** A folder that failed to list stays unloaded in the tree (expanding it again retries) — say why in Output rather than only the devtools console. */
@@ -261,7 +264,7 @@ function ProjectExplorerTree({ project, initialScope, main = false }: { project:
       nodes,
       changed,
       (kind) => (
-        <span className={`idle-git-letter idle-git-kind-${kind}`} title={t(changeKindLabel(kind as ChangeKind))}>
+        <span className={`sp-git-letter sp-git-kind-${kind}`} title={t(changeKindLabel(kind as ChangeKind))}>
           {changeLetter(kind as ChangeKind)}
         </span>
       ),

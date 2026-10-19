@@ -12,7 +12,6 @@ import "./ru.documents";
 import "./ru.entity";
 import "./ru.environment";
 import "./ru.explorer";
-import "./ru.git";
 import "./ru.project";
 import "./ru.properties";
 import "./ru.recipe";

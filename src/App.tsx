@@ -6,13 +6,23 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import {
   AppearanceSettings,
   appearanceSettingsKeywords,
+  closeGitDocument,
   EditorSettings,
   editorSettingsKeywords,
+  GIT_CHANGES_PANEL,
+  GitChangesWindow,
+  GitHost,
+  GitMenu,
+  gitSettingsKeywords,
+  GitSettingsPage,
+  GitStatusBar,
   InternationalSettings,
   internationalSettingsKeywords,
+  isGitDocument,
   MenuBar,
   MenuBarItem,
   notify,
+  onOpenGitSettings,
   openFile,
   openLink,
   OutputWindow,
@@ -24,6 +34,7 @@ import {
   TerminalPanel,
   Toolbar,
   type ToolbarSection,
+  useGitPanels,
   useKeybinding,
   useLocale,
   useT,
@@ -71,14 +82,8 @@ import { ErrorListPanel } from "./panels/ErrorListPanel";
 import { BuildDiagnosticsSync } from "./diagnostics/buildDiagnostics";
 import { OutputSourceSync } from "./outputSource";
 
-import { GitChangesWindow, GIT_CHANGES_PANEL } from "./git/GitChangesWindow";
-import { GitHost } from "./git/GitHost";
 import { OpenWithPickerHost } from "./OpenWithPicker";
-import { GitMenu } from "./git/GitMenu";
-import { GitStatusBar } from "./git/GitStatusBar";
-import { GitSettingsPage, gitSettingsKeywords } from "./git/GitSettings";
-import { closeGitDocument, isGitDocument, useGitPanels } from "./git/gitDocuments";
-import { onOpenGitSettings } from "./git/gitStore";
+import { SourceControl } from "./SourceControl";
 import "./App.css";
 
 // Everything below is Yog-IDLE-specific: which panels exist, where they
@@ -590,11 +595,13 @@ function AppWithProviders() {
     <ProjectProvider>
       <WorkspaceProvider>
         <OpenFilesProvider>
-          <BreakpointsProvider>
-            <DebugSessionProvider>
-              <App />
-            </DebugSessionProvider>
-          </BreakpointsProvider>
+          <SourceControl>
+            <BreakpointsProvider>
+              <DebugSessionProvider>
+                <App />
+              </DebugSessionProvider>
+            </BreakpointsProvider>
+          </SourceControl>
         </OpenFilesProvider>
       </WorkspaceProvider>
     </ProjectProvider>
