@@ -20,6 +20,7 @@ registerTranslations(RU, {
   "Failed to delete {name}": "Не удалось удалить {name}",
   "Failed to rename {name}": "Не удалось переименовать {name}",
   "Couldn't copy to the clipboard: {error}": "Не удалось скопировать в буфер обмена: {error}",
+  "Couldn't list {path}: {error}": "Не удалось получить содержимое {path}: {error}",
   "A name can't be empty.": "Имя не может быть пустым.",
   "A name can't contain / or \\.": "Имя не может содержать / или \\.",
   "Not a valid name.": "Недопустимое имя.",
