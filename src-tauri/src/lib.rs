@@ -544,7 +544,7 @@ async fn format_supported(path: String) -> bool {
         return false;
     };
     tauri::async_runtime::spawn_blocking(move || {
-        std::process::Command::new(program)
+        substrate_platform::process::command(program)
             .arg("--version")
             .stdin(std::process::Stdio::null())
             .stdout(std::process::Stdio::null())
@@ -577,8 +577,8 @@ async fn format_document(path: String, contents: String) -> Result<String, Strin
         formatter_for(&target).ok_or_else(|| format!("no formatter for '{path}'"))?;
     tauri::async_runtime::spawn_blocking(move || {
         use std::io::Write;
-        use std::process::{Command, Stdio};
-        let mut command = Command::new(program);
+        use std::process::Stdio;
+        let mut command = substrate_platform::process::command(program);
         command
             .args(args)
             .stdin(Stdio::piped())

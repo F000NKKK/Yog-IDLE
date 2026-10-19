@@ -44,7 +44,7 @@ fn write_lock() -> std::sync::MutexGuard<'static, ()> {
 /// window on Windows. Its messages are always English (`LC_MESSAGES=C`, the
 /// rest of the locale kept) — what failed is recognized by them.
 fn git(dir: &Path) -> Command {
-    let mut cmd = Command::new("git");
+    let mut cmd = substrate_platform::process::command("git");
     cmd.current_dir(dir)
         .args(["-c", "core.quotepath=false", "-c", "color.ui=false"])
         .env_remove("LC_ALL")

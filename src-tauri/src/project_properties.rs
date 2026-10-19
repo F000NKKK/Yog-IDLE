@@ -441,7 +441,7 @@ pub fn search_crates(query: &str, mods: bool) -> Result<Vec<CrateHit>, String> {
         "https://crates.io/api/v1/crates?q={}&per_page=25",
         url_encode(q.trim())
     );
-    let out = std::process::Command::new("curl")
+    let out = substrate_platform::process::command("curl")
         .args([
             "-fsSL",
             "--max-time",

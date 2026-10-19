@@ -165,11 +165,11 @@ pub fn open_installer() -> Result<Option<&'static str>, String> {
         return Ok(Some(INSTALLER_RELEASES));
     };
     let mut cmd = if cfg!(target_os = "macos") {
-        let mut open = std::process::Command::new("open");
+        let mut open = substrate_platform::process::command("open");
         open.arg(&program);
         open
     } else {
-        std::process::Command::new(&program)
+        substrate_platform::process::command(&program)
     };
     cmd.spawn().map(|_| None).map_err(|e| format!("{}: {e}", program.display()))
 }

@@ -18,7 +18,7 @@
 use std::io::{BufRead, BufReader, Write};
 use std::net::TcpStream;
 use std::path::{Path, PathBuf};
-use std::process::{Child, Command, Stdio};
+use std::process::{Child, Stdio};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::mpsc::{self, Sender};
 use std::sync::Mutex;
@@ -815,6 +815,16 @@ fn emit_failed(app: &AppHandle, message: impl Into<String>) {
     let _ = app.emit(crate::events::OUTPUT_DEBUG, format!("[error] {message}"));
 }
 
+/// Kills the whole instance, whether or not it's a debug-mode run: signals
+/// the real pid directly (which also wakes a tracer thread blocked in
+/// `waitpid` — and dropping the session closes its command channel, ending
+/// one that's waiting on the user instead), then kills the original wrapper
+/// process too — a wrapper like Gradle can hand off to a persistent
+/// background daemon that outlives `./gradlew` by design, so killing only
+/// the real pid is the more reliable half of this, with the wrapper cleanup
+/// as a best-effort second step (a lingering Gradle daemon itself is not
+/// something this can or should tear down — `gradlew --stop` is the user's
+/// own tool for that).
 #[tauri::command]
 pub fn debug_stop(app: AppHandle, state: State<DebugState>) -> Result<(), String> {
     let session = state.inner().0.lock().unwrap().take();
@@ -845,18 +855,18 @@ pub fn debug_stop(app: AppHandle, state: State<DebugState>) -> Result<(), String
 /// daemon launched it).
 fn kill_pid(pid: i32) {
     #[cfg(unix)]
-    let _ = Command::new("kill").args(["-9", &pid.to_string()]).status();
+    let _ = substrate_platform::process::command("kill").args(["-9", &pid.to_string()]).status();
     #[cfg(windows)]
-    let _ = Command::new("taskkill").args(["/F", "/PID", &pid.to_string()]).status();
+    let _ = substrate_platform::process::command("taskkill").args(["/F", "/PID", &pid.to_string()]).status();
 }
 
 /// Kills `child` and everything it launched — `yog run` starts the game as
 /// its own child, which a plain `Child::kill` would leave running.
 fn kill_tree(child: &mut Child) {
     #[cfg(windows)]
-    let _ = Command::new("taskkill").args(["/T", "/F", "/PID", &child.id().to_string()]).status();
+    let _ = substrate_platform::process::command("taskkill").args(["/T", "/F", "/PID", &child.id().to_string()]).status();
     #[cfg(unix)]
-    let _ = Command::new("pkill").args(["-P", &child.id().to_string()]).status();
+    let _ = substrate_platform::process::command("pkill").args(["-P", &child.id().to_string()]).status();
     let _ = child.kill();
     let _ = child.wait();
 }

@@ -905,7 +905,7 @@ fn rust_src_library(commit: &str) -> Option<PathBuf> {
         .collect();
     toolchains.sort();
     let built_from = |toolchain: &Path| {
-        Command::new(toolchain.join("bin/rustc"))
+        substrate_platform::process::command(toolchain.join("bin/rustc"))
             .arg("-vV")
             .stdin(Stdio::null())
             .stderr(Stdio::null())
@@ -1078,17 +1078,6 @@ pub fn debug_step(state: State<DebugState>, kind: Option<String>) -> Result<(), 
     tracer_resume(&state, TracerCmd::Step(kind))
 }
 
-/// Kills the whole instance, whether or not it's a debug-mode run: signals
-/// the real pid directly (which also wakes a tracer thread blocked in
-/// `waitpid` — and dropping the session closes its command channel, ending
-/// one that's waiting on the user instead), then kills the original wrapper
-/// process too — a wrapper like Gradle can hand off to a persistent
-/// background daemon that outlives `./gradlew` by design, so killing only
-/// the real pid is the more reliable half of this, with the wrapper cleanup
-/// as a best-effort second step (a lingering Gradle daemon itself is not
-/// something this can or should tear down — `gradlew --stop` is the user's
-/// own tool for that).
-
 /// Why an attach got `EPERM`, and the one thing that fixes it here. Yama
 /// (`kernel.yama.ptrace_scope`) only lets a process trace its descendants,
 /// and the game isn't one of ours — Gradle's daemon launches it. The
@@ -1132,7 +1121,7 @@ fn permission_denied_message(pid: i32, ptracer: Option<bool>) -> String {
 pub fn debug_grant_ptrace_capability() -> Result<(), String> {
     let exe = std::env::current_exe()
         .map_err(|e| format!("couldn't determine Yog-IDLE's own executable path: {e}"))?;
-    let status = Command::new("pkexec")
+    let status = substrate_platform::process::command("pkexec")
         .arg("setcap")
         .arg("cap_sys_ptrace+ep")
         .arg(&exe)
