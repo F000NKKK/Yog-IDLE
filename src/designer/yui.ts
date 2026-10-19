@@ -1,5 +1,6 @@
 import { yui } from "../data/yogIds.generated";
 import { gameId } from "../data/yogFormat";
+import { OPAQUE } from "./colors";
 // The `.yui` screen format — a XAML-like XML form of a `yog-ui` widget tree
 // (see docs/yui.md). `yog build` / `yog ui gen` turn it into Rust builder
 // code; this module is the designer's side: parse, edit as a tree of nodes,
@@ -342,13 +343,17 @@ export function withAttrs(node: YuiNode, changes: Record<string, string | undefi
 // ── Values ────────────────────────────────────────────────────────────────────
 
 /** `#RRGGBB` / `#AARRGGBB` / `0xAARRGGBB` → ARGB, or `null`. */
+/** Hex digits of a color without and with its alpha. */
+const RGB_DIGITS = 6;
+const ARGB_DIGITS = 8;
+
 export function parseColor(value: string | undefined): number | null {
   if (!value) return null;
   const m = value.trim().match(/^(?:#|0x)([0-9a-f_]+)$/i);
   if (!m) return null;
   const hex = m[1].replace(/_/g, "");
-  if (hex.length === 6) return (0xff000000 | parseInt(hex, 16)) >>> 0;
-  if (hex.length === 8) return parseInt(hex, 16) >>> 0;
+  if (hex.length === RGB_DIGITS) return (OPAQUE | parseInt(hex, 16)) >>> 0;
+  if (hex.length === ARGB_DIGITS) return parseInt(hex, 16) >>> 0;
   return null;
 }
 

@@ -20,24 +20,31 @@ pub(super) fn send_control(control: &mut TcpStream, request: &serde_json::Value)
     control.write_all(line.as_bytes())
 }
 
+/// The control channel's address: this machine only.
+const LOOPBACK: &str = "127.0.0.1";
+/// Port 0: the system picks a free one.
+const ANY_PORT: u16 = 0;
+/// How many random 64-bit words the token has.
+const TOKEN_WORDS: u64 = 3;
+
 /// Where the game's control channel listens and the token that opens it:
 /// a free loopback port (bound and let go — the game binds it next), and
 /// random bytes no other process has seen.
 pub(super) fn control_endpoint() -> Result<(String, String), String> {
-    let port = std::net::TcpListener::bind("127.0.0.1:0")
+    let port = std::net::TcpListener::bind((LOOPBACK, ANY_PORT))
         .and_then(|l| l.local_addr())
         .map_err(|e| format!("no free port for the game's control channel: {e}"))?
         .port();
     // Std's hasher keys are seeded from the OS's randomness.
     use std::hash::{BuildHasher, Hasher};
-    let token: String = (0..3)
+    let token: String = (0..TOKEN_WORDS)
         .map(|i| {
             let mut h = std::collections::hash_map::RandomState::new().build_hasher();
             h.write_u64(i);
             format!("{:016x}", h.finish())
         })
         .collect();
-    Ok((format!("127.0.0.1:{port}"), token))
+    Ok((format!("{LOOPBACK}:{port}"), token))
 }
 
 /// Runs `name` (`yog run <name> [--debug]`), always connecting the control

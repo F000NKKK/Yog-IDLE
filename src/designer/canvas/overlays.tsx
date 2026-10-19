@@ -8,6 +8,7 @@ import { charWidth, LINE_GAP, LINE_H, strWidth, textLines } from "../layoutText"
 import type { LNode, LWidget } from "../layoutWidget";
 import { cssColor, isContainer, type YuiNode } from "../yui";
 import type { Geo } from "./designerModel";
+import { ALPHA_SHIFT, OPAQUE, SLOT_COUNT } from "../colors";
 
 /** Designer-only dashed outlines of containers and spacers — invisible in game, so drawn over the real picture. */
 export function DesignOutlines({ root, geo, zoom }: { root: YuiNode; geo: Map<string, Geo>; zoom: number }) {
@@ -35,7 +36,7 @@ export function McText({ text, x, y, scale, color, shadow, zoom }: { text: strin
   const spans: ReactNode[] = [];
   let cx = x;
   let i = 0;
-  const opaque = (color >>> 24) === 0 ? (color | 0xff000000) >>> 0 : color;
+  const opaque = (color >>> ALPHA_SHIFT) === 0 ? (color | OPAQUE) >>> 0 : color;
   for (const ch of text) {
     const w = charWidth(ch) * scale;
     if (ch !== " ")
@@ -109,7 +110,7 @@ export function McWidget({ widget, node, zoom }: { widget: LWidget; node: LNode;
       </div>
     );
     if (widget.kind === "inv_slot" && widget.count > 1)
-      parts.push(<McText key="count" text={String(widget.count)} x={slot.x + 17 - strWidth(String(widget.count), 1)} y={slot.y + 9} scale={1} color={0xffffffff} shadow zoom={zoom} />);
+      parts.push(<McText key="count" text={String(widget.count)} x={slot.x + 17 - strWidth(String(widget.count), 1)} y={slot.y + 9} scale={1} color={SLOT_COUNT} shadow zoom={zoom} />);
   } else if (widget.kind === "image") {
     parts.push(
       <div key="img" className="yui-box yui-image" style={box({ x: r.x + s.pad[3], y: r.y + s.pad[0], w: Math.max(0, r.w - s.pad[1] - s.pad[3]), h: Math.max(0, r.h - s.pad[0] - s.pad[2]) }, zoom)} title={widget.source}>

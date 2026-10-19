@@ -5,6 +5,7 @@ import { yui } from "../data/yogIds.generated";
 import { designImage, designText } from "../lang/designResources";
 import { gridDefs, type TrackDef } from "./grid";
 import { CANVAS_KINDS, parseColor, parseNumber, widgetChildren, type YuiNode } from "./yui";
+import { DEFAULT_TEXT, TEXT_BOX_BG, TEXT_BOX_TEXT } from "./colors";
 
 // ── Widget model (mirrors `widget.rs`) ───────────────────────────────────────
 
@@ -109,7 +110,7 @@ export function defaultStyle(): Style {
     halign: null,
     valign: null,
     bg: 0,
-    color: 0xffccccaa,
+    color: DEFAULT_TEXT,
     align: "start",
     fontScale: 1,
     shadow: true,
@@ -181,8 +182,8 @@ export function toWidget(node: YuiNode, inCanvas: boolean): LWidget {
     style.h = { t: "px", v: 18 };
   } else if (kind === "text_box") {
     // `widget::text_box`: black box, light text, 4 px side padding.
-    style.bg = 0xff000000;
-    style.color = 0xffe0e0e0;
+    style.bg = TEXT_BOX_BG;
+    style.color = TEXT_BOX_TEXT;
     style.pad = [0, 4, 0, 4];
   }
   if (node.kind === yui.SCREEN) {
