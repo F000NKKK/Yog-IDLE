@@ -15,7 +15,7 @@ import type { ScreenDesignerProps } from "../ScreenDesigner";
 
 /** How the screen lays out, and the real picture the game draws of it. */
 export function useDesignerPicture(props: ScreenDesignerProps, designerDocument: DesignerDocument) {
-  const { path, content } = props;
+  const { path } = props;
   const { view, doc } = designerDocument;
   // ── Layout ────────────────────────────────────────────────────────────────
 

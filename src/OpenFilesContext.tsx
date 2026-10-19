@@ -43,7 +43,7 @@ import { files } from "./files";
 import { useFsChanged, useWatchedFolders } from "./fsWatch";
 import { askToSave, isViewMap, newTabId, nextRevealSeq, openWithItems, regenerateScreen, tabViews, VIEWS_KEY } from "./openFiles/tabViews";
 
-interface FileTab {
+export interface FileTab {
   /** Stable for the tab's lifetime (survives a rename) — the dock panel id. */
   id: string;
   path: string;

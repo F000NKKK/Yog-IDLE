@@ -9,7 +9,7 @@ import type { PropertiesContext } from "./context";
 
 /** A block's states: its properties and variants, how it's placed, and what's picked in the outliner. */
 export function stateRows(ctx: PropertiesContext, out: PropertyDescriptor[]): void {
-  const { file, kind, update, readOnly, editStates, effectiveKey, modelKey, mainResolved, pickedState, setModelKey, setPreviewState, setStateSel, stateModelNames, stateProps, states, num, text, choice, flag, list, prune } = ctx;
+  const { file, kind, update, editStates, effectiveKey, modelKey, mainResolved, pickedState, setModelKey, setPreviewState, setStateSel, stateModelNames, stateProps, states, num, text, choice, flag, list, prune } = ctx;
   const ro = ctx.readOnly;
   // States.
   if (kind === "block") {

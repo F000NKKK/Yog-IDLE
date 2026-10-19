@@ -19,7 +19,7 @@ import type { ScreenDesignerProps } from "../ScreenDesigner";
 /** The selection in Properties, the Edit menu and keys, the split view's XAML pane and the event handlers in code. */
 export function useDesignerCommands(props: ScreenDesignerProps, designerDocument: DesignerDocument, designerPicture: DesignerPicture, designerEdits: DesignerEdits) {
   const { path, readOnly, link } = props;
-  const { t, isActive, canvasRef, setRevision, error, setError, sessionRef, fromTextRef, session, doc, selection, commit, select } = designerDocument;
+  const { t, isActive, canvasRef, setRevision, setError, sessionRef, fromTextRef, doc, selection, commit, select } = designerDocument;
   const { components } = designerPicture;
   const { addWidget, movable, deleteSelection, copySelection, paste, duplicate, reorder, nudge, applyAttr } = designerEdits;
   // ── Selection → Properties ────────────────────────────────────────────────

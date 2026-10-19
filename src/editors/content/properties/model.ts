@@ -8,7 +8,7 @@ import type { PropertiesContext } from "./context";
 
 /** The model edited: its parent, textures, display, and the selected element and face. */
 export function modelRows(ctx: PropertiesContext, out: PropertyDescriptor[]): void {
-  const { kind, update, choices, readOnly, effectiveKey, resolved, displaySlot, editElements, face, model, modelKind, sel, selEl, shownImages, num, text, choice, flag, vec } = ctx;
+  const { update, choices, effectiveKey, resolved, displaySlot, editElements, face, model, modelKind, sel, selEl, shownImages, num, text, choice, flag, vec } = ctx;
   const ro = ctx.readOnly;
   // The model.
   const mc = t("Model");

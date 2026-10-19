@@ -17,7 +17,7 @@ import { ensureModel, LAYER, layerIndex, type LoadedTexture, stateModelOf } from
 /** Painting textures in the view or the 2D canvas, and an item sprite's layers. */
 export function useContentPaint(props: EditorProps, m: ContentModel, tx: ContentTextures) {
   const { path, readOnly } = props;
-  const { t, setSelected, face, setFace, variant, images, choices, paintMode, setPaintMode, paint, setPaint, usedColor, paintSlot, setPaintSlot, edited, editedRef, animEdits, animEditsRef, paintEntry, playing, effectiveKey, model, modelKind, resolved, selEl, setEditedImages, update, setAnimations, pixelStep, animationStep } = m;
+  const { t, setSelected, face, setFace, images, choices, paintMode, setPaintMode, paint, setPaint, usedColor, paintSlot, setPaintSlot, edited, editedRef, animEdits, animEditsRef, paintEntry, playing, effectiveKey, model, modelKind, resolved, selEl, setEditedImages, update, setAnimations, pixelStep, animationStep } = m;
   const { pixelsOf, named, animOf } = tx;
   // ── Painting ──────────────────────────────────────────────────────────────
 

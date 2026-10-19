@@ -10,17 +10,14 @@ import {
   ToolbarGroup,
   ToolbarLabel,
   ToolbarSelect,
+  type ContextMenuItem,
 } from "substrate-platform-ui";
 import { TOOLBOX_MIME } from "./activeDesigner";
-import {
-  findNode,
-  mapNode,
-  type YuiDoc,
-} from "./yui";
-import { GridLines, GridRails } from "./GridAdorner";
+import { findNode, findParent, isGrid, mapNode, type YuiDoc } from "./yui";
+import { type GridGeo, GridLines, GridRails } from "./GridAdorner";
 import "./ScreenDesigner.css";
 import { BookPagePreview, isBookPage } from "./BookPagePreview";
-import { defaultEvent, GRID, nodeLabel, RESOLUTIONS, ZOOMS } from "./canvas/designerModel";
+import { clipboard, defaultEvent, GRID, nodeLabel, RESOLUTIONS, ZOOMS } from "./canvas/designerModel";
 import { box, DesignOutlines, McWidget } from "./canvas/overlays";
 import { useDesignerDocument } from "./canvas/useDesignerDocument";
 import { useDesignerPicture } from "./canvas/useDesignerPicture";
@@ -71,17 +68,63 @@ export function ScreenDesigner(props: ScreenDesignerProps) {
 }
 
 function CanvasDesigner(props: ScreenDesignerProps) {
-  const { onChange, readOnly } = props;
+  const { readOnly, link } = props;
   const designerDocument = useDesignerDocument(props);
   const designerPicture = useDesignerPicture(props, designerDocument);
-  const designerEdits = useDesignerEdits(props, designerDocument, designerPicture);
+  const designerEdits = useDesignerEdits(designerDocument, designerPicture);
   const designerCommands = useDesignerCommands(props, designerDocument, designerPicture, designerEdits);
-  const designerPreview = useDesignerPreview(props, designerDocument, designerPicture, designerEdits, designerCommands);
-  const { t, canvasRef, view, sessionRef, draggingRef, menu, railMenu, setRailMenu, doc, selection, commit, select } = designerDocument;
-  const { res, layout, previewing, focusedBox, setFocusedBox, hovered, setHovered, pressed, setPressed, lastEvent, rendered, picture, geo, items } = designerPicture;
-  const { addWidget, reorder, onCommit } = designerEdits;
+  const designerPreview = useDesignerPreview(props, designerDocument, designerPicture, designerCommands);
+  const { t, canvasRef, view, error, sessionRef, draggingRef, menu, railMenu, setRailMenu, doc, selection, commit, select } = designerDocument;
+  const { res, layout, previewing, focusedBox, setFocusedBox, hovered, setHovered, pressed, setPressed, lastEvent, rendered, renderError, picture, geo, items } = designerPicture;
+  const { gridGeo, addWidget, movable, deleteSelection, copySelection, paste, duplicate, reorder, onCommit } = designerEdits;
   const { publish, publishRef, openHandlerRef } = designerCommands;
-  const { pageRef, sendEvent, togglePreview, guiPoint, fmt, textBoxAt, onPreviewKey, editable, updateView, canEdit, hasMovable, contextItems, primary, notice, primaryGeo, railGrid, railGeo, allGrids } = designerPreview;
+  const { pageRef, sendEvent, togglePreview, guiPoint, fmt, textBoxAt, onPreviewKey, updateView } = designerPreview;
+
+  if (error !== null || !doc || !layout) {
+    return (
+      <div className="yui-designer-error">
+        <p>{t("The designer can't show this file:")}</p>
+        <pre>{error ?? t("Loading…")}</pre>
+        <p>{link ? t("Fix the markup in the XAML pane — the designer follows as soon as it's valid.") : t("Fix it in the XAML view (the XAML button on the tab strip), then come back.")}</p>
+      </div>
+    );
+  }
+
+  const canEdit = !readOnly;
+  const hasMovable = movable(doc, selection).length > 0;
+  const contextItems: ContextMenuItem[] = [
+    { label: t("Cut"), shortcut: "Ctrl+X", disabled: !canEdit || !hasMovable, onSelect: () => copySelection() && deleteSelection() },
+    { label: t("Copy"), shortcut: "Ctrl+C", disabled: !hasMovable, onSelect: () => void copySelection() },
+    { label: t("Paste"), shortcut: "Ctrl+V", disabled: !canEdit || !clipboard, onSelect: () => paste() },
+    { label: t("Duplicate"), shortcut: "Ctrl+D", disabled: !canEdit || !hasMovable, onSelect: duplicate },
+    { label: t("Delete"), shortcut: "Delete", disabled: !canEdit || !hasMovable, destructive: true, onSelect: deleteSelection },
+    { label: t("Bring to Front"), disabled: !canEdit || !hasMovable, onSelect: () => reorder(true), separatorBefore: true },
+    { label: t("Send to Back"), disabled: !canEdit || !hasMovable, onSelect: () => reorder(false) },
+    {
+      label: t("Select Parent"),
+      shortcut: "Escape",
+      disabled: selection.length === 0 || selection[0] === doc.root.uid,
+      onSelect: () => {
+        const parent = findParent(doc.root, selection[0]);
+        select(parent ? [parent.uid] : []);
+      },
+      separatorBefore: true,
+    },
+  ];
+
+  const primary = selection[0] ? findNode(doc.root, selection[0]) : null;
+  const notice = renderError
+    ? t("The real renderer failed ({error}) — showing an approximation.", { error: renderError })
+    : rendered && !rendered.assets
+      ? t("Minecraft's client jar wasn't found (in ~/.minecraft/versions or a loader's Gradle caches) — showing an approximation instead of the game's font and textures. Once the game has been installed or a loader built, the designer uses them.")
+      : null;
+  const primaryGeo = primary ? geo?.get(primary.uid) : undefined;
+  // Visual Studio's grid rails: on the selected grid, or the grid the selected widget is in.
+  const primaryParent = primary ? findParent(doc.root, primary.uid) : null;
+  const railGrid = primary && isGrid(primary) ? primary : primaryParent && isGrid(primaryParent) ? primaryParent : null;
+  const railGeo = railGrid ? gridGeo(railGrid.uid) : null;
+  const allGrids: GridGeo[] = [];
+  if (geo) for (const [uid, g] of geo) if (g.grid) allGrids.push(gridGeo(uid)!);
 
   return (
     <div

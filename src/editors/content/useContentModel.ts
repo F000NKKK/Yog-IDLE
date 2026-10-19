@@ -5,7 +5,7 @@ import { type EditorProps, notifyDocumentCommands, pushDocumentStep, reportError
 import { useOpenFiles } from "../../OpenFilesContext";
 import { cli } from "../../cli";
 import type { GizmoMode, ViewName } from "../../content/Viewport";
-import { clone, CONTENT_FORMAT, type ContentFile, type Dir, type DisplaySlot, type Element, kindOf, type Model, templateOf } from "../../content/model";
+import { clone, CONTENT_FORMAT, type ContentFile, type Kind, type Dir, type DisplaySlot, type Element, kindOf, type Model, templateOf } from "../../content/model";
 import { usePaintState } from "../../content/paint/PaintTools";
 import { type PixelImage, toPngDataUrl } from "../../content/paint/pixels";
 import { type BlockState, defaultState, stateProperties, variantOf } from "../../content/states";
@@ -82,7 +82,7 @@ export function useContentModel(props: EditorProps) {
   // A model key that no longer exists (the arm removed, say) → the main model.
   const effectiveKey: ModelKey = modelOf(file, modelKey) || modelKey === "model" ? modelKey : "model";
   const model = modelOf(file, effectiveKey);
-  const modelKind = effectiveKey === "item_model" || kind === "item" ? "item" : "block";
+  const modelKind: Kind = effectiveKey === "item_model" || kind === "item" ? "item" : "block";
   const resolved = useMemo(() => resolve(model, modelKind, parents), [model, modelKind, parents]);
   const mainResolved = useMemo(() => resolve(file.model, kind, parents), [file.model, kind, parents]);
   useEffect(() => {

@@ -9,11 +9,9 @@ import { componentBody, findComponent, isComponentDoc } from "../components";
 import { cellAttrs, cellOf, gridDefs } from "../grid";
 import { cloneFresh, findNode, findParent, insertNodes, isCanvas, isContainer, isDescendant, isGrid, KINDS, mapNode, newNode, parseNodes, removeNodes, serializeNodes, withAttrs, type YuiDoc, type YuiNode } from "../yui";
 import { clampCells, clipboard, fitParent, positioned, round, setClipboard } from "./designerModel";
-import type { ScreenDesignerProps } from "../ScreenDesigner";
 
 /** Edits to the screen: adding, moving, resizing, deleting, copying and pasting widgets. */
-export function useDesignerEdits(props: ScreenDesignerProps, designerDocument: DesignerDocument, designerPicture: DesignerPicture) {
-  const { content } = props;
+export function useDesignerEdits(designerDocument: DesignerDocument, designerPicture: DesignerPicture) {
   const { t, sessionRef, commit } = designerDocument;
   const { components, geo } = designerPicture;
   // ── Edits ─────────────────────────────────────────────────────────────────
@@ -122,8 +120,9 @@ export function useDesignerEdits(props: ScreenDesignerProps, designerDocument: D
     if (!s) return false;
     const nodes = movable(s.doc, s.selection).map((uid) => findNode(s.doc.root, uid)!);
     if (nodes.length === 0) return false;
-    setClipboard(serializeNodes(nodes));
-    navigator.clipboard?.writeText(clipboard).catch(() => {});
+    const text = serializeNodes(nodes);
+    setClipboard(text);
+    navigator.clipboard?.writeText(text).catch(() => {});
     notifyDocumentCommands();
     return true;
   };

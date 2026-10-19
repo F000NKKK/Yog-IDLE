@@ -1,4 +1,4 @@
-import { bench, describe } from "vitest";
+import { test } from "vitest";
 import { yuiText } from "../bench/fixtures";
 import { compute } from "./layout";
 import { screenWidget } from "./layoutWidget";
@@ -19,29 +19,33 @@ function edited(doc: YuiDoc): YuiDoc {
 const deepNext = edited(deepDoc);
 const wideNext = edited(wideDoc);
 
-describe("layout", () => {
-  bench("compute deep (9 levels)", () => {
-    compute(screenWidget(deepDoc.root, 480, 270), 480, 270);
-  });
-  bench("compute wide (800 widgets)", () => {
-    compute(screenWidget(wideDoc.root, 480, 270), 480, 270);
-  });
+test("layout", async ({ bench }) => {
+  await bench.compare(
+    bench("compute deep (9 levels)", () => {
+      compute(screenWidget(deepDoc.root, 480, 270), 480, 270);
+    }),
+    bench("compute wide (800 widgets)", () => {
+      compute(screenWidget(wideDoc.root, 480, 270), 480, 270);
+    }),
+  );
 });
 
-describe("yui text", () => {
-  bench("parseYui wide", () => {
-    parseYui(wide);
-  });
-  bench("serializeYui wide", () => {
-    serializeYui(wideDoc);
-  });
-  bench("scanYui wide", () => {
-    scanYui(wide);
-  });
-  bench("patchYui wide", () => {
-    patchYui(wide, wideDoc, wideNext);
-  });
-  bench("patchYui deep", () => {
-    patchYui(deep, deepDoc, deepNext);
-  });
+test("yui text", async ({ bench }) => {
+  await bench.compare(
+    bench("parseYui wide", () => {
+      parseYui(wide);
+    }),
+    bench("serializeYui wide", () => {
+      serializeYui(wideDoc);
+    }),
+    bench("scanYui wide", () => {
+      scanYui(wide);
+    }),
+    bench("patchYui wide", () => {
+      patchYui(wide, wideDoc, wideNext);
+    }),
+    bench("patchYui deep", () => {
+      patchYui(deep, deepDoc, deepNext);
+    }),
+  );
 });

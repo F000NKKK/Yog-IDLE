@@ -14,7 +14,7 @@ import { allModels, type Edited, type LoadedTexture, namedTextures, type ParentM
 /** The pickers' choices, parent models and textures: loading, painting state, saving; what the view draws. */
 export function useContentTextures(props: EditorProps, m: ContentModel) {
   const { path, readOnly, contentVersion } = props;
-  const { t, setSideState, file, setSelected, setFace, displaySlot, variant, setStateSel, images, setImages, parents, setParents, setChoices, tints, decoded, setDecoded, edited, saved, setSaved, editedRef, animEdits, effectiveKey, resolved, mainResolved, previewTints, elements, shownVariant, setEditedImages, setAnimations, editElements } = m;
+  const { t, setSideState, file, setSelected, setFace, displaySlot, variant, setStateSel, images, setImages, parents, setParents, setChoices, decoded, setDecoded, edited, saved, setSaved, editedRef, animEdits, effectiveKey, resolved, mainResolved, previewTints, shownVariant, setEditedImages, setAnimations, editElements } = m;
   // ── Pickers' choices, parent models, textures ─────────────────────────────
 
   useEffect(() => {

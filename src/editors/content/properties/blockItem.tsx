@@ -11,7 +11,7 @@ import type { PropertiesContext } from "./context";
 
 /** The block's or item's own properties. */
 export function blockItemRows(ctx: PropertiesContext, out: PropertyDescriptor[]): void {
-  const { file, kind, update, choices, blockKinds, blockRefs, effectRefs, entityRefs, readOnly, num, text, choice, flag, vec, list, prune, yesNoProperties } = ctx;
+  const { file, kind, update, choices, blockKinds, blockRefs, effectRefs, entityRefs, num, text, choice, flag, vec, prune, yesNoProperties } = ctx;
   const ro = ctx.readOnly;
   // Block / item properties.
   if (kind === "block") {

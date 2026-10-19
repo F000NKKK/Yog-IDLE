@@ -61,12 +61,12 @@ export const CONTENT_SOURCE_VIEW = "yog.content.source";
  * for any file; undo/redo steps over the file's text; F7 opens the JSON.
  */
 export function ContentEditor(props: EditorProps) {
-  const { path, onChange, readOnly } = props;
+  const { path, readOnly } = props;
   const m = useContentModel(props);
   const tx = useContentTextures(props, m);
   const pt = useContentPaint(props, m, tx);
   const cmd = useContentCommands(props, m, pt);
-  const { t, kind, parsed, file, setModelKey, selected, setSelected, face, setFace, gizmo, shading, setShading, grid, setGrid, displaySlot, setDisplaySlot, variant, setVariant, setPreviewState, setStateSel, stateMenu, viewRequest, setViewRequest, images, rootRef, setPaintMode, paint, setPaint, setPaintSlot, tints, setTints, setPaintEntry, playing, setPlaying, effectiveKey, model, resolved, mainResolved, elements, sel, selEl, states, stateProps, shownState, shownVariant, variantModelKey, pickedState, update, editElements } = m;
+  const { t, kind, parsed, file, setModelKey, setSelected, face, setFace, gizmo, shading, setShading, grid, setGrid, displaySlot, setDisplaySlot, variant, setVariant, setPreviewState, setStateSel, stateMenu, viewRequest, setViewRequest, images, rootRef, setPaintMode, paint, setPaint, setPaintSlot, tints, setTints, setPaintEntry, playing, setPlaying, effectiveKey, model, resolved, mainResolved, elements, sel, selEl, states, stateProps, shownState, shownVariant, variantModelKey, pickedState, update, editElements } = m;
   const { pixelsOf, rotations, parts, display, onSelect, onTransform } = tx;
   const { paintOn, paintSlots, activeSlot, activeKey, activeAnim, activeEntry, activeFrame, shownImages, editAnimation, onCanvasPaint, onViewportPaint, newTexture, layers, addLayer, removeLayer, moveLayer, convertToElements } = pt;
   const { addElement, duplicateElement, deleteElement, moveElement, addSlot, showState, pickState, stateModelNames, addStateProperty, addStateModel, addVariant, removeStateItem, moveStateVariant, viewCode, pickGizmo, properties } = cmd;

@@ -2,26 +2,22 @@
 
 import type { DesignerCommands } from "./useDesignerCommands";
 import type { DesignerDocument } from "./useDesignerDocument";
-import type { DesignerEdits } from "./useDesignerEdits";
 import type { DesignerPicture } from "./useDesignerPicture";
 import { type KeyboardEvent as ReactKeyboardEvent, useEffect, useRef } from "react";
-import { type ContextMenuItem, eventKey, useKeybinding } from "substrate-platform-ui";
+import { eventKey, useKeybinding } from "substrate-platform-ui";
 import { cli } from "../../cli";
 import { yui } from "../../data/yogIds.generated";
 import { emitTo, EVENT } from "../../events";
 import { withDesignResources } from "../../lang/designResources";
-import type { GridGeo } from "../GridAdorner";
-import { findNode, findParent, isGrid, type YuiNode } from "../yui";
-import { clipboard, type EventReply, setSettings, settings, type ViewSettings, ZOOMS } from "./designerModel";
-import { box } from "./overlays";
+import { findNode, findParent, type YuiNode } from "../yui";
+import { type EventReply, setSettings, settings, type ViewSettings, ZOOMS } from "./designerModel";
 import type { ScreenDesignerProps } from "../ScreenDesigner";
 
 /** The preview: the screen running live, its events, zoom and panning. */
-export function useDesignerPreview(props: ScreenDesignerProps, designerDocument: DesignerDocument, designerPicture: DesignerPicture, designerEdits: DesignerEdits, designerCommands: DesignerCommands) {
-  const { path, readOnly, link } = props;
-  const { t, canvasRef, view, setView, error, sessionRef, draggingRef, doc, selection, select } = designerDocument;
-  const { res, layout, previewing, setPreviewing, previewTexts, setPreviewTexts, focusedBox, setFocusedBox, setHovered, setPressed, setPreviewTick, setLastEvent, rendered, renderError, drawnRoot, geo } = designerPicture;
-  const { gridGeo, movable, deleteSelection, copySelection, paste, duplicate, reorder } = designerEdits;
+export function useDesignerPreview(props: ScreenDesignerProps, designerDocument: DesignerDocument, designerPicture: DesignerPicture, designerCommands: DesignerCommands) {
+  const { path, readOnly } = props;
+  const { canvasRef, view, setView, error, sessionRef, draggingRef, doc } = designerDocument;
+  const { res, layout, previewing, setPreviewing, previewTexts, setPreviewTexts, focusedBox, setFocusedBox, setHovered, setPressed, setPreviewTick, setLastEvent, rendered, drawnRoot, geo } = designerPicture;
   const { commands } = designerCommands;
   // ── Preview ───────────────────────────────────────────────────────────────
 
@@ -194,53 +190,7 @@ export function useDesignerPreview(props: ScreenDesignerProps, designerDocument:
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasCanvas]);
 
-  if (error !== null || !doc || !layout) {
-    return (
-      <div className="yui-designer-error">
-        <p>{t("The designer can't show this file:")}</p>
-        <pre>{error ?? t("Loading…")}</pre>
-        <p>{link ? t("Fix the markup in the XAML pane — the designer follows as soon as it's valid.") : t("Fix it in the XAML view (the XAML button on the tab strip), then come back.")}</p>
-      </div>
-    );
-  }
-
-  const canEdit = !readOnly;
-  const hasMovable = movable(doc, selection).length > 0;
-  const contextItems: ContextMenuItem[] = [
-    { label: t("Cut"), shortcut: "Ctrl+X", disabled: !canEdit || !hasMovable, onSelect: () => copySelection() && deleteSelection() },
-    { label: t("Copy"), shortcut: "Ctrl+C", disabled: !hasMovable, onSelect: () => void copySelection() },
-    { label: t("Paste"), shortcut: "Ctrl+V", disabled: !canEdit || !clipboard, onSelect: () => paste() },
-    { label: t("Duplicate"), shortcut: "Ctrl+D", disabled: !canEdit || !hasMovable, onSelect: duplicate },
-    { label: t("Delete"), shortcut: "Delete", disabled: !canEdit || !hasMovable, destructive: true, onSelect: deleteSelection },
-    { label: t("Bring to Front"), disabled: !canEdit || !hasMovable, onSelect: () => reorder(true), separatorBefore: true },
-    { label: t("Send to Back"), disabled: !canEdit || !hasMovable, onSelect: () => reorder(false) },
-    {
-      label: t("Select Parent"),
-      shortcut: "Escape",
-      disabled: selection.length === 0 || selection[0] === doc.root.uid,
-      onSelect: () => {
-        const parent = findParent(doc.root, selection[0]);
-        select(parent ? [parent.uid] : []);
-      },
-      separatorBefore: true,
-    },
-  ];
-
-  const primary = selection[0] ? findNode(doc.root, selection[0]) : null;
-  const notice = renderError
-    ? t("The real renderer failed ({error}) — showing an approximation.", { error: renderError })
-    : rendered && !rendered.assets
-      ? t("Minecraft's client jar wasn't found (in ~/.minecraft/versions or a loader's Gradle caches) — showing an approximation instead of the game's font and textures. Once the game has been installed or a loader built, the designer uses them.")
-      : null;
-  const primaryGeo = primary ? geo?.get(primary.uid) : undefined;
-  // Visual Studio's grid rails: on the selected grid, or the grid the selected widget is in.
-  const primaryParent = primary ? findParent(doc.root, primary.uid) : null;
-  const railGrid = primary && isGrid(primary) ? primary : primaryParent && isGrid(primaryParent) ? primaryParent : null;
-  const railGeo = railGrid ? gridGeo(railGrid.uid) : null;
-  const allGrids: GridGeo[] = [];
-  if (geo) for (const [uid, g] of geo) if (g.grid) allGrids.push(gridGeo(uid)!);
-
-  return { pageRef, drawnRef, eventBusy, queuedMove, fired, sendEvent, sendEventRef, togglePreview, guiPoint, fmt, textBoxAt, typeInto, onPreviewKey, focused, editable, keyOpts, ARROWS, updateView, zoomRef, hasCanvas, canEdit, hasMovable, contextItems, primary, notice, primaryGeo, primaryParent, railGrid, railGeo, allGrids };
+  return { pageRef, drawnRef, eventBusy, queuedMove, fired, sendEvent, sendEventRef, togglePreview, guiPoint, fmt, textBoxAt, typeInto, onPreviewKey, focused, editable, keyOpts, ARROWS, updateView, zoomRef, hasCanvas };
 }
 
 /** What `useDesignerPreview` gives the component. */
