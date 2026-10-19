@@ -10,13 +10,13 @@ import { openProjectProperties } from "../../projectProperties/bus";
 import { type ItemTemplate, templateFiles } from "../NewItemDialog";
 import { attempt, copyName, explorerClipboard, type ListFilter, modIdOf, setExplorerClipboard } from "./explorerModel";
 import { findNode, pathTo, placeholderId } from "./projectTree";
-import type { ExplorerView } from "./useExplorerView";
+import type { ExplorerTreeView } from "./useExplorerTreeView";
 import type { ExplorerTreeProps } from "../ProjectExplorer";
 
 /** What Project Explorer does to files: add, paste, rename, delete, scope, follow the editor. */
-export function useExplorerOperations(props: ExplorerTreeProps, explorerView: ExplorerView) {
+export function useExplorerOperations(props: ExplorerTreeProps, explorerTreeView: ExplorerTreeView) {
   const { project } = props;
-  const { shell, setScopes, scopeRoot, tree, pathRenamed, pathRemoved, activeTab, selectedIds, setSelectedIds, editing, setEditing, setQuery, setListFilter, trackActive, setRevision, setClipboardSeq, setReveal, pendingReveal, setPendingReveal, searchRef, entries, only, filtering, expandedIds, onExpandedChange, clip, shownNodes, publishSelection } = explorerView;
+  const { shell, setScopes, scopeRoot, tree, pathRenamed, pathRemoved, activeTab, selectedIds, setSelectedIds, editing, setEditing, setQuery, setListFilter, trackActive, setRevision, setClipboardSeq, setReveal, pendingReveal, setPendingReveal, searchRef, entries, only, filtering, expandedIds, onExpandedChange, clip, shownNodes, publishSelection } = explorerTreeView;
   const changedDisk = () => setRevision((n) => n + 1);
 
   const rootNode = (): FileTreeNode => findNode(shownNodes, scopeRoot) ?? { id: scopeRoot, name: fileNameOf(scopeRoot), kind: "folder" };

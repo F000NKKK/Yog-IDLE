@@ -7,7 +7,6 @@ import { files } from "../../files";
 import { useFsChanged, useWatchedFolders } from "../../fsWatch";
 import { registerExplorerRename, selectMultiple, selectPath } from "../../ideSelection";
 import { isWithin, renamedPath } from "../../paths";
-import { useExplorerView } from "./explorerBus";
 import { changedFiles, type Editing, explorerClipboard, type ListFilter, type ScopeHistory, useGeneratedCode } from "./explorerModel";
 import { reportListError } from "./listError";
 import { useContentMatches, useProjectItems } from "./projectItems";
@@ -15,7 +14,7 @@ import { explorerMatch, findNode, nestParent, withChangeMarks, withFaded, withGe
 import type { ExplorerTreeProps } from "../ProjectExplorer";
 
 /** The tree as shown: its scope, filters and search, selection, what changed, what's open. */
-export function useExplorerView(props: ExplorerTreeProps) {
+export function useExplorerTreeView(props: ExplorerTreeProps) {
   const { project, initialScope, main = false } = props;
   useT();
   const shell = useShell();
@@ -136,5 +135,5 @@ export function useExplorerView(props: ExplorerTreeProps) {
   return { shell, scopes, setScopes, scopeRoot, scoped, tree, tabs, pathRenamed, pathRemoved, activeTab, git, selectedIds, setSelectedIds, newItem, setNewItem, editing, setEditing, query, setQuery, listFilter, setListFilter, showAllFiles, setShowAllFiles, trackActive, setTrackActive, searchContents, setSearchContents, revision, setRevision, setClipboardSeq, reveal, setReveal, pendingReveal, setPendingReveal, backgroundMenu, filterMenu, searchRef, treeRef, entries, projectItems, contentHits, changed, only, filtering, baseNodes, generated, decorated, filtered, filterKey, filterExpanded, setFilterExpanded, expandedIds, onExpandedChange, clip, shownNodes, publishSelection, handleFocus };
 }
 
-/** What `useExplorerView` gives the component. */
-export type ExplorerView = ReturnType<typeof useExplorerView>;
+/** What `useExplorerTreeView` gives the component. */
+export type ExplorerTreeView = ReturnType<typeof useExplorerTreeView>;

@@ -20,7 +20,7 @@ import {
 } from "./explorer/projectTree";
 import "./explorer/explorer.css";
 import { folderIdsUnder } from "./explorer/explorerModel";
-import { useExplorerView } from "./explorer/useExplorerView";
+import { useExplorerTreeView } from "./explorer/useExplorerTreeView";
 import { useExplorerOperations } from "./explorer/useExplorerOperations";
 import { useExplorerCommands } from "./explorer/useExplorerCommands";
 
@@ -62,10 +62,10 @@ export interface ExplorerTreeProps {
 }
 
 function ProjectExplorerTree(props: ExplorerTreeProps) {
-  const explorerView = useExplorerView(props);
-  const explorerOperations = useExplorerOperations(props, explorerView);
-  const explorerCommands = useExplorerCommands(props, explorerView, explorerOperations);
-  const { scopes, scopeRoot, scoped, tree, selectedIds, setSelectedIds, newItem, setNewItem, editing, setEditing, query, setQuery, listFilter, showAllFiles, trackActive, searchContents, reveal, backgroundMenu, filterMenu, searchRef, projectItems, filtered, expandedIds, onExpandedChange, shownNodes, publishSelection, handleFocus } = explorerView;
+  const explorerTreeView = useExplorerTreeView(props);
+  const explorerOperations = useExplorerOperations(props, explorerTreeView);
+  const explorerCommands = useExplorerCommands(props, explorerTreeView, explorerOperations);
+  const { scopes, scopeRoot, scoped, tree, selectedIds, setSelectedIds, newItem, setNewItem, editing, setEditing, query, setQuery, listFilter, showAllFiles, trackActive, searchContents, reveal, backgroundMenu, filterMenu, searchRef, projectItems, filtered, expandedIds, onExpandedChange, shownNodes, publishSelection, handleFocus } = explorerTreeView;
   const { rootNode, isRoot, addFromTemplate, addPlain, transfer, commitEdit, activePath } = explorerOperations;
   const { run, getMenuItems, handleKeyDown, handleBackgroundContextMenu, backgroundItems, button, filterItems, searchCommand, empty } = explorerCommands;
 

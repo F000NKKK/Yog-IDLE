@@ -10,13 +10,13 @@ import { openExplorerView, PROJECT_EXPLORER_VIEW_PANEL, useExplorerRequests } fr
 import { codeBehindPair, copyText, explorerClipboard } from "./explorerModel";
 import { findNode, placeholderId } from "./projectTree";
 import type { ExplorerOperations } from "./useExplorerOperations";
-import type { ExplorerView } from "./useExplorerView";
+import type { ExplorerTreeView } from "./useExplorerTreeView";
 import type { ExplorerTreeProps } from "../ProjectExplorer";
 
 /** Project Explorer's commands: what each does, its keys and its menus. */
-export function useExplorerCommands(props: ExplorerTreeProps, explorerView: ExplorerView, explorerOperations: ExplorerOperations) {
+export function useExplorerCommands(props: ExplorerTreeProps, explorerTreeView: ExplorerTreeView, explorerOperations: ExplorerOperations) {
   const { project, main = false } = props;
-  const { shell, setScopes, tabs, git, newItem, setNewItem, listFilter, showAllFiles, setShowAllFiles, trackActive, setTrackActive, searchContents, setSearchContents, backgroundMenu, projectItems, filtered, shownNodes } = explorerView;
+  const { shell, setScopes, tabs, git, newItem, setNewItem, listFilter, showAllFiles, setShowAllFiles, trackActive, setTrackActive, searchContents, setSearchContents, backgroundMenu, projectItems, filtered, shownNodes } = explorerTreeView;
   const { rootNode, isRoot, folderOf, startNew, addExisting, putOnClipboard, paste, duplicate, startRename, remove, showProperties, collapseDescendants, collapseAll, openInTerminal, openInFileExplorer, relativePath, scopeTo, syncTo, activePath, refresh, focusSearch, toggleFilter, focusedNode } = explorerOperations;
   /** What each command does to the node it's invoked on (the focused one, from the toolbar and the keyboard). */
   const run: Record<ExplorerCommandId, (node: FileTreeNode) => void> = {
