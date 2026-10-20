@@ -65,6 +65,7 @@ export const reference = {
   DIMENSION: "@dimension:",
   TEXTURE: "@texture:",
   MATERIAL: "@material:",
+  TAG: "@tag:",
 } as const;
 
 export const typed = {
@@ -707,6 +708,40 @@ export const equipment = {
   TEXTURE: "texture",
   HUMANOID: "humanoid",
   HUMANOID_LEGGINGS: "humanoid_leggings",
+} as const;
+
+export const serveParam = {
+  PATH: "path",
+  NAME: "name",
+  TEXT: "text",
+  SIZE: "size",
+  TEXTURE: "texture",
+  PNG: "png",
+  ANIMATION: "animation",
+  KIND: "kind",
+  REGISTRY: "registry",
+  ID: "id",
+  ALIAS: "alias",
+  MODEL: "model",
+  SOURCE: "source",
+  FORCE: "force",
+  WIDTH: "width",
+  HEIGHT: "height",
+  TAG: "tag",
+  ARGS: "args",
+  EVENT: "event",
+  FILE: "file",
+  SET: "set",
+  MOD_ID: "mod",
+  ENTRIES: "entries",
+  NEXT: "next",
+  LEVEL: "level",
+  VALUE: "value",
+  VALUES: "values",
+  FORMAT: "format",
+  NS: "ns",
+  ASSET: "asset",
+  MCMETA: "mcmeta",
 } as const;
 
 export const blockState = {
