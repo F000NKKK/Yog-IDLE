@@ -11,6 +11,10 @@ export const sep = {
   TYPED: "@",
   TAG_SHOWN: "#",
   ALTERNATIVES: "|",
+  STATE_OPEN: "[",
+  STATE_CLOSE: "]",
+  PROPERTY_SEP: ",",
+  PROPERTY_IS: "=",
 } as const;
 
 export const kind = {
