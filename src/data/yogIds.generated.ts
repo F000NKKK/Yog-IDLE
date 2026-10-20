@@ -11,7 +11,6 @@ export const sep = {
   TYPED: "@",
   TAG_SHOWN: "#",
   ALTERNATIVES: "|",
-  FIELD: "\t",
 } as const;
 
 export const kind = {
@@ -377,6 +376,7 @@ export const serviceTag = {
   HAS_ITEM: "yog:tag/has_item",
   HAS_BLOCK: "yog:tag/has_block",
   HAS_ENTITY: "yog:tag/has_entity",
+  ITEMS: "yog:tag/items",
 } as const;
 
 export const serviceAdvancement = {
@@ -411,6 +411,12 @@ export const serviceGame = {
   TRANSLATE: "yog:game/translate",
   MODS: "yog:game/mods",
   MOD_LOADED: "yog:game/mod_loaded",
+  PLATFORM_MODS: "yog:game/platform_mods",
+} as const;
+
+export const modSource = {
+  YOG: "yog",
+  PLATFORM: "platform",
 } as const;
 
 export const serviceClient = {
@@ -427,6 +433,7 @@ export const serviceClient = {
   BODY_TRACK_TYPE: "yog:client/body_track_type",
   SET_DIMENSIONS: "yog:client/set_dimensions",
   ENTITY_DATA: "yog:client/entity_data",
+  SCREEN_SLOTS: "yog:client/screen_slots",
 } as const;
 
 export const serviceUi = {
