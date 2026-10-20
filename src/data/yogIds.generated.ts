@@ -815,6 +815,14 @@ export const yuiValue = {
   START: "start",
   CENTER: "center",
   END: "end",
+  LEFT: "left",
+  RIGHT: "right",
+  TOP: "top",
+  BOTTOM: "bottom",
+  FILL: "fill",
+  STRETCH: "stretch",
+  OUTLINE: "outline",
+  NONE: "none",
 } as const;
 
 export const yuiMarkup = {
