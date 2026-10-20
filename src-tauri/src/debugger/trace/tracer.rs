@@ -1,5 +1,6 @@
 //! The tracer at work: breakpoints, stops, stepping, frames and values.
 
+use yog_debugger::LoadedMod;
 use substrate_platform::sync::Locked;
 use super::*;
 
@@ -90,15 +91,8 @@ impl Tracer {
         let module_base = find_latest_module_base(self.debugger.pid(), &self.mod_id)
             .ok_or_else(|| format!("couldn't locate {}'s reloaded native", self.mod_id))?;
         let generation = self.generations.next();
-        self.breakpoints
-            .rebind_after_reload(
-                &mut self.debugger,
-                &self.mod_id,
-                generation,
-                module_base,
-                &symbols,
-            )
-            .map_err(|e| e.to_string())?;
+        let m = LoadedMod { id: &self.mod_id, generation, base: module_base, symbols: &symbols };
+        self.breakpoints.rebind_after_reload(&mut self.debugger, &m).map_err(|e| e.to_string())?;
         self.symbols = symbols;
         self.values.clear();
         self.module_base = module_base;
@@ -118,15 +112,8 @@ impl Tracer {
         {
             return;
         }
-        match self.breakpoints.set(
-            &mut self.debugger,
-            &self.mod_id,
-            self.generation,
-            self.module_base,
-            &self.symbols,
-            &file,
-            line,
-        ) {
+        let m = LoadedMod { id: &self.mod_id, generation: self.generation, base: self.module_base, symbols: &self.symbols };
+        match self.breakpoints.set(&mut self.debugger, &m, &file, line) {
             Err(e) => warn(app, format!("setting breakpoint {file}:{line}: {e}")),
             Ok(()) => {
                 if self
