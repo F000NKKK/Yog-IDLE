@@ -744,6 +744,16 @@ export const serveParam = {
   MCMETA: "mcmeta",
 } as const;
 
+export const textureSlot = {
+  ALL: "all",
+  SIDE: "side",
+  TOP: "top",
+  BOTTOM: "bottom",
+  END: "end",
+  FRONT: "front",
+  TEXTURE: "texture",
+} as const;
+
 export const blockState = {
   FACING: "facing",
   NORTH: "north",
