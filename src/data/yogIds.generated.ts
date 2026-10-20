@@ -549,6 +549,11 @@ export const gameDir = {
   MODS: "yog-mods",
 } as const;
 
+export const userCache = {
+  CACHE: "yog",
+  SHADERS: "shaders",
+} as const;
+
 export const program = {
   CLI: "yog",
   SERVE: "serve",
@@ -702,6 +707,17 @@ export const equipment = {
   TEXTURE: "texture",
   HUMANOID: "humanoid",
   HUMANOID_LEGGINGS: "humanoid_leggings",
+} as const;
+
+export const dimensionField = {
+  ID: "id",
+  DIMENSION_TYPE: "dimension_type",
+  BIOME: "biome",
+  STRUCTURES: "structures",
+  FEATURES: "features",
+  MOB_SPAWNING: "mob_spawning",
+  GENERATOR_TYPE: "generator_type",
+  TERRAIN: "terrain",
 } as const;
 
 export const yuiValue = {
