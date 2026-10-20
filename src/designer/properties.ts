@@ -2,7 +2,7 @@
 // designer — one row per `.yui` attribute the selection can have.
 
 import { pt, t, type PropertyDescriptor, type PropertyValue, type XmlSchema } from "substrate-platform-ui";
-import { yui } from "../data/yogIds.generated";
+import { yog, yui, yuiAttr } from "../data/yogIds.generated";
 import { imageAlias, imagePreview, imageSources } from "./imageSources";
 import { CONTAINER_KINDS, cssColor, KIND_INFO, KINDS, parseColor, parseNumber, type YuiNode } from "./yui";
 import { findComponent, type ComponentInfo, type ComponentsSnapshot } from "./components";
@@ -11,6 +11,7 @@ import { editDefinitions } from "./GridAdorner";
 import { colorRefs, designColor, designText, extractColor } from "../lang/designResources";
 import { modRootOf } from "../paths";
 import { gameId } from "../data/yogFormat";
+import { GAME_FONTS, gameFontNamedDirectly, offerFontCopy } from "./fonts";
 
 type AttrKind = "text" | "number" | "units" | "color" | "bool" | "enum" | "padding" | "uv" | "image" | "tracks" | "index" | "span";
 
@@ -42,8 +43,6 @@ interface AttrSpec {
 const TEXT_KINDS = [yui.LABEL, yui.BUTTON, yui.TEXT_BOX];
 /** Text that wraps (a text box scrolls its one line instead). */
 const WRAP_KINDS = [yui.LABEL, yui.BUTTON];
-/** Vanilla's fonts; a resource pack can add more (`namespace:name`). */
-const FONTS = [gameId("default"), gameId("uniform"), gameId("alt"), gameId("illageralt")] as const;
 const ANCHORS = ["center", "top_left", "top", "top_right", "left", "right", "bottom_left", "bottom", "bottom_right", "fill"] as const;
 
 const SPECS: AttrSpec[] = [
@@ -81,7 +80,7 @@ const SPECS: AttrSpec[] = [
   { attr: "placeholder", name: "Placeholder", category: "Appearance", kind: "text", only: [yui.TEXT_BOX], description: "Greyed hint shown while the text box is empty." },
   { attr: "bg", name: "Background", category: "Appearance", kind: "color", description: "Background color — `#RRGGBB` or `#AARRGGBB`. Empty draws none." },
   { attr: "color", name: "Text Color", category: "Appearance", kind: "color", fallback: "#FFCCCCAA", only: TEXT_KINDS, description: "Text color — `#RRGGBB` or `#AARRGGBB`." },
-  { attr: "font", name: "Font", category: "Appearance", kind: "text", fallback: gameId("default"), only: TEXT_KINDS, suggestions: FONTS, description: "The font, as a font id: minecraft:default, minecraft:uniform (Unifont), minecraft:alt (enchanting table), minecraft:illageralt, or one from a resource pack." },
+  { attr: yuiAttr.FONT, name: "Font", category: "Appearance", kind: "text", fallback: yog.DEFAULT_FONT, only: TEXT_KINDS, suggestions: GAME_FONTS, description: "The font: one of the mod's (mymod:font/fancy), or a game font by Yog's alias — yog:font/default, yog:font/uniform (Unifont), yog:font/alt (enchanting table), yog:font/illageralt." },
   { attr: "font_scale", name: "Font Scale", category: "Appearance", kind: "number", fallback: "1", only: TEXT_KINDS, description: "Text size multiplier." },
   { attr: "shadow", name: "Text Shadow", category: "Appearance", kind: "bool", fallback: "true", only: TEXT_KINDS, description: "Draws the text with Minecraft's drop shadow." },
   { attr: "no_wrap", name: "No Wrap", category: "Appearance", kind: "bool", fallback: "false", only: WRAP_KINDS, description: "Keeps the text on one line instead of wrapping it to the width." },
@@ -176,6 +175,7 @@ function check(kind: AttrKind, value: string, attr = ""): string | null {
   // A resource (`@Colors.accent`), and a background image (`sprite:panel`).
   if (kind === "color" && /^@[A-Za-z_][\w.]*$/.test(v)) return null;
   if (kind === "color" && /(^|:)bg$/.test(attr) && /^[a-z0-9_.-]+:\S+$/.test(v)) return null;
+  if (attr === yuiAttr.FONT) return gameFontNamedDirectly(v);
   switch (kind) {
     case "number":
       return parseNumber(v) === null ? t("Expected a number.") : null;
@@ -274,6 +274,7 @@ export function widgetProperties(
         const alias = yuiPath ? imageAlias(yuiPath, shown) : null;
         if (alias) row.description = `${row.description}\n\n${t("This is a raw resource path; use {alias} instead.", { alias })}`;
       }
+      if (spec.attr === yuiAttr.FONT && yuiPath && same) offerFontCopy(row, yuiPath, shown, (id) => apply(spec.attr, id));
       if (spec.kind === "color") {
         const color = parseColor(designColor(shown));
         if (color !== null) row.swatch = cssColor(color);

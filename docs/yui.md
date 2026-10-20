@@ -258,7 +258,7 @@ Named after the builder methods they become.
 | `Grid.Row`, `Grid.Column`, `Grid.RowSpan`, `Grid.ColumnSpan` | number | A Grid child's cell — see [Grid](#grid). |
 | `align` | `start` `center` `end` | Children's cross-axis alignment; a Label's text alignment. |
 | `bg`, `color`, `focus_color` | `#RRGGBB`, `#AARRGGBB`, `0xAARRGGBB` | Background, text and focus colors. |
-| `font` | font id | The text's font: `minecraft:default` (the default), `minecraft:uniform` (Unifont), `minecraft:alt` (enchanting table), `minecraft:illageralt`, or a resource pack's `namespace:name`. Drawn and measured by the game (yog-ui 0.36+). |
+| `font` | font id | The text's font: one of the mod's `.yfont`s (`mymod:font/fancy`, drawn by Yog), or a game font by Yog's alias — `yog:font/default` (the default), `yog:font/uniform` (Unifont), `yog:font/alt` (enchanting table), `yog:font/illageralt`. The game's own ids (`minecraft:alt`) are rejected. In the designer, **…** on Font copies a game font into `content/font/` to edit (`yog import font <alias>`) and uses the copy. |
 | `font_scale` | number | Text size multiplier. |
 | `shadow` | `true`/`false` | Minecraft's drop shadow under the text — on by default, as for vanilla buttons and labels; `shadow="false"` for flat text. |
 | `no_wrap`, `enabled` | `true`/`false` | Single-line text, takes clicks/focus. |
@@ -675,7 +675,7 @@ alone. In the split:
   mods render with): the `.yui` is built into the same widget tree the
   generated `.g.rs` builds, laid out and rendered by yog-ui into a
   recording `YogGfxApi`, and rasterized with Minecraft's own font (bitmap,
-  Unifont, `font=` ids such as `minecraft:alt`, `§` codes, drop shadow) and
+  Unifont, `font=` ids such as `yog:font/alt`, `§` codes, drop shadow) and
   textures/items — read at run time from the local client jar
   (`~/.minecraft/versions`, the loaders' Gradle caches) and the asset index,
   never copied into the project. A mod's own `assets/` (textures, fonts) win

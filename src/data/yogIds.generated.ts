@@ -26,6 +26,7 @@ export const kind = {
   BIOME: "biome",
   BIOME_FEATURE: "biome_feature",
   DIMENSION: "dimension",
+  FONT: "font",
   ATTRIBUTE: "attribute",
   EFFECT: "effect",
   POTION: "potion",
@@ -70,6 +71,407 @@ export const typed = {
   BYTES: "bytes",
 } as const;
 
+export const event = {
+  PREFIX: "yog:event/",
+  PRE: "/pre",
+} as const;
+
+export const eventLog = {
+  PLANE: "yog:event/log/",
+  RECORD: "yog:event/log/record",
+} as const;
+
+export const eventPlayerSession = {
+  PLANE: "yog:event/player/session/",
+  JOIN: "yog:event/player/session/join",
+  LEAVE: "yog:event/player/session/leave",
+} as const;
+
+export const eventPlayerLife = {
+  PLANE: "yog:event/player/life/",
+  DEATH: "yog:event/player/life/death",
+  DEATH_PRE: "yog:event/player/life/death/pre",
+  RESPAWN: "yog:event/player/life/respawn",
+} as const;
+
+export const eventPlayerChat = {
+  PLANE: "yog:event/player/chat/",
+  MESSAGE: "yog:event/player/chat/message",
+  MESSAGE_PRE: "yog:event/player/chat/message/pre",
+} as const;
+
+export const eventPlayerAction = {
+  PLANE: "yog:event/player/action/",
+  MOVE: "yog:event/player/action/move",
+  USE_ITEM: "yog:event/player/action/use_item",
+  USE_ITEM_PRE: "yog:event/player/action/use_item/pre",
+  ATTACK: "yog:event/player/action/attack",
+  INTERACT: "yog:event/player/action/interact",
+  INTERACT_PRE: "yog:event/player/action/interact/pre",
+  CRAFT: "yog:event/player/action/craft",
+  PICKUP: "yog:event/player/action/pickup",
+  PICKUP_PRE: "yog:event/player/action/pickup/pre",
+} as const;
+
+export const eventPlayerProgress = {
+  PLANE: "yog:event/player/progress/",
+  ADVANCEMENT: "yog:event/player/progress/advancement",
+} as const;
+
+export const eventBlock = {
+  PLANE: "yog:event/block/",
+  BREAK: "yog:event/block/break",
+  BREAK_PRE: "yog:event/block/break/pre",
+  PLACE: "yog:event/block/place",
+  PLACE_PRE: "yog:event/block/place/pre",
+  USE: "yog:event/block/use",
+  USE_PRE: "yog:event/block/use/pre",
+} as const;
+
+export const eventEntityLife = {
+  PLANE: "yog:event/entity/life/",
+  SPAWN: "yog:event/entity/life/spawn",
+  SPAWN_PRE: "yog:event/entity/life/spawn/pre",
+  DEATH: "yog:event/entity/life/death",
+} as const;
+
+export const eventEntityCombat = {
+  PLANE: "yog:event/entity/combat/",
+  DAMAGE: "yog:event/entity/combat/damage",
+  DAMAGE_PRE: "yog:event/entity/combat/damage/pre",
+  PROJECTILE_HIT: "yog:event/entity/combat/projectile_hit",
+  PROJECTILE_HIT_PRE: "yog:event/entity/combat/projectile_hit/pre",
+} as const;
+
+export const eventEntityGame = {
+  PLANE: "yog:event/entity/game/",
+  TICK: "yog:event/entity/game/tick",
+} as const;
+
+export const eventWorld = {
+  PLANE: "yog:event/world/",
+  EXPLOSION: "yog:event/world/explosion",
+  EXPLOSION_PRE: "yog:event/world/explosion/pre",
+} as const;
+
+export const eventWorldGeneration = {
+  PLANE: "yog:event/world/generation/",
+  CHUNK: "yog:event/world/generation/chunk",
+} as const;
+
+export const eventWorldLoot = {
+  PLANE: "yog:event/world/loot/",
+  ROLL: "yog:event/world/loot/roll",
+} as const;
+
+export const eventContainer = {
+  PLANE: "yog:event/container/",
+  OPEN: "yog:event/container/open",
+  OPEN_PRE: "yog:event/container/open/pre",
+  CLOSE: "yog:event/container/close",
+} as const;
+
+export const eventContainerMachine = {
+  PLANE: "yog:event/container/machine/",
+  CRAFT: "yog:event/container/machine/craft",
+  CRAFT_PRE: "yog:event/container/machine/craft/pre",
+} as const;
+
+export const eventServerGame = {
+  PLANE: "yog:event/server/game/",
+  TICK: "yog:event/server/game/tick",
+} as const;
+
+export const eventServerLife = {
+  PLANE: "yog:event/server/life/",
+  STARTED: "yog:event/server/life/started",
+  STOPPING: "yog:event/server/life/stopping",
+} as const;
+
+export const eventServerCommand = {
+  PLANE: "yog:event/server/command/",
+  RUN: "yog:event/server/command/run",
+} as const;
+
+export const eventServerNet = {
+  PLANE: "yog:event/server/net/",
+  PACKET: "yog:event/server/net/packet",
+} as const;
+
+export const eventClientGame = {
+  PLANE: "yog:event/client/game/",
+  TICK: "yog:event/client/game/tick",
+  TRAVEL: "yog:event/client/game/travel",
+} as const;
+
+export const eventClientInput = {
+  PLANE: "yog:event/client/input/",
+  KEY: "yog:event/client/input/key",
+  KEY_PRE: "yog:event/client/input/key/pre",
+  BINDING: "yog:event/client/input/binding",
+} as const;
+
+export const eventClientUi = {
+  PLANE: "yog:event/client/ui/",
+  OPEN: "yog:event/client/ui/open",
+  CLOSE: "yog:event/client/ui/close",
+  INPUT: "yog:event/client/ui/input",
+  INPUT_PRE: "yog:event/client/ui/input/pre",
+} as const;
+
+export const eventClientRender = {
+  PLANE: "yog:event/client/render/",
+  HUD: "yog:event/client/render/hud",
+  WORLD: "yog:event/client/render/world",
+  UI: "yog:event/client/render/ui",
+  TOOLTIP: "yog:event/client/render/tooltip",
+  PAGE: "yog:event/client/render/page",
+  CAMERA: "yog:event/client/render/camera",
+  BODY: "yog:event/client/render/body",
+} as const;
+
+export const eventClientNet = {
+  PLANE: "yog:event/client/net/",
+  PACKET: "yog:event/client/net/packet",
+} as const;
+
+export const service = {
+  PREFIX: "yog:",
+} as const;
+
+export const serviceBlock = {
+  DOMAIN: "yog:block/",
+  INSERT: "yog:block/insert",
+  NBT: "yog:block/nbt",
+  SET_NBT: "yog:block/set_nbt",
+  STATE: "yog:block/state",
+  SET_STATE: "yog:block/set_state",
+  INFO: "yog:block/info",
+  DESTROY: "yog:block/destroy",
+  BONEMEAL: "yog:block/bonemeal",
+  USE_ITEM: "yog:block/use_item",
+  POUR_FLUID: "yog:block/pour_fluid",
+  REDSTONE_POWER: "yog:block/redstone_power",
+  REDSTONE_SIGNAL: "yog:block/redstone_signal",
+  SET_REDSTONE_OUTPUT: "yog:block/set_redstone_output",
+  INVENTORY_SLOT: "yog:block/inventory_slot",
+  SET_INVENTORY_SLOT: "yog:block/set_inventory_slot",
+} as const;
+
+export const serviceItem = {
+  DOMAIN: "yog:item/",
+  TEXT: "yog:item/text",
+  PICTURE: "yog:item/picture",
+  SPAWN: "yog:item/spawn",
+  ENTITY_STACK: "yog:item/entity_stack",
+  SET_ENTITY_STACK: "yog:item/set_entity_stack",
+  BLOCK: "yog:item/block",
+} as const;
+
+export const serviceWorld = {
+  DOMAIN: "yog:world/",
+  GET_BLOCK: "yog:world/get_block",
+  SET_BLOCK: "yog:world/set_block",
+  TIME: "yog:world/time",
+  SET_TIME: "yog:world/set_time",
+  IS_RAINING: "yog:world/is_raining",
+  SET_WEATHER: "yog:world/set_weather",
+  IS_THUNDERING: "yog:world/is_thundering",
+  SET_THUNDER: "yog:world/set_thunder",
+  FILL_REGION: "yog:world/fill_region",
+  SCAN_REGION: "yog:world/scan_region",
+  PLACE_FEATURE: "yog:world/place_feature",
+  EXPLODE: "yog:world/explode",
+  DROP_LOOT: "yog:world/drop_loot",
+  ENTITY_COUNT: "yog:world/entity_count",
+  ENTITIES_IN_BOX: "yog:world/entities_in_box",
+  RAYCAST_BLOCK: "yog:world/raycast_block",
+  RAYCAST_ENTITY: "yog:world/raycast_entity",
+} as const;
+
+export const serviceChat = {
+  DOMAIN: "yog:chat/",
+  BROADCAST: "yog:chat/broadcast",
+  TELLRAW: "yog:chat/tellraw",
+  TITLE: "yog:chat/title",
+  ACTIONBAR: "yog:chat/actionbar",
+  ACTIONBAR_JSON: "yog:chat/actionbar_json",
+} as const;
+
+export const servicePlayer = {
+  DOMAIN: "yog:player/",
+  GIVE_ITEM: "yog:player/give_item",
+  TELEPORT: "yog:player/teleport",
+  TELEPORT_TO_DIM: "yog:player/teleport_to_dim",
+  KICK: "yog:player/kick",
+  SET_GAMEMODE: "yog:player/set_gamemode",
+  INVENTORY: "yog:player/inventory",
+  SET_SLOT: "yog:player/set_slot",
+  HELD_ITEM_NBT: "yog:player/held_item_nbt",
+  SET_HELD_ITEM_NBT: "yog:player/set_held_item_nbt",
+  OFFHAND_ITEM_NBT: "yog:player/offhand_item_nbt",
+  SET_OFFHAND_ITEM_NBT: "yog:player/set_offhand_item_nbt",
+  SLOT_ITEM: "yog:player/slot_item",
+  SET_SLOT_ITEM: "yog:player/set_slot_item",
+  ADD_XP: "yog:player/add_xp",
+  SET_MAY_FLY: "yog:player/set_may_fly",
+  INFO: "yog:player/info",
+  SET_ITEM_COOLDOWN: "yog:player/set_item_cooldown",
+  PLACE_BLOCK_FROM_SLOT: "yog:player/place_block_from_slot",
+  ONLINE: "yog:player/online",
+} as const;
+
+export const serviceNet = {
+  DOMAIN: "yog:net/",
+  SEND_TO_PLAYER: "yog:net/send_to_player",
+  SEND_TO_SERVER: "yog:net/send_to_server",
+} as const;
+
+export const serviceSound = {
+  DOMAIN: "yog:sound/",
+  PLAY: "yog:sound/play",
+  PLAY_TO_PLAYER: "yog:sound/play_to_player",
+} as const;
+
+export const serviceParticle = {
+  DOMAIN: "yog:particle/",
+  SPAWN: "yog:particle/spawn",
+} as const;
+
+export const serviceEntity = {
+  DOMAIN: "yog:entity/",
+  TELEPORT: "yog:entity/teleport",
+  TELEPORT_TO_DIM: "yog:entity/teleport_to_dim",
+  POSITION: "yog:entity/position",
+  ROTATION: "yog:entity/rotation",
+  VELOCITY: "yog:entity/velocity",
+  SET_VELOCITY: "yog:entity/set_velocity",
+  ADD_VELOCITY: "yog:entity/add_velocity",
+  HEALTH: "yog:entity/health",
+  SET_HEALTH: "yog:entity/set_health",
+  KILL: "yog:entity/kill",
+  SPAWN: "yog:entity/spawn",
+  ADD_EFFECT: "yog:entity/add_effect",
+  REMOVE_EFFECT: "yog:entity/remove_effect",
+  CLEAR_EFFECTS: "yog:entity/clear_effects",
+  NBT: "yog:entity/nbt",
+  SET_NBT: "yog:entity/set_nbt",
+  ATTRIBUTE_BASE: "yog:entity/attribute_base",
+  SET_ATTRIBUTE_BASE: "yog:entity/set_attribute_base",
+  ATTRIBUTE_VALUE: "yog:entity/attribute_value",
+  INFO: "yog:entity/info",
+  DAMAGE: "yog:entity/damage",
+  SET_FIRE_TICKS: "yog:entity/set_fire_ticks",
+  VEHICLE: "yog:entity/vehicle",
+  PASSENGERS: "yog:entity/passengers",
+  MOUNT: "yog:entity/mount",
+  DISMOUNT: "yog:entity/dismount",
+  SET_FALL_DISTANCE: "yog:entity/set_fall_distance",
+  SET_DIMENSIONS: "yog:entity/set_dimensions",
+  DATA: "yog:entity/data",
+  SET_DATA: "yog:entity/set_data",
+} as const;
+
+export const serviceTag = {
+  DOMAIN: "yog:tag/",
+  HAS_ITEM: "yog:tag/has_item",
+  HAS_BLOCK: "yog:tag/has_block",
+  HAS_ENTITY: "yog:tag/has_entity",
+} as const;
+
+export const serviceAdvancement = {
+  DOMAIN: "yog:advancement/",
+  GRANT: "yog:advancement/grant",
+  DONE: "yog:advancement/done",
+} as const;
+
+export const serviceScoreboard = {
+  DOMAIN: "yog:scoreboard/",
+  GET: "yog:scoreboard/get",
+  SET: "yog:scoreboard/set",
+  ADD: "yog:scoreboard/add",
+} as const;
+
+export const serviceBossbar = {
+  DOMAIN: "yog:bossbar/",
+  CREATE: "yog:bossbar/create",
+  REMOVE: "yog:bossbar/remove",
+  SET_TITLE: "yog:bossbar/set_title",
+  SET_PROGRESS: "yog:bossbar/set_progress",
+  SET_COLOR: "yog:bossbar/set_color",
+  ADD_PLAYER: "yog:bossbar/add_player",
+  REMOVE_PLAYER: "yog:bossbar/remove_player",
+  SET_VISIBLE: "yog:bossbar/set_visible",
+} as const;
+
+export const serviceGame = {
+  DOMAIN: "yog:game/",
+  DIR: "yog:game/dir",
+  WORLD_DIR: "yog:game/world_dir",
+  TRANSLATE: "yog:game/translate",
+  MODS: "yog:game/mods",
+  MOD_LOADED: "yog:game/mod_loaded",
+} as const;
+
+export const serviceClient = {
+  DOMAIN: "yog:client/",
+  PLAY_SOUND: "yog:client/play_sound",
+  STOP_SOUND: "yog:client/stop_sound",
+  HELD_ITEM: "yog:client/held_item",
+  SET_BLOCK_TINT: "yog:client/set_block_tint",
+  KEY_DOWN: "yog:client/key_down",
+  ATTRIBUTE_VALUE: "yog:client/attribute_value",
+  ADVANCEMENT_DONE: "yog:client/advancement_done",
+  OP: "yog:client/op",
+  BODY_TRACK: "yog:client/body_track",
+  BODY_TRACK_TYPE: "yog:client/body_track_type",
+  SET_DIMENSIONS: "yog:client/set_dimensions",
+  ENTITY_DATA: "yog:client/entity_data",
+} as const;
+
+export const serviceUi = {
+  DOMAIN: "yog:ui/",
+  OPEN: "yog:ui/open",
+  OPEN_WITH_FLAGS: "yog:ui/open_with_flags",
+  CLOSE: "yog:ui/close",
+} as const;
+
+export const serviceBus = {
+  DOMAIN: "yog:bus/",
+  DECLARE: "yog:bus/declare",
+  DESCRIBE: "yog:bus/describe",
+  LIST: "yog:bus/list",
+  FIND: "yog:bus/find",
+} as const;
+
+export const serviceContent = {
+  DOMAIN: "yog:content/",
+  REGISTER: "yog:content/register",
+} as const;
+
+export const serviceJvm = {
+  DOMAIN: "yog:jvm/",
+  CALL: "yog:jvm/call",
+} as const;
+
+export const serviceMenu = {
+  DOMAIN: "yog:menu/",
+  DECLARE: "yog:menu/declare",
+  DECLARED: "yog:menu/declared",
+} as const;
+
+export const serviceKeyBinding = {
+  DOMAIN: "yog:key_binding/",
+  DECLARE: "yog:key_binding/declare",
+  DECLARED: "yog:key_binding/declared",
+} as const;
+
+export const serviceCommand = {
+  DOMAIN: "yog:command/",
+  DECLARE: "yog:command/declare",
+  DECLARED: "yog:command/declared",
+} as const;
+
 export const resKind = {
   STRING: "string",
   IMAGE: "image",
@@ -104,6 +506,7 @@ export const pack = {
 export const project = {
   RESOURCES: "resources",
   CONTENT: "content",
+  FONT_COPIES: "font",
   SRC: "src",
   BUILD: ".yog-build",
 } as const;
@@ -148,6 +551,8 @@ export const yog = {
   PLAYER_INVENTORY: "yog:player_inventory",
   MACHINE_PREFIX: "yog:machine:",
   POTION_ALIAS: "yog:potion/",
+  FONT_ALIAS: "yog:font/",
+  DEFAULT_FONT: "yog:font/default",
   SPAWN_EGG_MODEL: "yog:item/spawn_egg",
   BOOK_SHEET: "yog:gui/book/book",
   CRAFTING_SHEET: "yog:gui/book/crafting",
@@ -155,6 +560,14 @@ export const yog = {
   BOOK_TEXTURE: "yog:gui/book",
   NO_IMAGE: "yog:none",
   DYNAMIC_SVG_PREFIX: "yog:dynamic/svg_",
+  DYNAMIC_TEXT_PREFIX: "yog:dynamic/text_",
+} as const;
+
+export const gameFont = {
+  DEFAULT: "default",
+  UNIFORM: "uniform",
+  ALT: "alt",
+  ILLAGERALT: "illageralt",
 } as const;
 
 export const game = {
