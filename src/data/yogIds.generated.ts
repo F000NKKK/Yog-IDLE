@@ -608,6 +608,7 @@ export const game = {
   DEFAULT_FONT: "minecraft:default",
   VANILLA_THEME: "minecraft:vanilla",
   OVERWORLD: "minecraft:overworld",
+  PLAINS: "minecraft:plains",
   THE_NETHER: "minecraft:the_nether",
   THE_END: "minecraft:the_end",
   MISSING_TEXTURE: "minecraft:missingno",
