@@ -704,6 +704,15 @@ export const equipment = {
   HUMANOID_LEGGINGS: "humanoid_leggings",
 } as const;
 
+export const yuiValue = {
+  TRUE: "true",
+  FALSE: "false",
+  AUTO: "auto",
+  START: "start",
+  CENTER: "center",
+  END: "end",
+} as const;
+
 export const yuiMarkup = {
   BIND_OPEN: "{x:Bind ",
   BIND_CLOSE: "}",
