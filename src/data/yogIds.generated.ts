@@ -623,6 +623,30 @@ export const external = {
   RECIPES: "recipes",
 } as const;
 
+export const shapeKind = {
+  ANY: "any",
+  BOOL: "bool",
+  INT: "int",
+  FLOAT: "float",
+  STRING: "string",
+  ATOM: "atom",
+  TEXT: "text",
+  IMAGE: "image",
+  COLOR: "color",
+  BYTES: "bytes",
+  RES: "res",
+  REF: "ref",
+  TAG: "tag",
+  REF_OR_TAG: "ref_or_tag",
+  REF_OR_IMAGE: "ref_or_image",
+  LIST: "list",
+  MAP: "map",
+  OPTIONAL: "optional",
+  STRUCT: "struct",
+  ENUM: "enum",
+  DEF: "def",
+} as const;
+
 export const yui = {
   SCREEN: "Screen",
   COMPONENT: "Component",

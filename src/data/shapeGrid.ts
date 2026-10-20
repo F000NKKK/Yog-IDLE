@@ -9,6 +9,7 @@
  */
 
 import type { PropertyDescriptor, PropertyValue } from "substrate-platform-ui";
+import { shapeKind as K } from "./yogIds.generated";
 
 export interface ShapeD {
   kind: string;
@@ -29,8 +30,8 @@ export interface FieldD {
 }
 
 export type DefD =
-  | { kind: "struct"; doc?: string; fields: FieldD[] }
-  | { kind: "enum"; doc?: string; tag?: string; variants: { name: string; doc?: string; fields?: FieldD[] }[] };
+  | { kind: typeof K.STRUCT; doc?: string; fields: FieldD[] }
+  | { kind: typeof K.ENUM; doc?: string; tag?: string; variants: { name: string; doc?: string; fields?: FieldD[] }[] };
 
 export interface Described {
   root: ShapeD;
@@ -39,7 +40,8 @@ export interface Described {
 
 type Obj = Record<string, unknown>;
 
-const PLAIN = new Set(["string", "text", "image", "color", "res", "ref", "tag", "ref_or_tag", "ref_or_image"]);
+/** Shapes edited as one line of text. */
+const PLAIN = new Set<string>([K.STRING, K.ATOM, K.TEXT, K.IMAGE, K.COLOR, K.RES, K.REF, K.TAG, K.REF_OR_TAG, K.REF_OR_IMAGE]);
 
 /** `tool_level` → `Tool Level`. */
 export function humanize(name: string): string {
@@ -51,7 +53,7 @@ export function humanize(name: string): string {
 }
 
 function unwrap(s: ShapeD): ShapeD {
-  return s.kind === "optional" && s.of && !Array.isArray(s.of) ? unwrap(s.of) : s;
+  return s.kind === K.OPTIONAL && s.of && !Array.isArray(s.of) ? unwrap(s.of) : s;
 }
 
 /** `obj` with `value` at `path` (`undefined` removes it, and objects left empty). */
@@ -96,7 +98,7 @@ export function shapeProperties(desc: Described, value: Obj, set: (next: Obj) =>
     for (const f of list) field(f, [...path, f.name], category);
   };
 
-  const def = (s: ShapeD): DefD | undefined => (s.kind === "def" && s.name ? desc.defs[s.name] : undefined);
+  const def = (s: ShapeD): DefD | undefined => (s.kind === K.DEF && s.name ? desc.defs[s.name] : undefined);
 
   const field = (f: FieldD, path: string[], category: string) => {
     const shape = unwrap(f.shape);
@@ -105,11 +107,11 @@ export function shapeProperties(desc: Described, value: Obj, set: (next: Obj) =>
     const base = { id, name: humanize(f.name), category, description: f.doc };
     const commit = (v: unknown) => set(setAt(value, path, v));
     const d = def(shape);
-    if (d?.kind === "struct") {
+    if (d?.kind === K.STRUCT) {
       fields(d.fields, path, humanize(path.join(" ")));
       return;
     }
-    if (d?.kind === "enum" && !d.tag) {
+    if (d?.kind === K.ENUM && !d.tag) {
       out.push({
         ...base,
         description: f.doc ?? d.doc,
@@ -120,11 +122,11 @@ export function shapeProperties(desc: Described, value: Obj, set: (next: Obj) =>
       });
       return;
     }
-    if (shape.kind === "bool") {
+    if (shape.kind === K.BOOL) {
       out.push({ ...base, value: typeof current === "boolean" ? current : false, kind: "bool", onCommit: (v) => commit(v === false && !f.required ? undefined : Boolean(v)) });
       return;
     }
-    if (shape.kind === "int" || shape.kind === "float") {
+    if (shape.kind === K.INT || shape.kind === K.FLOAT) {
       const [lo, hi] = f.range ?? [shape.min ?? -Infinity, shape.max ?? Infinity];
       out.push({
         ...base,
@@ -135,7 +137,7 @@ export function shapeProperties(desc: Described, value: Obj, set: (next: Obj) =>
           if (text === "") return f.required ? t("Required.") : null;
           const n = Number(text);
           if (!Number.isFinite(n)) return t("A number.");
-          if (shape.kind === "int" && !Number.isInteger(n)) return t("A whole number.");
+          if (shape.kind === K.INT && !Number.isInteger(n)) return t("A whole number.");
           if (n < lo || n > hi) return t("{lo} to {hi}.", { lo, hi });
           return null;
         },
@@ -148,7 +150,7 @@ export function shapeProperties(desc: Described, value: Obj, set: (next: Obj) =>
       return;
     }
     const item = shape.of && !Array.isArray(shape.of) ? unwrap(shape.of) : undefined;
-    if (shape.kind === "list" && item && PLAIN.has(item.kind)) {
+    if (shape.kind === K.LIST && item && PLAIN.has(item.kind)) {
       const list = Array.isArray(current) ? current.map(String) : [];
       out.push({
         ...base,
@@ -167,8 +169,8 @@ export function shapeProperties(desc: Described, value: Obj, set: (next: Obj) =>
   };
 
   const root = def(desc.root);
-  if (root?.kind === "struct") fields(root.fields, [], general);
-  else if (root?.kind === "enum" && root.tag) {
+  if (root?.kind === K.STRUCT) fields(root.fields, [], general);
+  else if (root?.kind === K.ENUM && root.tag) {
     const tag = root.tag;
     const kind = typeof value[tag] === "string" ? (value[tag] as string) : "";
     out.push({
