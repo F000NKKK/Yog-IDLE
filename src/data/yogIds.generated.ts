@@ -428,12 +428,35 @@ export const serviceClient = {
   KEY_DOWN: "yog:client/key_down",
   ATTRIBUTE_VALUE: "yog:client/attribute_value",
   ADVANCEMENT_DONE: "yog:client/advancement_done",
-  OP: "yog:client/op",
   BODY_TRACK: "yog:client/body_track",
   BODY_TRACK_TYPE: "yog:client/body_track_type",
   SET_DIMENSIONS: "yog:client/set_dimensions",
   ENTITY_DATA: "yog:client/entity_data",
   SCREEN_SLOTS: "yog:client/screen_slots",
+} as const;
+
+export const serviceClientLocal = {
+  DOMAIN: "yog:client/local/",
+  STATE: "yog:client/local/state",
+  INVENTORY: "yog:client/local/inventory",
+  SCAN: "yog:client/local/scan",
+  AREA: "yog:client/local/area",
+  ENTITIES: "yog:client/local/entities",
+} as const;
+
+export const serviceClientControl = {
+  DOMAIN: "yog:client/control/",
+  DRIVE: "yog:client/control/drive",
+  RELEASE: "yog:client/control/release",
+  LOOK: "yog:client/control/look",
+  ATTACK: "yog:client/control/attack",
+  USE_ITEM: "yog:client/control/use_item",
+  MINE: "yog:client/control/mine",
+  STOP_MINING: "yog:client/control/stop_mining",
+  PLACE: "yog:client/control/place",
+  SELECT_SLOT: "yog:client/control/select_slot",
+  CLICK: "yog:client/control/click",
+  CHAT: "yog:client/control/chat",
 } as const;
 
 export const serviceUi = {
@@ -684,24 +707,6 @@ export const contentField = {
   EFFECT: "effect",
   OF: "of",
   COLOR: "color",
-} as const;
-
-export const clientOp = {
-  STATE: "state",
-  DRIVE: "drive",
-  RELEASE: "release",
-  LOOK: "look",
-  ATTACK: "attack",
-  USE: "use",
-  MINE: "mine",
-  PLACE: "place",
-  SLOT: "slot",
-  SCAN: "scan",
-  AREA: "area",
-  ENTITIES: "entities",
-  INVENTORY: "inventory",
-  CLICK: "click",
-  CHAT: "chat",
 } as const;
 
 export const yuiAttr = {
