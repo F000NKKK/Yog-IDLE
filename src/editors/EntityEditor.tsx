@@ -275,7 +275,7 @@ export function EntityEditor({ path, content, onChange, readOnly }: EditorProps)
         description: t("Others push it. Default: living things are pushed, others aren't."),
       }),
       flag("solid", t("Solid"), behaviour, file.solid, false, (v) => update((d) => void (d.solid = v)), { description: t("Others stand on it and bump into it as into a block (a boat).") }),
-      flag("ticks", t("Ticks"), behaviour, file.ticks, false, (v) => update((d) => void (d.ticks = v)), { description: t("The mod handles each tick of every entity of this type (on_entity_tick).") }),
+      flag("ticks", t("Ticks"), behaviour, file.ticks, false, (v) => update((d) => void (d.ticks = v)), { description: t("The mod handles each tick of every entity of this type (the entity/game/tick event).") }),
       num("tracking_range", t("Tracking Range"), behaviour, file.tracking_range, (v) => update((d) => void (d.tracking_range = v === ENTITY_DEFAULTS.tracking_range ? undefined : v)), {
         min: 1,
         int: true,

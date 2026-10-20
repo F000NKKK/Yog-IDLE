@@ -44,7 +44,7 @@ registerTranslations(RU, {
   "Solid": "Твёрдый",
   "Others stand on it and bump into it as into a block (a boat).": "На нём стоят и в него упираются, как в блок (лодка).",
   "Ticks": "Такты",
-  "The mod handles each tick of every entity of this type (on_entity_tick).": "Мод обрабатывает каждый такт каждой сущности этого типа (on_entity_tick).",
+  "The mod handles each tick of every entity of this type (the entity/game/tick event).": "Мод обрабатывает каждый такт каждой сущности этого типа (событие entity/game/tick).",
   "Tracking Range": "Дальность отслеживания",
   "How far players see it, chunks.": "Насколько далеко её видят игроки, в чанках.",
   "Update Interval": "Интервал обновления",
