@@ -293,10 +293,10 @@ function itemGearRows(ctx: PropertiesContext, out: PropertyDescriptor[]) {
             description: t("The game's material (wood, stone, iron, diamond, gold, netherite) or the mod's, @tool_material:mymod:mythril (a .ydef)."),
           }),
           num("attack_damage", t("Tool: Attack Damage"), c, it.tool.attack_damage, (v) => setI((x) => void (x.tool && (x.tool.attack_damage = v))), {
-            description: t("On top of the material's. Default: the kind's (sword 3, axe 6, shovel 1.5, pickaxe 1, hoe 0)."),
+            description: t("On top of the material's. Default: the game's tool of this kind and material, as each version of the game has it."),
           }),
           num("attack_speed", t("Tool: Attack Speed"), c, it.tool.attack_speed, (v) => setI((x) => void (x.tool && (x.tool.attack_speed = v))), {
-            description: t("Change of attack speed. Default: the kind's (sword -2.4, axe -3.1, shovel -3, pickaxe -2.8, hoe -1)."),
+            description: t("Change of attack speed. Default: the game's tool of this kind and material, as each version of the game has it."),
           }),
         ]
       : []),

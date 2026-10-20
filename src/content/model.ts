@@ -4,7 +4,7 @@
 
 import type { DataFormat } from "../data/useDataFile";
 import { formatData, patchData, readObject } from "../data/yogData";
-import { kind as KIND, reference } from "../data/yogIds.generated";
+import { kind as KIND, reference, toolKind } from "../data/yogIds.generated";
 import { gameId } from "../data/yogFormat";
 import { typedRef } from "../data/contentRefs";
 
@@ -147,10 +147,10 @@ export interface ContentFile {
 export type Kind = typeof KIND.BLOCK | typeof KIND.ITEM;
 export const kindOf = (path: string): Kind | null => (/\.yblock$/i.test(path) ? KIND.BLOCK : /\.yitem$/i.test(path) ? KIND.ITEM : null);
 
-/** The game's tools and tiers by short name; a mod's are `@tag:block:…` tags. */
-export const TOOLS = ["pickaxe", "axe", "shovel", "hoe"];
+/** The game's tools that mine, by short name; a mod's are `@tag:block:…` tags. */
+export const TOOLS: string[] = [toolKind.PICKAXE, toolKind.AXE, toolKind.SHOVEL, toolKind.HOE];
 /** The game's kinds of tool item (a mod's: its `@tag:block:…` mineable tag). */
-export const TOOL_KINDS = [...TOOLS, "sword"];
+export const TOOL_KINDS: string[] = Object.values(toolKind);
 export const FACINGS = ["horizontal", "all"] as const;
 /** How the facings are shown (translated). */
 export const FACING_LABELS: Record<(typeof FACINGS)[number], string> = { horizontal: "Horizontal (4 sides)", all: "Any of the six sides" };

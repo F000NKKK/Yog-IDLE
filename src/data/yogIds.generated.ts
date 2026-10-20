@@ -611,6 +611,7 @@ export const game = {
   PLAINS: "minecraft:plains",
   THE_NETHER: "minecraft:the_nether",
   THE_END: "minecraft:the_end",
+  MINEABLE: "minecraft:mineable/",
   MISSING_TEXTURE: "minecraft:missingno",
   WRITTEN_BOOK: "minecraft:written_book",
   BOOK: "minecraft:book",
@@ -680,6 +681,11 @@ export const yui = {
   RECIPE_SLOT: "RecipeSlot",
   RECIPE_RESULT: "RecipeResult",
   RECIPE_COUNT: "RecipeCount",
+  BLOCK_SLOT: "BlockSlot",
+  BOOK_HEADER: "BookHeader",
+  BOOK_TEXT: "BookText",
+  BOOK_ITEM: "BookItem",
+  DRAWN: "Drawn",
 } as const;
 
 export const itemDef = {
@@ -696,6 +702,24 @@ export const equipment = {
   TEXTURE: "texture",
   HUMANOID: "humanoid",
   HUMANOID_LEGGINGS: "humanoid_leggings",
+} as const;
+
+export const yuiMarkup = {
+  BIND_OPEN: "{x:Bind ",
+  BIND_CLOSE: "}",
+} as const;
+
+export const mcmeta = {
+  ANIMATION: "animation",
+  TEXTURE: "texture",
+} as const;
+
+export const toolKind = {
+  PICKAXE: "pickaxe",
+  AXE: "axe",
+  SHOVEL: "shovel",
+  HOE: "hoe",
+  SWORD: "sword",
 } as const;
 
 export const model = {
@@ -792,6 +816,15 @@ export const yuiAttr = {
   RECIPE_LAYOUT: "recipe_layout",
   SLOT: "slot",
   BLOCK: "block",
+  FRAME: "frame",
+  SIZE: "size",
+  BOOK_PAGE: "book_page",
+  NAME: "name",
+  TYPE: "type",
+  DEFAULT: "default",
+  SRC: "src",
+  DRAWER: "drawer",
+  DATA: "data",
   STYLE: "style",
   BASED_ON: "based_on",
   ORIENTATION: "orientation",
