@@ -820,6 +820,10 @@ export const yuiValue = {
 export const yuiMarkup = {
   BIND_OPEN: "{x:Bind ",
   BIND_CLOSE: "}",
+  BIND: "{x:Bind",
+  BINDING: "{Binding",
+  DESIGN: "d:",
+  RESOURCES: ".Resources",
 } as const;
 
 export const mcmeta = {
@@ -965,6 +969,9 @@ export const yuiAttr = {
   ITEM_HEIGHT: "item_height",
   SCROLL_KEY: "scroll_key",
   VISIBLE: "visible",
+  X_KEY: "x:Key",
+  X_NAME: "x:Name",
+  TARGET: "target",
   GRID_ROW: "Grid.Row",
   GRID_COLUMN: "Grid.Column",
   GRID_ROWSPAN: "Grid.RowSpan",
