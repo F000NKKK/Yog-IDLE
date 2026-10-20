@@ -709,6 +709,49 @@ export const equipment = {
   HUMANOID_LEGGINGS: "humanoid_leggings",
 } as const;
 
+export const blockState = {
+  FACING: "facing",
+  NORTH: "north",
+  EAST: "east",
+  SOUTH: "south",
+  WEST: "west",
+  UP: "up",
+  DOWN: "down",
+  FACE: "face",
+  FLOOR: "floor",
+  WALL: "wall",
+  CEILING: "ceiling",
+  WATERLOGGED: "waterlogged",
+  FALSE: "false",
+  TRUE: "true",
+} as const;
+
+export const loot = {
+  TYPE: "type",
+  POOLS: "pools",
+  ROLLS: "rolls",
+  ENTRIES: "entries",
+  NAME: "name",
+  CONDITIONS: "conditions",
+  CONDITION: "condition",
+  FUNCTIONS: "functions",
+  FUNCTION: "function",
+  COUNT: "count",
+  MIN: "min",
+  MAX: "max",
+  BLOCK: "block",
+  PROPERTIES: "properties",
+  BLOCK_TABLE: "minecraft:block",
+  GENERIC_TABLE: "minecraft:generic",
+  ITEM_ENTRY: "minecraft:item",
+  UNIFORM: "minecraft:uniform",
+  SET_COUNT: "minecraft:set_count",
+  EXPLOSION_DECAY: "minecraft:explosion_decay",
+  SURVIVES_EXPLOSION: "minecraft:survives_explosion",
+  BLOCK_STATE_PROPERTY: "minecraft:block_state_property",
+  BLOCKS: "blocks/",
+} as const;
+
 export const dimensionField = {
   ID: "id",
   DIMENSION_TYPE: "dimension_type",
@@ -771,6 +814,20 @@ export const model = {
   APPLY: "apply",
   OR: "OR",
   AND: "AND",
+  RENDER_TYPE: "render_type",
+  LAYER: "layer",
+  SHADE: "shade",
+  CULLFACE: "cullface",
+  TINTINDEX: "tintindex",
+  AMBIENT_OCCLUSION: "ambientocclusion",
+  GUI_LIGHT: "gui_light",
+  TRANSLATION: "translation",
+  SCALE: "scale",
+  BLOCK_PARENT: "minecraft:block/block",
+  X: "x",
+  Y: "y",
+  UVLOCK: "uvlock",
+  WEIGHT: "weight",
 } as const;
 
 export const contentField = {
