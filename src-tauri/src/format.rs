@@ -60,7 +60,10 @@ pub(super) async fn format_supported(path: String) -> bool {
 /// Calls `method` of the CLI service (`yog serve`) — how the front end reads
 /// and writes every Yog format.
 #[tauri::command]
-pub(super) async fn cli(method: String, params: serde_json::Value) -> Result<serde_json::Value, serde_json::Value> {
+pub(super) async fn cli(
+    method: String,
+    params: serde_json::Value,
+) -> Result<serde_json::Value, serde_json::Value> {
     tauri::async_runtime::spawn_blocking(move || cli::call(&method, params))
         .await
         .map_err(|e| serde_json::Value::from(e.to_string()))?

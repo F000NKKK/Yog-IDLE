@@ -1,7 +1,7 @@
 //! Running the game under the IDE: the mod's id, the control connection, its events and the session's status.
 
-use substrate_platform::sync::Locked;
 use super::*;
+use substrate_platform::sync::Locked;
 
 /// `[mod] id` of the mod at `root`.
 pub(super) fn mod_id(root: &Path) -> Result<String, String> {
@@ -139,7 +139,13 @@ pub(super) struct Attach {
     pub(super) native_path: PathBuf,
 }
 
-pub(super) fn connect_and_watch(app: AppHandle, session_id: u64, addr: String, token: String, attach: Attach) {
+pub(super) fn connect_and_watch(
+    app: AppHandle,
+    session_id: u64,
+    addr: String,
+    token: String,
+    attach: Attach,
+) {
     let debug = attach.debug;
     // No fixed deadline: before the game starts, `yog run` builds the mod
     // (and refreshes the others it exported), and Gradle may build the
@@ -162,7 +168,8 @@ pub(super) fn connect_and_watch(app: AppHandle, session_id: u64, addr: String, t
         // a crash at startup) — its own output says why.
         let _ = app.emit(
             crate::events::OUTPUT_DEBUG,
-            "[warn] the run ended before the game opened its control socket — see the Build output".to_string(),
+            "[warn] the run ended before the game opened its control socket — see the Build output"
+                .to_string(),
         );
         if debug {
             emit_failed(
@@ -182,7 +189,15 @@ pub(super) fn connect_and_watch(app: AppHandle, session_id: u64, addr: String, t
         Ok(s) => s,
         Err(_) => return,
     };
-    if send_control(&mut hello_stream, &Command::Hello { token, pid: std::process::id() }).is_err() {
+    if send_control(
+        &mut hello_stream,
+        &Command::Hello {
+            token,
+            pid: std::process::id(),
+        },
+    )
+    .is_err()
+    {
         return;
     }
 
@@ -224,7 +239,14 @@ pub(super) fn connect_and_watch(app: AppHandle, session_id: u64, addr: String, t
 
     #[cfg(target_os = "linux")]
     if debug {
-        start_tracer(&app, session_id, real_pid, attach.mod_id, attach.native_path, ptracer);
+        start_tracer(
+            &app,
+            session_id,
+            real_pid,
+            attach.mod_id,
+            attach.native_path,
+            ptracer,
+        );
     }
     #[cfg(not(target_os = "linux"))]
     let _ = ptracer;
@@ -245,7 +267,13 @@ pub(super) fn connect_and_watch(app: AppHandle, session_id: u64, addr: String, t
         match reader.read_line(&mut line) {
             Ok(0) | Err(_) => break,
             Ok(_) => {
-                handle_control_event(&app, session_id, real_pid, protocol::parse(&line), line.trim());
+                handle_control_event(
+                    &app,
+                    session_id,
+                    real_pid,
+                    protocol::parse(&line),
+                    line.trim(),
+                );
             }
         }
     }
@@ -262,7 +290,10 @@ pub(super) fn handle_control_event(
     raw: &str,
 ) {
     let Some(event) = event else {
-        let _ = app.emit(crate::events::OUTPUT_DEBUG, format!("[control] unknown: {raw}"));
+        let _ = app.emit(
+            crate::events::OUTPUT_DEBUG,
+            format!("[control] unknown: {raw}"),
+        );
         return;
     };
     // An answer someone's waiting for.
@@ -270,7 +301,10 @@ pub(super) fn handle_control_event(
         let debug_state = app.state::<DebugState>();
         let mut guard = debug_state.0.locked();
         if let Some(session) = guard.as_mut().filter(|s| s.id == session_id)
-            && session.reply_waiter.as_ref().is_some_and(|(answers, _)| answers(&event))
+            && session
+                .reply_waiter
+                .as_ref()
+                .is_some_and(|(answers, _)| answers(&event))
             && let Some((_, waiter)) = session.reply_waiter.take()
         {
             let _ = waiter.send(event);

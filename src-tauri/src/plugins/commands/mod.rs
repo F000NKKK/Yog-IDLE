@@ -12,4 +12,10 @@ pub mod run;
 use substrate_platform::commands::Domain;
 
 /// Every domain.
-pub const ALL: &[&Domain] = &[&project::DOMAIN, &run::DOMAIN, &debug::DOMAIN, &code::DOMAIN, &app::DOMAIN];
+pub const ALL: &[&Domain] = &[
+    &project::DOMAIN,
+    &run::DOMAIN,
+    &debug::DOMAIN,
+    &code::DOMAIN,
+    &app::DOMAIN,
+];

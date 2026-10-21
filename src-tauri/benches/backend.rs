@@ -5,9 +5,7 @@ use std::hint::black_box;
 use std::path::{Path, PathBuf};
 
 use criterion::{Criterion, criterion_group, criterion_main};
-use yog_idle_tauri_lib::bench::{
-    self, CodeIndex, OpenDocument, extract_symbols, fuzzy_match,
-};
+use yog_idle_tauri_lib::bench::{self, CodeIndex, OpenDocument, extract_symbols, fuzzy_match};
 
 const WORDS: &[&str] = &[
     "project", "window", "state", "find", "files", "search", "index", "symbol", "render", "layout",

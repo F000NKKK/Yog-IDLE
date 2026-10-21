@@ -28,7 +28,9 @@ pub fn command() -> Command {
 /// Where the CLI is: the first `yog` on `PATH`.
 pub fn binary() -> Option<PathBuf> {
     let exe = format!("{PROGRAM}{}", std::env::consts::EXE_SUFFIX);
-    std::env::split_paths(&std::env::var_os("PATH")?).map(|d| d.join(&exe)).find(|p| p.is_file())
+    std::env::split_paths(&std::env::var_os("PATH")?)
+        .map(|d| d.join(&exe))
+        .find(|p| p.is_file())
 }
 
 struct Service {
@@ -67,7 +69,13 @@ fn start() -> Result<Service, String> {
         .map_err(|e| format!("couldn't start `{PROGRAM} {SERVE}`: {e}"))?;
     let stdin = child.stdin.take().ok_or("the service has no stdin")?;
     let stdout = BufReader::new(child.stdout.take().ok_or("the service has no stdout")?);
-    Ok(Service { child, stdin, stdout, next_id: 1, binary })
+    Ok(Service {
+        child,
+        stdin,
+        stdout,
+        next_id: 1,
+        binary,
+    })
 }
 
 /// Calls `method` of the service with `params`: its result, or its error
@@ -75,7 +83,9 @@ fn start() -> Result<Service, String> {
 pub fn call(method: &str, params: Value) -> Result<Value, Value> {
     let mut guard = SERVICE.lock().map_err(|e| json!(e.to_string()))?;
     // A new binary, or a service that died: start again.
-    let stale = guard.as_mut().is_none_or(|s| s.binary != binary_stamp() || s.child.try_wait().ok().flatten().is_some());
+    let stale = guard
+        .as_mut()
+        .is_none_or(|s| s.binary != binary_stamp() || s.child.try_wait().ok().flatten().is_some());
     if stale {
         *guard = None;
     }
@@ -87,19 +97,27 @@ pub fn call(method: &str, params: Value) -> Result<Value, Value> {
     service.next_id += 1;
     let request = json!({ "id": id, "method": method, "params": params });
     let mut reply = String::new();
-    let sent = writeln!(service.stdin, "{request}").and_then(|()| service.stdin.flush()).and_then(|()| service.stdout.read_line(&mut reply));
+    let sent = writeln!(service.stdin, "{request}")
+        .and_then(|()| service.stdin.flush())
+        .and_then(|()| service.stdout.read_line(&mut reply));
     match sent {
         Ok(n) if n > 0 => {}
         // The service ended mid-request: the next call starts it again.
         _ => {
             *guard = None;
-            return Err(json!(format!("`{PROGRAM} {SERVE}` stopped answering ({method})")));
+            return Err(json!(format!(
+                "`{PROGRAM} {SERVE}` stopped answering ({method})"
+            )));
         }
     }
-    let mut reply: Value = serde_json::from_str(&reply).map_err(|e| json!(format!("a reply that isn't JSON: {e}")))?;
+    let mut reply: Value =
+        serde_json::from_str(&reply).map_err(|e| json!(format!("a reply that isn't JSON: {e}")))?;
     match reply.get_mut("error").map(Value::take) {
         Some(error) => Err(error),
-        None => Ok(reply.get_mut("result").map(Value::take).unwrap_or(Value::Null)),
+        None => Ok(reply
+            .get_mut("result")
+            .map(Value::take)
+            .unwrap_or(Value::Null)),
     }
 }
 
@@ -110,14 +128,18 @@ pub fn mod_id(root: &Path) -> Option<String> {
     type Ids = Mutex<HashMap<PathBuf, (SystemTime, Option<String>)>>;
     static IDS: std::sync::OnceLock<Ids> = std::sync::OnceLock::new();
     let manifest = root.join(yog_ids::file::MANIFEST);
-    let modified = std::fs::metadata(&manifest).and_then(|m| m.modified()).ok()?;
+    let modified = std::fs::metadata(&manifest)
+        .and_then(|m| m.modified())
+        .ok()?;
     let ids = IDS.get_or_init(Default::default);
     if let Some((at, id)) = ids.lock().ok().and_then(|m| m.get(root).cloned())
         && at == modified
     {
         return id;
     }
-    let id = call(serve_method::MOD_ID, json!({ (serve_param::PATH): root })).ok().and_then(|v| v.as_str().map(str::to_string));
+    let id = call(serve_method::MOD_ID, json!({ (serve_param::PATH): root }))
+        .ok()
+        .and_then(|v| v.as_str().map(str::to_string));
     if let Ok(mut m) = ids.lock() {
         m.insert(root.to_path_buf(), (modified, id.clone()));
     }

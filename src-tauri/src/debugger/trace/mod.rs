@@ -17,8 +17,8 @@ mod process;
 pub(crate) use process::*;
 mod session;
 pub(crate) use session::*;
-mod tracer;
 mod commands;
+mod tracer;
 pub use commands::*;
 
 /// Everything the tracer thread owns for one attached debug session — see

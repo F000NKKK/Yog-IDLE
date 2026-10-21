@@ -1,8 +1,8 @@
 //! The tracer at work: breakpoints, stops, stepping, frames and values.
 
-use yog_debugger::LoadedMod;
-use substrate_platform::sync::Locked;
 use super::*;
+use substrate_platform::sync::Locked;
+use yog_debugger::LoadedMod;
 
 impl Tracer {
     pub(super) fn attach(
@@ -91,8 +91,15 @@ impl Tracer {
         let module_base = find_latest_module_base(self.debugger.pid(), &self.mod_id)
             .ok_or_else(|| format!("couldn't locate {}'s reloaded native", self.mod_id))?;
         let generation = self.generations.next();
-        let m = LoadedMod { id: &self.mod_id, generation, base: module_base, symbols: &symbols };
-        self.breakpoints.rebind_after_reload(&mut self.debugger, &m).map_err(|e| e.to_string())?;
+        let m = LoadedMod {
+            id: &self.mod_id,
+            generation,
+            base: module_base,
+            symbols: &symbols,
+        };
+        self.breakpoints
+            .rebind_after_reload(&mut self.debugger, &m)
+            .map_err(|e| e.to_string())?;
         self.symbols = symbols;
         self.values.clear();
         self.module_base = module_base;
@@ -112,7 +119,12 @@ impl Tracer {
         {
             return;
         }
-        let m = LoadedMod { id: &self.mod_id, generation: self.generation, base: self.module_base, symbols: &self.symbols };
+        let m = LoadedMod {
+            id: &self.mod_id,
+            generation: self.generation,
+            base: self.module_base,
+            symbols: &self.symbols,
+        };
         match self.breakpoints.set(&mut self.debugger, &m, &file, line) {
             Err(e) => warn(app, format!("setting breakpoint {file}:{line}: {e}")),
             Ok(()) => {
@@ -227,7 +239,11 @@ impl Tracer {
     }
 
     /// Watch expressions evaluated in frame `frame`.
-    pub(super) fn evaluate(&mut self, frame: usize, exprs: &[String]) -> Result<Vec<WatchOut>, String> {
+    pub(super) fn evaluate(
+        &mut self,
+        frame: usize,
+        exprs: &[String],
+    ) -> Result<Vec<WatchOut>, String> {
         let mem = ProcMem::open(self.debugger.pid())?;
         let (regs, inline) = self.frame_regs(frame)?;
         Ok(exprs

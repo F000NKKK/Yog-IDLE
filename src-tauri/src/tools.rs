@@ -3,15 +3,15 @@
 //! project's platforms, or this machine's only), `YOG_API_PATH` — and what
 //! Tools > Yog Installer opens. Installing anything is Yog Installer's job.
 
-use substrate_platform::sync::ReadWrite;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::RwLock;
+use substrate_platform::sync::ReadWrite;
 
 use serde::{Deserialize, Serialize};
+use substrate_platform::process;
 use tauri::State;
 use yog_home::Home;
-use substrate_platform::process;
 use yog_home::components::id;
 
 /// Key of the Build options in the app-wide `state.json` (written by the
@@ -56,7 +56,11 @@ pub fn load_settings_from(state_file: &Path) -> Settings {
 
 /// The app's remembered state in its config dir (Tauri's is `<config>/<identifier>`).
 pub fn default_state_file(identifier: &str) -> Option<PathBuf> {
-    Some(dirs::config_dir()?.join(identifier).join(substrate_platform::state::APP_STATE_FILE))
+    Some(
+        dirs::config_dir()?
+            .join(identifier)
+            .join(substrate_platform::state::APP_STATE_FILE),
+    )
 }
 
 /// This computer's `yog build` platform tag (`linux-x86_64`, ...), if yog builds for it.
@@ -66,7 +70,9 @@ pub fn host_tag() -> Option<&'static str> {
 
 /// cargo's `bin/`: `$CARGO_HOME/bin`, else `~/.cargo/bin`.
 fn cargo_bin() -> Option<PathBuf> {
-    let home = std::env::var_os("CARGO_HOME").map(PathBuf::from).or_else(|| dirs::home_dir().map(|h| h.join(".cargo")));
+    let home = std::env::var_os("CARGO_HOME")
+        .map(PathBuf::from)
+        .or_else(|| dirs::home_dir().map(|h| h.join(".cargo")));
     home.map(|h| h.join("bin"))
 }
 
@@ -82,7 +88,9 @@ fn joined_path() -> String {
     if let Some(path) = std::env::var_os("PATH") {
         all.extend(std::env::split_paths(&path));
     }
-    std::env::join_paths(all).map(|p| p.to_string_lossy().into_owned()).unwrap_or_default()
+    std::env::join_paths(all)
+        .map(|p| p.to_string_lossy().into_owned())
+        .unwrap_or_default()
 }
 
 /// `YOG_TARGETS` for a build: the project's own platforms (Project Properties
@@ -91,7 +99,10 @@ pub fn yog_targets(settings: &Settings, project_targets: &[String]) -> Option<St
     if !project_targets.is_empty() {
         return Some(project_targets.join(","));
     }
-    settings.host_only.then(|| host_tag().map(str::to_string)).flatten()
+    settings
+        .host_only
+        .then(|| host_tag().map(str::to_string))
+        .flatten()
 }
 
 /// The environment of a `yog`/cargo process.
@@ -101,7 +112,10 @@ pub fn tool_env(settings: &Settings, project_targets: &[String]) -> HashMap<Stri
         env.insert(yog_ids::env::TARGETS.into(), targets);
     }
     if !settings.yog_api_path.trim().is_empty() {
-        env.insert(yog_ids::env::API_PATH.into(), settings.yog_api_path.trim().into());
+        env.insert(
+            yog_ids::env::API_PATH.into(),
+            settings.yog_api_path.trim().into(),
+        );
     }
     env
 }
@@ -137,11 +151,18 @@ pub struct Status {
 #[tauri::command]
 pub fn tools_status() -> Status {
     let home = Home::locate().ok();
-    let resolver = home.as_ref().and_then(|h| yog_home::targets::Resolver::new(h).ok());
-    let installer = home.as_ref().and_then(|h| h.components().ok()).and_then(|c| c.newest(id::INSTALLER).map(|i| i.path.clone()));
+    let resolver = home
+        .as_ref()
+        .and_then(|h| yog_home::targets::Resolver::new(h).ok());
+    let installer = home
+        .as_ref()
+        .and_then(|h| h.components().ok())
+        .and_then(|c| c.newest(id::INSTALLER).map(|i| i.path.clone()));
     Status {
         yog: crate::cli::binary().map(|p| p.display().to_string()),
-        loader_sdk: resolver.and_then(|r| r.loader_sdk()).map(|p| p.display().to_string()),
+        loader_sdk: resolver
+            .and_then(|r| r.loader_sdk())
+            .map(|p| p.display().to_string()),
         installer: installer.map(|p| p.display().to_string()),
         host_tag: host_tag(),
     }
@@ -151,7 +172,10 @@ pub fn tools_status() -> Status {
 /// to download it from.
 #[tauri::command]
 pub fn open_installer() -> Result<(), String> {
-    let installer = Home::locate()?.components()?.newest(id::INSTALLER).map(|i| i.path.clone());
+    let installer = Home::locate()?
+        .components()?
+        .newest(id::INSTALLER)
+        .map(|i| i.path.clone());
     match installer.filter(|p| p.exists()) {
         Some(program) => process::start(&program),
         None => process::open_link(INSTALLER_RELEASES),

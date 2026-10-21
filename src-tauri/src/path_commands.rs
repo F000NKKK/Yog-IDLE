@@ -19,7 +19,11 @@ pub(super) fn path_info(path: String) -> Result<properties::PathInfo, String> {
 }
 
 #[tauri::command]
-pub(super) fn path_set_readonly(state: State<Workspace>, path: String, read_only: bool) -> Result<(), String> {
+pub(super) fn path_set_readonly(
+    state: State<Workspace>,
+    path: String,
+    read_only: bool,
+) -> Result<(), String> {
     let target = PathBuf::from(&path);
     validate_within_roots(&state, &target)?;
     properties::set_read_only(&target, read_only)

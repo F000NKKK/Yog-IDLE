@@ -30,7 +30,10 @@ pub(super) struct ModRunTargets {
 /// The run targets, as `yog run --list --json` gives them — they come
 /// from Yog's home (the loader SDK, `~/.yog/local.toml`), not the project.
 #[tauri::command]
-pub(super) async fn mod_run_targets(state: State<'_, Workspace>, project_root: String) -> Result<ModRunTargets, String> {
+pub(super) async fn mod_run_targets(
+    state: State<'_, Workspace>,
+    project_root: String,
+) -> Result<ModRunTargets, String> {
     validate_within_roots(&state, Path::new(&project_root))?;
     tauri::async_runtime::spawn_blocking(move || {
         let out = cli::command()
@@ -41,7 +44,8 @@ pub(super) async fn mod_run_targets(state: State<'_, Workspace>, project_root: S
         if !out.status.success() {
             return Err(String::from_utf8_lossy(&out.stderr).trim().to_string());
         }
-        let mut list: ModRunTargets = serde_json::from_slice(&out.stdout).map_err(|e| format!("yog run --list: {e}"))?;
+        let mut list: ModRunTargets =
+            serde_json::from_slice(&out.stdout).map_err(|e| format!("yog run --list: {e}"))?;
         list.local_file = yog_home::Home::locate()?.local_file().display().to_string();
         Ok(list)
     })
@@ -104,7 +108,11 @@ pub(super) fn yog_workflow(app: &AppHandle, root: &Path, args: Vec<String>) -> W
 
 /// The Build menu's plain "Build" action for a `yog-mod` project — `yog build`.
 #[tauri::command]
-pub(super) fn mod_build(app: AppHandle, state: State<Workspace>, project_root: String) -> Result<(), String> {
+pub(super) fn mod_build(
+    app: AppHandle,
+    state: State<Workspace>,
+    project_root: String,
+) -> Result<(), String> {
     let root = PathBuf::from(project_root);
     validate_within_roots(&state, &root)?;
     let file = yog_workflow(&app, &root, vec!["build".to_string()]);

@@ -136,7 +136,6 @@ pub(super) fn project_open(state: State<Workspace>, path: String) -> Result<Proj
         .map(|n| n.to_string_lossy().into_owned())
         .unwrap_or_else(|| "Project".to_string());
 
-
     Ok(ProjectOut {
         name,
         root: canonical.to_string_lossy().into_owned(),

@@ -1,7 +1,7 @@
 //! A tracing session: started on the game, its thread, the failures it reports.
 
-use substrate_platform::sync::Locked;
 use super::*;
+use substrate_platform::sync::Locked;
 
 /// An attached session's tracer gave up mid-session — reported as
 /// `debug-failed` (not `debug-attach-failed`: the attach itself worked),
@@ -9,7 +9,12 @@ use super::*;
 /// exiting, a newer run), where a late `ptrace` error from the dying
 /// process is just noise — or the game itself is what went away, which
 /// is an exit, not a failure.
-pub(super) fn emit_session_failed(app: &AppHandle, session_id: u64, real_pid: i32, message: String) {
+pub(super) fn emit_session_failed(
+    app: &AppHandle,
+    session_id: u64,
+    real_pid: i32,
+    message: String,
+) {
     let current = app
         .state::<DebugState>()
         .0
@@ -38,7 +43,6 @@ pub(super) fn process_gone(pid: i32) -> bool {
             .is_none_or(|state| matches!(state, 'Z' | 'X'))
     })
 }
-
 
 /// Registers a `TracerHandle` on the session (so breakpoint toggles made
 /// while attach is still in progress queue up instead of being lost) and

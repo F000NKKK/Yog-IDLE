@@ -1,7 +1,7 @@
 //! Running `yog` and workflows, their output streamed to the IDE.
 
-use substrate_platform::sync::Locked;
 use super::*;
+use substrate_platform::sync::Locked;
 
 /// A generic escape hatch open to any project (regardless of `kind`): if it
 /// happens to define its own `workflow.toml`, its named entries can be run —
@@ -213,10 +213,7 @@ pub(super) fn run_and_stream(
     state.running.locked().insert(id, handle.clone());
     std::thread::spawn(move || {
         let result = handle.wait();
-        app.state::<WorkflowState>()
-            .running
-            .locked()
-            .remove(&id);
+        app.state::<WorkflowState>().running.locked().remove(&id);
         let _ = app.emit(
             crate::events::WORKFLOW_EXIT,
             WorkflowExit {

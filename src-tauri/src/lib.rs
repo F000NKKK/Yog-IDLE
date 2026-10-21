@@ -5,15 +5,17 @@ use std::sync::atomic::{AtomicU64, Ordering};
 
 use serde::{Deserialize, Serialize};
 use substrate_platform::project::ProjectStandard;
-use substrate_platform::run::{Level, LogLine, LogSink, WorkflowFile, WorkflowHandle, WorkflowResult};
+use substrate_platform::run::{
+    Level, LogLine, LogSink, WorkflowFile, WorkflowHandle, WorkflowResult,
+};
 use tauri::{AppHandle, Emitter, Manager, State};
 
-pub mod plugins;
 mod path_commands;
+pub mod plugins;
 use path_commands::*;
-mod project_commands;
 mod app_commands;
 mod format;
+mod project_commands;
 mod workflow;
 use workflow::*;
 mod mod_commands;
@@ -21,12 +23,12 @@ use mod_commands::*;
 mod publish;
 
 mod cli;
-mod tools;
 pub mod events;
 mod manifest;
 mod project_properties;
 mod properties;
 mod symbols;
+mod tools;
 
 mod debugger;
 
@@ -34,7 +36,6 @@ mod debugger;
 /// picked — kept by Substrate's plugin, which checks its own commands
 /// against it; IDLE's commands check theirs with [`validate_within_roots`].
 pub(crate) use tauri_plugin_substrate::Workspace;
-
 
 #[cfg(feature = "bench")]
 #[doc(hidden)]
@@ -52,10 +53,14 @@ pub fn run() -> tauri::Result<()> {
 
     let builder = tauri::Builder::default()
         // Substrate's own commands (the workspace, Source Control): what its UI calls.
-        .plugin(tauri_plugin_substrate::init_with(tauri_plugin_substrate::Options {
-            search: manifest::SEARCH_LAYOUT.clone(),
-            state: Some(tauri_plugin_substrate::StateOptions { project_dir: manifest::IDLE_DIR.to_string() }),
-        }))
+        .plugin(tauri_plugin_substrate::init_with(
+            tauri_plugin_substrate::Options {
+                search: manifest::SEARCH_LAYOUT.clone(),
+                state: Some(tauri_plugin_substrate::StateOptions {
+                    project_dir: manifest::IDLE_DIR.to_string(),
+                }),
+            },
+        ))
         .plugin(tauri_plugin_dialog::init())
         // Window size/position/maximized, restored on launch and saved on
         // close (into the app config dir). Not visibility or decorations —
@@ -75,7 +80,9 @@ pub fn run() -> tauri::Result<()> {
         .manage(debugger::DebugState::default());
 
     // Yog IDLE's own commands, a plugin per domain.
-    let builder = plugins::all().into_iter().fold(builder, |builder, plugin| builder.plugin(plugin));
+    let builder = plugins::all()
+        .into_iter()
+        .fold(builder, |builder, plugin| builder.plugin(plugin));
 
     builder.build(context)?.run(|app, event| {
         // The game outlives the IDE; only a debugger has to let go.

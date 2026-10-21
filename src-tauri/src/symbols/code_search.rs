@@ -1,7 +1,7 @@
 //! Code Search: files, symbols and text matching a query, ranked.
 
-use substrate_platform::sync::Locked;
 use super::*;
+use substrate_platform::sync::Locked;
 
 /// Per project root, built on first use.
 #[derive(Default)]
@@ -85,7 +85,12 @@ pub(super) fn file_item(path: &Path, rel: &str, query: &str) -> Option<CodeSearc
     })
 }
 
-pub(super) fn symbol_item(path: &Path, rel: &str, symbol: &Symbol, query: &str) -> Option<CodeSearchItem> {
+pub(super) fn symbol_item(
+    path: &Path,
+    rel: &str,
+    symbol: &Symbol,
+    query: &str,
+) -> Option<CodeSearchItem> {
     let (score, positions) = fuzzy_match(query, &symbol.name)?;
     Some(CodeSearchItem {
         kind: symbol.kind.name(),
@@ -174,25 +179,21 @@ pub(super) fn text_items(
         max_lines: limit,
         layout: &crate::manifest::SEARCH_LAYOUT,
     };
-    search::run_search(
-        &search,
-        &|| true,
-        &mut |file| {
-            for hit in file.hits {
-                items.push(CodeSearchItem {
-                    kind: "text",
-                    highlights: hit.ranges.iter().flat_map(|&(s, e)| s..e).collect(),
-                    name: hit.text,
-                    container: None,
-                    path: file.path.clone(),
-                    rel_path: file.rel_path.clone(),
-                    line: Some(hit.line),
-                    column: Some(hit.column),
-                    score: 0,
-                });
-            }
-        },
-    )
+    search::run_search(&search, &|| true, &mut |file| {
+        for hit in file.hits {
+            items.push(CodeSearchItem {
+                kind: "text",
+                highlights: hit.ranges.iter().flat_map(|&(s, e)| s..e).collect(),
+                name: hit.text,
+                container: None,
+                path: file.path.clone(),
+                rel_path: file.rel_path.clone(),
+                line: Some(hit.line),
+                column: Some(hit.column),
+                score: 0,
+            });
+        }
+    })
     .map_err(|m| m.to_string())?;
     Ok(items)
 }

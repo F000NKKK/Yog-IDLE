@@ -1,7 +1,7 @@
 //! The debugger's commands: breakpoints, continue, step, pause, threads, the ptrace capability.
 
-use substrate_platform::sync::Locked;
 use super::*;
+use substrate_platform::sync::Locked;
 
 pub(super) fn warn(app: &AppHandle, message: String) {
     let _ = app.emit(crate::events::OUTPUT_DEBUG, format!("[warn] {message}"));

@@ -20,7 +20,11 @@ impl RootIndex {
         // Generated screen code (`.g.rs`) too, so its `ids`/`events`/`render`
         // show up in Code Search as in VS (`MainWindow.g.cs`).
         let mut files = search::project_files(root, &all, &crate::manifest::SEARCH_LAYOUT);
-        files.extend(search::generated_files(root, &all, &crate::manifest::SEARCH_LAYOUT));
+        files.extend(search::generated_files(
+            root,
+            &all,
+            &crate::manifest::SEARCH_LAYOUT,
+        ));
         self.files = files
             .into_iter()
             .map(|path| {

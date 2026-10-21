@@ -53,7 +53,8 @@ pub(super) fn publish_profile_save(
 ) -> Result<(), String> {
     let root = PathBuf::from(&project_root);
     validate_within_roots(&state, &root)?;
-    substrate_platform::state::private_dir(&root.join(manifest::IDLE_DIR)).map_err(|m| m.to_string())?;
+    substrate_platform::state::private_dir(&root.join(manifest::IDLE_DIR))
+        .map_err(|m| m.to_string())?;
     let dir = publish_profiles_dir(&root);
     std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
     let path = dir.join(format!("{}.json", profile.id));

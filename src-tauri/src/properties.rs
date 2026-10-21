@@ -165,7 +165,13 @@ pub(crate) fn summarize(doc: &DocumentMut) -> ManifestOut {
         .map_or(0, |t| {
             t.iter()
                 .filter(|(k, v)| {
-                    !v.is_table() && ![rust_crate::API, rust_crate::API_RUST_NAME, rust_crate::API_VERSION_KEY].contains(k)
+                    !v.is_table()
+                        && ![
+                            rust_crate::API,
+                            rust_crate::API_RUST_NAME,
+                            rust_crate::API_VERSION_KEY,
+                        ]
+                        .contains(k)
                 })
                 .count()
         });
@@ -332,7 +338,9 @@ mod tests {
     fn rejects_what_yog_cli_cannot_read() {
         let dir = project("reject");
         // yog.toml is real TOML to yog-cli: quotes are just text.
-        assert!(set_manifest_field(&dir, "description", FieldValue::Text("say \"hi\"".into())).is_ok());
+        assert!(
+            set_manifest_field(&dir, "description", FieldValue::Text("say \"hi\"".into())).is_ok()
+        );
         assert!(set_manifest_field(&dir, "version", FieldValue::Text("1.0".into())).is_err());
         assert!(set_manifest_field(&dir, "id", FieldValue::Text("Bad Id".into())).is_err());
         assert!(set_manifest_field(&dir, "dependencies", FieldValue::Text("x".into())).is_err());

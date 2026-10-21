@@ -40,7 +40,11 @@ pub struct ProjectProps {
     pub build_targets: Vec<String>,
 }
 
-const YOG_API_KEYS: &[&str] = &[rust_crate::API, rust_crate::API_RUST_NAME, rust_crate::API_VERSION_KEY];
+const YOG_API_KEYS: &[&str] = &[
+    rust_crate::API,
+    rust_crate::API_RUST_NAME,
+    rust_crate::API_VERSION_KEY,
+];
 
 fn manifest(root: &Path) -> PathBuf {
     crate::manifest::path(root)
@@ -513,8 +517,16 @@ uuid = { version = \"1\", features = [\"v4\"] }
             ..Default::default()
         };
         set_dependency(&dir, false, None, &quoted).unwrap();
-        let back = read(&dir).unwrap().dependencies.into_iter().find(|d| d.name == "x").unwrap();
-        assert_eq!((back.path.as_str(), back.features), ("say \"hi\"", vec!["a,b".to_string()]));
+        let back = read(&dir)
+            .unwrap()
+            .dependencies
+            .into_iter()
+            .find(|d| d.name == "x")
+            .unwrap();
+        assert_eq!(
+            (back.path.as_str(), back.features),
+            ("say \"hi\"", vec!["a,b".to_string()])
+        );
         std::fs::remove_dir_all(&dir).unwrap();
     }
 

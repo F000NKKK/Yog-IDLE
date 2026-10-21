@@ -6,11 +6,14 @@ const BENCH_ROOT: &str = "/bench";
 
 use std::path::{Path, PathBuf};
 
-pub use substrate_platform::search::OpenDocument;
 pub use crate::symbols::{extract_symbols, fuzzy_match};
+pub use substrate_platform::search::OpenDocument;
 
 /// A call of the CLI service, as the front end makes it.
-pub fn cli(method: &str, params: serde_json::Value) -> Result<serde_json::Value, serde_json::Value> {
+pub fn cli(
+    method: &str,
+    params: serde_json::Value,
+) -> Result<serde_json::Value, serde_json::Value> {
     crate::cli::call(method, params)
 }
 

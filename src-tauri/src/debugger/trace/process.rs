@@ -21,7 +21,6 @@ impl TargetMemory for ProcMem {
     }
 }
 
-
 /// The threads Break All stops: the ones mod code runs on — the client's
 /// render thread and the integrated server's tick thread. Everything else
 /// (sound, networking, GC, ...) keeps going, so pausing the game doesn't
@@ -51,7 +50,6 @@ pub(super) fn to_snake_name(id: &str) -> String {
     }
     out
 }
-
 
 /// The local, just-built unstripped native's path — `target/<triple>/
 /// release/<lib>`, exactly how `yog-cli`'s `Builder`/`package()` name it for

@@ -15,19 +15,19 @@
 //! The same channel carries hot reload the other way: `hot_reload` rebuilds
 //! the project and asks the runtime to swap in the new `.yog` in place.
 
-use substrate_platform::sync::Locked;
 use std::io::{BufRead, BufReader, Write};
 use std::net::TcpStream;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Stdio};
+use std::sync::Mutex;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::mpsc::{self, Sender};
-use std::sync::Mutex;
 use std::time::Duration;
+use substrate_platform::sync::Locked;
 
 use serde::Serialize;
-use yog_hot_reload::control::{self as protocol, Changes, Command, Event, ModInfo};
 use tauri::{AppHandle, Emitter, Manager, State};
+use yog_hot_reload::control::{self as protocol, Changes, Command, Event, ModInfo};
 
 mod control;
 pub use control::*;
@@ -36,10 +36,10 @@ pub use hot_reload::*;
 
 #[cfg(target_os = "linux")]
 mod trace;
-#[cfg(target_os = "linux")]
-pub use trace::*;
 #[cfg(not(target_os = "linux"))]
 pub use no_trace::*;
+#[cfg(target_os = "linux")]
+pub use trace::*;
 
 /// A request waiting for the game's answer: which event answers it, and where that goes.
 type ReplyWaiter = (fn(&Event) -> bool, Sender<Event>);
@@ -242,18 +242,26 @@ pub fn debug_stop(app: AppHandle, state: State<DebugState>) -> Result<(), String
 /// daemon launched it).
 fn kill_pid(pid: i32) {
     #[cfg(unix)]
-    let _ = substrate_platform::process::command("kill").args(["-9", &pid.to_string()]).status();
+    let _ = substrate_platform::process::command("kill")
+        .args(["-9", &pid.to_string()])
+        .status();
     #[cfg(windows)]
-    let _ = substrate_platform::process::command("taskkill").args(["/F", "/PID", &pid.to_string()]).status();
+    let _ = substrate_platform::process::command("taskkill")
+        .args(["/F", "/PID", &pid.to_string()])
+        .status();
 }
 
 /// Kills `child` and everything it launched — `yog run` starts the game as
 /// its own child, which a plain `Child::kill` would leave running.
 fn kill_tree(child: &mut Child) {
     #[cfg(windows)]
-    let _ = substrate_platform::process::command("taskkill").args(["/T", "/F", "/PID", &child.id().to_string()]).status();
+    let _ = substrate_platform::process::command("taskkill")
+        .args(["/T", "/F", "/PID", &child.id().to_string()])
+        .status();
     #[cfg(unix)]
-    let _ = substrate_platform::process::command("pkill").args(["-P", &child.id().to_string()]).status();
+    let _ = substrate_platform::process::command("pkill")
+        .args(["-P", &child.id().to_string()])
+        .status();
     let _ = child.kill();
     let _ = child.wait();
 }
@@ -284,7 +292,8 @@ pub fn detach_on_exit(_app: &AppHandle) {}
 /// Linux): the same command surface, each saying so.
 #[cfg(not(target_os = "linux"))]
 mod no_trace {
-    const UNSUPPORTED: &str = "debugging native code needs Linux so far — a Debug run still hot-reloads";
+    const UNSUPPORTED: &str =
+        "debugging native code needs Linux so far — a Debug run still hot-reloads";
 
     #[tauri::command]
     pub fn debug_set_breakpoint(file: String, line: u32) -> Result<(), String> {
