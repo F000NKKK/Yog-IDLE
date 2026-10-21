@@ -4,12 +4,10 @@ use super::*;
 
 /// A run target as the Run toolbar's `RunBar` takes it: a loader (`group`)
 /// on a Minecraft version (`variant`), or one of the machine's own.
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub(super) struct ModRunTarget {
-    #[serde(alias = "id")]
     pub(super) name: String,
-    #[serde(alias = "label")]
     pub(super) display_name: Option<String>,
     pub(super) group: Option<String>,
     pub(super) group_label: Option<String>,
@@ -18,17 +16,16 @@ pub(super) struct ModRunTarget {
 
 /// The run targets, the folders they're read from (to watch them), and
 /// the machine's local patch they can be changed in.
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub(super) struct ModRunTargets {
     pub(super) targets: Vec<ModRunTarget>,
     pub(super) sources: Vec<String>,
-    #[serde(default)]
     pub(super) local_file: String,
 }
 
-/// The run targets, as `yog run --list --json` gives them — they come
-/// from Yog's home (the loader SDK, `~/.yog/local.toml`), not the project.
+/// The run targets — they come from Yog's home (the loader SDK,
+/// `~/.yog/local.toml`), not the project.
 #[tauri::command]
 pub(super) async fn mod_run_targets(
     state: State<'_, Workspace>,
@@ -36,18 +33,28 @@ pub(super) async fn mod_run_targets(
 ) -> Result<ModRunTargets, String> {
     validate_within_roots(&state, Path::new(&project_root))?;
     tauri::async_runtime::spawn_blocking(move || {
-        let out = cli::command()
-            .args(["run", "--list", "--json"])
-            .current_dir(&project_root)
-            .output()
-            .map_err(|e| format!("yog run --list: {e}"))?;
-        if !out.status.success() {
-            return Err(String::from_utf8_lossy(&out.stderr).trim().to_string());
-        }
-        let mut list: ModRunTargets =
-            serde_json::from_slice(&out.stdout).map_err(|e| format!("yog run --list: {e}"))?;
-        list.local_file = yog_home::Home::locate()?.local_file().display().to_string();
-        Ok(list)
+        let home = yog_home::Home::locate()?;
+        let resolver = yog_home::targets::Resolver::new(&home)?;
+        let targets = resolver
+            .targets()?
+            .into_iter()
+            .map(|t| ModRunTarget {
+                name: t.id,
+                display_name: Some(t.label),
+                group: Some(t.group),
+                group_label: Some(t.group_label),
+                variant: t.variant,
+            })
+            .collect();
+        Ok(ModRunTargets {
+            targets,
+            sources: resolver
+                .sources(&home)
+                .iter()
+                .map(|p| p.display().to_string())
+                .collect(),
+            local_file: home.local_file().display().to_string(),
+        })
     })
     .await
     .map_err(|e| e.to_string())?

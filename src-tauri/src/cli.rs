@@ -156,7 +156,9 @@ mod tests {
     #[test]
     #[ignore = "needs a `yog` with `serve` on PATH"]
     fn the_service_reads_yres() {
-        let params = yog_data::text::parse_value(r#"{ text: "{ \"a\": \"@bytes:iVBORw0KGgo=\" }" }"#).unwrap();
+        let params =
+            yog_data::text::parse_value(r#"{ text: "{ \"a\": \"@bytes:iVBORw0KGgo=\" }" }"#)
+                .unwrap();
         let r = super::call(yog_ids::serve_method::YRES_PARSE, params).unwrap();
         let entry = &r.get("entries").and_then(|e| e.as_list()).unwrap()[0];
         assert_eq!(entry.get("type").and_then(|t| t.as_str()), Some("image"));
