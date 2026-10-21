@@ -712,6 +712,7 @@ export const game = {
   MISSING_TEXTURE: "minecraft:missingno",
   WRITTEN_BOOK: "minecraft:written_book",
   BOOK: "minecraft:book",
+  OLD_ATTRIBUTE_PREFIX: "generic.",
   LOCALE: "en_us",
 } as const;
 
@@ -1149,6 +1150,15 @@ export const biomeModifier = {
   NEOFORGE_ADD_FEATURES: "neoforge:add_features",
 } as const;
 
+export const tagTable = {
+  TAG: "tag",
+  YOG: "yog",
+  BASE: "base",
+  HAS: "has",
+  EVERYWHERE: "*",
+  LOADERS: "# loaders:",
+} as const;
+
 export const advancement = {
   TASK: "task",
   GOAL: "goal",
@@ -1156,6 +1166,10 @@ export const advancement = {
   IMPOSSIBLE: "minecraft:impossible",
   INVENTORY_CHANGED: "minecraft:inventory_changed",
   CONSUME_ITEM: "minecraft:consume_item",
+} as const;
+
+export const toolTier = {
+  INCORRECT_FOR_WOODEN_TOOL: "minecraft:incorrect_for_wooden_tool",
 } as const;
 
 export const yuiComponent = {
