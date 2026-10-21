@@ -261,4 +261,4 @@ export function newVariantKey(s: States): string | null {
 }
 
 /** A state model: a copy of `model` (its textures to start from). */
-export const stateModelFrom = (model: Model | undefined): Model => JSON.parse(JSON.stringify(model ?? { parent: "cube_all" })) as Model;
+export const stateModelFrom = (model: Model | undefined): Model => structuredClone(model ?? { parent: "cube_all" }) as Model;

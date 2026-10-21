@@ -135,10 +135,10 @@ export function ModelEditor({ path, content, onChange, readOnly }: EditorProps) 
       const b = m.bones.find((x) => x.name === selection.bone);
       if (!b) return;
       if (selection.kind === "cube") {
-        b.cubes.push(JSON.parse(JSON.stringify(b.cubes[selection.cube])));
+        b.cubes.push(structuredClone(b.cubes[selection.cube]));
         setSelection({ kind: "cube", bone: b.name, cube: b.cubes.length - 1 });
       } else if (selection.kind === "bone") {
-        const copy: Bone = JSON.parse(JSON.stringify(b));
+        const copy: Bone = structuredClone(b);
         copy.name = freeName(m, b.name);
         m.bones.push(copy);
         setSelection({ kind: "bone", bone: copy.name });

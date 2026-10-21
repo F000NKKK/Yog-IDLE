@@ -180,7 +180,7 @@ export function boxUvRects(c: Cube): { face: string; x: number; y: number; w: nu
 // ── Editing ─────────────────────────────────────────────────────────────────
 
 export function clone(m: ModelFile): ModelFile {
-  return JSON.parse(JSON.stringify(m)) as ModelFile;
+  return structuredClone(m) as ModelFile;
 }
 
 /** A bone name not taken yet, from `base`. */

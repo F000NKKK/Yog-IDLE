@@ -353,7 +353,7 @@ export function patchContent(text: string, file: ContentFile): Promise<string> {
 }
 
 /** A deep copy (files are plain JSON). */
-export const clone = <T>(v: T): T => JSON.parse(JSON.stringify(v)) as T;
+export const clone = <T>(v: T): T => structuredClone(v) as T;
 
 // ── New files ────────────────────────────────────────────────────────────────
 
