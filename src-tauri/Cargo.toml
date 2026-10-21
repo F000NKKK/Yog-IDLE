@@ -47,7 +47,7 @@ yog-ids = "0.4.0"
 # Yog's home on the machine (~/.yog): where its local patch is.
 yog-home = "0.4.0"
 # What the CLI service (`yog serve`) and the backend say: binary Yog Data.
-yog-data = "0.8.0"
+yog-data = "0.8.1"
 
 [features]
 # The benches' entry points into the backend (`src/bench.rs`).
