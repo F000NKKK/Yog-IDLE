@@ -79,19 +79,20 @@ export function AdvancementDesigner({ path, file, update, readOnly, kindLabel }:
   // The tab drawn by the backend as the game draws it; dragged and hovered here.
   const [drag, setDrag] = useState<[number, number]>([0, 0]);
   const [drawn, setDrawn] = useState<Rendered | null>(null);
-  const icon = (v: unknown) => (typeof v === "string" ? v.replace(/^@(?:item|block):/, "") : null);
+  // The files' values as written: the CLI reads the references and texts.
+  const written = (v: unknown) => (typeof v === "string" ? v : null);
   const args = useMemo(
     () => ({
       path,
-      title: text(rootNode?.value.title) || root,
+      title: written(rootNode?.value.title),
       background: bg,
       nodes: tab.map((n) => ({
         id: n.id,
         parent: n.parent,
-        icon: icon(n.value.icon),
+        icon: written(n.value.icon),
         frame: frame(n.value),
-        title: text(n.value.title) || n.id,
-        description: text(n.value.description),
+        title: written(n.value.title),
+        description: written(n.value.description),
         obtained: n.id === thisId,
       })),
       drag,

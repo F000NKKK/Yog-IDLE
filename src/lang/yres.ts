@@ -4,7 +4,7 @@
  * Read and written by the CLI service (`yog serve`), never here.
  */
 
-import { cli } from "../cli";
+import { cli, ServiceError } from "../cli";
 import { resKind, serveMethod } from "../data/yogIds.generated";
 
 /** A `.yres` entry's type (yog-ids' `res_kind`). */
@@ -51,8 +51,9 @@ export async function parseYres(text: string, of: { set: string; mod: string } |
   try {
     return { ok: true, entries: (await cli<{ entries: YresEntry[] }>(serveMethod.YRES_PARSE, { text, ...(of ?? {}) })).entries };
   } catch (e) {
-    const err = e as { message?: string; line?: number } | string;
-    return typeof err === "string" ? { ok: false, error: err, line: 1 } : { ok: false, error: err.message ?? String(e), line: err.line ?? 1 };
+    if (!(e instanceof ServiceError)) return { ok: false, error: String(e), line: 1 };
+    const at = e.problems.find((p) => p.line !== undefined);
+    return { ok: false, error: at?.message ?? e.message, line: at?.line ?? 1 };
   }
 }
 

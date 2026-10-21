@@ -10,7 +10,7 @@ import { RowsEditor } from "../RowsEditor";
 import { asList, EFFECT_CATEGORIES, modifierText, OPERATIONS, type Operation } from "./defModel";
 import { DefLayout, type DefProps } from "./DefLayout";
 import { GameStage } from "./GamePanel";
-import { kind as KIND, serveMethod } from "../../data/yogIds.generated";
+import { kind as KIND, reference, serveMethod } from "../../data/yogIds.generated";
 import { idParts, GAME_NAMESPACE } from "../../data/yogFormat";
 
 const CATEGORY_LABELS: Record<(typeof EFFECT_CATEGORIES)[number], string> = { beneficial: "Beneficial", harmful: "Harmful", neutral: "Neutral" };
@@ -53,7 +53,8 @@ export function EffectDesigner({ path, file, update, readOnly, kindLabel }: DefP
   const ns = attributes.own[0] ? idParts(attributes.own[0].id)[0] : GAME_NAMESPACE;
   const id = typeof file.id === "string" ? file.id : "";
   const full = id.includes(":") ? id : `${ns}:${id}`;
-  const icon = useTexture(path, `${full.split(":")[0]}:mob_effect/${full.split(":")[1]}`);
+  const [effectNs, effectPath] = idParts(full);
+  const icon = useTexture(path, `${reference.TEXTURE}${effectNs}:mob_effect/${effectPath}`);
   const category = EFFECT_CATEGORIES.includes(file.category as never) ? (file.category as (typeof EFFECT_CATEGORIES)[number]) : "neutral";
   const color = typeof file.color === "number" ? file.color : 0;
   const modifiers = asList<Modifier>(file.modifiers);
