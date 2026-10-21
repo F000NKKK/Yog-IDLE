@@ -1098,6 +1098,9 @@ export const yuiAttr = {
   VISIBLE: "visible",
   X_KEY: "x:Key",
   X_NAME: "x:Name",
+  X_VIEW_MODEL: "x:ViewModel",
+  X_CREATE: "x:Create",
+  X_DATA_TYPE: "x:DataType",
   TARGET: "target",
   GRID_ROW: "Grid.Row",
   GRID_COLUMN: "Grid.Column",
@@ -1169,6 +1172,19 @@ export const yuiComponent = {
   OPTIONS: "options",
   DOC: "doc",
   DESIGN_PREFIX: "d:",
+} as const;
+
+export const screenAnchor = {
+  CENTER: "center",
+  TOP_LEFT: "top_left",
+  TOP: "top",
+  TOP_RIGHT: "top_right",
+  LEFT: "left",
+  RIGHT: "right",
+  BOTTOM_LEFT: "bottom_left",
+  BOTTOM: "bottom",
+  BOTTOM_RIGHT: "bottom_right",
+  FILL: "fill",
 } as const;
 
 export const propKind = {
