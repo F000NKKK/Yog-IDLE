@@ -19,20 +19,7 @@ pub(super) struct HotReloadEvent {
     /// `stage == "confirm"`: what the new build registers that only a
     /// restart applies — `<kind> <id>` each.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub(super) changes: Option<RegistrationChanges>,
-}
-
-#[derive(Clone, Serialize, Default)]
-pub struct RegistrationChanges {
-    pub(super) added: Vec<String>,
-    pub(super) removed: Vec<String>,
-    pub(super) changed: Vec<String>,
-}
-
-impl RegistrationChanges {
-    pub(super) fn is_empty(&self) -> bool {
-        self.added.is_empty() && self.removed.is_empty() && self.changed.is_empty()
-    }
+    pub(super) changes: Option<Changes>,
 }
 
 pub(super) fn emit_hot_reload(
@@ -146,8 +133,8 @@ pub fn decide_hot_reload(app: AppHandle, choice: String) -> Result<(), String> {
 }
 
 /// Sends `request` over the session's control socket and waits for the
-/// runtime's `event` answer.
-pub(super) fn ask_control(app: &AppHandle, session_id: u64, request: &serde_json::Value, event: &'static str) -> Result<serde_json::Value, String> {
+/// runtime's answer: the first event `answers` takes.
+pub(super) fn ask_control(app: &AppHandle, session_id: u64, request: &Command, answers: fn(&Event) -> bool) -> Result<Event, String> {
     let (tx, rx) = mpsc::channel();
     {
         let debug_state = app.state::<DebugState>();
@@ -155,7 +142,7 @@ pub(super) fn ask_control(app: &AppHandle, session_id: u64, request: &serde_json
         let session = guard.as_mut().filter(|s| s.id == session_id).ok_or("the game exited")?;
         let control = session.control.as_mut().ok_or("control socket is gone")?;
         send_control(control, request).map_err(|e| format!("writing to the control socket: {e}"))?;
-        session.reply_waiter = Some((event, tx));
+        session.reply_waiter = Some((answers, tx));
     }
     match rx.recv_timeout(HOT_RELOAD_TIMEOUT) {
         Ok(v) => Ok(v),
@@ -201,7 +188,7 @@ pub(super) fn build_and_check(
     mod_id: &str,
     session_id: u64,
     debug_mode: bool,
-) -> Result<(PathBuf, RegistrationChanges), String> {
+) -> Result<(PathBuf, Changes), String> {
     let mut args = vec!["build"];
     if debug_mode {
         args.push("debug");
@@ -264,13 +251,13 @@ pub(super) fn build_and_check(
     let check = ask_control(
         app,
         session_id,
-        &serde_json::json!({ "cmd": "hot_reload_check", "mod_id": mod_id, "yog_path": yog_path.to_string_lossy() }),
-        "hot-reload-check",
+        &Command::HotReloadCheck { mod_id: mod_id.to_string(), yog_path: yog_path.clone() },
+        |e| matches!(e, Event::HotReloadCheck { .. }),
     )?;
-    let list = |key: &str| -> Vec<String> {
-        check.get(key).and_then(|v| v.as_array()).into_iter().flatten().filter_map(|v| v.as_str().map(str::to_string)).collect()
+    let Event::HotReloadCheck { changes, .. } = check else {
+        return Err("the game answered something else than the check".to_string());
     };
-    Ok((yog_path, RegistrationChanges { added: list("added"), removed: list("removed"), changed: list("changed") }))
+    Ok((yog_path, changes))
 }
 
 /// Swaps the built `.yog` into the game: its code, then the game rereads
@@ -280,10 +267,10 @@ pub(super) fn apply_reload(app: &AppHandle, mod_id: &str, session_id: u64, yog_p
     let done = ask_control(
         app,
         session_id,
-        &serde_json::json!({ "cmd": "hot_reload", "mod_id": mod_id, "yog_path": yog_path.to_string_lossy(), "resources": true }),
-        "hot-reload-done",
+        &Command::HotReload { mod_id: mod_id.to_string(), yog_path: yog_path.to_path_buf(), resources: true },
+        |e| matches!(e, Event::HotReloadDone { .. }),
     )?;
-    if !done.get("ok").and_then(|v| v.as_bool()).unwrap_or(false) {
+    if !matches!(done, Event::HotReloadDone { ok: true, .. }) {
         return Err(format!(
             "the game rejected the new build of {mod_id} (see the game log — most often an ABI version mismatch, \
              which needs a full restart)"
@@ -299,7 +286,7 @@ pub(super) fn apply_reload(app: &AppHandle, mod_id: &str, session_id: u64, yog_p
         // A reload can change the mod's reported version — refresh the list
         // (the answer arrives as a `mods` event, see `handle_control_event`).
         if let Some(control) = session.control.as_mut() {
-            let _ = send_control(control, &serde_json::json!({ "cmd": "list_mods" }));
+            let _ = send_control(control, &Command::ListMods);
         }
     }
     Ok(())

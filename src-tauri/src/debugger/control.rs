@@ -14,10 +14,8 @@ pub(super) const CONTROL_WRITE_TIMEOUT: Duration = Duration::from_secs(5);
 pub(super) const HOT_RELOAD_TIMEOUT: Duration = Duration::from_secs(60);
 
 /// One request line to the control socket, in a single write.
-pub(super) fn send_control(control: &mut TcpStream, request: &serde_json::Value) -> std::io::Result<()> {
-    let mut line = request.to_string();
-    line.push('\n');
-    control.write_all(line.as_bytes())
+pub(super) fn send_control(control: &mut TcpStream, request: &Command) -> std::io::Result<()> {
+    control.write_all(protocol::line(request).as_bytes())
 }
 
 /// The control channel's address: this machine only.
@@ -82,8 +80,8 @@ pub fn run_with_mode(
         crate::cli::command()
             .args(&args)
             .current_dir(&root)
-            .env("YOG_CONTROL_SOCKET", &control_addr)
-            .env("YOG_CONTROL_TOKEN", &control_token),
+            .env(yog_ids::env::CONTROL_SOCKET, &control_addr)
+            .env(yog_ids::env::CONTROL_TOKEN, &control_token),
     )
     .map_err(|e| format!("failed to launch `yog run {config_name}`: {e}"))?;
     let output = crate::stream_yog_run(&app, log);
@@ -122,18 +120,10 @@ pub fn run_with_mode(
 
 #[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub(super) struct ModInfoOut {
-    pub(super) id: String,
-    pub(super) name: String,
-    pub(super) version: String,
-}
-
-#[derive(Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
 pub(super) struct GameStatus {
     pub(super) stage: &'static str,
     pub(super) pid: Option<i32>,
-    pub(super) mods: Vec<ModInfoOut>,
+    pub(super) mods: Vec<ModInfo>,
 }
 
 /// Retries connecting to the control socket (the child needs a moment to
@@ -192,7 +182,7 @@ pub(super) fn connect_and_watch(app: AppHandle, session_id: u64, addr: String, t
         Ok(s) => s,
         Err(_) => return,
     };
-    if send_control(&mut hello_stream, &serde_json::json!({ "cmd": "hello", "token": token, "pid": std::process::id() })).is_err() {
+    if send_control(&mut hello_stream, &Command::Hello { token, pid: std::process::id() }).is_err() {
         return;
     }
 
@@ -200,16 +190,12 @@ pub(super) fn connect_and_watch(app: AppHandle, session_id: u64, addr: String, t
     if reader.read_line(&mut line).unwrap_or(0) == 0 {
         return;
     }
-    let Ok(ready) = serde_json::from_str::<serde_json::Value>(line.trim()) else {
-        return;
-    };
-    let Some(real_pid) = ready.get("pid").and_then(|v| v.as_i64()).map(|v| v as i32) else {
-        return;
-    };
-    let mods = parse_mods(&ready);
     // Whether the runtime handed us `PR_SET_PTRACER` — absent from runtimes
     // that predate it, which is what an `EPERM` attach then means.
-    let ptracer = ready.get("ptracer").and_then(|v| v.as_bool());
+    let Some(Event::Ready { pid, mods, ptracer }) = protocol::parse(&line) else {
+        return;
+    };
+    let real_pid = pid as i32;
 
     {
         let debug_state = app.state::<DebugState>();
@@ -259,73 +245,51 @@ pub(super) fn connect_and_watch(app: AppHandle, session_id: u64, addr: String, t
         match reader.read_line(&mut line) {
             Ok(0) | Err(_) => break,
             Ok(_) => {
-                if let Ok(event) = serde_json::from_str::<serde_json::Value>(line.trim()) {
-                    handle_control_event(&app, session_id, real_pid, &event, line.trim());
-                }
+                handle_control_event(&app, session_id, real_pid, protocol::parse(&line), line.trim());
             }
         }
     }
     mark_exited(&app, session_id);
 }
 
-pub(super) fn parse_mods(message: &serde_json::Value) -> Vec<ModInfoOut> {
-    let field = |m: &serde_json::Value, key: &str| {
-        m.get(key)
-            .and_then(|v| v.as_str())
-            .unwrap_or_default()
-            .to_string()
-    };
-    message
-        .get("mods")
-        .and_then(|v| v.as_array())
-        .map(|arr| {
-            arr.iter()
-                .map(|m| ModInfoOut {
-                    id: field(m, "id"),
-                    name: field(m, "name"),
-                    version: field(m, "version"),
-                })
-                .collect()
-        })
-        .unwrap_or_default()
-}
-
+/// One event line from the game (`None`: one this IDE can't read): the
+/// answer a request waits for, a refreshed mod list, or Output's.
 pub(super) fn handle_control_event(
     app: &AppHandle,
     session_id: u64,
     real_pid: i32,
-    event: &serde_json::Value,
+    event: Option<Event>,
     raw: &str,
 ) {
-    let name = event.get("event").and_then(|v| v.as_str());
+    let Some(event) = event else {
+        let _ = app.emit(crate::events::OUTPUT_DEBUG, format!("[control] unknown: {raw}"));
+        return;
+    };
     // An answer someone's waiting for.
     {
         let debug_state = app.state::<DebugState>();
         let mut guard = debug_state.0.locked();
         if let Some(session) = guard.as_mut().filter(|s| s.id == session_id)
-            && session.reply_waiter.as_ref().is_some_and(|(want, _)| Some(*want) == name)
+            && session.reply_waiter.as_ref().is_some_and(|(answers, _)| answers(&event))
             && let Some((_, waiter)) = session.reply_waiter.take()
         {
-            let _ = waiter.send(event.clone());
+            let _ = waiter.send(event);
             return;
         }
     }
-    match name {
-        Some("mods") => {
+    match event {
+        Event::Mods { mods } => {
             let _ = app.emit(
                 crate::events::GAME_STATUS,
                 GameStatus {
                     stage: "ready",
                     pid: Some(real_pid),
-                    mods: parse_mods(event),
+                    mods,
                 },
             );
         }
-        other => {
-            let _ = app.emit(
-                crate::events::OUTPUT_DEBUG,
-                format!("[control] {}: {raw}", other.unwrap_or("unknown")),
-            );
+        _ => {
+            let _ = app.emit(crate::events::OUTPUT_DEBUG, format!("[control] {raw}"));
         }
     }
 }

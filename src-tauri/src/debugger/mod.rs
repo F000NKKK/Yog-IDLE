@@ -26,6 +26,7 @@ use std::sync::Mutex;
 use std::time::Duration;
 
 use serde::Serialize;
+use yog_hot_reload::control::{self as protocol, Changes, Command, Event, ModInfo};
 use tauri::{AppHandle, Emitter, Manager, State};
 
 mod control;
@@ -39,6 +40,9 @@ mod trace;
 pub use trace::*;
 #[cfg(not(target_os = "linux"))]
 pub use no_trace::*;
+
+/// A request waiting for the game's answer: which event answers it, and where that goes.
+type ReplyWaiter = (fn(&Event) -> bool, Sender<Event>);
 
 /// One `yog run` launch — always present while the process is up, whether
 /// or not it's a debug-mode run. `tracer` is only `Some` for a debug-mode
@@ -62,7 +66,7 @@ pub struct RunSession {
     control: Option<TcpStream>,
     /// Set while a request waits for the runtime's answer: the event it
     /// waits for (`hot-reload-done`, `hot-reload-check`) and where it goes.
-    reply_waiter: Option<(&'static str, Sender<serde_json::Value>)>,
+    reply_waiter: Option<ReplyWaiter>,
     #[cfg(target_os = "linux")]
     tracer: Option<TracerHandle>,
 }

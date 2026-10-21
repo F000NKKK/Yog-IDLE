@@ -109,10 +109,10 @@ pub fn yog_targets(settings: &Settings, project_targets: &[String]) -> Option<St
 pub fn tool_env(settings: &Settings, project_targets: &[String]) -> HashMap<String, String> {
     let mut env = HashMap::from([("PATH".to_string(), joined_path())]);
     if let Some(targets) = yog_targets(settings, project_targets) {
-        env.insert("YOG_TARGETS".into(), targets);
+        env.insert(yog_ids::env::TARGETS.into(), targets);
     }
     if !settings.yog_api_path.trim().is_empty() {
-        env.insert("YOG_API_PATH".into(), settings.yog_api_path.trim().into());
+        env.insert(yog_ids::env::API_PATH.into(), settings.yog_api_path.trim().into());
     }
     env
 }

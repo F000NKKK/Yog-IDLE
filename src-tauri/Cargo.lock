@@ -5047,6 +5047,8 @@ name = "yog-hot-reload"
 version = "0.2.3"
 dependencies = [
  "libloading 0.9.0",
+ "serde",
+ "serde_json",
  "yog-sync",
 ]
 
