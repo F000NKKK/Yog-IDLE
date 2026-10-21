@@ -626,6 +626,16 @@ export const program = {
   SERVE: "serve",
 } as const;
 
+export const codeSet = {
+  BLOCKS: "Blocks",
+  ITEMS: "Items",
+  ENTITIES: "Entities",
+  ADVANCEMENTS: "Advancements",
+  MODELS: "Models",
+  ANIMS: "Anims",
+  TEXTURES: "Textures",
+} as const;
+
 export const rustCrate = {
   PREFIX: "yog-",
   API: "yog-api",
@@ -652,6 +662,10 @@ export const res = {
   ATLASES: "atlases/",
   LANG: "lang/",
   BUILTIN: "builtin/",
+  SOUNDS: "sounds/",
+  SOUNDS_JSON: "sounds.json",
+  SOUNDS_WORD: "sounds",
+  OGG: ".ogg",
   PNG: ".png",
   SVG: ".svg",
   JSON: ".json",
