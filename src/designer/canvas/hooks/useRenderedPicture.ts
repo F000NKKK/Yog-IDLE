@@ -1,6 +1,7 @@
 // The real picture: yog-ui's own layout and render, with the game's font and textures.
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { serveMethod } from "../../../data/yogIds.generated";
 import { cli } from "../../../cli";
 import { withDesignResources } from "../../../lang/designResources";
 import type { ScreenDesignerProps } from "../../ScreenDesigner";
@@ -54,7 +55,7 @@ export function useRenderedPicture(props: ScreenDesignerProps, designerDocument:
     const { w, h } = res;
     // A short debounce: typing in the XAML re-parses on every key.
     const timer = setTimeout(() => {
-      cli<RenderReply>("yui_designer_render", { args: { path, root: withDesignResources(drawnRoot), screenW: w, screenH: h, scale, preview: previewing } })
+      cli<RenderReply>(serveMethod.YUI_DESIGNER_RENDER, { args: { path, root: withDesignResources(drawnRoot), screenW: w, screenH: h, scale, preview: previewing } })
         .then((reply) => {
           if (seq !== renderSeq.current) return;
           const geo = new Map<string, Geo>(reply.rects.map((r) => [r.uid, { rect: toRect(r.rect), content: toRect(r.content), grid: r.grid }]));
@@ -70,7 +71,7 @@ export function useRenderedPicture(props: ScreenDesignerProps, designerDocument:
     return () => clearTimeout(timer);
   }, [path, drawnRoot, res, view.zoom, previewing, previewTick, resourcesVersion, componentsRevision]);
 
-  useEffect(() => () => void cli("yui_designer_reset", { path }).catch(() => {}), [path]);
+  useEffect(() => () => void cli(serveMethod.YUI_DESIGNER_RESET, { path }).catch(() => {}), [path]);
 
   /** The picture for this GUI size (possibly of the previous edit, until the next one arrives). */
 

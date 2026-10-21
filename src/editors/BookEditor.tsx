@@ -28,7 +28,7 @@ import {
 import "./BookEditor.css";
 import { modRootOf } from "../paths";
 import { useDataFile } from "../data/useDataFile";
-import { kind as KIND } from "../data/yogIds.generated";
+import { kind as KIND, serveMethod } from "../data/yogIds.generated";
 
 /** The code view of a `.ybook` (registered in `editors/index.tsx`). */
 export const BOOK_SOURCE_VIEW = "yog.book.source";
@@ -85,7 +85,7 @@ export function BookEditor({ path, content, onChange, readOnly }: EditorProps) {
   const draw = useCallback(
     (action: Action | null) => {
       const n = ++seq.current;
-      cli<Rendered>("book_designer_render", {
+      cli<Rendered>(serveMethod.BOOK_DESIGNER_RENDER, {
         args: { path, text: content, screenW: SCREEN_W, screenH: SCREEN_H, scale: SCALE, action, locale },
       })
         .then((r) => {
@@ -114,7 +114,7 @@ export function BookEditor({ path, content, onChange, readOnly }: EditorProps) {
     return () => clearTimeout(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [content, locale]);
-  useEffect(() => () => void cli("book_designer_close", { path }).catch(() => {}), [path]);
+  useEffect(() => () => void cli(serveMethod.BOOK_DESIGNER_CLOSE, { path }).catch(() => {}), [path]);
 
   // A page that moves (an entity, a structure, an ingredient's
   // alternatives) is drawn again and again, as the game does.
@@ -126,7 +126,7 @@ export function BookEditor({ path, content, onChange, readOnly }: EditorProps) {
       if (busy) return;
       busy = true;
       const n = ++seq.current;
-      cli<Rendered>("book_designer_render", {
+      cli<Rendered>(serveMethod.BOOK_DESIGNER_RENDER, {
         args: { path, text: content, screenW: SCREEN_W, screenH: SCREEN_H, scale: SCALE, action: null, locale },
       })
         .then((r) => n === seq.current && setRendered(r))

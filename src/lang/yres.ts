@@ -5,7 +5,7 @@
  */
 
 import { cli } from "../cli";
-import { resKind } from "../data/yogIds.generated";
+import { resKind, serveMethod } from "../data/yogIds.generated";
 
 /** A `.yres` entry's type (yog-ids' `res_kind`). */
 export type ResourceType = (typeof resKind)[keyof typeof resKind];
@@ -49,7 +49,7 @@ export const NEUTRAL_LOCALE = "en_us";
  */
 export async function parseYres(text: string, of: { set: string; mod: string } | null = null): Promise<YresParse> {
   try {
-    return { ok: true, entries: (await cli<{ entries: YresEntry[] }>("yres.parse", { text, ...(of ?? {}) })).entries };
+    return { ok: true, entries: (await cli<{ entries: YresEntry[] }>(serveMethod.YRES_PARSE, { text, ...(of ?? {}) })).entries };
   } catch (e) {
     const err = e as { message?: string; line?: number } | string;
     return typeof err === "string" ? { ok: false, error: err, line: 1 } : { ok: false, error: err.message ?? String(e), line: err.line ?? 1 };
@@ -58,7 +58,7 @@ export async function parseYres(text: string, of: { set: string; mod: string } |
 
 /** `.yres` text for `entries`, written by the CLI (`yres.write`): file order, comments kept. */
 export function serializeYres(entries: YresEntry[]): Promise<string> {
-  return cli<string>("yres.write", { entries });
+  return cli<string>(serveMethod.YRES_WRITE, { entries });
 }
 
 /** Minecraft's locale codes: lower case, `en_us`, `pt_br`, `lol_us`, ... */

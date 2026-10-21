@@ -3,7 +3,7 @@ import { Button, PropertyGrid, useT, type EditorProps } from "substrate-platform
 import { cli } from "../cli";
 import { useDataFile, type DataFormat } from "../data/useDataFile";
 import { readObject } from "../data/yogData";
-import { kind as KIND } from "../data/yogIds.generated";
+import { kind as KIND, serveMethod } from "../data/yogIds.generated";
 import { shapeProperties, type Described } from "../data/shapeGrid";
 import { useOpenFiles } from "../OpenFilesContext";
 import { TerrainPreview } from "./TerrainPreview";
@@ -19,7 +19,7 @@ const shapes = new Map<string, Promise<Described>>();
 export function formatShape(format: string): Promise<Described> {
   let p = shapes.get(format);
   if (!p) {
-    p = cli<Described>("format.shape", { format });
+    p = cli<Described>(serveMethod.FORMAT_SHAPE, { format });
     shapes.set(format, p);
   }
   return p;

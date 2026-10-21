@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { serveMethod } from "../data/yogIds.generated";
 import { cli } from "../cli";
 import { gameId } from "../data/yogFormat";
 
@@ -33,7 +34,7 @@ export function TintedItem({ path, layers: ids, colors, size = 48, title }: { pa
   const [layers, setLayers] = useState<HTMLImageElement[] | null>(null);
   useEffect(() => {
     let live = true;
-    Promise.all(ids.map((id) => cli<{ url: string }>("content_texture", { path, texture: id }).then((t) => loadImage(t.url))))
+    Promise.all(ids.map((id) => cli<{ url: string }>(serveMethod.CONTENT_TEXTURE, { path, texture: id }).then((t) => loadImage(t.url))))
       .then((imgs) => live && setLayers(imgs))
       .catch(() => live && setLayers(null));
     return () => {

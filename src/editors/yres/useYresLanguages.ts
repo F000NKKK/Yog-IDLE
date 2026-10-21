@@ -3,7 +3,7 @@
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import { promptDialog, reportError } from "substrate-platform-ui";
 import { cli } from "../../cli";
-import { resKind } from "../../data/yogIds.generated";
+import { resKind, serveMethod } from "../../data/yogIds.generated";
 import { files } from "../../files";
 import { isLocaleName, NEUTRAL_LOCALE, serializeYres, type YresEntry, yresFileName } from "../../lang/yres";
 import { IMAGE_EXTENSIONS } from "../MediaValue";
@@ -69,7 +69,7 @@ export function useYresLanguages(yresFile: YresFile, yresSiblings: YresSiblings)
     const picked = await openDialog({ defaultPath: dir, multiple: false, directory: false, filters });
     if (typeof picked !== "string") return null;
     try {
-      return (await cli<{ value: string }>("media.import", { file: picked })).value;
+      return (await cli<{ value: string }>(serveMethod.MEDIA_IMPORT, { file: picked })).value;
     } catch (err) {
       reportError(String(err));
       return null;

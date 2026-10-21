@@ -10,7 +10,7 @@ import type { BlockState } from "../../../content/states";
 import { useContentRefs } from "../../../data/contentRefs";
 import { useTyped } from "../../../data/typed";
 import { useDataFile } from "../../../data/useDataFile";
-import { kind as KIND } from "../../../data/yogIds.generated";
+import { kind as KIND, serveMethod } from "../../../data/yogIds.generated";
 import { type BuiltInBlockKind, type Choices, type LoadedTexture, MODEL, type ModelKey, NO_CHOICES, type ParentModel, type StateSel } from "../contentModel";
 
 /** The file parsed, what the editor shows (model, selection, gizmo, view options), and the choices and references its pickers offer. */
@@ -49,7 +49,7 @@ export function useContentDocument(props: EditorProps) {
 
   useEffect(() => {
     let live = true;
-    cli<BuiltInBlockKind[]>("content_block_kinds")
+    cli<BuiltInBlockKind[]>(serveMethod.CONTENT_BLOCK_KINDS)
       .then((kinds) => live && setBlockKinds(kinds))
       .catch((e) => live && reportError(t("Can't load built-in block kinds: {error}", { error: String(e) })));
     return () => {

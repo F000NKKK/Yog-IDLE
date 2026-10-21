@@ -5,6 +5,7 @@
  * a new value, keeping comments and layout of what didn't change.
  */
 import { errorText } from "substrate-platform-ui";
+import { serveMethod } from "../data/yogIds.generated";
 import { cli } from "../cli";
 import { prefetchTyped, stringsOf } from "./typed";
 
@@ -17,7 +18,7 @@ export type Read<T = unknown> = { ok: true; value: T } | { ok: false; error: str
  */
 export async function readData(text: string, opts: { ordered?: boolean } = {}): Promise<Read> {
   try {
-    const json = await cli<string>("data.parse", { text });
+    const json = await cli<string>(serveMethod.DATA_PARSE, { text });
     const value = opts.ordered ? parseJsonOrdered(json) : JSON.parse(json);
     // Its typed values classified now, so the designers read them at once.
     await prefetchTyped(stringsOf(value));
@@ -39,12 +40,12 @@ export async function readObject<T>(text: string, opts: { ordered?: boolean } = 
 
 /** `text` changed to hold `next`: what changed written anew, the rest — comments too — as it was. */
 export function patchData(text: string, next: unknown): Promise<string> {
-  return cli<string>("data.patch", { text, next: toJson(next) });
+  return cli<string>(serveMethod.DATA_PATCH, { text, next: toJson(next) });
 }
 
 /** `value` as Yog's editors write it, at indent `level`. */
 export function formatData(value: unknown, level = 0): Promise<string> {
-  return cli<string>("data.format", { value: toJson(value), level });
+  return cli<string>(serveMethod.DATA_FORMAT, { value: toJson(value), level });
 }
 
 /** `value` as JSON text, a `Map`'s keys in its order; `undefined` members left out. */

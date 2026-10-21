@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { serveMethod } from "../data/yogIds.generated";
 import { cli } from "../cli";
 import { Toolbar, ToolbarSelect, useT } from "substrate-platform-ui";
 
@@ -22,7 +23,7 @@ export function TerrainPreview({ content }: { content: string }) {
   useEffect(() => {
     let live = true;
     const timer = setTimeout(() => {
-      cli<Preview>("worldgen_preview", { text: content, size }).then(
+      cli<Preview>(serveMethod.WORLDGEN_PREVIEW, { text: content, size }).then(
         (p) => {
           if (!live) return;
           setPreview(p);

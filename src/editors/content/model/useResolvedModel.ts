@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { type EditorProps, reportError } from "substrate-platform-ui";
 import { cli } from "../../../cli";
 import type { Kind } from "../../../content/model";
-import { kind as KIND } from "../../../data/yogIds.generated";
+import { kind as KIND, serveMethod } from "../../../data/yogIds.generated";
 import { MODEL, type ModelKey, modelOf, resolve } from "../contentModel";
 import type { ContentDocument } from "./useContentDocument";
 import type { PaintBuffers } from "./usePaintBuffers";
@@ -32,7 +32,7 @@ export function useResolvedModel(props: EditorProps, contentDocument: ContentDoc
       return;
     }
     let live = true;
-    void cli<number | null>("content_item_potion_color", { path })
+    void cli<number | null>(serveMethod.CONTENT_ITEM_POTION_COLOR, { path })
       .then((color) => {
         if (live) setPotionTint(color == null ? undefined : `#${color.toString(16).padStart(6, "0")}`);
       })

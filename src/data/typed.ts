@@ -5,6 +5,7 @@
 // (`prefetchTyped`), a new one is asked for and its readers re-render when
 // it's in (`useTyped`).
 import { useSyncExternalStore } from "react";
+import { serveMethod } from "../data/yogIds.generated";
 import { cli } from "../cli";
 import { sep } from "./yogIds.generated";
 
@@ -43,7 +44,7 @@ export async function prefetchTyped(values: Iterable<string>): Promise<void> {
   fresh.forEach((v) => asked.add(v));
   let answers: Answer[];
   try {
-    answers = await cli<Answer[]>("typed.classify", { values: fresh });
+    answers = await cli<Answer[]>(serveMethod.TYPED_CLASSIFY, { values: fresh });
   } catch {
     // The CLI didn't answer (restarting, updating): asked again later, nothing kept.
     fresh.forEach((v) => asked.delete(v));

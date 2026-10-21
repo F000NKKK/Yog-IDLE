@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { serveMethod } from "../data/yogIds.generated";
 import { type EditorProps, pushDocumentStep, reportError, Toolbar, ToolbarButton, ToolbarCheck, ToolbarGroup, usePropertyContext, useT } from "substrate-platform-ui";
 import { cli } from "../cli";
 import { cropFrame, frameNow, pasteFrame, stillAnimation, type TextureAnimation } from "../content/animation";
@@ -56,10 +57,10 @@ export function TextureEditor({ path, content, onChange, readOnly }: EditorProps
   // Which texture this file is, and its picture.
   const load = useCallback(async () => {
     try {
-      const tid = await cli<string | null>("texture_file_id", { path });
+      const tid = await cli<string | null>(serveMethod.TEXTURE_FILE_ID, { path });
       setId(tid);
       if (!tid) return setError(t("This file isn't in a mod's resources folder."));
-      const tex = await cli<Texture>("content_texture", { path, texture: tid });
+      const tex = await cli<Texture>(serveMethod.CONTENT_TEXTURE, { path, texture: tid });
       setImage(await decodeImage(tex.url));
       setWritable(tex.writable && !readOnly);
       setError(null);
@@ -82,7 +83,7 @@ export function TextureEditor({ path, content, onChange, readOnly }: EditorProps
     if (!image) return;
     if (fileAnimation === undefined) return setAnimation(null);
     let live = true;
-    void cli<TextureAnimation | null>("texture_animation_resolve", { animation: fileAnimation, width: image.w, height: image.h }).then(
+    void cli<TextureAnimation | null>(serveMethod.TEXTURE_ANIMATION_RESOLVE, { animation: fileAnimation, width: image.w, height: image.h }).then(
       (a) => live && setAnimation(a),
       () => live && setAnimation(null),
     );
@@ -109,7 +110,7 @@ export function TextureEditor({ path, content, onChange, readOnly }: EditorProps
       const write = async (img: PixelImage) => {
         setImage(img);
         const png = toPngDataUrl(img);
-        await cli<string>("content_save_texture", { path, texture: id, png: png.slice(png.indexOf(",") + 1) }).catch((e) => reportError(String(e)));
+        await cli<string>(serveMethod.CONTENT_SAVE_TEXTURE, { path, texture: id, png: png.slice(png.indexOf(",") + 1) }).catch((e) => reportError(String(e)));
       };
       await write(next);
       if (before) pushDocumentStep(path, { undo: () => void write(before), redo: () => void write(next) });
@@ -120,7 +121,7 @@ export function TextureEditor({ path, content, onChange, readOnly }: EditorProps
   /** Sets the file's animation (null: still), as the CLI writes it. */
   const saveAnimation = useCallback(
     async (next: TextureAnimation | null, img: PixelImage) => {
-      const formatted = next ? await cli<unknown>("texture_animation_format", { animation: next, width: img.w, height: img.h }) : undefined;
+      const formatted = next ? await cli<unknown>(serveMethod.TEXTURE_ANIMATION_FORMAT, { animation: next, width: img.w, height: img.h }) : undefined;
       await update((d) => {
         if (formatted === undefined) delete d.animation;
         else d.animation = formatted;

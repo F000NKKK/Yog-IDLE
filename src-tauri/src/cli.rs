@@ -13,6 +13,7 @@ use std::sync::Mutex;
 use std::time::SystemTime;
 
 use serde_json::{Value, json};
+use yog_ids::{serve_method, serve_param};
 
 /// The CLI's program name, looked up on `PATH`.
 const PROGRAM: &str = yog_ids::program::CLI;
@@ -116,7 +117,7 @@ pub fn mod_id(root: &Path) -> Option<String> {
     {
         return id;
     }
-    let id = call("mod.id", json!({ "path": root })).ok().and_then(|v| v.as_str().map(str::to_string));
+    let id = call(serve_method::MOD_ID, json!({ (serve_param::PATH): root })).ok().and_then(|v| v.as_str().map(str::to_string));
     if let Ok(mut m) = ids.lock() {
         m.insert(root.to_path_buf(), (modified, id.clone()));
     }
@@ -129,7 +130,7 @@ mod tests {
     #[test]
     #[ignore = "needs a `yog` with `serve` on PATH"]
     fn the_service_reads_yres() {
-        let r = super::call("yres.parse", serde_json::json!({ "text": "{ \"a\": \"@bytes:iVBORw0KGgo=\" }" })).unwrap();
+        let r = super::call(yog_ids::serve_method::YRES_PARSE, serde_json::json!({ (yog_ids::serve_param::TEXT): "{ \"a\": \"@bytes:iVBORw0KGgo=\" }" })).unwrap();
         assert_eq!(r["entries"][0]["type"], "image");
         assert!(super::call("nope", serde_json::Value::Null).is_err());
     }

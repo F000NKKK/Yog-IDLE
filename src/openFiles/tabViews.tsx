@@ -2,6 +2,7 @@
 // asking to save, regenerating a screen's code.
 
 import { type EditorProvider, editorProviderById, editorProvidersFor, extensionOf, fileNameOf, generalEditorProviders, notify, showDialog, t } from "substrate-platform-ui";
+import { serveMethod } from "../data/yogIds.generated";
 import { openWithPicker } from "../OpenWithPicker";
 import { cli } from "../cli";
 import { setSavedFileDiagnostics } from "../diagnostics/buildDiagnostics";
@@ -124,7 +125,7 @@ export async function askToSave(names: string[]): Promise<string> {
 export function regenerateScreen(path: string) {
   const fail = (error: string) =>
     notify({ level: "warn", message: t("Couldn't generate the code for {name}: {error}", { name: fileNameOf(path), error }) });
-  cli<{ error: string | null; log: string; root: string }>("yui_codegen", { path })
+  cli<{ error: string | null; log: string; root: string }>(serveMethod.YUI_CODEGEN, { path })
     .then(({ error, log, root }) => {
       setSavedFileDiagnostics(path, root, log);
       if (error) fail(error);

@@ -1,6 +1,7 @@
 // Preview mode: events sent to the screen's code, one at a time.
 
 import { useRef } from "react";
+import { serveMethod } from "../../../data/yogIds.generated";
 import { cli } from "../../../cli";
 import { emitTo, EVENT } from "../../../events";
 import { withDesignResources } from "../../../lang/designResources";
@@ -35,7 +36,7 @@ export function usePreviewEvents(props: ScreenDesignerProps, designerPicture: De
       return;
     }
     eventBusy.current = true;
-    cli<EventReply>("yui_designer_event", { args: { path, root: withDesignResources(root), screenW: res.w, screenH: res.h, event, x, y } })
+    cli<EventReply>(serveMethod.YUI_DESIGNER_EVENT, { args: { path, root: withDesignResources(root), screenW: res.w, screenH: res.h, event, x, y } })
       .then((r) => {
         setHovered(r.hit);
         if (event.startsWith("click:")) setPressed(r.hit);
@@ -54,7 +55,7 @@ export function usePreviewEvents(props: ScreenDesignerProps, designerPicture: De
   sendEventRef.current = sendEvent;
 
   const togglePreview = () => {
-    if (previewing) void cli("yui_designer_reset", { path }).catch(() => {});
+    if (previewing) void cli(serveMethod.YUI_DESIGNER_RESET, { path }).catch(() => {});
     setPreviewTexts({});
     setFocusedBox(null);
     setHovered(null);

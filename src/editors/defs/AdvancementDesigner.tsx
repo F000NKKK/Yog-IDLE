@@ -11,7 +11,7 @@ import { DefLayout, type DefProps } from "./DefLayout";
 import { GameStage } from "./GamePanel";
 import { GAME_NAMESPACE, idParts } from "../../data/yogFormat";
 import "./defs.css";
-import { kind as KIND } from "../../data/yogIds.generated";
+import { kind as KIND, serveMethod } from "../../data/yogIds.generated";
 
 const FRAME_LABELS: Record<(typeof FRAMES)[number], string> = { task: "Task", goal: "Goal", challenge: "Challenge" };
 const CRITERION_LABELS: Record<Criterion, string> = { granted: "Granted by the Mod", has_item: "Has an Item", used_item: "Used an Item" };
@@ -47,7 +47,7 @@ export function AdvancementDesigner({ path, file, update, readOnly, kindLabel }:
   const [strings, setStrings] = useState<string[]>([]);
   const [hover, setHover] = useState<string | null>(null);
   useEffect(() => {
-    cli<string[]>("content_strings", { path }).then((s) => setStrings(s ?? []), () => setStrings([]));
+    cli<string[]>(serveMethod.CONTENT_STRINGS, { path }).then((s) => setStrings(s ?? []), () => setStrings([]));
   }, [path]);
 
   const first = defs[0]?.id ?? advancements.own[0]?.id;
@@ -102,7 +102,7 @@ export function AdvancementDesigner({ path, file, update, readOnly, kindLabel }:
   );
   useEffect(() => {
     let live = true;
-    cli<Rendered>("advancement_render", { args }).then(
+    cli<Rendered>(serveMethod.ADVANCEMENT_RENDER, { args }).then(
       (r) => {
         if (!live) return;
         setDrawn(r);

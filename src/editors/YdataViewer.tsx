@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { serveMethod } from "../data/yogIds.generated";
 import { cli } from "../cli";
 import { JsonEditor, useT, type EditorProps } from "substrate-platform-ui";
 
@@ -11,7 +12,7 @@ export function YdataViewer({ path }: EditorProps) {
   const [text, setText] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   useEffect(() => {
-    cli<string>("ydata_text", { path })
+    cli<string>(serveMethod.YDATA_TEXT, { path })
       .then((s) => {
         setText(s);
         setError(null);

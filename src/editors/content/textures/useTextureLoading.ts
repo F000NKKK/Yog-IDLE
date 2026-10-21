@@ -5,7 +5,7 @@ import { type EditorProps, reportError } from "substrate-platform-ui";
 import { cli } from "../../../cli";
 import { kindOf, templateOf } from "../../../content/model";
 import { GAME_NAMESPACE } from "../../../data/yogFormat";
-import { kind as KIND } from "../../../data/yogIds.generated";
+import { kind as KIND, serveMethod } from "../../../data/yogIds.generated";
 import { allModels, type LoadedTexture, type ParentModel } from "../contentModel";
 import type { ContentModel } from "../useContentModel";
 
@@ -18,13 +18,13 @@ export function useTextureLoading(props: EditorProps, m: ContentModel) {
   useEffect(() => {
     let live = true;
     void Promise.all([
-      cli<{ value: string }[]>("content_textures", { path }).catch(() => []),
-      cli<string[]>("content_strings", { path }).catch(() => []),
-      cli<string[]>("content_sound_groups", { path }).catch(() => []),
-      cli<string[]>("content_tags", { path, registry: kindOf(path) ?? KIND.ITEM }).catch(() => []),
-      cli<string[]>("content_tool_materials", { path }).catch(() => []),
-      cli<string[]>("content_armor_materials", { path }).catch(() => []),
-      cli<string | null>("content_mod_id", { path }).catch(() => null),
+      cli<{ value: string }[]>(serveMethod.CONTENT_TEXTURES, { path }).catch(() => []),
+      cli<string[]>(serveMethod.CONTENT_STRINGS, { path }).catch(() => []),
+      cli<string[]>(serveMethod.CONTENT_SOUND_GROUPS, { path }).catch(() => []),
+      cli<string[]>(serveMethod.CONTENT_TAGS, { path, registry: kindOf(path) ?? KIND.ITEM }).catch(() => []),
+      cli<string[]>(serveMethod.CONTENT_TOOL_MATERIALS, { path }).catch(() => []),
+      cli<string[]>(serveMethod.CONTENT_ARMOR_MATERIALS, { path }).catch(() => []),
+      cli<string | null>(serveMethod.CONTENT_MOD_ID, { path }).catch(() => null),
     ]).then(
       ([tex, strings, sounds, tags, toolMaterials, armorMaterials, modId]) =>
         live && setChoices({ modId: modId ?? GAME_NAMESPACE, textures: tex.map((c) => c.value), strings, sounds, tags, toolMaterials, armorMaterials })
@@ -43,7 +43,7 @@ export function useTextureLoading(props: EditorProps, m: ContentModel) {
     for (const id of rawParents) {
       if (id in parents) continue;
       setParents((p) => ({ ...p, [id]: null }));
-      cli<ParentModel>("content_parent_model", { path, id })
+      cli<ParentModel>(serveMethod.CONTENT_PARENT_MODEL, { path, id })
         .then((m) => setParents((p) => ({ ...p, [id]: m })))
         .catch((e) => reportError(t("Can't load the parent model {id}: {error}", { id, error: String(e) })));
     }
@@ -65,7 +65,7 @@ export function useTextureLoading(props: EditorProps, m: ContentModel) {
     for (const value of wanted) {
       if (requested.current.has(value)) continue;
       requested.current.add(value);
-      cli<LoadedTexture>("content_texture", { path, texture: value })
+      cli<LoadedTexture>(serveMethod.CONTENT_TEXTURE, { path, texture: value })
         .then((src) => setImages((m) => ({ ...m, [value]: src })))
         .catch(() => setImages((m) => ({ ...m, [value]: undefined })));
     }

@@ -13,7 +13,7 @@ import { readObject } from "../data/yogData";
 import { recipeOf, switchedTo, typeOf, withRecipe, type Recipe, type RecipeFields, type RecipeKind, type RecipeSlot } from "./recipeModel";
 import "./RecipeEditor.css";
 import { fileTypeId, formats } from "../yogFileTypes";
-import { kind as KIND } from "../data/yogIds.generated";
+import { kind as KIND, serveMethod } from "../data/yogIds.generated";
 
 /** The code view of a `.yrecipe` (registered in `editors/index.tsx`). */
 export const RECIPE_SOURCE_VIEW = "yog.recipe.source";
@@ -57,7 +57,7 @@ function useRecipeKinds(path: string): [Kinds | null, () => void] {
   const reload = useCallback(() => setAsked((n) => n + 1), []);
   useEffect(() => {
     let live = true;
-    void cli<Kinds>("recipe_kinds", { path }).then(
+    void cli<Kinds>(serveMethod.RECIPE_KINDS, { path }).then(
       (k) => live && setKinds(k),
       () => live && setKinds(null),
     );
@@ -178,7 +178,7 @@ export function RecipeEditor({ path, content, onChange, readOnly }: EditorProps)
 
   const createKind = async (name: string) => {
     try {
-      const file = await cli<string>("recipe_kind_create", { path, name });
+      const file = await cli<string>(serveMethod.RECIPE_KIND_CREATE, { path, name });
       setNewKind(null);
       setError(null);
       reloadKinds();

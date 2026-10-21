@@ -28,7 +28,7 @@ import { useDataFile } from "../data/useDataFile";
 import { inspectorRows } from "./inspector";
 import { ItemList } from "./ItemList";
 import "./designers.css";
-import { kind as KIND } from "../data/yogIds.generated";
+import { kind as KIND, serveMethod } from "../data/yogIds.generated";
 
 export const ENTITY_SOURCE_VIEW = "yog.yentity.source";
 
@@ -78,7 +78,7 @@ export function EntityEditor({ path, content, onChange, readOnly }: EditorProps)
 
   useEffect(() => {
     let live = true;
-    cli<string[]>("content_strings", { path })
+    cli<string[]>(serveMethod.CONTENT_STRINGS, { path })
       .then((s) => live && setStrings(s ?? []))
       .catch(() => live && setStrings([]));
     return () => {

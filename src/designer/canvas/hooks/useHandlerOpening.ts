@@ -1,6 +1,7 @@
 // Event handlers: opening (or creating) a handler in the code-behind.
 
 import { useRef } from "react";
+import { serveMethod } from "../../../data/yogIds.generated";
 import { openFile, reportError } from "substrate-platform-ui";
 import { cli } from "../../../cli";
 import { emitTo, EVENT } from "../../../events";
@@ -33,7 +34,7 @@ export function useHandlerOpening(props: ScreenDesignerProps, designerDocument: 
       if (s.doc === before) return; // not written (the XAML can't take it now)
     }
     try {
-      const at = await cli<HandlerLocation>("yui_event_handler", { path, event });
+      const at = await cli<HandlerLocation>(serveMethod.YUI_EVENT_HANDLER, { path, event });
       openFile({ path: at.path, line: at.line, column: at.column });
       if (at.changed) emitTo(EVENT.ideOutput, `[designer] ${t("Added handler for {event} to {file}", { event, file: at.path })}`);
     } catch (err) {

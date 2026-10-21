@@ -1,7 +1,7 @@
 import { cli } from "../cli";
 import { open } from "@tauri-apps/plugin-dialog";
 import { confirmDialog, notify, promptDialog, reportError, showDialog, t } from "substrate-platform-ui";
-import { kind as KIND } from "../data/yogIds.generated";
+import { kind as KIND, serveMethod } from "../data/yogIds.generated";
 
 // Project > Import…: blocks and items from a resource pack (a folder or a
 // .zip — one model or all of them) or a Blockbench .bbmodel, into the mod's
@@ -70,7 +70,7 @@ export async function importContent(modRoot: string): Promise<void> {
   }
 
   const path = `${modRoot.replace(/[/\\]+$/, "")}/yog.toml`;
-  const run = (force: boolean) => cli<string>("content_import", { path, kind, source: picked, model: model || null, force });
+  const run = (force: boolean) => cli<string>(serveMethod.CONTENT_IMPORT, { path, kind, source: picked, model: model || null, force });
   try {
     let out: string;
     try {

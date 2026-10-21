@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { serveMethod } from "../data/yogIds.generated";
 import { cli } from "../cli";
 import { useT } from "substrate-platform-ui";
 
@@ -31,7 +32,7 @@ export function BookPagePreview({ path, content }: { path: string; content: stri
   useEffect(() => {
     const n = ++seq.current;
     const timer = setTimeout(() => {
-      cli<Rendered>("book_page_preview", {
+      cli<Rendered>(serveMethod.BOOK_PAGE_PREVIEW, {
         args: { path, text: content, screenW: SCREEN_W, screenH: SCREEN_H, scale: SCALE, action: null, locale: null },
       })
         .then((r) => n === seq.current && setRendered(r))
@@ -39,7 +40,7 @@ export function BookPagePreview({ path, content }: { path: string; content: stri
     }, 150);
     return () => clearTimeout(timer);
   }, [path, content]);
-  useEffect(() => () => void cli("book_designer_close", { path }).catch(() => {}), [path]);
+  useEffect(() => () => void cli(serveMethod.BOOK_DESIGNER_CLOSE, { path }).catch(() => {}), [path]);
 
   return (
     <div className="book-page-preview">

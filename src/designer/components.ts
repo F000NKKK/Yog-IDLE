@@ -6,7 +6,7 @@
 // Properties.
 
 import { cli } from "../cli";
-import { yui } from "../data/yogIds.generated";
+import { serveMethod, yui } from "../data/yogIds.generated";
 import { useEffect, useSyncExternalStore } from "react";
 import type { YuiNode } from "./yui";
 
@@ -61,7 +61,7 @@ const pollers = new Map<string, { users: number; timer: ReturnType<typeof setInt
 const listeners = new Set<() => void>();
 
 function poll(path: string) {
-  cli<ComponentsSnapshot>("yui_designer_components", { path })
+  cli<ComponentsSnapshot>(serveMethod.YUI_DESIGNER_COMPONENTS, { path })
     .then((s) => {
       const key = JSON.stringify(s);
       if (keys.get(path) === key) return;

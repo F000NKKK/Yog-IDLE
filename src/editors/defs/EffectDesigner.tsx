@@ -10,7 +10,7 @@ import { RowsEditor } from "../RowsEditor";
 import { asList, EFFECT_CATEGORIES, modifierText, OPERATIONS, type Operation } from "./defModel";
 import { DefLayout, type DefProps } from "./DefLayout";
 import { GameStage } from "./GamePanel";
-import { kind as KIND } from "../../data/yogIds.generated";
+import { kind as KIND, serveMethod } from "../../data/yogIds.generated";
 import { idParts, GAME_NAMESPACE } from "../../data/yogFormat";
 
 const CATEGORY_LABELS: Record<(typeof EFFECT_CATEGORIES)[number], string> = { beneficial: "Beneficial", harmful: "Harmful", neutral: "Neutral" };
@@ -131,7 +131,7 @@ function useTexture(path: string, texture: string): string | null {
   const [url, setUrl] = useState<string | null>(null);
   useEffect(() => {
     let live = true;
-    cli<{ url: string }>("content_texture", { path, texture }).then(
+    cli<{ url: string }>(serveMethod.CONTENT_TEXTURE, { path, texture }).then(
       (x) => live && setUrl(x.url),
       () => live && setUrl(null),
     );

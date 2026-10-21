@@ -6,7 +6,7 @@
  * resolve them (see docs/yres.md).
  */
 import { cli } from "../cli";
-import { file, resKind } from "../data/yogIds.generated";
+import { file, resKind, serveMethod } from "../data/yogIds.generated";
 import { classify, prefetchTyped, type Typed } from "../data/typed";
 import { useEffect, useSyncExternalStore } from "react";
 import { resolvedLocale, type DirEntry } from "substrate-platform-ui";
@@ -85,7 +85,7 @@ async function load(root: string) {
   if (loading !== root) return;
   loading = null;
   const pictures = new Map<string, string>();
-  for (const p of await cli<{ set: string; name: string; path: string }[]>("media.pictures", { path: `${root}/${file.MANIFEST}` }).catch(() => []))
+  for (const p of await cli<{ set: string; name: string; path: string }[]>(serveMethod.MEDIA_PICTURES, { path: `${root}/${file.MANIFEST}` }).catch(() => []))
     pictures.set(`${p.set}.${p.name}`, p.path);
   loaded = { root, modId, sets, pictures };
   changed();

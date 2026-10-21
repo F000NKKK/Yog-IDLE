@@ -1,4 +1,5 @@
 import { TAG_MARK, alternativesOf, isTag } from "../data/ingredients";
+import { serveMethod } from "../data/yogIds.generated";
 import { cli } from "../cli";
 // What the `<Image source>` property offers: Yog image sources (`item:apple`,
 // `sprite:button`, `mod:gui/logo` — see docs/yui.md) listed and previewed by
@@ -48,7 +49,7 @@ export function imageSources(path: string): ImageSourceCandidate[] {
   const key = `list:${path}`;
   if (!pending.has(key)) {
     pending.add(key);
-    cli<ImageSourceCandidate[]>("yui_image_sources", { path })
+    cli<ImageSourceCandidate[]>(serveMethod.YUI_IMAGE_SOURCES, { path })
       .then((list) => lists.set(path, list))
       .catch(() => {
         lists.set(path, []);
@@ -84,7 +85,7 @@ function preview(path: string, source: string, size = PREVIEW_SIZE): Preview | u
   if (previews.has(key)) return previews.get(key);
   if (!pending.has(key)) {
     pending.add(key);
-    cli<Preview>("yui_image_preview", { path, source, size })
+    cli<Preview>(serveMethod.YUI_IMAGE_PREVIEW, { path, source, size })
       .then((p) => previews.set(key, p))
       .catch(() => {
         previews.set(key, { url: null, alias: null });
@@ -137,7 +138,7 @@ export function tagItems(path: string, tag: string): string[] | undefined {
   if (tags.has(key)) return tags.get(key);
   if (!pending.has(key)) {
     pending.add(key);
-    cli<string[]>("item_tag_items", { path, tag })
+    cli<string[]>(serveMethod.ITEM_TAG_ITEMS, { path, tag })
       .then((items) => tags.set(key, items))
       .catch(() => {
         tags.set(key, []);

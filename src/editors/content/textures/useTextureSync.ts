@@ -1,6 +1,7 @@
 // Painted textures as the tab's side state, and textures changed on disk picked up.
 
 import { useEffect } from "react";
+import { serveMethod } from "../../../data/yogIds.generated";
 import type { EditorProps } from "substrate-platform-ui";
 import { cli } from "../../../cli";
 import type { LoadedTexture } from "../contentModel";
@@ -23,7 +24,7 @@ export function useTextureSync(props: EditorProps, m: ContentModel, paintedTextu
       const { dirtyKeys: keys, images: cur } = saveState.current;
       for (const key of Object.keys(cur)) {
         if (keys.includes(key) || saveState.current.animDirtyKeys.includes(key)) continue;
-        cli<LoadedTexture>("content_texture", { path, texture: key })
+        cli<LoadedTexture>(serveMethod.CONTENT_TEXTURE, { path, texture: key })
           .then((src) => {
             if (saveState.current.images[key]?.url === src.url) return;
             setImages((m) => ({ ...m, [key]: src }));

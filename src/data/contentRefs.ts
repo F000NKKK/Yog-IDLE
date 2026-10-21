@@ -5,6 +5,7 @@
 // `yog build` checks references by.
 
 import { useCallback, useEffect, useState } from "react";
+import { serveMethod } from "../data/yogIds.generated";
 import { cli } from "../cli";
 import { fileTypeOf, useFilesChanged } from "substrate-platform-ui";
 import { classify } from "./typed";
@@ -57,7 +58,7 @@ export function useContentRefs(path: string, kind: string): RefChoices {
   const [asked] = useContentReload();
   useEffect(() => {
     let live = true;
-    cli<RefChoices>("content_refs", { path, kind })
+    cli<RefChoices>(serveMethod.CONTENT_REFS, { path, kind })
       .then((c) => live && setChoices(c ?? NO_REFS))
       .catch(() => live && setChoices(NO_REFS));
     return () => {
@@ -73,7 +74,7 @@ export function useContentDefs(path: string, kind: string): OwnDef[] {
   const [asked] = useContentReload();
   useEffect(() => {
     let live = true;
-    cli<OwnDef[]>("content_defs", { path, kind })
+    cli<OwnDef[]>(serveMethod.CONTENT_DEFS, { path, kind })
       .then((d) => live && setDefs(d ?? []))
       .catch(() => live && setDefs([]));
     return () => {

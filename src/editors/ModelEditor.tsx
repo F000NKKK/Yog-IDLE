@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { serveMethod } from "../data/yogIds.generated";
 import { cli } from "../cli";
 import { KeyHints, Toolbar, ToolbarButton, ToolbarCheck, ToolbarGroup, ToolbarModes, ToolbarSelect, usePropertyContext, useT, type EditorProps, type KeyHint, type PropertyDescriptor } from "substrate-platform-ui";
 import { ModelViewport, type GizmoMode, type Selection } from "../body/ModelViewport";
@@ -78,7 +79,7 @@ export function ModelEditor({ path, content, onChange, readOnly }: EditorProps) 
       return;
     }
     let live = true;
-    cli<LoadedTexture>("body_texture", { path, texture: model.texture })
+    cli<LoadedTexture>(serveMethod.BODY_TEXTURE, { path, texture: model.texture })
       .then((tx) => live && (setTexture(tx.url), setTextureError(null)))
       .catch((e) => live && (setTexture(null), setTextureError(String(e))));
     return () => {

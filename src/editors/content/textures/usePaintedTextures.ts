@@ -1,6 +1,7 @@
 // Painted textures: their pixels, what's unsaved, and saving them.
 
 import { useCallback, useEffect, useMemo, useRef } from "react";
+import { serveMethod } from "../../../data/yogIds.generated";
 import type { EditorProps } from "substrate-platform-ui";
 import { cli } from "../../../cli";
 import { sameAnimation, type TextureAnimation } from "../../../content/animation";
@@ -56,11 +57,11 @@ export function usePaintedTextures(props: EditorProps, m: ContentModel) {
     const written: Record<string, Edited> = {};
     for (const key of keys) {
       const e = cur[key];
-      await cli<string>("content_save_texture", { path, texture: key, png: e.url.slice(e.url.indexOf(",") + 1) });
+      await cli<string>(serveMethod.CONTENT_SAVE_TEXTURE, { path, texture: key, png: e.url.slice(e.url.indexOf(",") + 1) });
       written[key] = e;
     }
     // The .mcmeta after its png: its frame size is checked against the image.
-    for (const key of animKeys) await cli<string>("content_save_texture_animation", { path, texture: key, animation: anims[key]?.animation ?? null });
+    for (const key of animKeys) await cli<string>(serveMethod.CONTENT_SAVE_TEXTURE_ANIMATION, { path, texture: key, animation: anims[key]?.animation ?? null });
     setSaved((s) => ({ ...s, ...Object.fromEntries(Object.entries(written).map(([k, e]) => [k, e.img])) }));
     setImages((m) => {
       const next = { ...m };

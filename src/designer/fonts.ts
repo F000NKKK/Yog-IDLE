@@ -4,7 +4,7 @@
 
 import { fileNameOf, openFile, reportError, t, type PropertyDescriptor } from "substrate-platform-ui";
 import { cli } from "../cli";
-import { gameFont, yog } from "../data/yogIds.generated";
+import { gameFont, serveMethod, yog } from "../data/yogIds.generated";
 import { GAME_NAMESPACE, idParts } from "../data/yogFormat";
 
 /** The game's fonts, by Yog's alias. */
@@ -26,7 +26,7 @@ interface FontCopy {
 
 /** The mod's copy of game font `alias` (made if it has none), opened; resolves with its id. */
 export async function editGameFont(path: string, alias: string): Promise<string> {
-  const copy = await cli<FontCopy>("font_copy", { path, alias });
+  const copy = await cli<FontCopy>(serveMethod.FONT_COPY, { path, alias });
   openFile({ path: copy.file, name: fileNameOf(copy.file) });
   return copy.id;
 }
