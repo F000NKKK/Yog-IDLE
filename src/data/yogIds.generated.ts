@@ -75,6 +75,7 @@ export const word = {
   COUNT: "count",
   DATA: "data",
   DEFAULT: "default",
+  DOC: "doc",
   END: "end",
   ENTRIES: "entries",
   FALSE: "false",
@@ -167,6 +168,22 @@ export const problemCode = {
   BAD_BINARY: "YD0009",
   FAILED: "YC0000",
   NOT_FOUND: "YC0001",
+} as const;
+
+export const dataAttr = {
+  CRATE: "crate",
+  DATA: "data",
+  DEFAULT: "default",
+  DOC: "doc",
+  OTHER: "other",
+  RANGE: "range",
+  RENAME: "rename",
+  RENAME_ALL: "rename_all",
+  CAMEL_CASE: "camelCase",
+  SKIP: "skip",
+  TAG: "tag",
+  VIEW: "view",
+  WITH: "with",
 } as const;
 
 export const typed = {
