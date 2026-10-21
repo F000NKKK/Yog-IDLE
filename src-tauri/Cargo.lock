@@ -4997,7 +4997,7 @@ dependencies = [
 
 [[package]]
 name = "yog-data"
-version = "0.7.0"
+version = "0.8.0"
 dependencies = [
  "base64 0.23.1",
  "bumpalo",
@@ -5011,16 +5011,17 @@ dependencies = [
 
 [[package]]
 name = "yog-data-derive"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "proc-macro2",
  "quote",
  "syn 3.0.9",
+ "yog-ids",
 ]
 
 [[package]]
 name = "yog-debugger"
-version = "0.10.0"
+version = "0.11.0"
 dependencies = [
  "iced-x86",
  "nix 0.31.3",
@@ -5032,7 +5033,7 @@ dependencies = [
 
 [[package]]
 name = "yog-home"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "dirs",
  "semver",
@@ -5042,7 +5043,7 @@ dependencies = [
 
 [[package]]
 name = "yog-hot-reload"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "libloading 0.9.0",
  "serde",
@@ -5080,21 +5081,21 @@ dependencies = [
 
 [[package]]
 name = "yog-ids"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "const_format",
 ]
 
 [[package]]
 name = "yog-logging"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "yog-sync",
 ]
 
 [[package]]
 name = "yog-symbols"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "addr2line",
  "gimli",
@@ -5104,7 +5105,7 @@ dependencies = [
 
 [[package]]
 name = "yog-sync"
-version = "0.3.0"
+version = "0.4.0"
 
 [[package]]
 name = "yoke"
