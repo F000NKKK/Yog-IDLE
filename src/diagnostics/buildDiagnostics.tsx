@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { addDiagnostics, clearDiagnostics, createRustcParser, setDiagnostics, type Diagnostic, type RustcParser } from "substrate-platform-ui";
 import { EVENT, listenAll, listenTo } from "../events";
 import { createYogParser, resolveFrom, stripLevelTag } from "./yogOutput";
+import { hasLiveProblems } from "./liveCheck";
 
 /** Error List set holding the last build's diagnostics. */
 const BUILD_SET = "build";
@@ -116,6 +117,8 @@ export function BuildDiagnosticsSync({ root, project }: { root: string | null; p
  * and warnings. Replaces that file's live set.
  */
 export function setSavedFileDiagnostics(path: string, root: string, log: string): void {
+  // Its problems as edited are the live check's; the save's would repeat them.
+  if (hasLiveProblems(path)) return setDiagnostics(liveSet(path), []);
   const parser = createYogParser({ root, origin: "live" });
   const items = log.split("\n").flatMap((line) => parser.push(line));
   // A failure that names no file is still about this one.

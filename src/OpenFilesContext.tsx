@@ -6,6 +6,7 @@ import { useTabClosing } from "./openFiles/useTabClosing";
 import { useTabPaths } from "./openFiles/useTabPaths";
 import { useDiskRecheck } from "./openFiles/useDiskRecheck";
 import { useTabPanels } from "./openFiles/useTabPanels";
+import { useLiveChecks } from "./diagnostics/liveCheck";
 
 /** The open files: their tabs, editors and dock panels, saved, closed, and kept in step with the disk. */
 export function OpenFilesProvider(props: { children: ReactNode }) {
@@ -17,6 +18,7 @@ export function OpenFilesProvider(props: { children: ReactNode }) {
   const diskRecheck = useDiskRecheck(openTabs, tabPaths);
   const tabPanels = useTabPanels(openTabs, tabClosing, tabPaths);
   const { tabs, tabsRef, open } = openTabs;
+  useLiveChecks(tabs);
   const { updateContent, setSideState, save, saveAs, saveAll } = tabSaving;
   const { removeTabs, closeTab, confirmDiscardAll, closeTabs, closeAll, setPinned } = tabClosing;
   const { setView, pathRenamed, pathRemoved } = tabPaths;

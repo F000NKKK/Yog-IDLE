@@ -49,18 +49,26 @@ function diagnosticsKey(method: string, params: Record<string, unknown>): string
   return `cli:${method}:${plain.map(([k, v]) => `${k}=${String(v)}`).join("&")}`;
 }
 
-function diagnostics(e: ServiceError): Diagnostic[] {
-  const problems = e.problems.length > 0 ? e.problems : [{ code: problemCode.FAILED, message: e.message, path: "" }];
+/** `problems` as the Error List shows them: errors at their file's line and column, `tool` reporting them. */
+export function problemDiagnostics(problems: readonly ServiceProblem[], tool: string, file?: string): Diagnostic[] {
   return problems.map((p) => ({
     severity: "error",
     origin: "live",
     code: p.code,
     message: p.path ? `${p.path}: ${p.message}` : p.message,
-    tool: `${program.CLI} ${program.SERVE}: ${e.method}`,
-    file: e.file,
+    tool,
+    file,
     line: p.line,
     column: p.col,
   }));
+}
+
+/** What `method` of the service is called in the Error List's Tool column. */
+export const serviceTool = (method: string) => `${program.CLI} ${program.SERVE}: ${method}`;
+
+function diagnostics(e: ServiceError): Diagnostic[] {
+  const problems = e.problems.length > 0 ? e.problems : [{ code: problemCode.FAILED, message: e.message, path: "" }];
+  return problemDiagnostics(problems, serviceTool(e.method), e.file);
 }
 
 /**
