@@ -22,6 +22,7 @@ export const sep = {
 
 export const word = {
   GUI: "gui",
+  VALUES: "values",
   ITEMS: "items",
   BLOCKS: "blocks",
   ENTITIES: "entities",
@@ -805,6 +806,14 @@ export const serveParam = {
   NS: "ns",
   ASSET: "asset",
   MCMETA: "mcmeta",
+} as const;
+
+export const tagFile = {
+  VALUES: "values",
+  OPTIONAL: "optional",
+  REPLACE: "replace",
+  ID: "id",
+  REQUIRED: "required",
 } as const;
 
 export const atlasSource = {
