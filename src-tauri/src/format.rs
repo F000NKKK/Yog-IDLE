@@ -57,16 +57,19 @@ pub(super) async fn format_supported(path: String) -> bool {
     .unwrap_or(false)
 }
 
-/// Calls `method` of the CLI service (`yog serve`) — how the front end reads
-/// and writes every Yog format.
+/// Carries a request to the CLI service (`yog serve`) and its answer back
+/// — how the front end reads and writes every Yog format. Both are binary
+/// Yog Data the front end writes and reads itself.
 #[tauri::command]
-pub(super) async fn cli(
-    method: String,
-    params: serde_json::Value,
-) -> Result<serde_json::Value, serde_json::Value> {
-    tauri::async_runtime::spawn_blocking(move || cli::call(&method, params))
+pub(super) async fn cli(request: tauri::ipc::Request<'_>) -> Result<tauri::ipc::Response, String> {
+    let tauri::ipc::InvokeBody::Raw(bytes) = request.body() else {
+        return Err("a CLI request is binary Yog Data".into());
+    };
+    let bytes = bytes.clone();
+    tauri::async_runtime::spawn_blocking(move || cli::exchange(&bytes))
         .await
-        .map_err(|e| serde_json::Value::from(e.to_string()))?
+        .map_err(|e| e.to_string())?
+        .map(tauri::ipc::Response::new)
 }
 
 /// Format Document: pipes `contents` (the editor's text — not necessarily

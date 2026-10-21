@@ -46,6 +46,8 @@ proc-macro2 = { version = "1.0.107", features = ["span-locations"] }
 yog-ids = "0.2.2"
 # Yog's home on the machine (~/.yog): where its local patch is.
 yog-home = "0.2.2"
+# What the CLI service (`yog serve`) and the backend say: binary Yog Data.
+yog-data = "0.6.0"
 
 [features]
 # The benches' entry points into the backend (`src/bench.rs`).
@@ -77,5 +79,7 @@ nix = { version = "0.31", features = ["ptrace", "signal", "process"] }
 yog-debugger = { path = "../../Yog-Mod-Loader/rust/crates/yog-debugger" }
 yog-ids = { path = "../../Yog-Mod-Loader/rust/crates/yog-ids" }
 yog-home = { path = "../../Yog-Mod-Loader/rust/crates/yog-home" }
+yog-data = { path = "../../Yog-Mod-Loader/rust/crates/yog-data" }
+yog-data-derive = { path = "../../Yog-Mod-Loader/rust/crates/yog-data-derive" }
 yog-hot-reload = { path = "../../Yog-Mod-Loader/rust/crates/yog-hot-reload" }
 yog-symbols = { path = "../../Yog-Mod-Loader/rust/crates/yog-symbols" }

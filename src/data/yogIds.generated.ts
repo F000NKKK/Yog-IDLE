@@ -835,6 +835,11 @@ export const yui = {
   DRAWN: "Drawn",
 } as const;
 
+export const serveRequest = {
+  METHOD: "method",
+  PARAMS: "params",
+} as const;
+
 export const serveParam = {
   PATH: "path",
   NAME: "name",

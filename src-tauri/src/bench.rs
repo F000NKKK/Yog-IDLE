@@ -9,12 +9,10 @@ use std::path::{Path, PathBuf};
 pub use crate::symbols::{extract_symbols, fuzzy_match};
 pub use substrate_platform::search::OpenDocument;
 
-/// A call of the CLI service, as the front end makes it.
-pub fn cli(
-    method: &str,
-    params: serde_json::Value,
-) -> Result<serde_json::Value, serde_json::Value> {
-    crate::cli::call(method, params)
+/// A call of the CLI service, as the front end makes it: a request's
+/// binary form in, the answer's out.
+pub fn cli(request: &[u8]) -> Result<Vec<u8>, String> {
+    crate::cli::exchange(request)
 }
 
 /// What Yog needs here and has (`tools_status`).
