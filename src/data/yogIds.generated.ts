@@ -13,6 +13,7 @@ export const sep = {
   HYPHEN: "-",
   MEMBER: ".",
   TYPED: "@",
+  TAG: "#",
   TAG_SHOWN: "#",
   ALTERNATIVES: "|",
   STATE_OPEN: "[",
@@ -1077,6 +1078,56 @@ export const yuiAttr = {
   GRID_COLUMN: "Grid.Column",
   GRID_ROWSPAN: "Grid.RowSpan",
   GRID_COLUMNSPAN: "Grid.ColumnSpan",
+} as const;
+
+export const loader = {
+  FABRIC: "fabric",
+  FORGE: "forge",
+  NEOFORGE: "neoforge",
+} as const;
+
+export const worldgen = {
+  DIR: "worldgen",
+  CONFIGURED_FEATURE: "configured_feature",
+  PLACED_FEATURE: "placed_feature",
+  TREE: "minecraft:tree",
+  ORE: "minecraft:ore",
+  SIMPLE_STATE_PROVIDER: "minecraft:simple_state_provider",
+  WEIGHTED_STATE_PROVIDER: "minecraft:weighted_state_provider",
+  RULE_BASED_STATE_PROVIDER: "minecraft:rule_based_state_provider",
+  NOT: "minecraft:not",
+  MATCHING_BLOCK_TAG: "minecraft:matching_block_tag",
+  CANNOT_REPLACE_BELOW_TREE_TRUNK: "minecraft:cannot_replace_below_tree_trunk",
+  TWO_LAYERS_FEATURE_SIZE: "minecraft:two_layers_feature_size",
+  DIRT: "minecraft:dirt",
+  TRUNK: "trunk",
+  FOLIAGE: "foliage",
+  PLACER: "placer",
+  TAG_MATCH: "minecraft:tag_match",
+  BLOCK_MATCH: "minecraft:block_match",
+  UNIFORM: "minecraft:uniform",
+  TRAPEZOID: "minecraft:trapezoid",
+  COUNT: "minecraft:count",
+  IN_SQUARE: "minecraft:in_square",
+  HEIGHT_RANGE: "minecraft:height_range",
+  BIOME: "minecraft:biome",
+  IS_OVERWORLD: "minecraft:is_overworld",
+  UNDERGROUND_ORES: "underground_ores",
+} as const;
+
+export const biomeModifier = {
+  DIR: "biome_modifier",
+  FORGE_ADD_FEATURES: "forge:add_features",
+  NEOFORGE_ADD_FEATURES: "neoforge:add_features",
+} as const;
+
+export const advancement = {
+  TASK: "task",
+  GOAL: "goal",
+  CHALLENGE: "challenge",
+  IMPOSSIBLE: "minecraft:impossible",
+  INVENTORY_CHANGED: "minecraft:inventory_changed",
+  CONSUME_ITEM: "minecraft:consume_item",
 } as const;
 
 /** Yog's file formats: extension and noun (`Format`). */
