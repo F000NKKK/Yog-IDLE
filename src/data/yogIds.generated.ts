@@ -31,7 +31,22 @@ export const direction = {
 } as const;
 
 export const word = {
+  BASE: "base",
+  BLOCK: "block",
+  CATEGORY: "category",
+  CONTENT: "content",
+  DIMENSION: "dimension",
+  EVENT: "event",
+  FUNCTION: "function",
   GUI: "gui",
+  INT: "int",
+  ITEM: "item",
+  KEY: "key",
+  OPTIONAL: "optional",
+  RESULT: "result",
+  SPRITE: "sprite",
+  TAG: "tag",
+  TEXTURE: "texture",
   VALUES: "values",
   ITEMS: "items",
   BLOCKS: "blocks",
