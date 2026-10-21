@@ -2,7 +2,7 @@
 //! project): the whole of a mod's `yog.toml` as `yog-cli` reads it —
 //! `[mod]`, `[dev]`, `[dependencies]` and `[dependencies.exports]` — edited
 //! in place through `toml_edit`, so comments, key order and alignment
-//! survive. Plus the project's own build platforms (`.yog-idle/settings.json`,
+//! survive. Plus the project's own build platforms (`.yog-idle/settings.ydata`,
 //! the `YOG_TARGETS` a Build uses) and a crates.io search for the
 //! Dependencies page. (Run targets aren't the project's: `yog run --list`.)
 
@@ -325,29 +325,33 @@ pub fn remove_dependency(root: &Path, mods: bool, name: &str) -> Result<ProjectP
     })
 }
 
-// ── Project build platforms (.yog-idle/settings.json) ──────────────────────
+// ── Project build platforms (.yog-idle/settings.ydata) ─────────────────────
+
+/// What Yog IDLE keeps of a project on this machine.
+#[derive(Default, yog_data::Schema)]
+struct Settings {
+    /// The platforms the project is built for (empty: every one).
+    #[data(default)]
+    build_targets: Vec<String>,
+}
+
+/// The settings' file's name.
+const SETTINGS: &str = "settings";
 
 fn settings_file(root: &Path) -> PathBuf {
-    root.join(crate::manifest::IDLE_DIR).join("settings.json")
+    root.join(crate::manifest::IDLE_DIR)
+        .join(yog_ids::Format::Data.file(SETTINGS))
+}
+
+fn read_settings(root: &Path) -> Settings {
+    std::fs::read(settings_file(root))
+        .ok()
+        .and_then(|b| yog_data::read_bytes(&b).ok())
+        .unwrap_or_default()
 }
 
 pub fn read_build_targets(root: &Path) -> Vec<String> {
-    std::fs::read_to_string(settings_file(root))
-        .ok()
-        .and_then(|t| serde_json::from_str::<serde_json::Value>(&t).ok())
-        .map(|v| str_list_json(v.get("buildTargets")))
-        .unwrap_or_default()
-}
-
-fn str_list_json(value: Option<&serde_json::Value>) -> Vec<String> {
-    value
-        .and_then(|v| v.as_array())
-        .map(|a| {
-            a.iter()
-                .filter_map(|v| v.as_str().map(str::to_string))
-                .collect()
-        })
-        .unwrap_or_default()
+    read_settings(root).build_targets
 }
 
 pub fn set_build_targets(root: &Path, targets: &[String]) -> Result<ProjectProps, String> {
@@ -357,12 +361,8 @@ pub fn set_build_targets(root: &Path, targets: &[String]) -> Result<ProjectProps
         }
     }
     let file = settings_file(root);
-    let mut value = std::fs::read_to_string(&file)
-        .ok()
-        .and_then(|t| serde_json::from_str::<serde_json::Value>(&t).ok())
-        .filter(serde_json::Value::is_object)
-        .unwrap_or_else(|| serde_json::json!({}));
-    value["buildTargets"] = serde_json::json!(targets);
+    let mut settings = read_settings(root);
+    settings.build_targets = targets.to_vec();
     if let Some(dir) = file.parent() {
         std::fs::create_dir_all(dir).map_err(|e| e.to_string())?;
         // Machine-local, like the workspace file next to it.
@@ -371,8 +371,7 @@ pub fn set_build_targets(root: &Path, targets: &[String]) -> Result<ProjectProps
             let _ = std::fs::write(ignore, "*\n");
         }
     }
-    let text = serde_json::to_string_pretty(&value).map_err(|e| e.to_string())?;
-    std::fs::write(&file, text).map_err(|e| e.to_string())?;
+    std::fs::write(&file, yog_data::to_bytes(&settings)).map_err(|e| e.to_string())?;
     read(root)
 }
 

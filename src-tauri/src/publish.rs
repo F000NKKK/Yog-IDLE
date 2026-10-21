@@ -2,7 +2,7 @@
 
 use super::*;
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, yog_data::Schema)]
 #[serde(rename_all = "camelCase")]
 pub(super) struct PublishProfile {
     pub(super) id: String,
@@ -34,9 +34,9 @@ pub(super) fn publish_profiles_list(
     let mut profiles = Vec::new();
     for entry in std::fs::read_dir(&dir).map_err(|e| e.to_string())? {
         let entry = entry.map_err(|e| e.to_string())?;
-        if entry.path().extension().is_some_and(|ext| ext == "json") {
-            let contents = std::fs::read_to_string(entry.path()).map_err(|e| e.to_string())?;
-            if let Ok(profile) = serde_json::from_str::<PublishProfile>(&contents) {
+        if yog_ids::Format::Data.is(&entry.path()) {
+            let bytes = std::fs::read(entry.path()).map_err(|e| e.to_string())?;
+            if let Ok(profile) = yog_data::read_bytes::<PublishProfile>(&bytes) {
                 profiles.push(profile);
             }
         }
@@ -57,11 +57,10 @@ pub(super) fn publish_profile_save(
         .map_err(|m| m.to_string())?;
     let dir = publish_profiles_dir(&root);
     std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
-    let path = dir.join(format!("{}.json", profile.id));
+    let path = dir.join(yog_ids::Format::Data.file(&profile.id));
     // `id` is caller-supplied — a `../` in it must not escape the project.
     validate_within_roots(&state, &path)?;
-    let json = serde_json::to_string_pretty(&profile).map_err(|e| e.to_string())?;
-    std::fs::write(path, json).map_err(|e| e.to_string())
+    std::fs::write(path, yog_data::to_bytes(&profile)).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -71,7 +70,8 @@ pub(super) fn publish_profile_delete(
     id: String,
 ) -> Result<(), String> {
     validate_within_roots(&state, Path::new(&project_root))?;
-    let path = publish_profiles_dir(&PathBuf::from(project_root)).join(format!("{id}.json"));
+    let path =
+        publish_profiles_dir(&PathBuf::from(project_root)).join(yog_ids::Format::Data.file(&id));
     validate_within_roots(&state, &path)?;
     if path.exists() {
         std::fs::remove_file(path).map_err(|e| e.to_string())?;
