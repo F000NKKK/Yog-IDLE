@@ -22,6 +22,10 @@ export const sep = {
 
 export const word = {
   GUI: "gui",
+  ITEMS: "items",
+  BLOCKS: "blocks",
+  ENTITIES: "entities",
+  RECIPES: "recipes",
   LOOT: "loot",
   SPAWN_EGG: "spawn_egg",
   SOUND: "sound",
@@ -801,6 +805,24 @@ export const serveParam = {
   NS: "ns",
   ASSET: "asset",
   MCMETA: "mcmeta",
+} as const;
+
+export const atlasSource = {
+  SOURCES: "sources",
+  TYPE: "type",
+  SINGLE: "single",
+  UNSTITCH: "unstitch",
+  RESOURCE: "resource",
+  SPRITE: "sprite",
+  DIVISOR_X: "divisor_x",
+  DIVISOR_Y: "divisor_y",
+  REGIONS: "regions",
+  X: "x",
+  Y: "y",
+  WIDTH: "width",
+  HEIGHT: "height",
+  BLOCKS: "blocks",
+  ITEMS: "items",
 } as const;
 
 export const textureSlot = {
