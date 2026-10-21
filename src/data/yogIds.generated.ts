@@ -1187,6 +1187,34 @@ export const screenAnchor = {
   FILL: "fill",
 } as const;
 
+export const yuiVm = {
+  SCREEN_RESOURCES: "Screen.Resources",
+  DATA_TEMPLATE: "DataTemplate",
+  ITEM_TEMPLATE: "ItemTemplate",
+  CONTENT_TEMPLATE: "ContentTemplate",
+  EMPTY: "Empty",
+  COMMAND: "command",
+  ITEMS: "items",
+  CONTENT: "content",
+  KEY: "key",
+  HORIZONTAL: "horizontal",
+  MODE: "Mode",
+  BIND_BACK: "BindBack",
+  FALLBACK: "Fallback",
+  ONE_WAY: "OneWay",
+  ONE_TIME: "OneTime",
+  TWO_WAY: "TwoWay",
+} as const;
+
+export const widgetState = {
+  HOVER: "hover",
+  PRESSED: "pressed",
+  FOCUSED: "focused",
+  SELECTED: "selected",
+  CHECKED: "checked",
+  DISABLED: "disabled",
+} as const;
+
 export const propKind = {
   TEXT: "text",
   NUMBER: "number",
