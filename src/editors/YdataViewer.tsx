@@ -12,7 +12,7 @@ export function YdataViewer({ path }: EditorProps) {
   const [text, setText] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   useEffect(() => {
-    cli<string>(serveMethod.YDATA_TEXT, { path })
+    cli<string>(serveMethod.SOURCE_READ, { path })
       .then((s) => {
         setText(s);
         setError(null);

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useOpenFilesIfAny } from "../OpenFilesContext";
-import { hostFiles, useFilesChanged } from "substrate-platform-ui";
+import { useFilesChanged } from "substrate-platform-ui";
+import { files } from "../files";
 
 /**
  * The text of another file a designer shows (an entity's model, a clip's
@@ -17,7 +18,7 @@ export function useFileText(file: string | null): string | null {
   useEffect(() => {
     if (!file) return setDisk(null);
     let live = true;
-    hostFiles.read(file)
+    files.read(file)
       .then((text) => live && setDisk(text ?? null))
       .catch(() => live && setDisk(null));
     return () => {
