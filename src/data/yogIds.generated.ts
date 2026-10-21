@@ -967,6 +967,13 @@ export const toolKind = {
   SWORD: "sword",
 } as const;
 
+export const armorSlot = {
+  HEAD: "head",
+  CHEST: "chest",
+  LEGS: "legs",
+  FEET: "feet",
+} as const;
+
 export const model = {
   PARENT: "parent",
   TEXTURES: "textures",
