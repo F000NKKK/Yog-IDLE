@@ -3,7 +3,7 @@
 // model each state shows (`states.variants`) and how it turns — as `yog
 // build` makes the blockstate (yog-cli `content.rs`).
 
-import { direction as d } from "../data/yogIds.generated";
+import { blockState as bs, direction as d } from "../data/yogIds.generated";
 import type { BlockProps, ContentFile, Model } from "./model";
 
 export type States = NonNullable<ContentFile["states"]>;
@@ -22,11 +22,11 @@ export const FACING_VALUES = {
   all: [d.NORTH, d.EAST, d.SOUTH, d.WEST, d.UP, d.DOWN],
 } as const;
 /** An attached block's `face` property. */
-export const FACE_VALUES = ["floor", "wall", "ceiling"] as const;
+export const FACE_VALUES = [bs.FLOOR, bs.WALL, bs.CEILING] as const;
 /** A yes/no property's values (a `powered` or `comparator` one must be exactly this). */
-export const YES_NO = ["false", "true"] as const;
+export const YES_NO = [bs.FALSE, bs.TRUE] as const;
 /** Names the host gives properties of its own. */
-export const BUILT_IN_PROPERTIES = ["facing", "face", "waterlogged"] as const;
+export const BUILT_IN_PROPERTIES = [bs.FACING, bs.FACE, bs.WATERLOGGED] as const;
 
 /** How a property's values are edited: yes/no, a run of whole numbers, or names. */
 /** What a state property's values are: false/true, a number range, or names of its own. */
@@ -82,9 +82,9 @@ export function stateProperties(s: States | undefined): StateProperty[] {
   if (!s) return [];
   const out: StateProperty[] = [];
   const facing = s.attach ? "horizontal" : s.facing;
-  if (facing) out.push({ name: "facing", values: [...FACING_VALUES[facing]], own: false });
-  if (s.attach) out.push({ name: "face", values: [...FACE_VALUES], own: false });
-  if (s.waterlogged) out.push({ name: "waterlogged", values: [...YES_NO], own: false });
+  if (facing) out.push({ name: bs.FACING, values: [...FACING_VALUES[facing]], own: false });
+  if (s.attach) out.push({ name: bs.FACE, values: [...FACE_VALUES], own: false });
+  if (s.waterlogged) out.push({ name: bs.WATERLOGGED, values: [...YES_NO], own: false });
   for (const [name, values] of Object.entries(s.properties ?? {})) out.push({ name, values, own: true });
   return out;
 }
@@ -139,8 +139,8 @@ export function variantProblems(s: States, key: string): { message: string; para
 /** How a state turns its model, x then y in degrees: `facing` is where its front (the model's north) looks; `face`, where an attached block hangs. */
 export function turn(facing?: string, face?: string): { x: number; y: number } {
   const yaw = (f: string) => ({ east: 90, south: 180, west: 270 })[f as "east"] ?? 0;
-  if (face === "wall" && facing) return { x: 90, y: yaw(facing) };
-  if (face === "ceiling" && facing) return { x: 180, y: (yaw(facing) + 180) % 360 };
+  if (face === bs.WALL && facing) return { x: 90, y: yaw(facing) };
+  if (face === bs.CEILING && facing) return { x: 180, y: (yaw(facing) + 180) % 360 };
   if (facing === "up") return { x: 270, y: 0 };
   if (facing === "down") return { x: 90, y: 0 };
   if (facing) return { x: 0, y: yaw(facing) };
