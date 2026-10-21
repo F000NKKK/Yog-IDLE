@@ -232,22 +232,17 @@ pub fn debug_step(state: State<DebugState>, kind: Option<String>) -> Result<(), 
 /// Why an attach got `EPERM`, and the one thing that fixes it here. Yama
 /// (`kernel.yama.ptrace_scope`) only lets a process trace its descendants,
 /// and the game isn't one of ours — Gradle's daemon launches it. The
-/// runtime lifts that for us when we connect (`PR_SET_PTRACER`, reported as
-/// `ready.ptracer`); the messages start with a stable tag the Debug panel
+/// runtime lifts that for us when we connect (`PR_SET_PTRACER`); when that
+/// wasn't enough, the messages start with a stable tag the Debug panel
 /// keys its actions on.
-pub(super) fn permission_denied_message(pid: i32, ptracer: Option<bool>) -> String {
+pub(super) fn permission_denied_message(pid: i32) -> String {
     let scope = std::fs::read_to_string("/proc/sys/kernel/yama/ptrace_scope")
         .ok()
         .and_then(|s| s.trim().parse::<u8>().ok());
-    match (ptracer, scope) {
-        (_, Some(3)) => format!(
+    match scope {
+        Some(3) => format!(
             "[ptrace-disabled] attaching to pid {pid}: permission denied — ptrace is disabled on this system \
              (kernel.yama.ptrace_scope = 3) until the next reboot; no debugger can attach."
-        ),
-        (None, Some(0 | 1) | None) => format!(
-            "[runtime-outdated] attaching to pid {pid}: permission denied — this game runs a yog-runtime from \
-             before it let the IDE trace it (PR_SET_PTRACER). Rebuild the runtime (`./build.sh build rust` in \
-             Yog-Mod-Loader, or `./dev.sh`) and launch again."
         ),
         _ => format!(
             "[needs-capability] attaching to pid {pid}: permission denied — kernel.yama.ptrace_scope = {} here, \

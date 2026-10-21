@@ -15,7 +15,7 @@
 //! The same channel carries hot reload the other way: `hot_reload` rebuilds
 //! the project and asks the runtime to swap in the new `.yog` in place.
 
-use std::io::{BufRead, BufReader, Write};
+use std::io::{BufRead, BufReader};
 use std::net::TcpStream;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Stdio};

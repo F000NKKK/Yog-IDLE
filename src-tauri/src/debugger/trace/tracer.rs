@@ -10,14 +10,13 @@ impl Tracer {
         real_pid: i32,
         mod_id: &str,
         native_path: &Path,
-        ptracer: Option<bool>,
     ) -> Result<Self, String> {
         let symbols = SymbolTable::load(native_path)
             .map_err(|e| format!("loading symbols from {}: {e}", native_path.display()))?;
         let mut debugger = Debugger::attach(real_pid).map_err(|e| {
             let raw = e.to_string();
             if raw.contains("EPERM") {
-                permission_denied_message(real_pid, ptracer)
+                permission_denied_message(real_pid)
             } else {
                 format!("attaching to pid {real_pid}: {raw}")
             }

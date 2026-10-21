@@ -13,9 +13,9 @@ pub(super) const CONTROL_WRITE_TIMEOUT: Duration = Duration::from_secs(5);
 /// How long a hot reload waits for the game's answer.
 pub(super) const HOT_RELOAD_TIMEOUT: Duration = Duration::from_secs(60);
 
-/// One request line to the control socket, in a single write.
+/// One request to the control socket, in a single write.
 pub(super) fn send_control(control: &mut TcpStream, request: &Command) -> std::io::Result<()> {
-    control.write_all(protocol::line(request).as_bytes())
+    protocol::send(control, request)
 }
 
 /// The control channel's address: this machine only.
@@ -180,34 +180,11 @@ pub(super) fn connect_and_watch(
         return;
     };
 
-    let mut reader = BufReader::new(match stream.try_clone() {
-        Ok(s) => s,
-        Err(_) => return,
-    });
     // We're the launcher: the token says so, our pid is who may trace the game.
-    let mut hello_stream = match stream.try_clone() {
-        Ok(s) => s,
-        Err(_) => return,
+    let Ok((mut client, ready)) = protocol::Client::hello(stream, &token) else {
+        return;
     };
-    if send_control(
-        &mut hello_stream,
-        &Command::Hello {
-            token,
-            pid: std::process::id(),
-        },
-    )
-    .is_err()
-    {
-        return;
-    }
-
-    let mut line = String::new();
-    if reader.read_line(&mut line).unwrap_or(0) == 0 {
-        return;
-    }
-    // Whether the runtime handed us `PR_SET_PTRACER` — absent from runtimes
-    // that predate it, which is what an `EPERM` attach then means.
-    let Some(Event::Ready { pid, mods, ptracer }) = protocol::parse(&line) else {
+    let Event::Ready { pid, mods, .. } = ready else {
         return;
     };
     let real_pid = pid as i32;
@@ -218,7 +195,7 @@ pub(super) fn connect_and_watch(
         match guard.as_mut() {
             Some(session) if session.id == session_id => {
                 session.real_pid = Some(real_pid);
-                session.control = stream.try_clone().ok();
+                session.control = client.stream().try_clone().ok();
                 // Written under `DebugState`'s lock: a game that stops reading mustn't wedge every command.
                 if let Some(control) = &session.control {
                     let _ = control.set_write_timeout(Some(CONTROL_WRITE_TIMEOUT));
@@ -245,11 +222,8 @@ pub(super) fn connect_and_watch(
             real_pid,
             attach.mod_id,
             attach.native_path,
-            ptracer,
         );
     }
-    #[cfg(not(target_os = "linux"))]
-    let _ = ptracer;
 
     // Keep reading further event lines for the rest of the session: a
     // refreshed mod list (`mods`) becomes another `game-status` "ready",
@@ -261,41 +235,15 @@ pub(super) fn connect_and_watch(
     // the "the game is gone" signal: emit it and clean up the session
     // instead of silently leaving stale state around (a manually-closed
     // client previously left Yog-IDLE with no idea anything had changed).
-    let mut line = String::new();
-    loop {
-        line.clear();
-        match reader.read_line(&mut line) {
-            Ok(0) | Err(_) => break,
-            Ok(_) => {
-                handle_control_event(
-                    &app,
-                    session_id,
-                    real_pid,
-                    protocol::parse(&line),
-                    line.trim(),
-                );
-            }
-        }
+    while let Ok(Some(event)) = client.event() {
+        handle_control_event(&app, session_id, real_pid, event);
     }
     mark_exited(&app, session_id);
 }
 
-/// One event line from the game (`None`: one this IDE can't read): the
-/// answer a request waits for, a refreshed mod list, or Output's.
-pub(super) fn handle_control_event(
-    app: &AppHandle,
-    session_id: u64,
-    real_pid: i32,
-    event: Option<Event>,
-    raw: &str,
-) {
-    let Some(event) = event else {
-        let _ = app.emit(
-            crate::events::OUTPUT_DEBUG,
-            format!("[control] unknown: {raw}"),
-        );
-        return;
-    };
+/// One event from the game: the answer a request waits for, a refreshed
+/// mod list, or Output's.
+pub(super) fn handle_control_event(app: &AppHandle, session_id: u64, real_pid: i32, event: Event) {
     // An answer someone's waiting for.
     {
         let debug_state = app.state::<DebugState>();
@@ -322,8 +270,8 @@ pub(super) fn handle_control_event(
                 },
             );
         }
-        _ => {
-            let _ = app.emit(crate::events::OUTPUT_DEBUG, format!("[control] {raw}"));
+        other => {
+            let _ = app.emit(crate::events::OUTPUT_DEBUG, format!("[control] {other:?}"));
         }
     }
 }

@@ -53,7 +53,6 @@ pub(crate) fn start_tracer(
     real_pid: i32,
     mod_id: String,
     native_path: PathBuf,
-    ptracer: Option<bool>,
 ) {
     let (tx, rx) = mpsc::channel();
     let running = Arc::new(AtomicBool::new(false));
@@ -82,16 +81,7 @@ pub(crate) fn start_tracer(
         pause_request,
     };
     std::thread::spawn(move || {
-        tracer_main(
-            app,
-            session_id,
-            real_pid,
-            mod_id,
-            native_path,
-            ptracer,
-            rx,
-            flags,
-        )
+        tracer_main(app, session_id, real_pid, mod_id, native_path, rx, flags)
     });
 }
 
@@ -105,14 +95,12 @@ pub(crate) fn start_tracer(
 /// `Debugger::attach` leaves the tracee stopped (attach + `waitpid`), so
 /// right after arming breakpoints this resumes it — otherwise the game
 /// would sit frozen with nothing in the UI able to continue it.
-#[allow(clippy::too_many_arguments)]
 pub(super) fn tracer_main(
     app: AppHandle,
     session_id: u64,
     real_pid: i32,
     mod_id: String,
     native_path: PathBuf,
-    ptracer: Option<bool>,
     rx: Receiver<TracerCmd>,
     flags: TracerFlags,
 ) {
@@ -121,7 +109,7 @@ pub(super) fn tracer_main(
         paused,
         pause_request,
     } = flags;
-    let mut tracer = match Tracer::attach(&app, real_pid, &mod_id, &native_path, ptracer) {
+    let mut tracer = match Tracer::attach(&app, real_pid, &mod_id, &native_path) {
         Ok(t) => t,
         Err(e) => {
             emit_failed(&app, e);
