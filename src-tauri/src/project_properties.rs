@@ -347,7 +347,7 @@ fn str_list_json(value: Option<&serde_json::Value>) -> Vec<String> {
 
 pub fn set_build_targets(root: &Path, targets: &[String]) -> Result<ProjectProps, String> {
     for t in targets {
-        if !crate::tools::TARGETS.iter().any(|(tag, _)| tag == t) {
+        if yog_ids::platform::by_tag(t).is_none() {
             return Err(format!("'{t}' isn't a platform yog builds for"));
         }
     }

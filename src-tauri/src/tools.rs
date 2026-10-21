@@ -18,16 +18,6 @@ use yog_home::components::id;
 /// front end's global store; read here at startup).
 pub const SETTINGS_KEY: &str = "build.settings";
 
-/// Every platform a `.yog` bundles natives for: `(tag, triple)` — the same
-/// list as `yog-cli`'s `TARGETS`.
-pub const TARGETS: &[(&str, &str)] = &[
-    ("linux-x86_64", "x86_64-unknown-linux-gnu"),
-    ("linux-aarch64", "aarch64-unknown-linux-gnu"),
-    ("windows-x86_64", "x86_64-pc-windows-gnu"),
-    ("macos-x86_64", "x86_64-apple-darwin"),
-    ("macos-aarch64", "aarch64-apple-darwin"),
-];
-
 /// Where Yog Installer is downloaded when this machine has none.
 const INSTALLER_RELEASES: &str = "https://github.com/F000NKKK/Yog-Installer/releases/latest";
 
@@ -71,8 +61,7 @@ pub fn default_state_file(identifier: &str) -> Option<PathBuf> {
 
 /// This computer's `yog build` platform tag (`linux-x86_64`, ...), if yog builds for it.
 pub fn host_tag() -> Option<&'static str> {
-    let tag = format!("{}-{}", std::env::consts::OS, std::env::consts::ARCH);
-    TARGETS.iter().map(|(t, _)| *t).find(|t| *t == tag)
+    yog_ids::platform::host().map(|p| p.tag)
 }
 
 /// cargo's `bin/`: `$CARGO_HOME/bin`, else `~/.cargo/bin`.

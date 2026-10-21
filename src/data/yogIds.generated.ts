@@ -596,6 +596,11 @@ export const file = {
   LOCK: "yog.lock",
 } as const;
 
+export const archive = {
+  MANIFEST: "mod.ydata",
+  NATIVES: "natives",
+} as const;
+
 export const pack = {
   DATA: "data",
   ASSETS: "assets",
