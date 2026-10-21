@@ -5,6 +5,25 @@
   cursor: grab;
 }
 
+/* The screen, and over it while dragged: the contents slid inside the view, the window on them. */
+.adv-screen-box {
+  position: relative;
+}
+
+.adv-slide {
+  position: absolute;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.adv-slide > img,
+.adv-slide-window {
+  position: absolute;
+  left: 0;
+  top: 0;
+  pointer-events: none;
+}
+
 /* Full-width data editors belong in the work area, not squeezed into Properties. */
 .tag-members-editor,
 .loot-editor {

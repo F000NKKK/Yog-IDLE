@@ -9,21 +9,13 @@ import { inspectorRows, refMessage } from "../inspector";
 import { asList, CRITERIA, criterionKind, FRAMES, type Criterion } from "./defModel";
 import { DefLayout, type DefProps } from "./DefLayout";
 import { GameStage } from "./GamePanel";
+import { AdvancementScreen, type Rendered } from "./AdvancementScreen";
 import { GAME_NAMESPACE, idParts } from "../../data/yogFormat";
 import "./defs.css";
 import { kind as KIND, serveMethod } from "../../data/yogIds.generated";
 
 const FRAME_LABELS: Record<(typeof FRAMES)[number], string> = { task: "Task", goal: "Goal", challenge: "Challenge" };
 const CRITERION_LABELS: Record<Criterion, string> = { granted: "Granted by the Mod", has_item: "Has an Item", used_item: "Used an Item" };
-
-/** The screen the backend draws (`designer::advancements::SCREEN`), GUI pixels. */
-interface Rendered {
-  image: string | null;
-  size: [number, number];
-  view: [number, number, number, number];
-  spots: { id: string; rect: [number, number, number, number] }[];
-  drag: [number, number];
-}
 
 interface Shown {
   id: string;
@@ -90,11 +82,9 @@ export function AdvancementDesigner({ path, file, update, readOnly, kindLabel }:
     }),
     [path, nodes, drag, hover, thisId],
   );
-  // Each answer newer than the one shown is shown: a drag streams requests,
-  // and dropping all but the last would freeze the tab while it moves.
+  // Each answer newer than the one shown is shown, a late older one dropped.
   const asked = useRef(0);
   const shown = useRef(0);
-  const dragging = useRef(false);
   useEffect(() => {
     const seq = ++asked.current;
     cli<Rendered>(serveMethod.ADVANCEMENT_RENDER, { args }).then(
@@ -102,7 +92,7 @@ export function AdvancementDesigner({ path, file, update, readOnly, kindLabel }:
         if (seq <= shown.current) return;
         shown.current = seq;
         setDrawn(r);
-        if (seq === asked.current && !dragging.current && (r.drag[0] !== drag[0] || r.drag[1] !== drag[1])) setDrag(r.drag);
+        if (seq === asked.current && (r.drag[0] !== drag[0] || r.drag[1] !== drag[1])) setDrag(r.drag);
       },
       () => seq === asked.current && setDrawn(null),
     );
@@ -167,53 +157,20 @@ export function AdvancementDesigner({ path, file, update, readOnly, kindLabel }:
       }
     >
       <GameStage width={drawn?.size[0] ?? 1} height={drawn?.size[1] ?? 1} panel={false} className="advancement-stage">
-        {(k) => {
-          if (!drawn?.image) return null;
-          const gui = (e: { clientX: number; clientY: number; currentTarget: Element }) => {
-            const r = e.currentTarget.getBoundingClientRect();
-            return { x: (e.clientX - r.left) / k, y: (e.clientY - r.top) / k };
-          };
-          const inside = (p: { x: number; y: number }, [x, y, w, h]: number[]) => p.x >= x && p.x <= x + w && p.y >= y && p.y <= y + h;
-          const spotAt = (p: { x: number; y: number }) => drawn.spots.find((s) => inside(p, s.rect))?.id ?? null;
-          return (
-            <img
-              className="adv-screen game-icon"
-              src={drawn.image}
-              alt=""
-              draggable={false}
-              style={{ width: drawn.size[0] * k, height: drawn.size[1] * k, pointerEvents: "auto" }}
-              onPointerMove={(e) => {
-                if (dragging.current) return;
-                const p = gui(e);
-                setHover(inside(p, drawn.view) ? spotAt(p) : null);
-              }}
-              onPointerLeave={() => setHover(null)}
-              onPointerDown={(e) => {
-                const p = gui(e);
-                const id = inside(p, drawn.view) ? spotAt(p) : null;
-                if (id) {
-                  const n = nodes.find((x) => x.id === id);
-                  if (n?.file && n.id !== thisId) openFile({ path: n.file });
-                  return;
-                }
-                if (!inside(p, drawn.view)) return;
-                const start = { x: e.clientX, y: e.clientY, from: drawn.drag };
-                dragging.current = true;
-                setHover(null);
-                const move = (ev: PointerEvent) => setDrag([start.from[0] + (ev.clientX - start.x) / k, start.from[1] + (ev.clientY - start.y) / k]);
-                const up = () => {
-                  dragging.current = false;
-                  window.removeEventListener("pointermove", move);
-                  window.removeEventListener("pointerup", up);
-                  // Past the edge: back to where the tab stops, as the game clamps.
-                  setDrag((d) => [...d] as [number, number]);
-                };
-                window.addEventListener("pointermove", move);
-                window.addEventListener("pointerup", up);
+        {(k) =>
+          drawn?.image && (
+            <AdvancementScreen
+              drawn={drawn}
+              k={k}
+              onHover={setHover}
+              onDrag={setDrag}
+              onOpen={(id) => {
+                const n = nodes.find((x) => x.id === id);
+                if (n?.file && n.id !== thisId) openFile({ path: n.file });
               }}
             />
-          );
-        }}
+          )
+        }
       </GameStage>
     </DefLayout>
   );
