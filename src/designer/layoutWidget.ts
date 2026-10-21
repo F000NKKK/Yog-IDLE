@@ -1,7 +1,7 @@
 // The designer's widget model — a .yui tree as the layout reads it (mirrors
 // `widget.rs`).
 
-import { yui } from "../data/yogIds.generated";
+import { yui, screenAnchor } from "../data/yogIds.generated";
 import { designImage, designText } from "../lang/designResources";
 import { gridDefs, type TrackDef } from "./grid";
 import { CANVAS_KINDS, parseColor, parseNumber, widgetChildren, type YuiNode } from "./yui";
@@ -249,22 +249,22 @@ export function anchorOffset(anchor: string | undefined, screenW: number, screen
   const r = Math.max(0, screenW - w);
   const b = Math.max(0, screenH - h);
   switch (anchor) {
-    case "top_left":
-    case "fill":
+    case screenAnchor.TOP_LEFT:
+    case screenAnchor.FILL:
       return [0, 0];
-    case "top":
+    case screenAnchor.TOP:
       return [cx, 0];
-    case "top_right":
+    case screenAnchor.TOP_RIGHT:
       return [r, 0];
-    case "left":
+    case screenAnchor.LEFT:
       return [0, cy];
-    case "right":
+    case screenAnchor.RIGHT:
       return [r, cy];
-    case "bottom_left":
+    case screenAnchor.BOTTOM_LEFT:
       return [0, b];
-    case "bottom":
+    case screenAnchor.BOTTOM:
       return [cx, b];
-    case "bottom_right":
+    case screenAnchor.BOTTOM_RIGHT:
       return [r, b];
     default:
       return [cx, cy];

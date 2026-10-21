@@ -600,6 +600,7 @@ export const pack = {
   DATA: "data",
   ASSETS: "assets",
   TAGS: "tags",
+  WORLDGEN: "worldgen",
   OVERLAYS: "when",
   ANY_LOADER: "any",
   ANY_VERSION: "any",
@@ -615,11 +616,6 @@ export const project = {
 
 export const gameDir = {
   MODS: "yog-mods",
-} as const;
-
-export const userCache = {
-  CACHE: "yog",
-  SHADERS: "shaders",
 } as const;
 
 export const program = {
@@ -639,7 +635,10 @@ export const codeSet = {
 
 export const rustCrate = {
   PREFIX: "yog-",
+  API_WORD: "api",
   API: "yog-api",
+  API_RUST_NAME: "yog_api",
+  API_VERSION_KEY: "yog_api_version",
   ABI: "yog-abi",
   UI: "yog-ui",
   KIT: "yog-kit",
@@ -715,13 +714,6 @@ export const game = {
   LOCALE: "en_us",
 } as const;
 
-export const external = {
-  ITEMS: "items",
-  BLOCKS: "blocks",
-  ENTITIES: "entities",
-  RECIPES: "recipes",
-} as const;
-
 export const shapeKind = {
   ANY: "any",
   BOOL: "bool",
@@ -786,22 +778,6 @@ export const yui = {
   BOOK_TEXT: "BookText",
   BOOK_ITEM: "BookItem",
   DRAWN: "Drawn",
-} as const;
-
-export const itemDef = {
-  MODEL: "model",
-  TYPE: "type",
-  TINTS: "tints",
-  VALUE: "value",
-  PLAIN: "minecraft:model",
-  CONSTANT: "minecraft:constant",
-} as const;
-
-export const equipment = {
-  LAYERS: "layers",
-  TEXTURE: "texture",
-  HUMANOID: "humanoid",
-  HUMANOID_LEGGINGS: "humanoid_leggings",
 } as const;
 
 export const serveParam = {
@@ -946,11 +922,6 @@ export const yuiMarkup = {
   BINDING: "{Binding",
   DESIGN: "d:",
   RESOURCES: ".Resources",
-} as const;
-
-export const mcmeta = {
-  ANIMATION: "animation",
-  TEXTURE: "texture",
 } as const;
 
 export const toolKind = {
@@ -1205,41 +1176,6 @@ export const gameDimension = {
   ANCHORS_WORK: "minecraft:gameplay/respawn_anchor_works",
 } as const;
 
-export const worldgen = {
-  DIR: "worldgen",
-  CONFIGURED_FEATURE: "configured_feature",
-  PLACED_FEATURE: "placed_feature",
-  TREE: "minecraft:tree",
-  ORE: "minecraft:ore",
-  SIMPLE_STATE_PROVIDER: "minecraft:simple_state_provider",
-  WEIGHTED_STATE_PROVIDER: "minecraft:weighted_state_provider",
-  RULE_BASED_STATE_PROVIDER: "minecraft:rule_based_state_provider",
-  NOT: "minecraft:not",
-  MATCHING_BLOCK_TAG: "minecraft:matching_block_tag",
-  CANNOT_REPLACE_BELOW_TREE_TRUNK: "minecraft:cannot_replace_below_tree_trunk",
-  TWO_LAYERS_FEATURE_SIZE: "minecraft:two_layers_feature_size",
-  DIRT: "minecraft:dirt",
-  TRUNK: "trunk",
-  FOLIAGE: "foliage",
-  PLACER: "placer",
-  TAG_MATCH: "minecraft:tag_match",
-  BLOCK_MATCH: "minecraft:block_match",
-  UNIFORM: "minecraft:uniform",
-  TRAPEZOID: "minecraft:trapezoid",
-  COUNT: "minecraft:count",
-  IN_SQUARE: "minecraft:in_square",
-  HEIGHT_RANGE: "minecraft:height_range",
-  BIOME: "minecraft:biome",
-  IS_OVERWORLD: "minecraft:is_overworld",
-  UNDERGROUND_ORES: "underground_ores",
-} as const;
-
-export const biomeModifier = {
-  DIR: "biome_modifier",
-  FORGE_ADD_FEATURES: "forge:add_features",
-  NEOFORGE_ADD_FEATURES: "neoforge:add_features",
-} as const;
-
 export const tagTable = {
   TAG: "tag",
   YOG: "yog",
@@ -1275,7 +1211,6 @@ export const yuiComponent = {
   DEFAULT: "default",
   OPTIONS: "options",
   DOC: "doc",
-  DESIGN_PREFIX: "d:",
 } as const;
 
 export const screenAnchor = {
@@ -1308,15 +1243,6 @@ export const yuiVm = {
   ONE_WAY: "OneWay",
   ONE_TIME: "OneTime",
   TWO_WAY: "TwoWay",
-} as const;
-
-export const widgetState = {
-  HOVER: "hover",
-  PRESSED: "pressed",
-  FOCUSED: "focused",
-  SELECTED: "selected",
-  CHECKED: "checked",
-  DISABLED: "disabled",
 } as const;
 
 export const propKind = {

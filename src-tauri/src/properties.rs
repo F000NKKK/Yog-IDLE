@@ -9,6 +9,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use serde::{Deserialize, Serialize};
 use toml_edit::{DocumentMut, Item, Table, Value};
+use yog_ids::rust_crate;
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -164,7 +165,7 @@ pub(crate) fn summarize(doc: &DocumentMut) -> ManifestOut {
         .map_or(0, |t| {
             t.iter()
                 .filter(|(k, v)| {
-                    !v.is_table() && !matches!(*k, "yog_api_version" | "yog-api" | "yog_api")
+                    !v.is_table() && ![rust_crate::API, rust_crate::API_RUST_NAME, rust_crate::API_VERSION_KEY].contains(k)
                 })
                 .count()
         });

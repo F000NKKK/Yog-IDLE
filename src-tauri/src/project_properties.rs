@@ -10,6 +10,7 @@ use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 use toml_edit::{Array, DocumentMut, InlineTable, Item, Table, Value};
+use yog_ids::rust_crate;
 
 use crate::properties::{self, FieldValue};
 
@@ -39,7 +40,7 @@ pub struct ProjectProps {
     pub build_targets: Vec<String>,
 }
 
-const YOG_API_KEYS: &[&str] = &["yog-api", "yog_api", "yog_api_version"];
+const YOG_API_KEYS: &[&str] = &[rust_crate::API, rust_crate::API_RUST_NAME, rust_crate::API_VERSION_KEY];
 
 fn manifest(root: &Path) -> PathBuf {
     crate::manifest::path(root)
@@ -200,7 +201,7 @@ pub fn set_yog_api_version(root: &Path, value: &str) -> Result<ProjectProps, Str
             .iter()
             .find(|k| deps.contains_key(k))
             .copied()
-            .unwrap_or("yog-api");
+            .unwrap_or(rust_crate::API);
         put(deps, key, text_value(value));
         Ok(())
     })
