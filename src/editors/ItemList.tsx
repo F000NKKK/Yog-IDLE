@@ -1,4 +1,4 @@
-import { useId, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { Icon, IconButton, TextField, useT } from "substrate-platform-ui";
 import "./designers.css";
 
@@ -33,7 +33,6 @@ export function ItemList({ items, onChange, suggestions, validate, lead, label, 
   const t = useT();
   const [draft, setDraft] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const listId = useId();
   const add = () => {
     const v = draft.trim();
     if (!v) return;
@@ -77,7 +76,7 @@ export function ItemList({ items, onChange, suggestions, validate, lead, label, 
       {!readOnly && (
         <div className="item-list-add">
           <TextField
-            list={listId}
+            suggestions={suggestions?.filter((s) => !items.includes(s))}
             value={draft}
             placeholder={placeholder ?? t("Add…")}
             onChange={(e) => (setDraft(e.target.value), setError(null))}
@@ -90,13 +89,6 @@ export function ItemList({ items, onChange, suggestions, validate, lead, label, 
           <IconButton size="sm" title={t("Add")} aria-label={t("Add")} disabled={!draft.trim()} onClick={add}>
             <Icon name="plus" size={12} />
           </IconButton>
-          {suggestions && (
-            <datalist id={listId}>
-              {suggestions.filter((s) => !items.includes(s)).slice(0, 500).map((s) => (
-                <option key={s} value={s} />
-              ))}
-            </datalist>
-          )}
         </div>
       )}
       {error && <div className="item-list-error">{error}</div>}

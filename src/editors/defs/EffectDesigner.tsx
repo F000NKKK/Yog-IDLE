@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useTyped } from "../../data/typed";
 import { cli } from "../../cli";
 import { useT, type PropertyDescriptor } from "substrate-platform-ui";
-import { refId, refProblem, refSuggestions, useContentRefs } from "../../data/contentRefs";
+import { NO_REFS, refId, refProblem, refSuggestions, useContentRefs } from "../../data/contentRefs";
 import { designText, useDesignResources } from "../../lang/designResources";
 import { modRootOf } from "../../paths";
 import { colorText, inspectorRows, refMessage } from "../inspector";
@@ -56,7 +56,8 @@ export function EffectDesigner({ path, file, update, readOnly, kindLabel }: DefP
   const ns = effects.own[0] ? idParts(effects.own[0].id)[0] : GAME_NAMESPACE;
   const full = effects.own.find((r) => r.file === path)?.id ?? (id.includes(":") ? id : `${ns}:${id}`);
   const [effectNs, effectPath] = idParts(full);
-  const icon = useTexture(path, `${reference.TEXTURE}${effectNs}:mob_effect/${effectPath}`);
+  // Asked once the mod's effects are known: before, its namespace is a guess.
+  const icon = useTexture(path, effects === NO_REFS ? null : `${reference.TEXTURE}${effectNs}:mob_effect/${effectPath}`);
   const category = EFFECT_CATEGORIES.includes(file.category as never) ? (file.category as (typeof EFFECT_CATEGORIES)[number]) : "neutral";
   const color = typeof file.color === "number" ? file.color : 0;
   const modifiers = asList<Modifier>(file.modifiers);
@@ -130,9 +131,10 @@ export function EffectDesigner({ path, file, update, readOnly, kindLabel }: DefP
 }
 
 /** A texture by id as a data URL (`null` while it isn't, or can't be, read). */
-function useTexture(path: string, texture: string): string | null {
+function useTexture(path: string, texture: string | null): string | null {
   const [url, setUrl] = useState<string | null>(null);
   useEffect(() => {
+    if (texture === null) return setUrl(null);
     let live = true;
     cli<{ url: string }>(serveMethod.CONTENT_TEXTURE, { path, texture }).then(
       (x) => live && setUrl(x.url),

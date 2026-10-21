@@ -2,11 +2,11 @@ import { useEffect, useMemo, useState } from "react";
 import { useTyped } from "../../data/typed";
 import { cli } from "../../cli";
 import { Icon, IconButton, openFile, type PropertyDescriptor, SelectField, TextField, ToolbarCheck, ToolbarGroup, ToolbarSelect, useT } from "substrate-platform-ui";
-import { qualify, refId, refProblem, refSuggestions, useContentDefs, useContentRefs, type RefChoices } from "../../data/contentRefs";
+import { qualify, refProblem, refSuggestions, useContentDefs, useContentRefs, type RefChoices } from "../../data/contentRefs";
 import { designText, useDesignResources } from "../../lang/designResources";
 import { modRootOf } from "../../paths";
 import { inspectorRows, refMessage } from "../inspector";
-import { asList, CRITERIA, criterionKind, FRAMES, rootOf, tabOf, type AdvNode, type Criterion } from "./defModel";
+import { asList, CRITERIA, criterionKind, FRAMES, type Criterion } from "./defModel";
 import { DefLayout, type DefProps } from "./DefLayout";
 import { GameStage } from "./GamePanel";
 import { GAME_NAMESPACE, idParts } from "../../data/yogFormat";
@@ -25,7 +25,8 @@ interface Rendered {
   drag: [number, number];
 }
 
-interface Shown extends AdvNode {
+interface Shown {
+  id: string;
   file: string | null;
   value: Record<string, unknown>;
 }
@@ -53,28 +54,18 @@ export function AdvancementDesigner({ path, file, update, readOnly, kindLabel }:
   const first = defs[0]?.id ?? advancements.own[0]?.id;
   const ns = first ? idParts(first)[0] : GAME_NAMESPACE;
   const thisId = qualify(file.id ?? path.split(/[\\/]/).pop()!.replace(/\.ydef$/, ""), ns);
-  const parentOf = (v: Record<string, unknown>) => (typeof v.parent === "string" ? refId(v.parent, KIND.ADVANCEMENT) : null);
-
-  // The mod's advancements, this one as it's being edited; a parent outside the mod drawn too.
+  // The mod's advancements, this one as it's being edited.
   const nodes = useMemo<Shown[]>(() => {
     const current = defs.findIndex((d) => d.file === path);
     const selected = current >= 0 ? current : defs.findIndex((d) => d.id === thisId);
-    const out: Shown[] = defs.map((d, i) => {
-      const active = i === selected;
-      const value = active ? file : d.value;
-      return { id: active ? thisId : d.id, parent: parentOf(value), file: active ? path : d.file, value };
-    });
-    if (selected < 0) out.push({ id: thisId, parent: parentOf(file), file: path, value: file });
-    for (const n of [...out]) if (n.parent && !out.some((o) => o.id === n.parent)) out.push({ id: n.parent, parent: null, file: null, value: {} });
+    const out: Shown[] = defs.map((d, i) => (i === selected ? { id: thisId, file: path, value: file } : { id: d.id, file: d.file, value: d.value }));
+    if (selected < 0) out.push({ id: thisId, file: path, value: file });
     return out;
   }, [defs, file, path, thisId]);
-  const root = rootOf(nodes, thisId);
-  const tab = tabOf(nodes, root) as Shown[];
-  const rootNode = tab.find((n) => n.id === root);
 
-  const bg = typeof rootNode?.value.background === "string" ? rootNode.value.background : null;
-  const text = (v: unknown) => (typeof v === "string" ? designText(v) : "");
   const frame = (v: Record<string, unknown>) => (FRAMES.includes(v.frame as never) ? (v.frame as string) : "task");
+  // The tree's own name for this one (its title as the editor shows it).
+  const text = (v: unknown) => (typeof v === "string" ? designText(v) : "");
 
   // The tab drawn by the backend as the game draws it; dragged and hovered here.
   const [drag, setDrag] = useState<[number, number]>([0, 0]);
@@ -84,22 +75,20 @@ export function AdvancementDesigner({ path, file, update, readOnly, kindLabel }:
   const args = useMemo(
     () => ({
       path,
-      title: written(rootNode?.value.title),
-      background: bg,
-      nodes: tab.map((n) => ({
+      selected: thisId,
+      nodes: nodes.map((n) => ({
         id: n.id,
         parent: written(n.value.parent),
         icon: written(n.value.icon),
-        frame: frame(n.value),
+        frame: written(n.value.frame),
         title: written(n.value.title),
         description: written(n.value.description),
-        obtained: n.id === thisId,
+        background: written(n.value.background),
       })),
       drag,
       hover,
     }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- `text` reads the design resources, `tab` is rebuilt each render
-    [path, JSON.stringify(tab.map((n) => [n.id, n.parent, n.value])), bg, drag, hover, thisId, root],
+    [path, nodes, drag, hover, thisId],
   );
   useEffect(() => {
     let live = true;
@@ -199,7 +188,7 @@ export function AdvancementDesigner({ path, file, update, readOnly, kindLabel }:
                 const p = gui(e);
                 const id = inside(p, drawn.view) ? spotAt(p) : null;
                 if (id) {
-                  const n = tab.find((x) => x.id === id);
+                  const n = nodes.find((x) => x.id === id);
                   if (n?.file && n.id !== thisId) openFile({ path: n.file });
                   return;
                 }
@@ -239,7 +228,7 @@ function CriteriaEditor({ criteria, items, readOnly, onChange }: { criteria: Rec
             />
             {kind !== "granted" && (
               <TextField
-                list="crit-items"
+                suggestions={suggestions}
                 defaultValue={value}
                 key={value}
                 disabled={readOnly}
@@ -257,11 +246,6 @@ function CriteriaEditor({ criteria, items, readOnly, onChange }: { criteria: Rec
           </div>
         );
       })}
-      <datalist id="crit-items">
-        {suggestions.slice(0, 500).map((s) => (
-          <option key={s} value={s} />
-        ))}
-      </datalist>
       {!readOnly && (
         <div>
           <IconButton size="sm" title={t("Add")} aria-label={t("Add")} onClick={() => onChange([...criteria, { granted: true }])}>

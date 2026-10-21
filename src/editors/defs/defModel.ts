@@ -39,28 +39,7 @@ export const FOLIAGE_WITH_HEIGHT = ["blob", "fancy", "bush", "jungle"] as const;
 /** Kinds of content a tag groups; any of the game's registries by name too. */
 export const TAG_KINDS = [KIND.ITEM, KIND.BLOCK, KIND.ENTITY, KIND.FLUID, KIND.BIOME, KIND.DAMAGE_TYPE] as const;
 
-// ── Advancements: a tab laid out as the game does ───────────────────────────
-
-export interface AdvNode {
-  id: string;
-  parent: string | null;
-}
-
-/** The root an advancement hangs under, among `nodes` (itself if it has none there). */
-export function rootOf(nodes: readonly AdvNode[], id: string): string {
-  let cur = id;
-  for (let i = 0; i < 256; i++) {
-    const p = nodes.find((n) => n.id === cur)?.parent;
-    if (!p || !nodes.some((n) => n.id === p)) return cur;
-    cur = p;
-  }
-  return cur;
-}
-
-/** The nodes of `root`'s tab. */
-export function tabOf(nodes: readonly AdvNode[], root: string): AdvNode[] {
-  return nodes.filter((n) => rootOf(nodes, n.id) === root);
-}
+// ── Advancements ────────────────────────────────────────────────────────────
 
 /** Which way a criterion earns it. */
 export function criterionKind(c: Record<string, unknown>): Criterion {

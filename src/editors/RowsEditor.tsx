@@ -1,4 +1,4 @@
-import { useId, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import { Icon, IconButton, SelectField, TextField, useT } from "substrate-platform-ui";
 import "./designers.css";
 
@@ -40,7 +40,6 @@ export function RowsEditor<R extends Record<string, unknown>>({
   trail?: (row: R, i: number) => ReactNode;
 }) {
   const t = useT();
-  const id = useId();
   const set = (i: number, key: string, v: unknown) =>
     onChange(
       rows.map((r, j) => {
@@ -102,7 +101,7 @@ export function RowsEditor<R extends Record<string, unknown>>({
                     key={text}
                     defaultValue={text}
                     disabled={readOnly}
-                    list={c.kind === "text" && c.suggestions ? `${id}-${c.key}` : undefined}
+                    suggestions={c.kind === "text" ? c.suggestions : undefined}
                     placeholder={c.kind === "number" ? c.placeholder : undefined}
                     className={problem ? "is-invalid" : undefined}
                     title={problem ?? text}
@@ -125,17 +124,6 @@ export function RowsEditor<R extends Record<string, unknown>>({
           )}
         </div>
       ))}
-      {columns.map(
-        (c) =>
-          c.kind === "text" &&
-          c.suggestions && (
-            <datalist key={c.key} id={`${id}-${c.key}`}>
-              {c.suggestions.slice(0, 500).map((s) => (
-                <option key={s} value={s} />
-              ))}
-            </datalist>
-          ),
-      )}
       {!readOnly && (
         <div>
           <IconButton size="sm" title={t("Add")} aria-label={t("Add")} onClick={() => onChange([...rows, blank()])}>

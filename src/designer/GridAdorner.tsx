@@ -5,9 +5,12 @@
 // resize, right-click a size to make it Auto, * or pixels.
 
 import { useState, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
-import { showDialog, t, useT, type ContextMenuItem, type DesignRect } from "substrate-platform-ui";
+import { showDialog, SuggestingInput, t, useT, type ContextMenuItem, type DesignRect } from "substrate-platform-ui";
 import { AXES, formatLength, gridDefs, parseLength, shiftCells, withGridDefs, type Axis, type GridLength, type TrackDef } from "./grid";
 import { formatNumber, parseNumber, type YuiNode } from "./yui";
+
+/** A track size's usual spellings, offered as one is typed. */
+const GRID_SIZES = ["Auto", "*", "2*"];
 
 /** A laid-out grid: its box, content box and rows/columns (`[start, size]`, GUI px). */
 export interface GridGeo {
@@ -311,7 +314,7 @@ function DefinitionsEditor({ axis, initial, onChange }: { axis: Axis; initial: D
             <tr key={i}>
               <td>{i}</td>
               <td>
-                <input value={r.size} data-invalid={!parseLength(r.size) || undefined} spellCheck={false} onChange={(e) => set(i, { size: e.target.value })} list="yui-defs-sizes" />
+                <SuggestingInput value={r.size} data-invalid={!parseLength(r.size) || undefined} spellCheck={false} onChange={(e) => set(i, { size: e.target.value })} suggestions={GRID_SIZES} />
               </td>
               <td>
                 <input value={r.min} data-invalid={badLimit(r.min) || undefined} placeholder={a.min} onChange={(e) => set(i, { min: e.target.value })} />
@@ -334,11 +337,6 @@ function DefinitionsEditor({ axis, initial, onChange }: { axis: Axis; initial: D
           ))}
         </tbody>
       </table>
-      <datalist id="yui-defs-sizes">
-        <option value="Auto" />
-        <option value="*" />
-        <option value="2*" />
-      </datalist>
       <button type="button" className="yui-defs-add" onClick={() => update([...rows, { size: "*", min: "", max: "" }])}>
         {axis === "rows" ? t("Add Row") : t("Add Column")}
       </button>
