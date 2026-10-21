@@ -626,6 +626,16 @@ export const program = {
   SERVE: "serve",
 } as const;
 
+export const rustCrate = {
+  PREFIX: "yog-",
+  API: "yog-api",
+  ABI: "yog-abi",
+  UI: "yog-ui",
+  KIT: "yog-kit",
+  GFX: "yog-gfx",
+  REGISTRY: "yog-registry",
+} as const;
+
 export const res = {
   TEXTURES: "textures/",
   MODELS: "models/",
