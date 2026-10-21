@@ -4,6 +4,7 @@
 // Read leniently (the canvas draws while the XAML is being typed) and
 // written back in the form the file already uses.
 
+import { yui, yuiAttr } from "../data/yogIds.generated";
 import { formatNumber, newUid, parseNumber, type YuiNode } from "./yui";
 
 /** A row height / column width — WPF's `GridLength`. */
@@ -19,8 +20,8 @@ export interface TrackDef {
 export type Axis = "rows" | "cols";
 
 export const AXES: Record<Axis, { attr: string; prop: string; def: string; size: string; min: string; max: string; cell: string; span: string }> = {
-  rows: { attr: "rows", prop: "Grid.RowDefinitions", def: "RowDefinition", size: "height", min: "min_height", max: "max_height", cell: "Grid.Row", span: "Grid.RowSpan" },
-  cols: { attr: "columns", prop: "Grid.ColumnDefinitions", def: "ColumnDefinition", size: "width", min: "min_width", max: "max_width", cell: "Grid.Column", span: "Grid.ColumnSpan" },
+  rows: { attr: yuiAttr.ROWS, prop: yui.ROW_DEFINITIONS, def: yui.ROW_DEFINITION, size: yuiAttr.HEIGHT, min: yuiAttr.MIN_HEIGHT, max: yuiAttr.MAX_HEIGHT, cell: yuiAttr.GRID_ROW, span: yuiAttr.GRID_ROWSPAN },
+  cols: { attr: yuiAttr.COLUMNS, prop: yui.COLUMN_DEFINITIONS, def: yui.COLUMN_DEFINITION, size: yuiAttr.WIDTH, min: yuiAttr.MIN_WIDTH, max: yuiAttr.MAX_WIDTH, cell: yuiAttr.GRID_COLUMN, span: yuiAttr.GRID_COLUMNSPAN },
 };
 
 /** `Auto`, `*`, `2*`, `26` — `null` if it's none of them. */
@@ -99,12 +100,12 @@ export function cellOf(node: YuiNode): { row: number; col: number; rowSpan: numb
     const v = parseNumber(node.attrs[k]);
     return v === null || v < min ? fallback : Math.floor(v);
   };
-  return { row: n("Grid.Row", 0, 0), col: n("Grid.Column", 0, 0), rowSpan: n("Grid.RowSpan", 1, 1), colSpan: n("Grid.ColumnSpan", 1, 1) };
+  return { row: n(yuiAttr.GRID_ROW, 0, 0), col: n(yuiAttr.GRID_COLUMN, 0, 0), rowSpan: n(yuiAttr.GRID_ROWSPAN, 1, 1), colSpan: n(yuiAttr.GRID_COLUMNSPAN, 1, 1) };
 }
 
 /** The attribute changes that put a child in `row`, `col` (defaults removed). */
 export function cellAttrs(row: number, col: number): Record<string, string | undefined> {
-  return { "Grid.Row": row > 0 ? String(row) : undefined, "Grid.Column": col > 0 ? String(col) : undefined };
+  return { [yuiAttr.GRID_ROW]: row > 0 ? String(row) : undefined, [yuiAttr.GRID_COLUMN]: col > 0 ? String(col) : undefined };
 }
 
 /**

@@ -2,7 +2,7 @@
 // the real picture's geometry, events, and the helpers over the .yui tree.
 
 import { type DesignRect, stemOf } from "substrate-platform-ui";
-import { yui } from "../../data/yogIds.generated";
+import { yui, yuiAttr } from "../../data/yogIds.generated";
 import { cellAttrs, cellOf, gridDefs } from "../grid";
 import type { LNode, LWidget } from "../layoutWidget";
 import { formatNumber, isCanvas, isGrid, pathOf, withAttrs, type YuiDoc, type YuiNode } from "../yui";
@@ -138,7 +138,7 @@ export function collect(widget: LWidget, node: LNode, out: Map<string, Geo>) {
 
 /** `n` without the `Grid.*` attached properties when `parent` isn't a Grid (they'd be an error there). */
 export const fitParent = (n: YuiNode, parent: YuiNode) =>
-  isGrid(parent) || !Object.keys(n.attrs).some((k) => k.startsWith("Grid.")) ? n : withAttrs(n, { "Grid.Row": undefined, "Grid.Column": undefined, "Grid.RowSpan": undefined, "Grid.ColumnSpan": undefined });
+  isGrid(parent) || !Object.keys(n.attrs).some((k) => k.startsWith(`${yui.GRID}.`)) ? n : withAttrs(n, { [yuiAttr.GRID_ROW]: undefined, [yuiAttr.GRID_COLUMN]: undefined, [yuiAttr.GRID_ROWSPAN]: undefined, [yuiAttr.GRID_COLUMNSPAN]: undefined });
 
 /** Spans that would run past a grid's last row/column shortened (after a move into it). */
 export function clampCells(grid: YuiNode): YuiNode {
@@ -152,7 +152,7 @@ export function clampCells(grid: YuiNode): YuiNode {
     const rs = Math.min(c.rowSpan, rows - row);
     const cs = Math.min(c.colSpan, cols - col);
     if (row === c.row && col === c.col && rs === c.rowSpan && cs === c.colSpan) return n;
-    return withAttrs(n, { ...cellAttrs(row, col), "Grid.RowSpan": rs > 1 ? String(rs) : undefined, "Grid.ColumnSpan": cs > 1 ? String(cs) : undefined });
+    return withAttrs(n, { ...cellAttrs(row, col), [yuiAttr.GRID_ROWSPAN]: rs > 1 ? String(rs) : undefined, [yuiAttr.GRID_COLUMNSPAN]: cs > 1 ? String(cs) : undefined });
   };
   const children = grid.children.map((c) => (c.kind.includes(".") ? c : fit(c)));
   return children.every((c, i) => c === grid.children[i]) ? grid : { ...grid, children };
