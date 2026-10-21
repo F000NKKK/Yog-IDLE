@@ -1181,6 +1181,32 @@ export const gameRecipe = {
   AIR: "minecraft:air",
 } as const;
 
+export const callbackGenerator = {
+  PATH: "callback_generator",
+  TYPE: "yog:callback_generator",
+  GENERATOR_TYPE_ID: "generator_type_id",
+  MIN_Y: "min_y",
+  HEIGHT: "height",
+  STRUCTURES: "structures",
+  FEATURES: "features",
+  MOB_SPAWNING: "mob_spawning",
+  BIOME_SOURCE: "biome_source",
+} as const;
+
+export const gameDimension = {
+  DIMENSION_TYPE: "dimension_type",
+  DIMENSION: "dimension",
+  FIXED_BIOMES: "minecraft:fixed",
+  NOISE: "minecraft:noise",
+  OVERWORLD_NOISE: "minecraft:overworld",
+  INFINIBURN: "#minecraft:infiniburn_overworld",
+  EFFECTS_OVERWORLD: "minecraft:overworld",
+  EFFECTS_END: "minecraft:the_end",
+  EFFECTS_NETHER: "minecraft:the_nether",
+  BED_RULE: "minecraft:gameplay/bed_rule",
+  ANCHORS_WORK: "minecraft:gameplay/respawn_anchor_works",
+} as const;
+
 export const worldgen = {
   DIR: "worldgen",
   CONFIGURED_FEATURE: "configured_feature",
