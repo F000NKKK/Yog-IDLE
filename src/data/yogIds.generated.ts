@@ -1115,6 +1115,72 @@ export const loader = {
   NEOFORGE: "neoforge",
 } as const;
 
+export const renamedDataDir = {
+  ADVANCEMENT: "advancement",
+  FUNCTION: "function",
+  ITEM_MODIFIER: "item_modifier",
+  LOOT_TABLE: "loot_table",
+  PREDICATE: "predicate",
+  RECIPE: "recipe",
+  STRUCTURE: "structure",
+} as const;
+
+export const renamedTagDir = {
+  BLOCK: "block",
+  ENTITY_TYPE: "entity_type",
+  FLUID: "fluid",
+  FUNCTION: "function",
+  GAME_EVENT: "game_event",
+  ITEM: "item",
+} as const;
+
+export const dataLayout = {
+  PLURAL: "s",
+} as const;
+
+export const recipeKind = {
+  SHAPED: "shaped",
+  SHAPELESS: "shapeless",
+  SMELTING: "smelting",
+  BLASTING: "blasting",
+  SMOKING: "smoking",
+  CAMPFIRE_COOKING: "campfire_cooking",
+  STONECUTTING: "stonecutting",
+  SMITHING: "smithing",
+  BREWING: "brewing",
+} as const;
+
+export const recipeField = {
+  TYPE: "type",
+  RESULT: "result",
+  COUNT: "count",
+  SLOTS: "slots",
+  VALUES: "values",
+  PATTERN: "pattern",
+  KEY: "key",
+  INGREDIENTS: "ingredients",
+  INGREDIENT: "ingredient",
+  TEMPLATE: "template",
+  BASE: "base",
+  ADDITION: "addition",
+  EXPERIENCE: "experience",
+  COOK_TIME: "cook_time",
+  GROUP: "group",
+  CATEGORY: "category",
+} as const;
+
+export const gameRecipe = {
+  CRAFTING_SHAPED: "minecraft:crafting_shaped",
+  CRAFTING_SHAPELESS: "minecraft:crafting_shapeless",
+  STONECUTTING: "minecraft:stonecutting",
+  SMITHING_TRANSFORM: "minecraft:smithing_transform",
+  COOKING_TIME: "cookingtime",
+  ID: "id",
+  ITEM: "item",
+  TAG: "tag",
+  AIR: "minecraft:air",
+} as const;
+
 export const worldgen = {
   DIR: "worldgen",
   CONFIGURED_FEATURE: "configured_feature",
