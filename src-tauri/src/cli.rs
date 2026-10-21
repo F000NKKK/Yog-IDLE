@@ -135,19 +135,53 @@ pub fn mod_id(root: &Path) -> Option<String> {
     {
         return id;
     }
-    let params: yog_data::Map = [(
-        serve_param::PATH,
-        Value::from(root.to_string_lossy().as_ref()),
-    )]
-    .into_iter()
-    .collect();
-    let id = call(serve_method::MOD_ID, params.into())
+    let id = call(serve_method::MOD_ID, path_param(root))
         .ok()
         .and_then(|v| v.as_str().map(str::to_string));
     if let Ok(mut m) = ids.lock() {
         m.insert(root.to_path_buf(), (modified, id.clone()));
     }
     id
+}
+
+/// Every Yog format's files (binary on disk) are searched and replaced in
+/// as their text: the platform reads and writes them through the service.
+pub fn register_text_views() {
+    let view = substrate_platform::search::TextView {
+        read: read_source,
+        write: write_source,
+    };
+    for format in yog_ids::Format::ALL.iter().filter(|f| f.is_data()) {
+        substrate_platform::search::register_text_view(format.ext(), view);
+    }
+}
+
+/// A Yog format's file as the editor shows it.
+fn read_source(path: &Path) -> Option<String> {
+    let params = path_param(path);
+    call(serve_method::SOURCE_READ, params)
+        .ok()
+        .and_then(|v| v.as_str().map(str::to_string))
+}
+
+/// `text` saved as a Yog format's file.
+fn write_source(path: &Path, text: &str) -> Result<(), String> {
+    let mut params = path_param(path);
+    if let Value::Map(m) = &mut params {
+        m.insert(serve_param::TEXT, Value::from(text));
+    }
+    call(serve_method::SOURCE_WRITE, params)
+        .map(|_| ())
+        .map_err(|e| yog_data::text::to_string(&e))
+}
+
+/// The `path` parameter, alone.
+fn path_param(path: &Path) -> Value {
+    yog_data::Map::from_iter([(
+        serve_param::PATH,
+        Value::from(path.to_string_lossy().as_ref()),
+    )])
+    .into()
 }
 
 #[cfg(test)]

@@ -50,6 +50,8 @@ pub fn run() -> tauri::Result<()> {
         .map(|file| tools::load_settings_from(&file))
         .unwrap_or_default();
     tools::apply_to_process_at_startup(&build_settings);
+    // Search and replace see Yog formats' files as the editor does.
+    cli::register_text_views();
 
     let builder = tauri::Builder::default()
         // Substrate's own commands (the workspace, Source Control): what its UI calls.
