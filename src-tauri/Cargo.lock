@@ -5006,6 +5006,7 @@ dependencies = [
  "yog-data-derive",
  "yog-ids",
  "yog-logging",
+ "yog-sync",
 ]
 
 [[package]]
@@ -5026,6 +5027,7 @@ dependencies = [
  "serde_json",
  "yog-hot-reload",
  "yog-symbols",
+ "yog-sync",
 ]
 
 [[package]]
@@ -5085,6 +5087,9 @@ dependencies = [
 [[package]]
 name = "yog-logging"
 version = "0.1.1"
+dependencies = [
+ "yog-sync",
+]
 
 [[package]]
 name = "yog-symbols"
@@ -5093,11 +5098,12 @@ dependencies = [
  "addr2line",
  "gimli",
  "object",
+ "yog-sync",
 ]
 
 [[package]]
 name = "yog-sync"
-version = "0.1.0"
+version = "0.2.0"
 
 [[package]]
 name = "yoke"
