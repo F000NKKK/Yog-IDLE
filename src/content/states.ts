@@ -3,6 +3,7 @@
 // model each state shows (`states.variants`) and how it turns — as `yog
 // build` makes the blockstate (yog-cli `content.rs`).
 
+import { direction as d } from "../data/yogIds.generated";
 import type { BlockProps, ContentFile, Model } from "./model";
 
 export type States = NonNullable<ContentFile["states"]>;
@@ -17,8 +18,8 @@ export interface StateProperty {
 
 /** The facings' values, as the host makes the `facing` property. */
 export const FACING_VALUES = {
-  horizontal: ["north", "east", "south", "west"],
-  all: ["north", "east", "south", "west", "up", "down"],
+  horizontal: [d.NORTH, d.EAST, d.SOUTH, d.WEST],
+  all: [d.NORTH, d.EAST, d.SOUTH, d.WEST, d.UP, d.DOWN],
 } as const;
 /** An attached block's `face` property. */
 export const FACE_VALUES = ["floor", "wall", "ceiling"] as const;

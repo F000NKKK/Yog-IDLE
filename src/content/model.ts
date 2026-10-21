@@ -4,12 +4,14 @@
 
 import type { DataFormat } from "../data/useDataFile";
 import { formatData, patchData, readObject } from "../data/yogData";
-import { kind as KIND, reference, toolKind } from "../data/yogIds.generated";
+import { direction, kind as KIND, reference, toolKind } from "../data/yogIds.generated";
 import { gameId } from "../data/yogFormat";
 import { typedRef } from "../data/contentRefs";
 
-export type Dir = "down" | "up" | "north" | "south" | "west" | "east";
-export const DIRS: Dir[] = ["down", "up", "north", "south", "west", "east"];
+/** A block's face: one of the game's directions. */
+export type Dir = (typeof direction)[keyof typeof direction];
+/** The faces, in the game's order. */
+export const DIRS: Dir[] = Object.values(direction);
 export type Vec3 = [number, number, number];
 export type Uv = [number, number, number, number];
 export type Axis = "x" | "y" | "z";
@@ -198,7 +200,7 @@ export const TEMPLATES: Template[] = [
   { name: "cube_all", slots: ["all"] },
   { name: "cube_column", slots: ["end", "side"] },
   { name: "cube_bottom_top", slots: ["top", "bottom", "side"] },
-  { name: "cube", slots: ["down", "up", "north", "south", "west", "east"] },
+  { name: "cube", slots: DIRS },
   { name: "orientable", slots: ["front", "side", "top"] },
   { name: "cross", slots: ["cross"] },
   { name: "generated", slots: ["layer0"], sprite: true },

@@ -21,6 +21,15 @@ export const sep = {
   PROPERTY_IS: "=",
 } as const;
 
+export const direction = {
+  DOWN: "down",
+  UP: "up",
+  NORTH: "north",
+  SOUTH: "south",
+  WEST: "west",
+  EAST: "east",
+} as const;
+
 export const word = {
   GUI: "gui",
   VALUES: "values",
@@ -42,8 +51,6 @@ export const word = {
   COUNT: "count",
   DATA: "data",
   DEFAULT: "default",
-  DOWN: "down",
-  EAST: "east",
   END: "end",
   ENTRIES: "entries",
   FALSE: "false",
@@ -58,13 +65,11 @@ export const word = {
   MODEL: "model",
   NAME: "name",
   NONE: "none",
-  NORTH: "north",
   NUMBER: "number",
   OUTLINE: "outline",
   RIGHT: "right",
   SIZE: "size",
   SOURCE: "source",
-  SOUTH: "south",
   SRC: "src",
   START: "start",
   STRETCH: "stretch",
@@ -73,10 +78,8 @@ export const word = {
   TOP: "top",
   TRUE: "true",
   TYPE: "type",
-  UP: "up",
   UV: "uv",
   VALUE: "value",
-  WEST: "west",
   WHEN: "when",
   WIDTH: "width",
   X: "x",
@@ -873,12 +876,6 @@ export const textureSlot = {
 
 export const blockState = {
   FACING: "facing",
-  NORTH: "north",
-  EAST: "east",
-  SOUTH: "south",
-  WEST: "west",
-  UP: "up",
-  DOWN: "down",
   FACE: "face",
   FLOOR: "floor",
   WALL: "wall",
