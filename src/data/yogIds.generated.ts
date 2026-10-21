@@ -60,6 +60,7 @@ export const word = {
   NAME: "name",
   NONE: "none",
   NORTH: "north",
+  NUMBER: "number",
   OUTLINE: "outline",
   RIGHT: "right",
   SIZE: "size",
@@ -1152,6 +1153,33 @@ export const advancement = {
   IMPOSSIBLE: "minecraft:impossible",
   INVENTORY_CHANGED: "minecraft:inventory_changed",
   CONSUME_ITEM: "minecraft:consume_item",
+} as const;
+
+export const yuiComponent = {
+  NAME: "name",
+  DISPLAY_NAME: "display_name",
+  DESCRIPTION: "description",
+  ICON: "icon",
+  CATEGORY: "category",
+  DESIGN_W: "design_w",
+  DESIGN_H: "design_h",
+  TOOLBOX: "toolbox",
+  TYPE: "type",
+  DEFAULT: "default",
+  OPTIONS: "options",
+  DOC: "doc",
+  DESIGN_PREFIX: "d:",
+} as const;
+
+export const propKind = {
+  TEXT: "text",
+  NUMBER: "number",
+  INT: "int",
+  BOOL: "bool",
+  COLOR: "color",
+  CHOICE: "choice",
+  EVENT: "event",
+  IMAGE: "image",
 } as const;
 
 /** Yog's file formats: extension and noun (`Format`). */
