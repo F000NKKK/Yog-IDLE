@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTyped } from "../../data/typed";
 import { cli } from "../../cli";
 import { Icon, IconButton, openFile, type PropertyDescriptor, SelectField, TextField, ToolbarCheck, ToolbarGroup, ToolbarSelect, useT } from "substrate-platform-ui";
@@ -90,19 +90,22 @@ export function AdvancementDesigner({ path, file, update, readOnly, kindLabel }:
     }),
     [path, nodes, drag, hover, thisId],
   );
+  // Each answer newer than the one shown is shown: a drag streams requests,
+  // and dropping all but the last would freeze the tab while it moves.
+  const asked = useRef(0);
+  const shown = useRef(0);
+  const dragging = useRef(false);
   useEffect(() => {
-    let live = true;
+    const seq = ++asked.current;
     cli<Rendered>(serveMethod.ADVANCEMENT_RENDER, { args }).then(
       (r) => {
-        if (!live) return;
+        if (seq <= shown.current) return;
+        shown.current = seq;
         setDrawn(r);
-        if (r.drag[0] !== drag[0] || r.drag[1] !== drag[1]) setDrag(r.drag);
+        if (seq === asked.current && !dragging.current && (r.drag[0] !== drag[0] || r.drag[1] !== drag[1])) setDrag(r.drag);
       },
-      () => live && setDrawn(null),
+      () => seq === asked.current && setDrawn(null),
     );
-    return () => {
-      live = false;
-    };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- `drag` is in `args`
   }, [args]);
 
@@ -180,6 +183,7 @@ export function AdvancementDesigner({ path, file, update, readOnly, kindLabel }:
               draggable={false}
               style={{ width: drawn.size[0] * k, height: drawn.size[1] * k, pointerEvents: "auto" }}
               onPointerMove={(e) => {
+                if (dragging.current) return;
                 const p = gui(e);
                 setHover(inside(p, drawn.view) ? spotAt(p) : null);
               }}
@@ -193,9 +197,17 @@ export function AdvancementDesigner({ path, file, update, readOnly, kindLabel }:
                   return;
                 }
                 if (!inside(p, drawn.view)) return;
-                const start = { x: e.clientX, y: e.clientY, from: drag };
+                const start = { x: e.clientX, y: e.clientY, from: drawn.drag };
+                dragging.current = true;
+                setHover(null);
                 const move = (ev: PointerEvent) => setDrag([start.from[0] + (ev.clientX - start.x) / k, start.from[1] + (ev.clientY - start.y) / k]);
-                const up = () => (window.removeEventListener("pointermove", move), window.removeEventListener("pointerup", up));
+                const up = () => {
+                  dragging.current = false;
+                  window.removeEventListener("pointermove", move);
+                  window.removeEventListener("pointerup", up);
+                  // Past the edge: back to where the tab stops, as the game clamps.
+                  setDrag((d) => [...d] as [number, number]);
+                };
                 window.addEventListener("pointermove", move);
                 window.addEventListener("pointerup", up);
               }}

@@ -7,8 +7,9 @@ const MARGIN = 24;
 
 /**
  * The content of a designer drawn as the game shows it: `width`×`height`
- * GUI pixels, scaled by the largest step of ½ that fits the stage (as the
- * game's GUI scale, never below 1); `children` draws at scale `k`.
+ * GUI pixels, scaled by the largest whole number that fits the stage (as
+ * the game's GUI scale, never below 1: a fraction would draw its pixels
+ * uneven); `children` draws at scale `k`.
  * `panel`: on a light GUI window (default), or bare (a dark screen of its
  * own, as the advancements screen).
  */
@@ -24,7 +25,7 @@ export function GameStage({ width, height, panel = true, className, children, on
     return () => ro.disconnect();
   }, []);
   const fit = Math.min((size[0] - MARGIN * 2) / Math.max(width, 1), (size[1] - MARGIN * 2) / Math.max(height, 1));
-  const k = Math.max(1, Math.floor(fit * 2) / 2);
+  const k = Math.max(1, Math.floor(fit));
   return (
     <div className={`game-stage${className ? ` ${className}` : ""}`} ref={ref} onPointerDown={(e) => e.target === e.currentTarget && onBackground?.()}>
       {size[0] > 0 && (

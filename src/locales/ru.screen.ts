@@ -216,7 +216,6 @@ registerTranslations(RU, {
   "Width: pixels (`80`), a percentage of the container (`50%`), or `auto` to size to the content.": "Ширина: пиксели (`80`), проценты от контейнера (`50%`) или `auto` — по содержимому.",
   "X": "X",
   "Y": "Y",
-  "Zoom": "Масштаб",
   "{count} widget": { one: "{count} элемент", few: "{count} элемента", many: "{count} элементов", other: "{count} элемента" },
   // .yui components
   "{name} Components": "Компоненты {name}",
