@@ -147,12 +147,12 @@ pub fn mod_id(root: &Path) -> Option<String> {
 /// Every Yog format's files (binary on disk) are searched and replaced in
 /// as their text: the platform reads and writes them through the service.
 pub fn register_text_views() {
-    let view = substrate_platform::search::TextView {
+    let view = substrate_platform::text_view::TextView {
         read: read_source,
         write: write_source,
     };
     for format in yog_ids::Format::ALL.iter().filter(|f| f.is_data()) {
-        substrate_platform::search::register_text_view(format.ext(), view);
+        substrate_platform::text_view::register_text_view(format.ext(), view);
     }
 }
 

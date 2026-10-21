@@ -10,7 +10,6 @@ import { YresEditor } from "./YresEditor";
 import { YRES_SOURCE_VIEW } from "./yres/yresModel";
 import { DEF_SOURCE_VIEW, DefEditor } from "./defs/DefEditor";
 
-import { YdataViewer } from "./YdataViewer";
 import { MODEL_SOURCE_VIEW, ModelEditor } from "./ModelEditor";
 import { ENTITY_SOURCE_VIEW, EntityEditor } from "./EntityEditor";
 import { ANIM_SOURCE_VIEW, AnimEditor } from "./AnimEditor";
@@ -191,17 +190,17 @@ registerEditorProvider({
   strict: true,
 });
 
-// `.ydata` — binary Yog Data the build compiles formats to: shown as text,
-// read only (it's made, not written).
+// `.ydata` — Yog Data, binary on disk: edited as its text and saved binary
+// (as every Yog format's file, through `files`).
 registerEditorProvider({
   id: fileTypeId(formats.data),
   label: "Yog Data",
-  name: "Compiled Yog Data Viewer",
+  name: "Yog Data Editor",
   icon: "table",
   fileTypes: [fileTypeId(formats.data)],
-  component: YdataViewer,
+  component: JsonEditor,
   priority: 20,
-  kind: EDITOR_KIND.binary,
+  kind: EDITOR_KIND.text,
 });
 
 // `.ymodel` body models: the 3D designer by default, the code a click away.

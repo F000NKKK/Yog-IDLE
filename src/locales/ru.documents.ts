@@ -55,7 +55,6 @@ registerTranslations(RU, {
   "Open with…": "Открыть с помощью…",
   "current": "текущий",
   "No editor matches": "Подходящих редакторов нет",
-  "Can't read {path} as Yog Data: {error}": "Не удалось прочитать {path} как Yog Data: {error}",
   "Book page — as the book shows it, with sample values. Edit it in XAML.": "Страница книги — как её покажет книга, с образцами значений. Правится в XAML.",
   "Failed to save {path}: {error}": "Не удалось сохранить {path}: {error}",
   "Can't open {path} as text: {error}": "Не удалось открыть {path} как текст: {error}",
