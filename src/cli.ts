@@ -8,10 +8,12 @@ import { yog } from "./host.generated";
 import { invokeCommand, setDiagnostics, type Diagnostic } from "substrate-platform-ui";
 import { decode, encode, type DecodeOptions, type Value } from "./data/binary";
 import { RESULT_ERR, RESULT_OK } from "./data/yogDataBinary.generated";
-import { serveParam, serveRequest } from "./data/yogIds.generated";
+import { program, problemCode, serveParam, serveRequest } from "./data/yogIds.generated";
 
-/** One problem of a failed call: what's wrong, and where (`yog_cli::serve::Problem`). */
+/** One problem of a failed call: what it is, what's wrong, and where (`yog_cli::serve::Problem`). */
 export interface ServiceProblem {
+  /** What it is (`problemCode`). */
+  code: string;
   message: string;
   /** The value it's about: a parameter, a field of one (`args.nodes[2].icon`). */
   path: string;
@@ -26,6 +28,8 @@ export class ServiceError extends Error {
     readonly method: string,
     message: string,
     readonly problems: ServiceProblem[],
+    /** The file the call was about, when it was about one. */
+    readonly file?: string,
   ) {
     const at = problems.length === 1 && problems[0].line !== undefined ? `${problems[0].line}:${problems[0].col ?? 1}: ` : "";
     super(`${at}${message}`);
@@ -45,14 +49,15 @@ function diagnosticsKey(method: string, params: Record<string, unknown>): string
   return `cli:${method}:${plain.map(([k, v]) => `${k}=${String(v)}`).join("&")}`;
 }
 
-function diagnostics(e: ServiceError, file: string | undefined): Diagnostic[] {
-  const problems = e.problems.length > 0 ? e.problems : [{ message: e.message, path: "" }];
+function diagnostics(e: ServiceError): Diagnostic[] {
+  const problems = e.problems.length > 0 ? e.problems : [{ code: problemCode.FAILED, message: e.message, path: "" }];
   return problems.map((p) => ({
     severity: "error",
     origin: "live",
-    code: e.method,
+    code: p.code,
     message: p.path ? `${p.path}: ${p.message}` : p.message,
-    file,
+    tool: `${program.CLI} ${program.SERVE}: ${e.method}`,
+    file: e.file,
     line: p.line,
     column: p.col,
   }));
@@ -68,13 +73,14 @@ export async function cli<T>(method: string, params: Record<string, unknown> = {
   const side = (key: string): Value | undefined =>
     reply instanceof Map ? reply.get(key) : (reply as { [key: string]: Value })[key];
   const key = diagnosticsKey(method, params);
-  const file = typeof params[serveParam.PATH] === "string" ? (params[serveParam.PATH] as string) : undefined;
   const err = side(RESULT_ERR);
   if (err !== undefined) {
     const e = err as { message?: string; problems?: ServiceProblem[] } | Map<string, Value>;
     const get = (k: string) => (e instanceof Map ? e.get(k) : (e as Record<string, unknown>)[k]);
-    const error = new ServiceError(method, String(get("message") ?? ""), ((get("problems") as ServiceProblem[] | undefined) ?? []).map((p) => (p instanceof Map ? (Object.fromEntries(p) as ServiceProblem) : p)));
-    setDiagnostics(key, diagnostics(error, file));
+    const problems = ((get("problems") as ServiceProblem[] | undefined) ?? []).map((p) => (p instanceof Map ? (Object.fromEntries(p) as ServiceProblem) : p));
+    const file = get("file");
+    const error = new ServiceError(method, String(get("message") ?? ""), problems, typeof file === "string" ? file : undefined);
+    setDiagnostics(key, diagnostics(error));
     throw error;
   }
   setDiagnostics(key, []);

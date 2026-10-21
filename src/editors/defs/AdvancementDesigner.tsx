@@ -88,7 +88,7 @@ export function AdvancementDesigner({ path, file, update, readOnly, kindLabel }:
       background: bg,
       nodes: tab.map((n) => ({
         id: n.id,
-        parent: n.parent,
+        parent: written(n.value.parent),
         icon: written(n.value.icon),
         frame: frame(n.value),
         title: written(n.value.title),

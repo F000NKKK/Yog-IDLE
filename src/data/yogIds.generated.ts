@@ -154,6 +154,21 @@ export const reference = {
   TAG: "@tag:",
 } as const;
 
+export const problemCode = {
+  INVALID: "YD0000",
+  SYNTAX: "YD0001",
+  EXPECTED: "YD0002",
+  NOT_A_REFERENCE: "YD0003",
+  WRONG_KIND: "YD0004",
+  UNKNOWN_FIELD: "YD0005",
+  MISSING_FIELD: "YD0006",
+  OUT_OF_RANGE: "YD0007",
+  BAD_TYPED: "YD0008",
+  BAD_BINARY: "YD0009",
+  FAILED: "YC0000",
+  NOT_FOUND: "YC0001",
+} as const;
+
 export const typed = {
   TAG: "tag",
   LANG: "lang",

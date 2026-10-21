@@ -50,9 +50,11 @@ export function EffectDesigner({ path, file, update, readOnly, kindLabel }: DefP
   const t = useT();
   useDesignResources(modRootOf(path));
   const attributes = useContentRefs(path, KIND.ATTRIBUTE);
-  const ns = attributes.own[0] ? idParts(attributes.own[0].id)[0] : GAME_NAMESPACE;
+  // This effect's id as the mod names it (its namespace the mod's).
+  const effects = useContentRefs(path, KIND.EFFECT);
   const id = typeof file.id === "string" ? file.id : "";
-  const full = id.includes(":") ? id : `${ns}:${id}`;
+  const ns = effects.own[0] ? idParts(effects.own[0].id)[0] : GAME_NAMESPACE;
+  const full = effects.own.find((r) => r.file === path)?.id ?? (id.includes(":") ? id : `${ns}:${id}`);
   const [effectNs, effectPath] = idParts(full);
   const icon = useTexture(path, `${reference.TEXTURE}${effectNs}:mob_effect/${effectPath}`);
   const category = EFFECT_CATEGORIES.includes(file.category as never) ? (file.category as (typeof EFFECT_CATEGORIES)[number]) : "neutral";
