@@ -876,6 +876,11 @@ export const archive = {
   NATIVES: "natives",
 } as const;
 
+export const symbols = {
+  DIR: "symbols",
+  EXT: "debug",
+} as const;
+
 export const pack = {
   DATA: "data",
   ASSETS: "assets",
