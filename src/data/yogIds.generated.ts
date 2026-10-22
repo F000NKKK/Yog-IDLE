@@ -833,6 +833,12 @@ export const naniteConstant = {
   NULL: "null",
 } as const;
 
+export const naniteLocal = {
+  REF: "&",
+  ORDINAL: "@",
+  LIST: ",",
+} as const;
+
 export const resKind = {
   STRING: "string",
   IMAGE: "image",
