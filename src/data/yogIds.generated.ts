@@ -35,6 +35,7 @@ export const word = {
   BASE: "base",
   BLOCK: "block",
   CATEGORY: "category",
+  CHUNK: "chunk",
   CONTENT: "content",
   DAMAGE: "damage",
   DIMENSION: "dimension",
@@ -184,6 +185,17 @@ export const buildProblem = {
   NO_PLATFORM: "YB0007",
   PACKAGE: "YB0008",
   BENCH: "YB0009",
+} as const;
+
+export const storage = {
+  DIR: "yog-data",
+  GAME: "game",
+  WORLD: "world",
+  DIMENSION: "dimension",
+  PLAYER: "player",
+  ENTITY: "entity",
+  CHUNK: "chunk",
+  SEP: "_",
 } as const;
 
 export const dataAttr = {
