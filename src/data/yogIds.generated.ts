@@ -807,6 +807,23 @@ export const nanitePoint = {
   TARGET: ":",
 } as const;
 
+export const naniteKind = {
+  INJECT: "inject",
+  REDIRECT: "redirect",
+  MODIFY_ARG: "modify_arg",
+  MODIFY_VARIABLE: "modify_variable",
+  MODIFY_CONSTANT: "modify_constant",
+} as const;
+
+export const naniteConstant = {
+  INT: "int",
+  FLOAT: "float",
+  LONG: "long",
+  DOUBLE: "double",
+  STRING: "string",
+  NULL: "null",
+} as const;
+
 export const resKind = {
   STRING: "string",
   IMAGE: "image",
