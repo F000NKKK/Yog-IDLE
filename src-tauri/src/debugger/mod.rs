@@ -57,6 +57,8 @@ pub struct RunSession {
     wrapper: Child,
     /// Keeps the run's Output tail going until the session ends.
     _output: crate::OutputTail,
+    /// Passes on what the run's build finds until the session ends.
+    _diagnostics: crate::diagnostics_feed::Feed,
     real_pid: Option<i32>,
     /// A debug-mode run — a hot reload then rebuilds with debug info kept
     /// too, so the debugger still has symbols for the reloaded native.

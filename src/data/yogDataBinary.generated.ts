@@ -40,3 +40,39 @@ export const tag = {
   FLOATS: 19,
   FLOATS32: 20,
 } as const;
+
+/** How bad it is. */
+export const severity = {
+  ERROR: "error",
+  WARNING: "warning",
+  NOTE: "note",
+} as const;
+export type Severity = "error" | "warning" | "note";
+
+/** One step of a [`Path`]. */
+export const seg = {
+  KEY: "key",
+  INDEX: "index",
+} as const;
+export type Seg = { type: "key"; value: string; } | { type: "index"; value: number; };
+
+/** One thing found. */
+export interface Diagnostic {
+  severity: Severity;
+  /** What it is: one of `yog_ids`' problem codes (`YD0001`, `YB0002`), or the tool's own (`E0308`, a lint's name); none until it's known. */
+  code?: string;
+  message: string;
+  /** The file it's in. */
+  file?: string;
+  /** The value it's about, in its document (`entries[2].icon`). */
+  path?: Seg[];
+  /** About the key at `path` rather than its value (an unknown field). */
+  onKey?: boolean;
+  /** 1-based. */
+  line?: number;
+  col?: number;
+  endLine?: number;
+  endCol?: number;
+  /** Who found it, when not Yog itself (`rustc`, `cargo`). */
+  tool?: string;
+}

@@ -207,12 +207,16 @@ pub(super) fn run_and_stream(
 
     // Before the run starts, so none of its output precedes it.
     let _ = app.emit(crate::events::WORKFLOW_START, WorkflowStart::of(&root));
+    let feed = crate::diagnostics_feed::Feed::open(&app);
+    let file = reporting_to(file, &feed);
     let handle = substrate_platform::run::run_workflow(file, name, vars, root, sink);
     let state = app.state::<WorkflowState>();
     let id = state.next_id.fetch_add(1, Ordering::Relaxed);
     state.running.locked().insert(id, handle.clone());
     std::thread::spawn(move || {
         let result = handle.wait();
+        // Everything it found passed on before it's said to be over.
+        drop(feed);
         app.state::<WorkflowState>().running.locked().remove(&id);
         let _ = app.emit(
             crate::events::WORKFLOW_EXIT,
@@ -222,6 +226,19 @@ pub(super) fn run_and_stream(
             },
         );
     });
+}
+
+/// `file` with every step reporting what it finds to `feed`.
+fn reporting_to(mut file: WorkflowFile, feed: &crate::diagnostics_feed::Feed) -> WorkflowFile {
+    let (key, value) = feed.env();
+    for def in file.workflow.values_mut() {
+        for step in &mut def.steps {
+            if let substrate_platform::run::WorkflowStep::Run { env, .. } = step {
+                env.insert(key.to_owned(), value.clone());
+            }
+        }
+    }
+    file
 }
 
 /// Stops every workflow run still in flight (a Build or Publish) — kills

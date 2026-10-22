@@ -23,6 +23,7 @@ use mod_commands::*;
 mod publish;
 
 mod cli;
+mod diagnostics_feed;
 pub mod events;
 mod manifest;
 mod project_properties;

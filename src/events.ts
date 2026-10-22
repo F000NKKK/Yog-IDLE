@@ -71,6 +71,8 @@ type Payloads = {
   [yogEvents.workflowExit]: WorkflowExitEvent | null;
   [yogEvents.gameStatus]: GameStatusEvent;
   [yogEvents.hotReload]: HotReloadEvent;
+  /** A Yog Data frame's bytes: one `yog_data::Diagnostic`. */
+  [yogEvents.buildDiagnostic]: number[];
   /** The debugged process's pid. */
   [yogEvents.debugAttached]: number;
   [yogEvents.debugAttachFailed]: string;

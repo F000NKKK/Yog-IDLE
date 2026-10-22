@@ -7,20 +7,12 @@
 import { yog } from "./host.generated";
 import { invokeCommand, setDiagnostics, type Diagnostic } from "substrate-platform-ui";
 import { decode, encode, type DecodeOptions, type Value } from "./data/binary";
-import { RESULT_ERR, RESULT_OK } from "./data/yogDataBinary.generated";
-import { program, problemCode, serveParam, serveRequest } from "./data/yogIds.generated";
+import { RESULT_ERR, RESULT_OK, severity, type Diagnostic as YogDiagnostic } from "./data/yogDataBinary.generated";
+import { yogDiagnostic } from "./diagnostics/yogDiagnostic";
+import { program, requestProblem, serveParam, serveRequest } from "./data/yogIds.generated";
 
-/** One problem of a failed call: what it is, what's wrong, and where (`yog_cli::serve::Problem`). */
-export interface ServiceProblem {
-  /** What it is (`problemCode`). */
-  code: string;
-  message: string;
-  /** The value it's about: a parameter, a field of one (`args.nodes[2].icon`). */
-  path: string;
-  /** In the text it's about, 1-based. */
-  line?: number;
-  col?: number;
-}
+/** One problem of a failed call: what it is, what's wrong, and where (`yog_data::Diagnostic`). */
+export type ServiceProblem = YogDiagnostic;
 
 /** What a failed call answers (`yog_cli::serve::ServiceError`). */
 export class ServiceError extends Error {
@@ -49,25 +41,16 @@ function diagnosticsKey(method: string, params: Record<string, unknown>): string
   return `cli:${method}:${plain.map(([k, v]) => `${k}=${String(v)}`).join("&")}`;
 }
 
-/** `problems` as the Error List shows them: errors at their file's line and column, `tool` reporting them. */
+/** `problems` as the Error List shows them: at their file's line and column, `tool` reporting them. */
 export function problemDiagnostics(problems: readonly ServiceProblem[], tool: string, file?: string): Diagnostic[] {
-  return problems.map((p) => ({
-    severity: "error",
-    origin: "live",
-    code: p.code,
-    message: p.path ? `${p.path}: ${p.message}` : p.message,
-    tool,
-    file,
-    line: p.line,
-    column: p.col,
-  }));
+  return problems.map((p) => yogDiagnostic(p, { tool, file, origin: "live" }));
 }
 
 /** What `method` of the service is called in the Error List's Tool column. */
 export const serviceTool = (method: string) => `${program.CLI} ${program.SERVE}: ${method}`;
 
 function diagnostics(e: ServiceError): Diagnostic[] {
-  const problems = e.problems.length > 0 ? e.problems : [{ code: problemCode.FAILED, message: e.message, path: "" }];
+  const problems = e.problems.length > 0 ? e.problems : [{ severity: severity.ERROR, code: requestProblem.FAILED, message: e.message }];
   return problemDiagnostics(problems, serviceTool(e.method), e.file);
 }
 

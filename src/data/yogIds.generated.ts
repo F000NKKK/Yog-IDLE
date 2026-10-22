@@ -155,7 +155,7 @@ export const reference = {
   TAG: "@tag:",
 } as const;
 
-export const problemCode = {
+export const dataProblem = {
   INVALID: "YD0000",
   SYNTAX: "YD0001",
   EXPECTED: "YD0002",
@@ -166,8 +166,24 @@ export const problemCode = {
   OUT_OF_RANGE: "YD0007",
   BAD_TYPED: "YD0008",
   BAD_BINARY: "YD0009",
+} as const;
+
+export const requestProblem = {
   FAILED: "YC0000",
   NOT_FOUND: "YC0001",
+} as const;
+
+export const buildProblem = {
+  FAILED: "YB0000",
+  MANIFEST: "YB0001",
+  CONTENT: "YB0002",
+  RESOURCES: "YB0003",
+  SCREEN: "YB0004",
+  CARGO: "YB0005",
+  COMPILER: "YB0006",
+  NO_PLATFORM: "YB0007",
+  PACKAGE: "YB0008",
+  BENCH: "YB0009",
 } as const;
 
 export const dataAttr = {

@@ -6,6 +6,7 @@ import { serveMethod } from "../data/yogIds.generated";
 import { openWithPicker } from "../OpenWithPicker";
 import { cli } from "../cli";
 import { setSavedFileDiagnostics } from "../diagnostics/buildDiagnostics";
+import type { Diagnostic as YogDiagnostic } from "../data/yogDataBinary.generated";
 import type { FileTab } from "../OpenFilesContext";
 
 /** Ctrl+Shift+V flips between a file's source and its preview/designer; Ctrl+K V opens the preview to the side (VS Code's Markdown keys). */
@@ -125,9 +126,9 @@ export async function askToSave(names: string[]): Promise<string> {
 export function regenerateScreen(path: string) {
   const fail = (error: string) =>
     notify({ level: "warn", message: t("Couldn't generate the code for {name}: {error}", { name: fileNameOf(path), error }) });
-  cli<{ error: string | null; log: string; root: string }>(serveMethod.YUI_CODEGEN, { path })
-    .then(({ error, log, root }) => {
-      setSavedFileDiagnostics(path, root, log);
+  cli<{ error: string | null; problems: YogDiagnostic[]; root: string }>(serveMethod.YUI_CODEGEN, { path })
+    .then(({ error, problems, root }) => {
+      setSavedFileDiagnostics(path, root, problems);
       if (error) fail(error);
     })
     .catch((err) => fail(String(err)));

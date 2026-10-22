@@ -68,6 +68,7 @@ export const yogEvents = {
   workflowStart: "workflow-start",
   workflowExit: "workflow-exit",
   gameStatus: "game-status",
+  buildDiagnostic: "build-diagnostic",
   hotReload: "hot-reload",
   debugAttached: "debug-attached",
   debugAttachFailed: "debug-attach-failed",

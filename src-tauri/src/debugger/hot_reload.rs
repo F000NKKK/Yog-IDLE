@@ -232,9 +232,12 @@ pub(super) fn build_and_check(
         None,
         format!("running `yog {}`", args.join(" ")),
     );
+    let feed = crate::diagnostics_feed::Feed::open(app);
+    let (feed_key, feed_path) = feed.env();
     let mut child = crate::cli::command()
         .args(&args)
         .current_dir(root)
+        .env(feed_key, feed_path)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
@@ -268,6 +271,7 @@ pub(super) fn build_and_check(
     for reader in readers {
         let _ = reader.join();
     }
+    drop(feed);
     if !status.success() {
         return Err(format!(
             "`yog build` failed ({status}) — the game keeps running the previous build"

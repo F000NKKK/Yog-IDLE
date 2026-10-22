@@ -76,10 +76,13 @@ pub fn run_with_mode(
         args.push("--dev".to_string());
     }
 
+    let diagnostics = crate::diagnostics_feed::Feed::open(&app);
+    let (feed_key, feed_path) = diagnostics.env();
     let (child, log) = crate::spawn_yog_run(
         crate::cli::command()
             .args(&args)
             .current_dir(&root)
+            .env(feed_key, feed_path)
             .env(yog_ids::env::CONTROL_SOCKET, &control_addr)
             .env(yog_ids::env::CONTROL_TOKEN, &control_token),
     )
@@ -91,6 +94,7 @@ pub fn run_with_mode(
         id,
         wrapper: child,
         _output: output,
+        _diagnostics: diagnostics,
         real_pid: None,
         debug_mode: debug,
         control: None,

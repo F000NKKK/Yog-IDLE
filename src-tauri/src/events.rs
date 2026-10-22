@@ -17,6 +17,8 @@ pub const WORKFLOW_START: &str = "workflow-start";
 pub const WORKFLOW_EXIT: &str = "workflow-exit";
 /// The launched game's lifecycle stage (starting/running/exited) and mods.
 pub const GAME_STATUS: &str = "game-status";
+/// One diagnostic a `yog` run found: a Yog Data frame's bytes (`yog_data::Diagnostic`).
+pub const BUILD_DIAGNOSTIC: &str = "build-diagnostic";
 /// A hot reload's result.
 pub const HOT_RELOAD: &str = "hot-reload";
 
@@ -37,6 +39,7 @@ pub const ALL: &[(&str, &str)] = &[
     ("workflowStart", WORKFLOW_START),
     ("workflowExit", WORKFLOW_EXIT),
     ("gameStatus", GAME_STATUS),
+    ("buildDiagnostic", BUILD_DIAGNOSTIC),
     ("hotReload", HOT_RELOAD),
     ("debugAttached", DEBUG_ATTACHED),
     ("debugAttachFailed", DEBUG_ATTACH_FAILED),
