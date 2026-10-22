@@ -408,6 +408,12 @@ export const eventClientInput = {
   BINDING: "yog:event/client/input/binding",
 } as const;
 
+export const eventClientChat = {
+  PLANE: "yog:event/client/chat/",
+  SEND: "yog:event/client/chat/send",
+  SEND_PRE: "yog:event/client/chat/send/pre",
+} as const;
+
 export const eventClientUi = {
   PLANE: "yog:event/client/ui/",
   OPEN: "yog:event/client/ui/open",
@@ -648,6 +654,7 @@ export const serviceClientLocal = {
   DIG_SPEEDS: "yog:client/local/dig_speeds",
   RAYCAST: "yog:client/local/raycast",
   TARGET: "yog:client/local/target",
+  MESSAGE: "yog:client/local/message",
 } as const;
 
 export const serviceClientControl = {
