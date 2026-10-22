@@ -646,6 +646,8 @@ export const serviceClientLocal = {
   AREA: "yog:client/local/area",
   ENTITIES: "yog:client/local/entities",
   DIG_SPEEDS: "yog:client/local/dig_speeds",
+  RAYCAST: "yog:client/local/raycast",
+  TARGET: "yog:client/local/target",
 } as const;
 
 export const serviceClientControl = {
