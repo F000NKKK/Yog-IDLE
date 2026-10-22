@@ -709,6 +709,7 @@ export const hostMirror = {
   PREFIX: "yog:mirror/yog/",
   ENTITY: "yog:mirror/yog/entity",
   PLAYER: "yog:mirror/yog/player",
+  BLOCK: "yog:mirror/yog/block",
 } as const;
 
 export const keySpace = {
