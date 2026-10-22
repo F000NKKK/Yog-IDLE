@@ -71,10 +71,6 @@ export function useYresCellEdits(props: EditorProps, yresFile: YresFile, yresSib
       const type = text as ResourceType;
       next = { ...entry, type, value: coerceValue(type, entry.value) };
       if (type !== resKind.STRING) delete next.key;
-      if (type !== resKind.SOUND) {
-        delete next.event;
-        delete next.subtitle;
-      }
     } else if (column === COLUMN.comment) {
       if (text === (entry.comment ?? "")) return;
       next = { ...entry, comment: text };

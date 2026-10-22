@@ -9,9 +9,8 @@ export const sep = {
   NAMESPACE: ":",
   PATH: "/",
   WORD: "_",
-  EXT: ".",
+  DOT: ".",
   HYPHEN: "-",
-  MEMBER: ".",
   TYPED: "@",
   TAG: "#",
   TAG_SHOWN: "#",
@@ -148,6 +147,7 @@ export const kind = {
   LOOT_TABLE: "loot_table",
   TEXTURE: "texture",
   MATERIAL: "material",
+  SOUND: "sound",
 } as const;
 
 export const reference = {
@@ -1700,6 +1700,7 @@ export const formats = {
   anim: { ext: "yanim", noun: "animation", isData: true },
   font: { ext: "yfont", noun: "font", isData: true },
   texture: { ext: "ytexture", noun: "texture", isData: true },
+  sound: { ext: "ysound", noun: "sound", isData: true },
   material: { ext: "ymaterial", noun: "material", isData: true },
   data: { ext: "ydata", noun: "compiled data", isData: true },
   mod: { ext: "yog", noun: "mod", isData: false },

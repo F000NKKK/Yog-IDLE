@@ -19,10 +19,6 @@ export interface YresEntry {
   comment?: string;
   /** Texts: the translation key instead of the default one. */
   key?: string;
-  /** Sounds: the sound event name. */
-  event?: string;
-  /** Sounds: the subtitle's translation key. */
-  subtitle?: string;
   /** 1-based line of the name. */
   line?: number;
   /** Read by the CLI: the generated accessor (`screen.title` → `screen_title`). */
