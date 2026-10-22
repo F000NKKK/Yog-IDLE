@@ -637,6 +637,7 @@ export const serviceClient = {
   HELD_ITEM: "yog:client/held_item",
   SET_BLOCK_TINT: "yog:client/set_block_tint",
   KEY_DOWN: "yog:client/key_down",
+  KEY_NAME: "yog:client/key_name",
   ATTRIBUTE_VALUE: "yog:client/attribute_value",
   ADVANCEMENT_DONE: "yog:client/advancement_done",
   BODY_TRACK: "yog:client/body_track",

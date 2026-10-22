@@ -3468,7 +3468,7 @@ checksum = "7da8b5736845d9f2fcb837ea5d9e2628564b3b043a70948a3f0b778838c5fb4f"
 
 [[package]]
 name = "substrate-platform"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "globset",
@@ -5054,7 +5054,7 @@ dependencies = [
 
 [[package]]
 name = "yog-idle-tauri"
-version = "2.1.1"
+version = "2.2.0"
 dependencies = [
  "criterion",
  "dirs",
@@ -5082,7 +5082,7 @@ dependencies = [
 
 [[package]]
 name = "yog-ids"
-version = "0.5.0"
+version = "0.5.1"
 dependencies = [
  "const_format",
 ]
