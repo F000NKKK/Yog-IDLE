@@ -645,6 +645,7 @@ export const serviceClientLocal = {
   SCAN: "yog:client/local/scan",
   AREA: "yog:client/local/area",
   ENTITIES: "yog:client/local/entities",
+  DIG_SPEEDS: "yog:client/local/dig_speeds",
 } as const;
 
 export const serviceClientControl = {
@@ -705,6 +706,47 @@ export const serviceCommand = {
   DECLARED: "yog:command/declared",
 } as const;
 
+export const blockTrait = {
+  AIR: "air",
+  SOLID: "solid",
+  FULL: "full",
+  LIQUID: "liquid",
+  WATER: "water",
+  LAVA: "lava",
+  SOURCE: "source",
+  FLUID_BLOCK: "fluid_block",
+  CLIMBABLE: "climbable",
+  HARMFUL: "harmful",
+  FALLS: "falls",
+  PATHFINDABLE: "pathfindable",
+  REPLACEABLE: "replaceable",
+  STURDY_TOP: "sturdy_top",
+  FIRE: "fire",
+  SLAB: "slab",
+  STAIRS: "stairs",
+  DOOR: "door",
+  WOODEN_DOOR: "wooden_door",
+  FENCE_GATE: "fence_gate",
+  TRAPDOOR: "trapdoor",
+  FENCE: "fence",
+  WALL: "wall",
+  CARPET: "carpet",
+  SNOW_LAYER: "snow_layer",
+  SKULL: "skull",
+  SHULKER_BOX: "shulker_box",
+  LEAVES: "leaves",
+  INFESTED: "infested",
+  CAULDRON: "cauldron",
+  AZALEA: "azalea",
+  AMETHYST_CLUSTER: "amethyst_cluster",
+  POINTED_DRIPSTONE: "pointed_dripstone",
+  BAMBOO: "bamboo",
+  MOVING_PISTON: "moving_piston",
+  SCAFFOLDING: "scaffolding",
+  CHEST: "chest",
+  GLASS: "glass",
+} as const;
+
 export const mirrorWord = {
   MIRROR: "mirror",
   FACT: "fact",
@@ -713,6 +755,10 @@ export const mirrorWord = {
   VELOCITY: "velocity",
   HEALTH: "health",
   UUID: "uuid",
+  EYE_HEIGHT: "eye_height",
+  HOSTILE: "hostile",
+  HARDNESS: "hardness",
+  TRAITS: "traits",
 } as const;
 
 export const serviceMirror = {
@@ -729,6 +775,9 @@ export const hostMirror = {
   ENTITY: "yog:mirror/yog/entity",
   PLAYER: "yog:mirror/yog/player",
   BLOCK: "yog:mirror/yog/block",
+  CLIENT: "yog:mirror/yog/client/",
+  CLIENT_ENTITY: "yog:mirror/yog/client/entity",
+  CLIENT_BLOCK: "yog:mirror/yog/client/block",
 } as const;
 
 export const keySpace = {
@@ -736,6 +785,9 @@ export const keySpace = {
   ENTITY: "yog:keys/entity",
   PLAYER: "yog:keys/player",
   BLOCK: "yog:keys/block",
+  CLIENT: "yog:keys/client/",
+  CLIENT_ENTITY: "yog:keys/client/entity",
+  CLIENT_BLOCK: "yog:keys/client/block",
 } as const;
 
 export const fact = {
@@ -752,6 +804,20 @@ export const fact = {
   PLAYER_NAME: "yog:fact/player/name",
   BLOCK: "yog:fact/block/",
   BLOCK_STATE: "yog:fact/block/state",
+  CLIENT_ENTITY: "yog:fact/client/entity/",
+  CLIENT_ENTITY_POS: "yog:fact/client/entity/pos",
+  CLIENT_ENTITY_VELOCITY: "yog:fact/client/entity/velocity",
+  CLIENT_ENTITY_ROTATION: "yog:fact/client/entity/rotation",
+  CLIENT_ENTITY_KIND: "yog:fact/client/entity/kind",
+  CLIENT_ENTITY_HEALTH: "yog:fact/client/entity/health",
+  CLIENT_ENTITY_UUID: "yog:fact/client/entity/uuid",
+  CLIENT_ENTITY_EYE_HEIGHT: "yog:fact/client/entity/eye_height",
+  CLIENT_ENTITY_HOSTILE: "yog:fact/client/entity/hostile",
+  CLIENT_ENTITY_NAME: "yog:fact/client/entity/name",
+  CLIENT_BLOCK: "yog:fact/client/block/",
+  CLIENT_BLOCK_STATE: "yog:fact/client/block/state",
+  CLIENT_BLOCK_HARDNESS: "yog:fact/client/block/hardness",
+  CLIENT_BLOCK_TRAITS: "yog:fact/client/block/traits",
 } as const;
 
 export const mirrorProblem = {
