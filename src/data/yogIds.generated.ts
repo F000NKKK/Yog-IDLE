@@ -772,6 +772,41 @@ export const naniteRef = {
   OBJECT: "yog:object",
 } as const;
 
+export const naniteWord = {
+  NANITE: "nanite",
+} as const;
+
+export const eventNanite = {
+  PLANE: "yog:event/nanite/",
+  INJECT: "yog:event/nanite/inject",
+} as const;
+
+export const mixinAt = {
+  HEAD: "HEAD",
+  RETURN: "RETURN",
+  TAIL: "TAIL",
+  INVOKE: "INVOKE",
+  INVOKE_ASSIGN: "INVOKE_ASSIGN",
+  FIELD: "FIELD",
+  NEW: "NEW",
+  CONSTANT: "CONSTANT",
+  LOAD: "LOAD",
+  STORE: "STORE",
+  JUMP: "JUMP",
+} as const;
+
+export const mixinShift = {
+  NONE: "NONE",
+  BEFORE: "BEFORE",
+  AFTER: "AFTER",
+} as const;
+
+export const nanitePoint = {
+  MEMBER: "#",
+  AT: "@",
+  TARGET: ":",
+} as const;
+
 export const resKind = {
   STRING: "string",
   IMAGE: "image",
