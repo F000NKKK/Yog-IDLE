@@ -224,12 +224,14 @@ export const typed = {
 export const busWord = {
   ATTACK: "attack",
   ATTRIBUTE_VALUE: "attribute_value",
+  CALL: "call",
   CHAT: "chat",
   CLIENT: "client",
   CLOSE: "close",
   CONTAINER: "container",
   CRAFT: "craft",
   DEATH: "death",
+  GET: "get",
   DECLARE: "declare",
   DECLARED: "declared",
   GAME: "game",
@@ -243,6 +245,7 @@ export const busWord = {
   PLACE: "place",
   RELEASE: "release",
   SERVER: "server",
+  SET: "set",
   SET_DIMENSIONS: "set_dimensions",
   SET_NBT: "set_nbt",
   SPAWN: "spawn",
@@ -742,6 +745,31 @@ export const mirrorProblem = {
   FOREIGN_FACT: "YM0003",
   TOO_MANY_FIELDS: "YM0004",
   TAKEN: "YM0005",
+} as const;
+
+export const mappingNs = {
+  MOJANG: "mojang",
+  INTERMEDIARY: "intermediary",
+  SRG: "srg",
+  OFFICIAL: "official",
+  NAMED: "named",
+} as const;
+
+export const mappingFile = {
+  NAME: "yog-mappings.ydata",
+} as const;
+
+export const serviceNanite = {
+  DOMAIN: "yog:nanite/",
+  RESOLVE: "yog:nanite/resolve",
+  CALL: "yog:nanite/call",
+  GET: "yog:nanite/get",
+  SET: "yog:nanite/set",
+  RELEASE: "yog:nanite/release",
+} as const;
+
+export const naniteRef = {
+  OBJECT: "yog:object",
 } as const;
 
 export const resKind = {
