@@ -813,6 +813,14 @@ export const naniteKind = {
   MODIFY_ARG: "modify_arg",
   MODIFY_VARIABLE: "modify_variable",
   MODIFY_CONSTANT: "modify_constant",
+  ADD_FIELD: "add_field",
+  ADD_METHOD: "add_method",
+  IMPLEMENT: "implement",
+} as const;
+
+export const naniteAdded = {
+  PREFIX: "yog$",
+  SEP: "$",
 } as const;
 
 export const naniteConstant = {
