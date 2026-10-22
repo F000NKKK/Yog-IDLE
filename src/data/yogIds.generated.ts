@@ -406,6 +406,8 @@ export const eventClientInput = {
   KEY: "yog:event/client/input/key",
   KEY_PRE: "yog:event/client/input/key/pre",
   BINDING: "yog:event/client/input/binding",
+  SCROLL: "yog:event/client/input/scroll",
+  SCROLL_PRE: "yog:event/client/input/scroll/pre",
 } as const;
 
 export const eventClientChat = {
@@ -1622,6 +1624,11 @@ export const advancement = {
   IMPOSSIBLE: "minecraft:impossible",
   INVENTORY_CHANGED: "minecraft:inventory_changed",
   CONSUME_ITEM: "minecraft:consume_item",
+} as const;
+
+export const advancementField = {
+  DISPLAY: "display",
+  BACKGROUND: "background",
 } as const;
 
 export const toolTier = {

@@ -20,7 +20,7 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 substrate-platform = { path = "../../Substrate-Platform" }
 tauri-build = { version = "2", features = [] }
 # The front end's copy of the shared names (`src/data/yogIds.generated.ts`).
-yog-ids = "0.4.5"
+yog-ids = "0.5.0"
 
 [dependencies]
 tauri = { version = "2", features = ["protocol-asset"] }
@@ -43,11 +43,11 @@ regex = "1.13.1"
 syn = { version = "3.0.9", default-features = false, features = ["full", "parsing", "visit"] }
 proc-macro2 = { version = "1.0.107", features = ["span-locations"] }
 # Generated TypeScript of Yog's ids, and the one `yog` program name.
-yog-ids = "0.4.5"
+yog-ids = "0.5.0"
 # Yog's home on the machine (~/.yog): where its local patch is.
-yog-home = "0.4.1"
+yog-home = "0.5.0"
 # What the CLI service (`yog serve`) and the backend say: binary Yog Data.
-yog-data = "0.8.3"
+yog-data = "0.9.0"
 
 [features]
 # The benches' entry points into the backend (`src/bench.rs`).
@@ -68,9 +68,9 @@ required-features = ["bench"]
 # Debugger integration (Linux-only, matching yog-debugger's own scope) —
 # ordinary crates.io deps, no path/git coupling to the Yog-Mod-Loader repo.
 [target.'cfg(target_os = "linux")'.dependencies]
-yog-symbols = "0.6.1"
-yog-debugger = "0.11.0"
-yog-hot-reload = "0.4.0"
+yog-symbols = "0.7.0"
+yog-debugger = "0.12.0"
+yog-hot-reload = "0.5.0"
 nix = { version = "0.31", features = ["ptrace", "signal", "process"] }
 
 # The loader's crates from the sibling checkout (as Substrate-Platform is):
