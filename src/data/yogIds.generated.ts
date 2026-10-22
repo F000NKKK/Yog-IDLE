@@ -701,6 +701,7 @@ export const serviceMirror = {
   RELEASE: "yog:mirror/release",
   PROVIDE: "yog:mirror/provide",
   TOUCH: "yog:mirror/touch",
+  KEYS: "yog:mirror/keys",
 } as const;
 
 export const keySpace = {
