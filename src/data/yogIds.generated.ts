@@ -52,6 +52,7 @@ export const word = {
   MODS: "mods",
   OPTIONAL: "optional",
   PLAYER: "player",
+  PNG: "png",
   RESULT: "result",
   SPRITE: "sprite",
   STATE: "state",
@@ -517,6 +518,11 @@ export const servicePlayer = {
   ONLINE: "yog:player/online",
 } as const;
 
+export const serviceMedia = {
+  DOMAIN: "yog:media/",
+  PNG: "yog:media/png",
+} as const;
+
 export const serviceNet = {
   DOMAIN: "yog:net/",
   SEND_TO_PLAYER: "yog:net/send_to_player",
@@ -874,6 +880,10 @@ export const file = {
 export const archive = {
   MANIFEST: "mod.ydata",
   NATIVES: "natives",
+} as const;
+
+export const yimage = {
+  MAGIC: "YIMG",
 } as const;
 
 export const symbols = {
