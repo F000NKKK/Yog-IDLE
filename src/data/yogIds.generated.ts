@@ -693,6 +693,7 @@ export const mirrorWord = {
   POS: "pos",
   VELOCITY: "velocity",
   HEALTH: "health",
+  UUID: "uuid",
 } as const;
 
 export const serviceMirror = {
@@ -702,6 +703,12 @@ export const serviceMirror = {
   PROVIDE: "yog:mirror/provide",
   TOUCH: "yog:mirror/touch",
   KEYS: "yog:mirror/keys",
+} as const;
+
+export const hostMirror = {
+  PREFIX: "yog:mirror/yog/",
+  ENTITY: "yog:mirror/yog/entity",
+  PLAYER: "yog:mirror/yog/player",
 } as const;
 
 export const keySpace = {
@@ -720,6 +727,7 @@ export const fact = {
   ENTITY_KIND: "yog:fact/entity/kind",
   ENTITY_DIMENSION: "yog:fact/entity/dimension",
   ENTITY_HEALTH: "yog:fact/entity/health",
+  ENTITY_UUID: "yog:fact/entity/uuid",
   PLAYER: "yog:fact/player/",
   PLAYER_NAME: "yog:fact/player/name",
   BLOCK: "yog:fact/block/",
