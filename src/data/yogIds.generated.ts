@@ -15,6 +15,7 @@ export const sep = {
   TYPED: "@",
   TAG: "#",
   TAG_SHOWN: "#",
+  LIST: ",",
   STATE_OPEN: "[",
   STATE_CLOSE: "]",
   PROPERTY_SEP: ",",
@@ -185,6 +186,15 @@ export const buildProblem = {
   NO_PLATFORM: "YB0007",
   PACKAGE: "YB0008",
   BENCH: "YB0009",
+} as const;
+
+export const scriptProblem = {
+  UNEXPECTED_CHAR: "YS0001",
+  UNTERMINATED: "YS0002",
+  BAD_NUMBER: "YS0003",
+  EXPECTED: "YS0004",
+  PATCH_OUTSIDE_NANITES: "YS0005",
+  BAD_REFERENCE: "YS0006",
 } as const;
 
 export const storage = {
@@ -1601,4 +1611,6 @@ export const formats = {
   material: { ext: "ymaterial", noun: "material", isData: true },
   data: { ext: "ydata", noun: "compiled data", isData: true },
   mod: { ext: "yog", noun: "mod", isData: false },
+  script: { ext: "ys", noun: "script", isData: false },
+  nanites: { ext: "yns", noun: "nanite script", isData: false },
 } as const;
