@@ -355,6 +355,7 @@ export const eventServerLife = {
   PLANE: "yog:event/server/life/",
   STARTED: "yog:event/server/life/started",
   STOPPING: "yog:event/server/life/stopping",
+  SAVING: "yog:event/server/life/saving",
 } as const;
 
 export const eventServerCommand = {
