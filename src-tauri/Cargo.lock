@@ -5013,6 +5013,7 @@ dependencies = [
 name = "yog-data-derive"
 version = "0.6.0"
 dependencies = [
+ "proc-macro-crate 3.5.0",
  "proc-macro2",
  "quote",
  "syn 3.0.9",
@@ -5081,7 +5082,7 @@ dependencies = [
 
 [[package]]
 name = "yog-ids"
-version = "0.4.1"
+version = "0.4.2"
 dependencies = [
  "const_format",
 ]

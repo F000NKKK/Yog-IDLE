@@ -760,6 +760,8 @@ export const rustCrate = {
   KIT: "yog-kit",
   GFX: "yog-gfx",
   REGISTRY: "yog-registry",
+  DATA: "yog-data",
+  DATA_RUST_NAME: "yog_data",
 } as const;
 
 export const res = {
