@@ -20,7 +20,7 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 substrate-platform = { path = "../../Substrate-Platform" }
 tauri-build = { version = "2", features = [] }
 # The front end's copy of the shared names (`src/data/yogIds.generated.ts`).
-yog-ids = "0.4.0"
+yog-ids = "0.4.1"
 
 [dependencies]
 tauri = { version = "2", features = ["protocol-asset"] }
@@ -43,11 +43,11 @@ regex = "1.13.1"
 syn = { version = "3.0.9", default-features = false, features = ["full", "parsing", "visit"] }
 proc-macro2 = { version = "1.0.107", features = ["span-locations"] }
 # Generated TypeScript of Yog's ids, and the one `yog` program name.
-yog-ids = "0.4.0"
+yog-ids = "0.4.1"
 # Yog's home on the machine (~/.yog): where its local patch is.
 yog-home = "0.4.0"
 # What the CLI service (`yog serve`) and the backend say: binary Yog Data.
-yog-data = "0.8.1"
+yog-data = "0.8.2"
 
 [features]
 # The benches' entry points into the backend (`src/bench.rs`).
