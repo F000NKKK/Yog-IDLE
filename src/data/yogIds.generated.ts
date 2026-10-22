@@ -241,6 +241,7 @@ export const busWord = {
   OPEN: "open",
   PACKET: "packet",
   PLACE: "place",
+  RELEASE: "release",
   SERVER: "server",
   SET_DIMENSIONS: "set_dimensions",
   SET_NBT: "set_nbt",
@@ -683,6 +684,54 @@ export const serviceCommand = {
   DOMAIN: "yog:command/",
   DECLARE: "yog:command/declare",
   DECLARED: "yog:command/declared",
+} as const;
+
+export const mirrorWord = {
+  MIRROR: "mirror",
+  FACT: "fact",
+  KEYS: "keys",
+  POS: "pos",
+  VELOCITY: "velocity",
+  HEALTH: "health",
+} as const;
+
+export const serviceMirror = {
+  DOMAIN: "yog:mirror/",
+  DECLARE: "yog:mirror/declare",
+  RELEASE: "yog:mirror/release",
+  PROVIDE: "yog:mirror/provide",
+  TOUCH: "yog:mirror/touch",
+} as const;
+
+export const keySpace = {
+  PREFIX: "yog:keys/",
+  ENTITY: "yog:keys/entity",
+  PLAYER: "yog:keys/player",
+  BLOCK: "yog:keys/block",
+} as const;
+
+export const fact = {
+  PREFIX: "yog:fact/",
+  ENTITY: "yog:fact/entity/",
+  ENTITY_POS: "yog:fact/entity/pos",
+  ENTITY_VELOCITY: "yog:fact/entity/velocity",
+  ENTITY_ROTATION: "yog:fact/entity/rotation",
+  ENTITY_KIND: "yog:fact/entity/kind",
+  ENTITY_DIMENSION: "yog:fact/entity/dimension",
+  ENTITY_HEALTH: "yog:fact/entity/health",
+  PLAYER: "yog:fact/player/",
+  PLAYER_NAME: "yog:fact/player/name",
+  BLOCK: "yog:fact/block/",
+  BLOCK_STATE: "yog:fact/block/state",
+} as const;
+
+export const mirrorProblem = {
+  FAILED: "YM0000",
+  UNKNOWN_SPACE: "YM0001",
+  WRONG_SHAPE: "YM0002",
+  FOREIGN_FACT: "YM0003",
+  TOO_MANY_FIELDS: "YM0004",
+  TAKEN: "YM0005",
 } as const;
 
 export const resKind = {
