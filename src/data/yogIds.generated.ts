@@ -805,6 +805,7 @@ export const nanitePoint = {
   MEMBER: "#",
   AT: "@",
   TARGET: ":",
+  WRITE: "write",
 } as const;
 
 export const naniteKind = {
