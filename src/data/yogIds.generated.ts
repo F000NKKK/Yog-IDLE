@@ -972,6 +972,7 @@ export const res = {
 export const yog = {
   STATE: "yog:state",
   HANGING: "yog:hanging",
+  ENTITY_NBT: "yog:data",
   ENTITY_DATA: "yog:entity_data",
   DIMENSIONS: "yog:dimensions",
   SLOT_PREFIX: "yog:slot:",
@@ -1000,6 +1001,7 @@ export const game = {
   DEFAULT_FONT: "minecraft:default",
   VANILLA_THEME: "minecraft:vanilla",
   OVERWORLD: "minecraft:overworld",
+  NO_SOUND: "minecraft:intentionally_empty",
   PLAINS: "minecraft:plains",
   THE_NETHER: "minecraft:the_nether",
   THE_END: "minecraft:the_end",
