@@ -4997,7 +4997,7 @@ dependencies = [
 
 [[package]]
 name = "yog-data"
-version = "0.8.2"
+version = "0.8.3"
 dependencies = [
  "base64 0.23.1",
  "bumpalo",
@@ -5011,7 +5011,7 @@ dependencies = [
 
 [[package]]
 name = "yog-data-derive"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "proc-macro-crate 3.5.0",
  "proc-macro2",
@@ -5082,7 +5082,7 @@ dependencies = [
 
 [[package]]
 name = "yog-ids"
-version = "0.4.2"
+version = "0.4.4"
 dependencies = [
  "const_format",
 ]
@@ -5101,6 +5101,7 @@ dependencies = [
  "addr2line",
  "gimli",
  "object",
+ "yog-ids",
  "yog-sync",
 ]
 
