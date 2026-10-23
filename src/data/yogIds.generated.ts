@@ -237,6 +237,7 @@ export const scriptProblem = {
   INHERIT: "YS0028",
   NOT_EXHAUSTIVE: "YS0029",
   MACRO: "YS0030",
+  ATTRIBUTE: "YS0031",
 } as const;
 
 export const storage = {
