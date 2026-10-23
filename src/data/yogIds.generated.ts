@@ -31,9 +31,15 @@ export const direction = {
 } as const;
 
 export const word = {
+  DISPLAY: "display",
+  MESSAGE: "message",
+  PARTICLE: "particle",
+  TARGET: "target",
+  WALL: "wall",
   ARMOR: "armor",
   BASE: "base",
   BLOCK: "block",
+  AIR: "air",
   CATEGORY: "category",
   CHUNK: "chunk",
   CONTENT: "content",
