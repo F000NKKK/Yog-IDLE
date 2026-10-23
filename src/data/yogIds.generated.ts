@@ -235,6 +235,7 @@ export const scriptProblem = {
   BORROW: "YS0026",
   PASS: "YS0027",
   INHERIT: "YS0028",
+  NOT_EXHAUSTIVE: "YS0029",
 } as const;
 
 export const storage = {
