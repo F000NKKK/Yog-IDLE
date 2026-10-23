@@ -1014,6 +1014,7 @@ export const file = {
 export const archive = {
   MANIFEST: "mod.ydata",
   NATIVES: "natives",
+  SCRIPTS: "scripts",
 } as const;
 
 export const yimage = {
