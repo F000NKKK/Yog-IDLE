@@ -17,19 +17,25 @@ export interface Render {
   frames: number;
   /** Ogg, base64; none: silent. */
   sound: string | null;
+  /** A montage's clips: how long each shows, seconds. */
+  clips: number[];
 }
 
-/** What `video_list` answers. */
-interface VideoList {
+/** What `video_list` answers: the mod's videos (and how long each lasts), and its pictures. */
+export interface VideoList {
   own: string[];
+  seconds: number[];
+  images: string[];
 }
+
+export const NO_MEDIA: VideoList = { own: [], seconds: [], images: [] };
 
 /** Frames kept per render, the oldest let go first. */
 const KEPT_FRAMES = 240;
 
-/** The videos a `.yvideo` of the mod at `path` can show (`@Videos.intro`). */
-export function videoList(path: string): Promise<string[]> {
-  return cli<VideoList>(serveMethod.VIDEO_LIST, { path }).then((l) => l.own);
+/** The videos and pictures a `.yvideo` of the mod at `path` can show (`@Videos.intro`). */
+export function videoList(path: string): Promise<VideoList> {
+  return cli<VideoList>(serveMethod.VIDEO_LIST, { path });
 }
 
 /** Video `video` (as edited) of the `.yvideo` at `path`, rendered. */

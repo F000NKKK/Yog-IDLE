@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { usePropertyContext, useT } from "substrate-platform-ui";
+import { type PropertyDescriptor, usePropertyContext, useT } from "substrate-platform-ui";
 import { loadSound } from "./audio";
 import { Browser, useSoundList } from "./daw/Browser";
 import { type Snap } from "./daw/grid";
@@ -31,6 +31,9 @@ interface Props {
   shown: Mix;
   readOnly: boolean;
   onChange: (next: Mix) => void;
+  /** Given, the montage's rows go here (a designer around it shows them),
+   * not to the window's Properties. */
+  onProperties?: (rows: PropertyDescriptor[]) => void;
 }
 
 function rememberedSnap(): Snap {
@@ -41,7 +44,7 @@ function rememberedSnap(): Snap {
   }
 }
 
-export function MixEditor({ path, mix, shown, readOnly, onChange }: Props) {
+export function MixEditor({ path, mix, shown, readOnly, onChange, onProperties }: Props) {
   const t = useT();
   const [buffers, setBuffers] = useState<(AudioBuffer | null)[]>([]);
   const [pps, setPps] = useState(START_PPS);
@@ -52,7 +55,9 @@ export function MixEditor({ path, mix, shown, readOnly, onChange }: Props) {
   const list = useSoundList(path);
   const sounds = useMemo(() => [...list.own, ...list.game], [list]);
   const properties = useMemo(() => montageProperties({ mix, shown, clip, strip, sounds, readOnly, t, onChange }), [mix, shown, clip, strip, sounds, readOnly, t, onChange]);
-  usePropertyContext(path, { objectName: path.split(/[\\/]/).pop(), objectType: t("Montage"), objectKey: `${path}#mix`, properties });
+  // Handed up, its rows aren't the window's: it sets no context of its own.
+  usePropertyContext(onProperties ? `${path}#mix` : path, onProperties ? null : { objectName: path.split(/[\\/]/).pop(), objectType: t("Montage"), objectKey: `${path}#mix`, properties });
+  useEffect(() => onProperties?.(properties), [onProperties, properties]);
 
   // The clips' sounds, loaded again only when their sources change.
   useEffect(() => {
