@@ -62,10 +62,10 @@ export const UNITY_GAIN = 1;
 export const clipSound = (c: SoundClip) => c.sound ?? c.file ?? "";
 
 /** Clip `c`'s sound `b` cut to its part, reversed if it plays backwards. */
-export function clipBuffer(ctx: BaseAudioContext, b: AudioBuffer, c: SoundClip): AudioBuffer {
+export function clipBuffer(b: AudioBuffer, c: SoundClip): AudioBuffer {
   const start = Math.max(0, Math.floor((c.from ?? 0) * b.sampleRate));
   const end = Math.min(b.length, Math.floor((c.to ?? b.duration) * b.sampleRate));
-  const out = ctx.createBuffer(b.numberOfChannels, Math.max(1, end - start), b.sampleRate);
+  const out = new AudioBuffer({ numberOfChannels: b.numberOfChannels, length: Math.max(1, end - start), sampleRate: b.sampleRate });
   for (let ch = 0; ch < b.numberOfChannels; ch++) {
     const part = b.getChannelData(ch).slice(start, Math.max(start + 1, end));
     if (c.reverse) part.reverse();
@@ -154,7 +154,7 @@ export function playMix(
     const n = c.track ?? 0;
     if (!b || !heard(mix, n)) return;
     const src = ctx.createBufferSource();
-    src.buffer = clipBuffer(ctx, b, c);
+    src.buffer = clipBuffer(b, c);
     src.playbackRate.value = c.speed ?? 1;
     const gain = ctx.createGain();
     const at = start + (c.at ?? 0) - offset, length = clipLength(b, c), level = c.gain ?? UNITY_GAIN;

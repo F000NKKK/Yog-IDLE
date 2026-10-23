@@ -12,12 +12,44 @@ interface SoundData {
   mime: string;
 }
 
-let context: AudioContext | null = null;
+/** How long the device stays open once the last sound has ended. A stream
+ *  kept open for good dies on some outputs (Bluetooth headphones: their
+ *  latency, the sink suspending) and never comes back — a fresh one does. */
+const IDLE_CLOSE_MS = 2000;
+/** The rate sounds are decoded at (a playing one is resampled to the device's). */
+const DECODE_RATE = 48000;
 
-/** The designer's one audio context (made when first played: browsers want a gesture). */
-export function audioContext(): AudioContext {
-  context ??= new AudioContext();
-  return context;
+let context: AudioContext | null = null;
+let users = 0;
+let closing: number | undefined;
+let decoder: OfflineAudioContext | null = null;
+
+/** The audio device, opened for something to play (browsers want a gesture
+ *  first): `release` it when that's done. */
+export function openAudio(): { ctx: AudioContext; release: () => void } {
+  window.clearTimeout(closing);
+  if (!context || context.state === "closed") context = new AudioContext({ latencyHint: "playback" });
+  void context.resume();
+  users++;
+  let released = false;
+  const release = () => {
+    if (released) return;
+    released = true;
+    if (--users === 0) closing = window.setTimeout(closeAudio, IDLE_CLOSE_MS);
+  };
+  return { ctx: context, release };
+}
+
+function closeAudio() {
+  const c = context;
+  context = null;
+  void c?.close();
+}
+
+/** Decodes `bytes` without opening the device. */
+export function decodeSound(bytes: ArrayBuffer): Promise<AudioBuffer> {
+  decoder ??= new OfflineAudioContext(1, 1, DECODE_RATE);
+  return decoder.decodeAudioData(bytes);
 }
 
 const decoded = new Map<string, Promise<AudioBuffer>>();
@@ -35,7 +67,7 @@ export function loadSound(path: string, sound: string): Promise<AudioBuffer> {
   const key = `${path}\n${sound}`;
   let p = decoded.get(key);
   if (!p) {
-    p = cli<SoundData>(serveMethod.SOUND_DATA, { path, sound }).then((d) => audioContext().decodeAudioData(bytesOf(d.data)));
+    p = cli<SoundData>(serveMethod.SOUND_DATA, { path, sound }).then((d) => decodeSound(bytesOf(d.data)));
     p.catch(() => decoded.delete(key));
     decoded.set(key, p);
   }
@@ -55,15 +87,14 @@ export interface Playing {
 
 /** Plays `buffer` at `volume` and `pitch` (its speed too, as in the game). */
 export function play(buffer: AudioBuffer, volume: number, pitch: number): Playing {
-  const ctx = audioContext();
-  void ctx.resume();
+  const { ctx, release } = openAudio();
   const src = ctx.createBufferSource();
   src.buffer = buffer;
   src.playbackRate.value = pitch;
   const gain = ctx.createGain();
   gain.gain.value = volume;
   src.connect(gain).connect(ctx.destination);
-  const ended = new Promise<void>((resolve) => (src.onended = () => resolve()));
+  const ended = new Promise<void>((resolve) => (src.onended = () => (release(), resolve())));
   src.start();
   return { stop: () => src.stop(), ended };
 }

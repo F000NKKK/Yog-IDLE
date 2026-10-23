@@ -1,6 +1,5 @@
 import { useMemo } from "react";
 import { useT } from "substrate-platform-ui";
-import { audioContext } from "../audio";
 import { clipBuffer, clipLength, clipSound, type SoundClip } from "../montage";
 import { soundLabel } from "../names";
 import { Waveform } from "../Waveform";
@@ -23,7 +22,7 @@ export function Clip({ clip: c, buffer: b, color, pps, selected, onPointerDown }
   const w = Math.max(EDGE * 2, (b ? clipLength(b, c) : 0) * pps);
   // Cut once per change of its part: the playhead re-renders every frame.
   const { from, to, reverse } = c;
-  const part = useMemo(() => (b ? clipBuffer(audioContext(), b, { from, to, reverse }) : null), [b, from, to, reverse]);
+  const part = useMemo(() => (b ? clipBuffer(b, { from, to, reverse }) : null), [b, from, to, reverse]);
   return (
     <div
       className={`daw-clip${selected ? " selected" : ""}`}

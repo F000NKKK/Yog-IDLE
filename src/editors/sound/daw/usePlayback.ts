@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { audioContext } from "../audio";
+import { openAudio } from "../audio";
 import { type Channels, type Mix, playMix } from "../montage";
 
 // The montage played from the playhead as the build renders it: the
@@ -27,8 +27,7 @@ export function usePlayback(shown: Mix, buffers: (AudioBuffer | null)[], length:
   };
   const play = () => {
     stop();
-    const ctx = audioContext();
-    void ctx.resume();
+    const { ctx, release } = openAudio();
     const from = position >= length ? 0 : position;
     const start = ctx.currentTime;
     const { sources, channels: ch } = playMix(ctx, shown, buffers, ctx.destination, start, from);
@@ -36,6 +35,7 @@ export function usePlayback(shown: Mix, buffers: (AudioBuffer | null)[], length:
     let frame = 0;
     const end = (at: number) => {
       sources.forEach((s) => s.stop());
+      release();
       cancelAnimationFrame(frame);
       setChannels(null);
       setPosition(at);

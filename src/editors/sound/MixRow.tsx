@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Icon, useT } from "substrate-platform-ui";
-import { audioContext, loadSound } from "./audio";
+import { loadSound, openAudio } from "./audio";
 import { clipSound, type Mix, mixLength, playMix, renderMix } from "./montage";
 import { Waveform } from "./Waveform";
 
@@ -45,12 +45,12 @@ export function MixRow({ path, mix, editing, onEdit, onRemove, readOnly }: Props
 
   const toggle = () => {
     if (stop.current) return stop.current();
-    const ctx = audioContext();
-    void ctx.resume();
+    const { ctx, release } = openAudio();
     const { sources } = playMix(ctx, mix, buffers, ctx.destination, ctx.currentTime);
     const done = window.setTimeout(() => stop.current?.(), mixLength(mix, buffers) * 1000);
     stop.current = () => {
       sources.forEach((s) => s.stop());
+      release();
       window.clearTimeout(done);
       stop.current = null;
       setPlaying(false);
