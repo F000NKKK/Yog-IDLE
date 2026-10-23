@@ -5,7 +5,7 @@
 
 import { serveMethod } from "../../data/yogIds.generated";
 import { cli } from "../../cli";
-import { bytesOf, decodeSound, openAudio } from "../sound/audio";
+import { audioContext, bytesOf, decodeSound } from "../sound/audio";
 
 /** What `video_preview` answers. */
 export interface Render {
@@ -102,9 +102,9 @@ export async function soundOf(r: Render): Promise<AudioBuffer | null> {
 
 /** Plays `buffer` from `offset` seconds at `volume`: stop it. */
 export function playFrom(buffer: AudioBuffer, offset: number, volume: number): () => void {
-  const { ctx, release } = openAudio();
+  const ctx = audioContext();
+  void ctx.resume();
   const src = ctx.createBufferSource();
-  src.onended = release;
   src.buffer = buffer;
   const gain = ctx.createGain();
   gain.gain.value = volume;

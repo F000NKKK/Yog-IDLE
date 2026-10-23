@@ -12,39 +12,29 @@ interface SoundData {
   mime: string;
 }
 
-/** How long the device stays open once the last sound has ended. A stream
- *  kept open for good dies on some outputs (Bluetooth headphones: their
- *  latency, the sink suspending) and never comes back — a fresh one does. */
-const IDLE_CLOSE_MS = 2000;
 /** The rate sounds are decoded at (a playing one is resampled to the device's). */
 const DECODE_RATE = 48000;
+/** What lets a webview start sound: a sound starts only inside one. */
+const GESTURES = ["pointerdown", "keydown"] as const;
 
 let context: AudioContext | null = null;
-let users = 0;
-let closing: number | undefined;
 let decoder: OfflineAudioContext | null = null;
 
-/** The audio device, opened for something to play (browsers want a gesture
- *  first): `release` it when that's done. */
-export function openAudio(): { ctx: AudioContext; release: () => void } {
-  window.clearTimeout(closing);
-  if (!context || context.state === "closed") context = new AudioContext({ latencyHint: "playback" });
-  void context.resume();
-  users++;
-  let released = false;
-  const release = () => {
-    if (released) return;
-    released = true;
-    if (--users === 0) closing = window.setTimeout(closeAudio, IDLE_CLOSE_MS);
-  };
-  return { ctx: context, release };
+/** The designer's one audio context: made, and let start, by the user's
+ *  first click or key anywhere (WebKit starts a context only inside a
+ *  gesture — one made after an `await` stays suspended for good), and
+ *  started again by each later one if the system suspended it. */
+export function audioContext(): AudioContext {
+  context ??= new AudioContext({ latencyHint: "playback" });
+  return context;
 }
 
-function closeAudio() {
-  const c = context;
-  context = null;
-  void c?.close();
+function wake() {
+  const ctx = audioContext();
+  if (ctx.state !== "running") void ctx.resume();
 }
+
+for (const g of GESTURES) window.addEventListener(g, wake, { capture: true });
 
 /** Decodes `bytes` without opening the device. */
 export function decodeSound(bytes: ArrayBuffer): Promise<AudioBuffer> {
@@ -87,14 +77,15 @@ export interface Playing {
 
 /** Plays `buffer` at `volume` and `pitch` (its speed too, as in the game). */
 export function play(buffer: AudioBuffer, volume: number, pitch: number): Playing {
-  const { ctx, release } = openAudio();
+  const ctx = audioContext();
+  void ctx.resume();
   const src = ctx.createBufferSource();
   src.buffer = buffer;
   src.playbackRate.value = pitch;
   const gain = ctx.createGain();
   gain.gain.value = volume;
   src.connect(gain).connect(ctx.destination);
-  const ended = new Promise<void>((resolve) => (src.onended = () => (release(), resolve())));
+  const ended = new Promise<void>((resolve) => (src.onended = () => resolve()));
   src.start();
   return { stop: () => src.stop(), ended };
 }
