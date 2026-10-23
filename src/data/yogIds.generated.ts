@@ -48,6 +48,7 @@ export const word = {
   DIMENSION: "dimension",
   EQUIPMENT: "equipment",
   EVENT: "event",
+  FRAME: "frame",
   FUNCTION: "function",
   GENERIC: "generic",
   GUI: "gui",
@@ -85,6 +86,7 @@ export const word = {
   DATA: "data",
   DEFAULT: "default",
   DOC: "doc",
+  DYNAMIC: "dynamic",
   END: "end",
   ENTRIES: "entries",
   FALSE: "false",
@@ -263,6 +265,7 @@ export const busWord = {
   OPEN: "open",
   PACKET: "packet",
   PLACE: "place",
+  PLAY: "play",
   RELEASE: "release",
   SERVER: "server",
   SET: "set",
@@ -538,6 +541,15 @@ export const servicePlayer = {
 export const serviceMedia = {
   DOMAIN: "yog:media/",
   PNG: "yog:media/png",
+} as const;
+
+export const serviceVideo = {
+  DOMAIN: "yog:video/",
+  OPEN: "yog:video/open",
+  PLAY: "yog:video/play",
+  SEEK: "yog:video/seek",
+  CLOSE: "yog:video/close",
+  FRAME: "yog:video/frame",
 } as const;
 
 export const serviceNet = {
@@ -1076,6 +1088,7 @@ export const yog = {
   DESIGNER_SCREEN: "yog:designer",
   BOOK_TEXTURE: "yog:gui/book",
   DYNAMIC_SVG_PREFIX: "yog:dynamic/svg_",
+  DYNAMIC_VIDEO_PREFIX: "yog:textures/dynamic/video_",
   DYNAMIC_TEXT_PREFIX: "yog:dynamic/text_",
 } as const;
 
