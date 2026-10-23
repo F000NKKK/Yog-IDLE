@@ -1221,6 +1221,7 @@ export const serveMethod = {
   DATA_PARSE: "data.parse",
   DATA_PATCH: "data.patch",
   FONT_COPY: "font_copy",
+  FORMAT_COMPLETE: "format.complete",
   FORMAT_SHAPE: "format.shape",
   ITEM_TAG_ITEMS: "item_tag_items",
   MEDIA_IMPORT: "media.import",
