@@ -83,6 +83,7 @@ export const word = {
   CENTER: "center",
   COLOR: "color",
   COUNT: "count",
+  CUTSCENE: "cutscene",
   DATA: "data",
   DEFAULT: "default",
   DOC: "doc",
@@ -550,6 +551,7 @@ export const serviceVideo = {
   SEEK: "yog:video/seek",
   CLOSE: "yog:video/close",
   FRAME: "yog:video/frame",
+  CUTSCENE: "yog:video/cutscene",
 } as const;
 
 export const serviceNet = {
@@ -970,6 +972,7 @@ export const imageScheme = {
   BLOCK: "block",
   SPRITE: "sprite",
   MOD: "mod",
+  VIDEO: "video",
 } as const;
 
 export const file = {
@@ -1086,6 +1089,7 @@ export const yog = {
   BOOK_SHEET: "yog:gui/book/book",
   CRAFTING_SHEET: "yog:gui/book/crafting",
   DESIGNER_SCREEN: "yog:designer",
+  CUTSCENE_SCREEN: "yog:cutscene",
   BOOK_TEXTURE: "yog:gui/book",
   DYNAMIC_SVG_PREFIX: "yog:dynamic/svg_",
   DYNAMIC_VIDEO_PREFIX: "yog:textures/dynamic/video_",
@@ -1172,6 +1176,7 @@ export const yui = {
   TOGGLE_BUTTON: "ToggleButton",
   TEXT_BOX: "TextBox",
   IMAGE: "Image",
+  VIDEO: "Video",
   SURFACE: "Surface",
   SPACER: "Spacer",
   STAT_BAR: "StatBar",
