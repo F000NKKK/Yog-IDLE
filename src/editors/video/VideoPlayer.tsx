@@ -43,9 +43,9 @@ interface Live {
   onEnd: () => void;
 }
 
-/** Where the clock is. */
-function timeOf(s: State, l: Live): number {
-  return l.playing ? s.at + (performance.now() - s.since) / MS : s.at;
+/** Where the clock is, running (`playing`) or not. */
+function timeOf(s: State, playing: boolean): number {
+  return playing ? s.at + (performance.now() - s.since) / MS : s.at;
 }
 
 /** The clock started again at `at`, the sound from there (when it plays). */
@@ -75,9 +75,10 @@ export function VideoPlayer({ render, frames, sound, playing, looping, volume, s
     const s = state.current;
     const sent = seek && seek !== s.sought ? seek.to : s.at;
     s.sought = seek;
+    const ran = live.current.playing;
     restart(s, live.current, sent);
     return () => {
-      s.at = timeOf(s, live.current);
+      s.at = timeOf(s, ran);
       s.stop?.();
       s.stop = null;
     };
@@ -91,7 +92,7 @@ export function VideoPlayer({ render, frames, sound, playing, looping, volume, s
     let raf = 0;
     const draw = () => {
       const l = live.current;
-      let at = timeOf(s, l);
+      let at = timeOf(s, l.playing);
       if (at >= length) {
         if (l.looping) {
           at %= length;
