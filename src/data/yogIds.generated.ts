@@ -202,6 +202,10 @@ export const buildProblem = {
   BENCH: "YB0009",
 } as const;
 
+export const scriptDefine = {
+  GAME: "MC",
+} as const;
+
 export const scriptProblem = {
   UNEXPECTED_CHAR: "YS0001",
   UNTERMINATED: "YS0002",
@@ -225,6 +229,7 @@ export const scriptProblem = {
   TARGETS: "YS0020",
   NO_VERSION: "YS0021",
   AMBIGUOUS: "YS0022",
+  DIRECTIVE: "YS0023",
 } as const;
 
 export const storage = {
