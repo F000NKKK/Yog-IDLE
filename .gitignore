@@ -24,6 +24,4 @@ dist-ssr
 *.sw?
 
 # Rust
-/obj/
-/target/
-src-tauri/target/
+/target
