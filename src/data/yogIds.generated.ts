@@ -1234,6 +1234,8 @@ export const serveParam = {
   VALUE: "value",
   VALUES: "values",
   FORMAT: "format",
+  FRAME: "frame",
+  KEY: "key",
 } as const;
 
 export const serveMethod = {
@@ -1272,6 +1274,9 @@ export const serveMethod = {
   RECIPE_KINDS: "recipe_kinds",
   SOUND_DATA: "sound_data",
   SOUND_LIST: "sound_list",
+  VIDEO_LIST: "video_list",
+  VIDEO_PREVIEW: "video_preview",
+  VIDEO_FRAME: "video_frame",
   SOURCE_CHECK: "source.check",
   SOURCE_READ: "source.read",
   SOURCE_WRITE: "source.write",

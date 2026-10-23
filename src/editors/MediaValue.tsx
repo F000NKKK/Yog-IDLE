@@ -8,6 +8,8 @@ const BYTES = `${sep.TYPED}${typed.BYTES}${sep.NAMESPACE}`;
 
 /** The picture formats an image entry can hold (as the CLI reads them, `yog_media::image::EXTENSIONS`). */
 export const IMAGE_EXTENSIONS = ["png", "jpg", "jpeg", "gif", "webp", "bmp", "tga"];
+/** The usual video files (an entry may hold any ffmpeg reads). */
+export const VIDEO_EXTENSIONS = ["mp4", "webm", "mkv", "mov", "avi", "gif"];
 
 /** How many bytes a base64 text holds. */
 const decodedSize = (b64: string) => Math.floor((b64.length * 3) / 4) - (b64.endsWith("==") ? 2 : b64.endsWith("=") ? 1 : 0);
@@ -21,10 +23,10 @@ function sizeText(n: number): string {
 
 /**
  * A `.yres` media entry's value, shown as what it is: a picture (thumbnail,
- * its size in pixels and bytes), a sound (a play button), a file (its size)
- * — not its base64.
+ * its size in pixels and bytes), a sound (a play button), a video or a file
+ * (its size) — not its base64.
  */
-export function MediaValue({ type, value }: { type: typeof resKind.IMAGE | typeof resKind.SOUND | typeof resKind.FILE; value: string }) {
+export function MediaValue({ type, value }: { type: typeof resKind.IMAGE | typeof resKind.SOUND | typeof resKind.VIDEO | typeof resKind.FILE; value: string }) {
   const t = useT();
   const b64 = value.startsWith(BYTES) ? value.slice(BYTES.length) : null;
   const [dims, setDims] = useState<string | null>(null);
@@ -69,7 +71,7 @@ export function MediaValue({ type, value }: { type: typeof resKind.IMAGE | typeo
   }
   return (
     <span className="yres-value">
-      <Icon name="file" size={13} />
+      <Icon name={type === resKind.VIDEO ? "yogVideo" : "file"} size={13} />
       <span className="yres-mono">{size}</span>
     </span>
   );

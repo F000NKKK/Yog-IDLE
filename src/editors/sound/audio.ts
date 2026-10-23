@@ -23,7 +23,7 @@ export function audioContext(): AudioContext {
 const decoded = new Map<string, Promise<AudioBuffer>>();
 
 /** Base64 as bytes. */
-function bytesOf(b64: string): ArrayBuffer {
+export function bytesOf(b64: string): ArrayBuffer {
   const bin = atob(b64);
   const out = new Uint8Array(bin.length);
   for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);

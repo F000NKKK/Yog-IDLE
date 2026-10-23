@@ -6,7 +6,7 @@ import { cli } from "../../cli";
 import { resKind, serveMethod } from "../../data/yogIds.generated";
 import { files } from "../../files";
 import { isLocaleName, NEUTRAL_LOCALE, serializeYres, type YresEntry, yresFileName } from "../../lang/yres";
-import { IMAGE_EXTENSIONS } from "../MediaValue";
+import { IMAGE_EXTENSIONS, VIDEO_EXTENSIONS } from "../MediaValue";
 import type { YresFile } from "./useYresFile";
 import type { YresSiblings } from "./useYresSiblings";
 import { type Row, SHOW_ALL_KEY } from "./yresModel";
@@ -65,7 +65,9 @@ export function useYresLanguages(yresFile: YresFile, yresSiblings: YresSiblings)
         ? [{ name: t("Images"), extensions: IMAGE_EXTENSIONS }]
         : row.type === resKind.SOUND
           ? [{ name: t("Ogg Vorbis Sounds"), extensions: ["ogg"] }]
-          : undefined;
+          : row.type === resKind.VIDEO
+            ? [{ name: t("Videos"), extensions: VIDEO_EXTENSIONS }]
+            : undefined;
     const picked = await openDialog({ defaultPath: dir, multiple: false, directory: false, filters });
     if (typeof picked !== "string") return null;
     try {

@@ -30,6 +30,7 @@ export function useYresCells(props: EditorProps, yresFile: YresFile, yresCellEdi
         );
       case resKind.IMAGE:
       case resKind.SOUND:
+      case resKind.VIDEO:
       case resKind.FILE:
         return <MediaValue type={row.type} value={String(v)} />;
       case resKind.BOOL:
@@ -61,6 +62,7 @@ export function useYresCells(props: EditorProps, yresFile: YresFile, yresCellEdi
       case resKind.IMAGE:
       case resKind.FILE:
       case resKind.SOUND:
+      case resKind.VIDEO:
         return <CellInput value={value} initial={initial} commit={commit} cancel={cancel} browse={() => pickFile(row)} browseTitle={t("Browse…")} />;
       default:
         return <CellInput value={value} initial={initial} commit={commit} cancel={cancel} />;

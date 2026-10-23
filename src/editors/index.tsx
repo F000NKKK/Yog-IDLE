@@ -15,6 +15,7 @@ import { ENTITY_SOURCE_VIEW, EntityEditor } from "./EntityEditor";
 import { ANIM_SOURCE_VIEW, AnimEditor } from "./AnimEditor";
 import { TEXTURE_SOURCE_VIEW, TextureEditor } from "./TextureEditor";
 import { PARTICLE_SOURCE_VIEW, ParticleEditor } from "./ParticleEditor";
+import { VIDEO_SOURCE_VIEW, VideoEditor } from "./VideoEditor";
 import { SOUND_SOURCE_VIEW, SoundEditor } from "./SoundEditor";
 import { fileTypeId, formats } from "../yogFileTypes";
 import { LANG_FILE_TYPE } from "../fileTypes";
@@ -318,6 +319,30 @@ registerEditorProvider({
   label: "Code",
   name: "Particle Source Editor",
   fileTypes: [fileTypeId(formats.particle)],
+  component: JsonEditor,
+  priority: 0,
+  kind: EDITOR_KIND.text,
+  strict: true,
+});
+
+// `.yvideo` videos: played as the game will show them (rendered and decoded
+// by the CLI), every setting in Properties; the file's text a click (or F7) away.
+registerEditorProvider({
+  id: fileTypeId(formats.video),
+  label: "Video",
+  name: "Video Designer",
+  icon: "yogVideo",
+  fileTypes: [fileTypeId(formats.video)],
+  component: VideoEditor,
+  priority: 20,
+  kind: EDITOR_KIND.designer,
+});
+
+registerEditorProvider({
+  id: VIDEO_SOURCE_VIEW,
+  label: "Code",
+  name: "Video Source Editor",
+  fileTypes: [fileTypeId(formats.video)],
   component: JsonEditor,
   priority: 0,
   kind: EDITOR_KIND.text,

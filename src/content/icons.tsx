@@ -48,6 +48,14 @@ const IconYogSound = createIcon(
   </>
 );
 
+/** A film frame with a play mark — a video. */
+const IconYogVideo = createIcon(
+  <>
+    <rect x="3" y="5" width="18" height="14" rx="2" />
+    <path d="M10 9l5 3-5 3z" />
+  </>
+);
+
 // The texture paint tools.
 
 const IconPaintPencil = createIcon(
@@ -140,6 +148,7 @@ registerIcons({
   yogTexture: IconYogTexture,
   yogParticle: IconYogParticle,
   yogSound: IconYogSound,
+  yogVideo: IconYogVideo,
   yogEntity: IconYogEntity,
   yogAnim: IconYogAnim,
   yogDef: IconYogDef,

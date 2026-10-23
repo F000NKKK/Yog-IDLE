@@ -30,6 +30,7 @@ registerFileTypes([
   { id: fileTypeId(formats.texture), name: "Yog Texture", extensions: [formats.texture.ext], icon: "yogTexture", language: jsonLanguage },
   { id: fileTypeId(formats.particle), name: "Yog Particle", extensions: [formats.particle.ext], icon: "yogParticle", language: jsonLanguage },
   { id: fileTypeId(formats.sound), name: "Yog Sound Event", extensions: [formats.sound.ext], icon: "yogSound", language: jsonLanguage },
+  { id: fileTypeId(formats.video), name: "Yog Video", extensions: [formats.video.ext], icon: "yogVideo", language: jsonLanguage },
   { id: fileTypeId(formats.data), name: "Compiled Yog Data", extensions: [formats.data.ext] },
 ]);
 

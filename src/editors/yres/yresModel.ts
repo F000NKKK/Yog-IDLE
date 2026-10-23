@@ -47,6 +47,7 @@ export const TYPE_LABELS: Record<ResourceType, string> = {
   [resKind.IMAGE]: "Image",
   [resKind.FILE]: "File",
   [resKind.SOUND]: "Sound",
+  [resKind.VIDEO]: "Video",
   [resKind.COLOR]: "Color",
   [resKind.NUMBER]: "Number",
   [resKind.BOOL]: "Boolean",
