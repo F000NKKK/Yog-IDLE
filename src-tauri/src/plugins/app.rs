@@ -7,10 +7,10 @@ use tauri::plugin::{Builder, TauriPlugin};
 pub fn plugin() -> TauriPlugin<Wry> {
     Builder::new(DOMAIN.plugin)
         .invoke_handler(tauri::generate_handler![
-            crate::tools::tools_settings_set,
-            crate::tools::tools_status,
-            crate::tools::open_installer,
-            crate::app_commands::app_restart,
+            crate::toolchain::tools::tools_settings_set,
+            crate::toolchain::tools::tools_status,
+            crate::toolchain::tools::open_installer,
+            crate::app::app_commands::app_restart,
         ])
         .build()
 }

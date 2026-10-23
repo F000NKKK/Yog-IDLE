@@ -25,12 +25,15 @@ pub(super) fn emit_session_failed(
         return;
     }
     if yog_debugger::process_ended(real_pid as u32) {
-        let _ = app.emit(crate::events::DEBUG_STOPPED, DebugStoppedEvent::exited());
+        let _ = app.emit(
+            crate::app::events::DEBUG_STOPPED,
+            DebugStoppedEvent::exited(),
+        );
         return;
     }
-    let _ = app.emit(crate::events::DEBUG_FAILED, message.clone());
+    let _ = app.emit(crate::app::events::DEBUG_FAILED, message.clone());
     let _ = app.emit(
-        crate::events::OUTPUT_DEBUG,
+        crate::app::events::OUTPUT_DEBUG,
         format!("[error] debugger: {message}"),
     );
 }
@@ -114,7 +117,7 @@ pub(super) fn tracer_main(
     while let Ok(cmd) = rx.try_recv() {
         tracer.apply(&app, cmd);
     }
-    let _ = app.emit(crate::events::DEBUG_ATTACHED, real_pid);
+    let _ = app.emit(crate::app::events::DEBUG_ATTACHED, real_pid);
 
     let mut resume = Some(Resume::Continue);
     loop {

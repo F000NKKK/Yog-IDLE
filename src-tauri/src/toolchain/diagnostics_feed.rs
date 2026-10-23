@@ -47,7 +47,10 @@ impl Feed {
 
     /// The variable a `yog` run is given: where it reports.
     pub(crate) fn env(&self) -> (&'static str, String) {
-        (yog_ids::env::DIAGNOSTICS, self.path.to_string_lossy().into_owned())
+        (
+            yog_ids::env::DIAGNOSTICS,
+            self.path.to_string_lossy().into_owned(),
+        )
     }
 }
 
@@ -92,7 +95,10 @@ fn pass_on(app: &AppHandle, pending: &mut Vec<u8>) {
         && pending.len() >= at + LEN_BYTES + len
     {
         let end = at + LEN_BYTES + len;
-        let _ = app.emit(crate::events::BUILD_DIAGNOSTIC, pending[at..end].to_vec());
+        let _ = app.emit(
+            crate::app::events::BUILD_DIAGNOSTIC,
+            pending[at..end].to_vec(),
+        );
         at = end;
     }
     pending.drain(..at);

@@ -54,7 +54,7 @@ pub struct RunSession {
     /// Keeps the run's Output tail going until the session ends.
     _output: crate::OutputTail,
     /// Passes on what the run's build finds until the session ends.
-    _diagnostics: crate::diagnostics_feed::Feed,
+    _diagnostics: crate::toolchain::diagnostics_feed::Feed,
     real_pid: Option<i32>,
     /// A debug-mode run — a hot reload then rebuilds with debug info kept
     /// too, so the debugger still has symbols for the reloaded native.
@@ -65,7 +65,7 @@ pub struct RunSession {
     /// Set while a request waits for the runtime's answer: the event it
     /// waits for (`hot-reload-done`, `hot-reload-check`) and where it goes.
     reply_waiter: Option<ReplyWaiter>,
-        tracer: Option<TracerHandle>,
+    tracer: Option<TracerHandle>,
 }
 
 static NEXT_SESSION_ID: AtomicU64 = AtomicU64::new(1);
@@ -143,20 +143,23 @@ fn mark_exited(app: &AppHandle, session_id: u64) {
     };
     if had_session {
         let _ = app.emit(
-            crate::events::GAME_STATUS,
+            crate::app::events::GAME_STATUS,
             GameStatus {
                 stage: "exited",
                 pid: None,
                 mods: Vec::new(),
             },
         );
-        let _ = app.emit(crate::events::DEBUG_STOPPED, DebugStoppedEvent::exited());
+        let _ = app.emit(
+            crate::app::events::DEBUG_STOPPED,
+            DebugStoppedEvent::exited(),
+        );
         // `useModRunTargets`'s `running` flag only ever resets on this
         // event (a holdover from the old `run_and_stream`-based flow,
         // which fired it automatically) — without it, `RunBar`'s Start
         // button stays disabled forever after the game exits, since
         // nothing in this newer control-socket flow ever emitted it.
-        let _ = app.emit(crate::events::WORKFLOW_EXIT, ());
+        let _ = app.emit(crate::app::events::WORKFLOW_EXIT, ());
     }
 }
 
@@ -195,8 +198,11 @@ fn spawn_exit_watcher(app: AppHandle, session_id: u64) {
 /// to already be open than the Debug panel is at the point an attach fails.
 fn emit_failed(app: &AppHandle, message: impl Into<String>) {
     let message = message.into();
-    let _ = app.emit(crate::events::DEBUG_ATTACH_FAILED, message.clone());
-    let _ = app.emit(crate::events::OUTPUT_DEBUG, format!("[error] {message}"));
+    let _ = app.emit(crate::app::events::DEBUG_ATTACH_FAILED, message.clone());
+    let _ = app.emit(
+        crate::app::events::OUTPUT_DEBUG,
+        format!("[error] {message}"),
+    );
 }
 
 /// Kills the whole instance, whether or not it's a debug-mode run: signals
@@ -218,19 +224,22 @@ pub fn debug_stop(app: AppHandle, state: State<DebugState>) -> Result<(), String
     if let Some(pid) = session.real_pid {
         kill_pid(pid);
     }
-        drop(session.tracer.take());
+    drop(session.tracer.take());
     kill_tree(&mut session.wrapper);
 
     let _ = app.emit(
-        crate::events::GAME_STATUS,
+        crate::app::events::GAME_STATUS,
         GameStatus {
             stage: "exited",
             pid: None,
             mods: Vec::new(),
         },
     );
-    let _ = app.emit(crate::events::DEBUG_STOPPED, DebugStoppedEvent::exited());
-    let _ = app.emit(crate::events::WORKFLOW_EXIT, ());
+    let _ = app.emit(
+        crate::app::events::DEBUG_STOPPED,
+        DebugStoppedEvent::exited(),
+    );
+    let _ = app.emit(crate::app::events::WORKFLOW_EXIT, ());
     Ok(())
 }
 
@@ -279,4 +288,3 @@ pub fn detach_on_exit(app: &AppHandle) {
         let _ = finished.recv_timeout(Duration::from_secs(2));
     }
 }
-

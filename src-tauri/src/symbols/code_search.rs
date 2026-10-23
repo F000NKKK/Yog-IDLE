@@ -177,7 +177,7 @@ pub(super) fn text_items(
         query: &q,
         documents,
         max_lines: limit,
-        layout: &crate::manifest::SEARCH_LAYOUT,
+        layout: &crate::project::manifest::SEARCH_LAYOUT,
     };
     search::run_search(&search, &|| true, &mut |file| {
         for hit in file.hits {

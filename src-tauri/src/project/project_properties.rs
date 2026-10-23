@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 use toml_edit::{Array, DocumentMut, InlineTable, Item, Table, Value};
 use yog_ids::rust_crate;
 
-use crate::properties::{self, FieldValue};
+use crate::project::properties::FieldValue;
 
 #[derive(Serialize, Deserialize, Clone, Debug, Default, PartialEq)]
 #[serde(rename_all = "camelCase", default)]
@@ -32,7 +32,7 @@ pub struct Dependency {
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ProjectProps {
-    pub manifest: properties::ManifestOut,
+    pub manifest: crate::project::properties::ManifestOut,
     pub yog_api_version: Option<String>,
     pub dependencies: Vec<Dependency>,
     pub mod_dependencies: Vec<Dependency>,
@@ -47,7 +47,7 @@ const YOG_API_KEYS: &[&str] = &[
 ];
 
 fn manifest(root: &Path) -> PathBuf {
-    crate::manifest::path(root)
+    crate::project::manifest::path(root)
 }
 
 fn dependency_of(name: &str, item: &Item) -> Option<Dependency> {
@@ -102,7 +102,7 @@ fn dependencies_in(table: Option<&Item>) -> Vec<Dependency> {
 fn props_of(doc: &DocumentMut, root: &Path) -> ProjectProps {
     let deps = doc.get("dependencies");
     ProjectProps {
-        manifest: properties::summarize(doc),
+        manifest: crate::project::properties::summarize(doc),
         yog_api_version: deps.and_then(Item::as_table_like).and_then(|t| {
             YOG_API_KEYS
                 .iter()
@@ -119,7 +119,7 @@ fn write(path: &Path, doc: &DocumentMut) -> Result<(), String> {
 }
 
 pub fn read(root: &Path) -> Result<ProjectProps, String> {
-    let doc = properties::load(&manifest(root))?;
+    let doc = crate::project::properties::load(&manifest(root))?;
     Ok(props_of(&doc, root))
 }
 
@@ -129,15 +129,15 @@ fn edit(
     change: impl FnOnce(&mut DocumentMut) -> Result<(), String>,
 ) -> Result<ProjectProps, String> {
     let path = manifest(root);
-    let mut doc = properties::load(&path)?;
+    let mut doc = crate::project::properties::load(&path)?;
     change(&mut doc)?;
     write(&path, &doc)?;
     Ok(props_of(&doc, root))
 }
 
-/// A `[mod]` field or `authors` (see `properties::set_manifest_field`).
+/// A `[mod]` field or `authors` (see `crate::project::properties::set_manifest_field`).
 pub fn set_field(root: &Path, key: &str, value: FieldValue) -> Result<ProjectProps, String> {
-    properties::set_manifest_field(root, key, value)?;
+    crate::project::properties::set_manifest_field(root, key, value)?;
     read(root)
 }
 
@@ -157,7 +157,7 @@ fn put(table: &mut Table, key: &str, value: Option<Value>) {
             }
             None => {
                 table.insert(key, Item::Value(value));
-                properties::align_new_key(table, key);
+                crate::project::properties::align_new_key(table, key);
             }
         },
     }
@@ -339,7 +339,7 @@ struct Settings {
 const SETTINGS: &str = "settings";
 
 fn settings_file(root: &Path) -> PathBuf {
-    root.join(crate::manifest::IDLE_DIR)
+    root.join(crate::project::manifest::IDLE_DIR)
         .join(yog_ids::Format::Data.file(SETTINGS))
 }
 

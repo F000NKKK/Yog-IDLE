@@ -1,11 +1,11 @@
 //! Formatting documents (rustfmt and the CLI's formatters) and calling the CLI.
 
-use super::*;
+use crate::*;
 
 /// The external formatter for a file kind, by extension: the program and its
 /// arguments for reading the document on stdin and writing the formatted
 /// result to stdout.
-pub(super) fn formatter_for(path: &Path) -> Option<(&'static str, Vec<String>)> {
+pub(crate) fn formatter_for(path: &Path) -> Option<(&'static str, Vec<String>)> {
     let args = |a: &[&str]| a.iter().map(|s| s.to_string()).collect();
     match path.extension()?.to_str()?.to_ascii_lowercase().as_str() {
         "rs" => Some((
@@ -20,11 +20,12 @@ pub(super) fn formatter_for(path: &Path) -> Option<(&'static str, Vec<String>)> 
 /// The Rust edition `file` is written in — rustfmt can't tell from stdin:
 /// its mod's `[mod] edition` (yog-cli's default 2021), else its crate's
 /// `[package] edition`.
-pub(super) fn rust_edition(file: &Path) -> String {
+pub(crate) fn rust_edition(file: &Path) -> String {
     const DEFAULT: &str = "2021";
     for dir in file.ancestors().skip(1) {
-        if manifest::path(dir).is_file() {
-            return manifest::read_mod_field(dir, "edition").unwrap_or_else(|| DEFAULT.into());
+        if crate::project::manifest::path(dir).is_file() {
+            return crate::project::manifest::read_mod_field(dir, "edition")
+                .unwrap_or_else(|| DEFAULT.into());
         }
         if let Ok(text) = std::fs::read_to_string(dir.join("Cargo.toml")) {
             let edition = text
@@ -40,7 +41,7 @@ pub(super) fn rust_edition(file: &Path) -> String {
 /// Whether Format Document can work for `path` — a formatter exists for its
 /// kind and is actually installed (it answers `--version`).
 #[tauri::command]
-pub(super) async fn format_supported(path: String) -> bool {
+pub(crate) async fn format_supported(path: String) -> bool {
     let Some((program, _)) = formatter_for(Path::new(&path)) else {
         return false;
     };
@@ -61,12 +62,12 @@ pub(super) async fn format_supported(path: String) -> bool {
 /// — how the front end reads and writes every Yog format. Both are binary
 /// Yog Data the front end writes and reads itself.
 #[tauri::command]
-pub(super) async fn cli(request: tauri::ipc::Request<'_>) -> Result<tauri::ipc::Response, String> {
+pub(crate) async fn cli(request: tauri::ipc::Request<'_>) -> Result<tauri::ipc::Response, String> {
     let tauri::ipc::InvokeBody::Raw(bytes) = request.body() else {
         return Err("a CLI request is binary Yog Data".into());
     };
     let bytes = bytes.clone();
-    tauri::async_runtime::spawn_blocking(move || cli::exchange(&bytes))
+    tauri::async_runtime::spawn_blocking(move || crate::toolchain::cli::exchange(&bytes))
         .await
         .map_err(|e| e.to_string())?
         .map(tauri::ipc::Response::new)
@@ -78,7 +79,7 @@ pub(super) async fn cli(request: tauri::ipc::Request<'_>) -> Result<tauri::ipc::
 /// `rustfmt.toml`/`taplo.toml` there. A syntax error comes back as `Err`
 /// with the formatter's own message.
 #[tauri::command]
-pub(super) async fn format_document(path: String, contents: String) -> Result<String, String> {
+pub(crate) async fn format_document(path: String, contents: String) -> Result<String, String> {
     let target = PathBuf::from(&path);
     let (program, args) =
         formatter_for(&target).ok_or_else(|| format!("no formatter for '{path}'"))?;

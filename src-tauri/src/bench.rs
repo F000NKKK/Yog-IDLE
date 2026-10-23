@@ -12,12 +12,12 @@ pub use substrate_platform::search::OpenDocument;
 /// A call of the CLI service, as the front end makes it: a request's
 /// binary form in, the answer's out.
 pub fn cli(request: &[u8]) -> Result<Vec<u8>, String> {
-    crate::cli::exchange(request)
+    crate::toolchain::cli::exchange(request)
 }
 
 /// What Yog needs here and has (`tools_status`).
 pub fn tools_status() -> serde_json::Value {
-    serde_json::to_value(crate::tools::tools_status()).unwrap_or_default()
+    serde_json::to_value(crate::toolchain::tools::tools_status()).unwrap_or_default()
 }
 
 /// A Code Search index over in-memory `(absolute, relative, source)` files.
@@ -53,7 +53,7 @@ pub fn find_in_documents(documents: &[OpenDocument], pattern: &str) -> String {
         query: &query,
         documents,
         max_lines: substrate_platform::search::DEFAULT_MAX_LINES,
-        layout: &crate::manifest::SEARCH_LAYOUT,
+        layout: &crate::project::manifest::SEARCH_LAYOUT,
     };
     let mut files = Vec::new();
     let _ = substrate_platform::search::run_search(&search, &|| true, &mut |file| files.push(file));

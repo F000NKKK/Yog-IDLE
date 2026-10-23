@@ -1,28 +1,30 @@
 //! Publish profiles and publishing the mod.
 
-use super::*;
+use crate::*;
 
 #[derive(Clone, Serialize, Deserialize, yog_data::Schema)]
 #[serde(rename_all = "camelCase")]
-pub(super) struct PublishProfile {
-    pub(super) id: String,
-    pub(super) name: String,
+pub(crate) struct PublishProfile {
+    pub(crate) id: String,
+    pub(crate) name: String,
     /// "package" — `yog build` (produces `artifacts/<id>.yog`); "exports" — `yog publish exports`.
-    pub(super) mode: String,
+    pub(crate) mode: String,
     /// Only meaningful for `mode: "exports"`.
-    pub(super) dry_run: bool,
+    pub(crate) dry_run: bool,
 }
 
 /// Publish profiles: local developer configuration (as Visual Studio's own
 /// PublishProfiles are), in IDLE's private folder of the project.
 const PROFILES_DIR: &str = "publish-profiles";
 
-pub(super) fn publish_profiles_dir(project_root: &Path) -> PathBuf {
-    project_root.join(manifest::IDLE_DIR).join(PROFILES_DIR)
+pub(crate) fn publish_profiles_dir(project_root: &Path) -> PathBuf {
+    project_root
+        .join(crate::project::manifest::IDLE_DIR)
+        .join(PROFILES_DIR)
 }
 
 #[tauri::command]
-pub(super) fn publish_profiles_list(
+pub(crate) fn publish_profiles_list(
     state: State<Workspace>,
     project_root: String,
 ) -> Result<Vec<PublishProfile>, String> {
@@ -46,14 +48,14 @@ pub(super) fn publish_profiles_list(
 }
 
 #[tauri::command]
-pub(super) fn publish_profile_save(
+pub(crate) fn publish_profile_save(
     state: State<Workspace>,
     project_root: String,
     profile: PublishProfile,
 ) -> Result<(), String> {
     let root = PathBuf::from(&project_root);
     validate_within_roots(&state, &root)?;
-    substrate_platform::state::private_dir(&root.join(manifest::IDLE_DIR))
+    substrate_platform::state::private_dir(&root.join(crate::project::manifest::IDLE_DIR))
         .map_err(|m| m.to_string())?;
     let dir = publish_profiles_dir(&root);
     std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
@@ -64,7 +66,7 @@ pub(super) fn publish_profile_save(
 }
 
 #[tauri::command]
-pub(super) fn publish_profile_delete(
+pub(crate) fn publish_profile_delete(
     state: State<Workspace>,
     project_root: String,
     id: String,
@@ -80,7 +82,7 @@ pub(super) fn publish_profile_delete(
 }
 
 #[tauri::command]
-pub(super) fn publish_run(
+pub(crate) fn publish_run(
     app: AppHandle,
     state: State<Workspace>,
     project_root: String,

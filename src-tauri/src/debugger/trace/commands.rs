@@ -4,7 +4,10 @@ use super::*;
 use substrate_platform::sync::Locked;
 
 pub(super) fn warn(app: &AppHandle, message: String) {
-    let _ = app.emit(crate::events::OUTPUT_DEBUG, format!("[warn] {message}"));
+    let _ = app.emit(
+        crate::app::events::OUTPUT_DEBUG,
+        format!("[warn] {message}"),
+    );
 }
 
 /// Mirrors the editor gutter: every breakpoint the user currently has set,

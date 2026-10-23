@@ -8,9 +8,9 @@ pub fn plugin() -> TauriPlugin<Wry> {
     Builder::new(DOMAIN.plugin)
         .invoke_handler(tauri::generate_handler![
             crate::symbols::code_search,
-            crate::format::format_supported,
-            crate::format::format_document,
-            crate::format::cli,
+            crate::toolchain::format::format_supported,
+            crate::toolchain::format::format_document,
+            crate::toolchain::format::cli,
         ])
         .build()
 }

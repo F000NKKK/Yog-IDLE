@@ -1,3 +1,10 @@
+mod app;
+mod project;
+mod running;
+mod toolchain;
+
+pub use app::events;
+
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
@@ -10,27 +17,12 @@ use substrate_platform::run::{
 };
 use tauri::{AppHandle, Emitter, Manager, State};
 
-mod path_commands;
 pub mod plugins;
-use path_commands::*;
-mod app_commands;
-mod format;
-mod project_commands;
-mod workflow;
-mod webview_audio;
-use workflow::*;
-mod mod_commands;
-use mod_commands::*;
-mod publish;
+use project::path_commands::*;
+use running::mod_commands::*;
+use running::workflow::*;
 
-mod cli;
-mod diagnostics_feed;
-pub mod events;
-mod manifest;
-mod project_properties;
-mod properties;
 mod symbols;
-mod tools;
 
 mod debugger;
 
@@ -45,24 +37,24 @@ pub mod bench;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() -> tauri::Result<()> {
-    webview_audio::prefer_pipewire();
+    app::webview_audio::prefer_pipewire();
     let context = tauri::generate_context!();
     // Before any thread exists: the Build options go into this process's
     // own environment, for every `yog`/`cargo` it starts.
-    let build_settings = tools::default_state_file(&context.config().identifier)
-        .map(|file| tools::load_settings_from(&file))
+    let build_settings = toolchain::tools::default_state_file(&context.config().identifier)
+        .map(|file| toolchain::tools::load_settings_from(&file))
         .unwrap_or_default();
-    tools::apply_to_process_at_startup(&build_settings);
+    toolchain::tools::apply_to_process_at_startup(&build_settings);
     // Search and replace see Yog formats' files as the editor does.
-    cli::register_text_views();
+    toolchain::cli::register_text_views();
 
     let builder = tauri::Builder::default()
         // Substrate's own commands (the workspace, Source Control): what its UI calls.
         .plugin(tauri_plugin_substrate::init_with(
             tauri_plugin_substrate::Options {
-                search: manifest::SEARCH_LAYOUT.clone(),
+                search: project::manifest::SEARCH_LAYOUT.clone(),
                 state: Some(tauri_plugin_substrate::StateOptions {
-                    project_dir: manifest::IDLE_DIR.to_string(),
+                    project_dir: project::manifest::IDLE_DIR.to_string(),
                 }),
             },
         ))
@@ -80,7 +72,7 @@ pub fn run() -> tauri::Result<()> {
                 .build(),
         )
         .manage(WorkflowState::default())
-        .manage(tools::ToolsState::new(build_settings))
+        .manage(toolchain::tools::ToolsState::new(build_settings))
         .manage(symbols::SymbolIndexState::default())
         .manage(debugger::DebugState::default());
 

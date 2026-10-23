@@ -7,7 +7,7 @@ use tauri_build::{Attributes, DefaultPermissionRule, InlinedPlugin};
 
 #[path = "src/plugins/commands/mod.rs"]
 mod commands;
-#[path = "src/events.rs"]
+#[path = "src/app/events.rs"]
 mod events;
 
 /// Where the generated copies go, from this crate.

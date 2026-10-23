@@ -316,7 +316,7 @@ impl Tracer {
             _ => Vec::new(),
         };
         let _ = app.emit(
-            crate::events::DEBUG_STOPPED,
+            crate::app::events::DEBUG_STOPPED,
             DebugStoppedEvent {
                 reason: reason_str.to_string(),
                 stack_trace: if exited {

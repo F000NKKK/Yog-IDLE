@@ -159,7 +159,7 @@ pub fn tools_status() -> Status {
         .and_then(|h| h.components().ok())
         .and_then(|c| c.newest(id::INSTALLER).map(|i| i.path.clone()));
     Status {
-        yog: crate::cli::binary().map(|p| p.display().to_string()),
+        yog: crate::toolchain::cli::binary().map(|p| p.display().to_string()),
         loader_sdk: resolver
             .and_then(|r| r.loader_sdk())
             .map(|p| p.display().to_string()),

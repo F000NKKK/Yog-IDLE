@@ -34,11 +34,11 @@ pub(super) fn emit_hot_reload(
         _ => "",
     };
     let _ = app.emit(
-        crate::events::OUTPUT_BUILD,
+        crate::app::events::OUTPUT_BUILD,
         format!("{prefix}hot reload: {message}"),
     );
     let _ = app.emit(
-        crate::events::HOT_RELOAD,
+        crate::app::events::HOT_RELOAD,
         HotReloadEvent {
             stage,
             mod_id: mod_id.to_string(),
@@ -193,11 +193,11 @@ pub(super) fn run_hot_reload(
             });
             let n = changes.added.len() + changes.removed.len() + changes.changed.len();
             let _ = app.emit(
-                crate::events::OUTPUT_BUILD,
+                crate::app::events::OUTPUT_BUILD,
                 format!("hot reload: {n} change(s) only a restart applies"),
             );
             let _ = app.emit(
-                crate::events::HOT_RELOAD,
+                crate::app::events::HOT_RELOAD,
                 HotReloadEvent {
                     stage: "confirm",
                     mod_id: mod_id.to_string(),
@@ -232,9 +232,9 @@ pub(super) fn build_and_check(
         None,
         format!("running `yog {}`", args.join(" ")),
     );
-    let feed = crate::diagnostics_feed::Feed::open(app);
+    let feed = crate::toolchain::diagnostics_feed::Feed::open(app);
     let (feed_key, feed_path) = feed.env();
-    let mut child = crate::cli::command()
+    let mut child = crate::toolchain::cli::command()
         .args(&args)
         .current_dir(root)
         .env(feed_key, feed_path)
@@ -262,7 +262,7 @@ pub(super) fn build_and_check(
             let out_app = app.clone();
             std::thread::spawn(move || {
                 for line in BufReader::new(pipe).lines().map_while(Result::ok) {
-                    let _ = out_app.emit(crate::events::OUTPUT_BUILD, line);
+                    let _ = out_app.emit(crate::app::events::OUTPUT_BUILD, line);
                 }
             })
         })

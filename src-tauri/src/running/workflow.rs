@@ -1,13 +1,13 @@
 //! Running `yog` and workflows, their output streamed to the IDE.
 
-use super::*;
+use crate::*;
 use substrate_platform::sync::Locked;
 
 /// A generic escape hatch open to any project (regardless of `kind`): if it
 /// happens to define its own `workflow.toml`, its named entries can be run —
 /// no built-in default ships anymore now that Yog-Mod-Loader isn't a project
 /// standard here.
-pub(super) fn resolve_workflow_file(project_root: &Path) -> Result<WorkflowFile, String> {
+pub(crate) fn resolve_workflow_file(project_root: &Path) -> Result<WorkflowFile, String> {
     let project_workflow = project_root.join("workflow.toml");
     if !project_workflow.exists() {
         return Err("this project has no workflow.toml".to_string());
@@ -18,13 +18,13 @@ pub(super) fn resolve_workflow_file(project_root: &Path) -> Result<WorkflowFile,
 
 #[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub(super) struct WorkflowSummary {
-    pub(super) name: String,
-    pub(super) description: Option<String>,
+pub(crate) struct WorkflowSummary {
+    pub(crate) name: String,
+    pub(crate) description: Option<String>,
 }
 
 #[tauri::command]
-pub(super) fn workflow_list(
+pub(crate) fn workflow_list(
     state: State<Workspace>,
     project_root: String,
 ) -> Result<Vec<WorkflowSummary>, String> {
@@ -116,19 +116,19 @@ pub(crate) fn stream_yog_run(app: &AppHandle, log: PathBuf) -> OutputTail {
             let text = line.trim_end_matches(['\n', '\r']).to_string();
             line.clear();
             let event = if launched {
-                events::OUTPUT_GAME
+                crate::app::events::OUTPUT_GAME
             } else {
                 launched = text.starts_with("==> launched pid ");
-                events::OUTPUT_BUILD
+                crate::app::events::OUTPUT_BUILD
             };
             let _ = app.emit(event, format_stderr_line(text));
         }
         // A last line the run never finished.
         if !line.is_empty() {
             let event = if launched {
-                events::OUTPUT_GAME
+                crate::app::events::OUTPUT_GAME
             } else {
-                events::OUTPUT_BUILD
+                crate::app::events::OUTPUT_BUILD
             };
             let _ = app.emit(event, format_stderr_line(line.trim_end().to_string()));
         }
@@ -147,7 +147,7 @@ pub(crate) fn format_stderr_line(text: String) -> String {
     })
 }
 
-pub(super) fn format_log_line(line: &LogLine) -> String {
+pub(crate) fn format_log_line(line: &LogLine) -> String {
     match line.level {
         Level::Info => line.text.clone(),
         Level::Warn => format!("[warn] {}", line.text),
@@ -159,20 +159,20 @@ pub(super) fn format_log_line(line: &LogLine) -> String {
 /// `workflow_cancel` can stop a build/publish, and each run removes only its
 /// own entry when it finishes.
 #[derive(Default)]
-pub(super) struct WorkflowState {
-    pub(super) next_id: AtomicU64,
-    pub(super) running: Mutex<HashMap<u64, WorkflowHandle>>,
+pub(crate) struct WorkflowState {
+    pub(crate) next_id: AtomicU64,
+    pub(crate) running: Mutex<HashMap<u64, WorkflowHandle>>,
 }
 
 /// Payload of `workflow-start` — the project the run builds (the Error List
 /// resolves the build's relative paths against it).
 #[derive(Clone, Serialize)]
-pub(super) struct WorkflowStart {
-    pub(super) root: String,
+pub(crate) struct WorkflowStart {
+    pub(crate) root: String,
 }
 
 impl WorkflowStart {
-    pub(super) fn of(root: &Path) -> Self {
+    pub(crate) fn of(root: &Path) -> Self {
         Self {
             root: root.to_string_lossy().into_owned(),
         }
@@ -182,9 +182,9 @@ impl WorkflowStart {
 /// Payload of `workflow-exit` for a workflow run — how it ended.
 #[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub(super) struct WorkflowExit {
-    pub(super) success: bool,
-    pub(super) cancelled: bool,
+pub(crate) struct WorkflowExit {
+    pub(crate) success: bool,
+    pub(crate) cancelled: bool,
 }
 
 /// Shared "run this workflow's named entry, stream its output live, fire
@@ -192,7 +192,7 @@ pub(super) struct WorkflowExit {
 /// done" body — `workflow_run`, `mod_build`, and
 /// `publish_run` all funnel through this instead of each re-wiring the
 /// sink/event plumbing themselves.
-pub(super) fn run_and_stream(
+pub(crate) fn run_and_stream(
     app: AppHandle,
     file: WorkflowFile,
     name: String,
@@ -202,12 +202,12 @@ pub(super) fn run_and_stream(
     let sink = LogSink::new();
     let out_app = app.clone();
     sink.on_push(move |line| {
-        let _ = out_app.emit(crate::events::OUTPUT_BUILD, format_log_line(line));
+        let _ = out_app.emit(crate::app::events::OUTPUT_BUILD, format_log_line(line));
     });
 
     // Before the run starts, so none of its output precedes it.
-    let _ = app.emit(crate::events::WORKFLOW_START, WorkflowStart::of(&root));
-    let feed = crate::diagnostics_feed::Feed::open(&app);
+    let _ = app.emit(crate::app::events::WORKFLOW_START, WorkflowStart::of(&root));
+    let feed = crate::toolchain::diagnostics_feed::Feed::open(&app);
     let file = reporting_to(file, &feed);
     let handle = substrate_platform::run::run_workflow(file, name, vars, root, sink);
     let state = app.state::<WorkflowState>();
@@ -219,7 +219,7 @@ pub(super) fn run_and_stream(
         drop(feed);
         app.state::<WorkflowState>().running.locked().remove(&id);
         let _ = app.emit(
-            crate::events::WORKFLOW_EXIT,
+            crate::app::events::WORKFLOW_EXIT,
             WorkflowExit {
                 success: result.is_success(),
                 cancelled: result == WorkflowResult::Cancelled,
@@ -229,7 +229,10 @@ pub(super) fn run_and_stream(
 }
 
 /// `file` with every step reporting what it finds to `feed`.
-fn reporting_to(mut file: WorkflowFile, feed: &crate::diagnostics_feed::Feed) -> WorkflowFile {
+fn reporting_to(
+    mut file: WorkflowFile,
+    feed: &crate::toolchain::diagnostics_feed::Feed,
+) -> WorkflowFile {
     let (key, value) = feed.env();
     for def in file.workflow.values_mut() {
         for step in &mut def.steps {
@@ -245,7 +248,7 @@ fn reporting_to(mut file: WorkflowFile, feed: &crate::diagnostics_feed::Feed) ->
 /// the running step and skips the rest; each run then fires its own
 /// `workflow-exit` with `cancelled: true`. A no-op when nothing is running.
 #[tauri::command]
-pub(super) fn workflow_cancel(state: State<WorkflowState>) {
+pub(crate) fn workflow_cancel(state: State<WorkflowState>) {
     for handle in state.running.locked().values() {
         handle.cancel();
     }
@@ -257,7 +260,7 @@ pub(super) fn workflow_cancel(state: State<WorkflowState>) {
 /// every step has finished, mirroring the terminal's output/exit
 /// pattern.
 #[tauri::command]
-pub(super) fn workflow_run(
+pub(crate) fn workflow_run(
     app: AppHandle,
     state: State<Workspace>,
     project_root: String,
@@ -275,7 +278,7 @@ pub(super) fn workflow_run(
 /// "run") — for commands (`yog run <name>`, `yog build`, `yog publish
 /// exports`) that don't need a whole `workflow.toml` of their own, just the
 /// engine's existing process-streaming plumbing.
-pub(super) fn single_step_workflow(
+pub(crate) fn single_step_workflow(
     program: &str,
     args: Vec<String>,
     env: HashMap<String, String>,

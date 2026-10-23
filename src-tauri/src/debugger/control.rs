@@ -5,7 +5,8 @@ use substrate_platform::sync::Locked;
 
 /// `[mod] id` of the mod at `root`.
 pub(super) fn mod_id(root: &Path) -> Result<String, String> {
-    crate::cli::mod_id(root).ok_or_else(|| format!("{} has no mod id", yog_ids::file::MANIFEST))
+    crate::toolchain::cli::mod_id(root)
+        .ok_or_else(|| format!("{} has no mod id", yog_ids::file::MANIFEST))
 }
 
 /// How long a write to the control socket may block.
@@ -75,10 +76,10 @@ pub fn run_with_mode(
         args.push("--dev".to_string());
     }
 
-    let diagnostics = crate::diagnostics_feed::Feed::open(&app);
+    let diagnostics = crate::toolchain::diagnostics_feed::Feed::open(&app);
     let (feed_key, feed_path) = diagnostics.env();
     let (child, log) = crate::spawn_yog_run(
-        crate::cli::command()
+        crate::toolchain::cli::command()
             .args(&args)
             .current_dir(&root)
             .env(feed_key, feed_path)
@@ -101,7 +102,7 @@ pub fn run_with_mode(
         tracer: None,
     });
     let _ = app.emit(
-        crate::events::GAME_STATUS,
+        crate::app::events::GAME_STATUS,
         GameStatus {
             stage: "starting",
             pid: None,
@@ -166,7 +167,7 @@ pub(super) fn connect_and_watch(
         // The run ended before the game opened the socket (a failed build,
         // a crash at startup) — its own output says why.
         let _ = app.emit(
-            crate::events::OUTPUT_DEBUG,
+            crate::app::events::OUTPUT_DEBUG,
             "[warn] the run ended before the game opened its control socket — see the Build output"
                 .to_string(),
         );
@@ -205,7 +206,7 @@ pub(super) fn connect_and_watch(
         }
     }
     let _ = app.emit(
-        crate::events::GAME_STATUS,
+        crate::app::events::GAME_STATUS,
         GameStatus {
             stage: "ready",
             pid: Some(real_pid),
@@ -260,7 +261,7 @@ pub(super) fn handle_control_event(app: &AppHandle, session_id: u64, real_pid: i
     match event {
         Event::Mods { mods } => {
             let _ = app.emit(
-                crate::events::GAME_STATUS,
+                crate::app::events::GAME_STATUS,
                 GameStatus {
                     stage: "ready",
                     pid: Some(real_pid),
@@ -269,7 +270,10 @@ pub(super) fn handle_control_event(app: &AppHandle, session_id: u64, real_pid: i
             );
         }
         other => {
-            let _ = app.emit(crate::events::OUTPUT_DEBUG, format!("[control] {other:?}"));
+            let _ = app.emit(
+                crate::app::events::OUTPUT_DEBUG,
+                format!("[control] {other:?}"),
+            );
         }
     }
 }
