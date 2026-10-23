@@ -7,6 +7,7 @@
 import "./ru.book";
 import "./ru.content";
 import "./ru.particle";
+import "./ru.sound";
 import "./ru.debug";
 import "./ru.definitions";
 import "./ru.documents";

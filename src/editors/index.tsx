@@ -15,6 +15,7 @@ import { ENTITY_SOURCE_VIEW, EntityEditor } from "./EntityEditor";
 import { ANIM_SOURCE_VIEW, AnimEditor } from "./AnimEditor";
 import { TEXTURE_SOURCE_VIEW, TextureEditor } from "./TextureEditor";
 import { PARTICLE_SOURCE_VIEW, ParticleEditor } from "./ParticleEditor";
+import { SOUND_SOURCE_VIEW, SoundEditor } from "./SoundEditor";
 import { fileTypeId, formats } from "../yogFileTypes";
 import { LANG_FILE_TYPE } from "../fileTypes";
 
@@ -317,6 +318,30 @@ registerEditorProvider({
   label: "Code",
   name: "Particle Source Editor",
   fileTypes: [fileTypeId(formats.particle)],
+  component: JsonEditor,
+  priority: 0,
+  kind: EDITOR_KIND.text,
+  strict: true,
+});
+
+// `.ysound` sound events: their sounds played and tuned as the game plays
+// them; the file's text a click (or F7) away.
+registerEditorProvider({
+  id: fileTypeId(formats.sound),
+  label: "Sound",
+  name: "Sound Designer",
+  icon: "yogSound",
+  fileTypes: [fileTypeId(formats.sound)],
+  component: SoundEditor,
+  priority: 20,
+  kind: EDITOR_KIND.designer,
+});
+
+registerEditorProvider({
+  id: SOUND_SOURCE_VIEW,
+  label: "Code",
+  name: "Sound Source Editor",
+  fileTypes: [fileTypeId(formats.sound)],
   component: JsonEditor,
   priority: 0,
   kind: EDITOR_KIND.text,
