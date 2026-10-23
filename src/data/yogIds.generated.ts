@@ -1077,6 +1077,13 @@ export const gameFont = {
   ILLAGERALT: "illageralt",
 } as const;
 
+export const gamemode = {
+  SURVIVAL: "survival",
+  CREATIVE: "creative",
+  ADVENTURE: "adventure",
+  SPECTATOR: "spectator",
+} as const;
+
 export const game = {
   DEFAULT_FONT: "minecraft:default",
   VANILLA_THEME: "minecraft:vanilla",
