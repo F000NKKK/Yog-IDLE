@@ -104,11 +104,11 @@ export function shapeProperties(desc: Described, value: Obj, set: (next: Obj) =>
     const shape = unwrap(f.shape);
     const id = path.join(".");
     const current = getAt(value, path);
-    const base = { id, name: humanize(f.name), category, description: f.doc };
+    const base = { id, name: t(humanize(f.name)), category, description: f.doc };
     const commit = (v: unknown) => set(setAt(value, path, v));
     const d = def(shape);
     if (d?.kind === K.STRUCT) {
-      fields(d.fields, path, humanize(path.join(" ")));
+      fields(d.fields, path, t(humanize(path.join(" "))));
       return;
     }
     if (d?.kind === K.ENUM && !d.tag) {
@@ -118,6 +118,7 @@ export function shapeProperties(desc: Described, value: Obj, set: (next: Obj) =>
         value: typeof current === "string" ? current : "",
         kind: "enum",
         options: [...(f.required ? [] : [""]), ...d.variants.map((v) => v.name)],
+        optionLabel: (v) => (v === "" ? "" : t(humanize(v))),
         onCommit: (v) => commit(v === "" ? undefined : v),
       });
       return;

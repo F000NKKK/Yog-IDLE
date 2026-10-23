@@ -29,4 +29,10 @@ registerTranslations(RU, {
   "Blend": "Смешивание",
   "Depth Write": "Запись глубины",
   "Glow": "Свечение",
+  // Its choices
+  "Random": "Случайно",
+  "Age": "По возрасту",
+  "Opaque": "Непрозрачное",
+  "Translucent": "Полупрозрачное",
+  "Additive": "Аддитивное",
 });
