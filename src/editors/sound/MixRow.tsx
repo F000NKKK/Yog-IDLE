@@ -47,7 +47,7 @@ export function MixRow({ path, mix, editing, onEdit, onRemove, readOnly }: Props
     if (stop.current) return stop.current();
     const ctx = audioContext();
     void ctx.resume();
-    const sources = playMix(ctx, mix, buffers, ctx.destination, ctx.currentTime);
+    const { sources } = playMix(ctx, mix, buffers, ctx.destination, ctx.currentTime);
     const done = window.setTimeout(() => stop.current?.(), mixLength(mix, buffers) * 1000);
     stop.current = () => {
       sources.forEach((s) => s.stop());

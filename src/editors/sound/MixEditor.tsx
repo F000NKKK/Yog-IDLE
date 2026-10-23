@@ -1,30 +1,28 @@
 import { useEffect, useRef, useState } from "react";
-import { Icon, useT } from "substrate-platform-ui";
+import { useT } from "substrate-platform-ui";
 import { audioContext, loadSound } from "./audio";
 import { ClipInspector } from "./ClipInspector";
+import { Browser } from "./daw/Browser";
+import { type Snap } from "./daw/grid";
+import { Mixer, type Strip } from "./daw/Mixer";
+import { Playlist } from "./daw/Playlist";
+import { Transport } from "./daw/Transport";
+import { withTrack } from "./daw/TrackHeader";
 import { EffectsEditor } from "./EffectsEditor";
-import { clipBuffer, clipLength, clipSound, type Mix, mixLength, playMix, type SoundClip } from "./montage";
-import { Waveform } from "./Waveform";
+import { type Channels, clipSound, type Mix, mixLength, playMix } from "./montage";
+import "./daw/daw.css";
 
-// A montage on a timeline: a lane a clip, each where it starts and as long
-// as it plays — dragged to move it, its edges dragged to cut it; the
-// selected one's settings on the right (the mix's effects with none
-// selected); played as the build renders it, the playhead moving.
+// A montage as a music program shows one: the transport along the top, the
+// browser of sounds down the left, the playlist of tracks and clips in the
+// middle, the mixer along the bottom with the selected clip's or channel's
+// settings beside it — played from the playhead as the build renders it.
 
-/** Pixels a second at first, and how much a zoom step changes it. */
-const START_PPS = 200;
-const ZOOM = 1.5;
-const MIN_PPS = 20;
-const MAX_PPS = 2000;
-/** The shortest a clip is cut to, seconds. */
-const MIN_CLIP = 0.01;
-/** A clip's edge handles, pixels; where the ruler ticks, seconds. */
-const HANDLE = 6;
-const TICK = 0.5;
-/** Times are kept to this many decimals. */
-const PRECISION = 1000;
-
-type Drag = { i: number; mode: "move" | "start" | "end"; x: number; clip: SoundClip };
+/** Pixels a second at first, and the zoom's range. */
+const START_PPS = 160;
+const MIN_PPS = 10;
+const MAX_PPS = 4000;
+/** Where the snap is remembered. */
+const SNAP_KEY = "yog.montage.snap";
 
 interface Props {
   path: string;
@@ -35,30 +33,23 @@ interface Props {
   onChange: (next: Mix) => void;
 }
 
-const round = (v: number) => Math.round(v * PRECISION) / PRECISION;
-/** A clip without what it leaves at its default. */
-const tidy = (c: SoundClip): SoundClip => Object.fromEntries(Object.entries(c).filter(([, v]) => v !== undefined && v !== null)) as SoundClip;
-
-/** `c` (shown as `s`, its sound `b`) dragged `dx` seconds as `mode` says. */
-function dragged(c: SoundClip, s: SoundClip, b: AudioBuffer, mode: Drag["mode"], dx: number): SoundClip {
-  const speed = s.speed ?? 1, from = s.from ?? 0, to = Math.min(s.to ?? b.duration, b.duration);
-  if (mode === "move") return { ...c, at: round(Math.max(0, (s.at ?? 0) + dx)) };
-  if (mode === "start") {
-    const next = Math.min(Math.max(0, from + dx * speed), to - MIN_CLIP);
-    return { ...c, from: round(next), at: round(Math.max(0, (s.at ?? 0) + (next - from) / speed)) };
+function rememberedSnap(): Snap {
+  try {
+    return (localStorage.getItem(SNAP_KEY) as Snap | null) ?? "step";
+  } catch {
+    return "step";
   }
-  return { ...c, to: round(Math.max(from + MIN_CLIP, Math.min(b.duration, to + dx * speed))) };
 }
 
 export function MixEditor({ path, mix, shown, readOnly, onChange }: Props) {
   const t = useT();
   const [buffers, setBuffers] = useState<(AudioBuffer | null)[]>([]);
   const [pps, setPps] = useState(START_PPS);
-  const [selected, setSelected] = useState<number | null>(null);
-  const [drag, setDrag] = useState<Drag | null>(null);
-  const [draft, setDraft] = useState<SoundClip | null>(null);
-  const [head, setHead] = useState<number | null>(null);
-  const [adding, setAdding] = useState("");
+  const [snap, setSnapState] = useState<Snap>(rememberedSnap);
+  const [position, setPosition] = useState(0);
+  const [channels, setChannels] = useState<Channels | null>(null);
+  const [clip, setClip] = useState<number | null>(null);
+  const [strip, setStrip] = useState<Strip | null>(null);
   const playing = useRef<{ stop: () => void } | null>(null);
   const key = shown.clips.map(clipSound).join("\n");
 
@@ -73,114 +64,102 @@ export function MixEditor({ path, mix, shown, readOnly, onChange }: Props) {
   }, [path, key]);
   useEffect(() => () => playing.current?.stop(), []);
 
-  const clipAt = (i: number) => (drag?.i === i && draft ? { ...shown.clips[i], ...draft } : shown.clips[i]);
-  const setClip = (i: number, next: SoundClip | null) =>
-    onChange({ ...mix, clips: next ? mix.clips.map((c, j) => (j === i ? tidy(next) : c)) : mix.clips.filter((_, j) => j !== i) });
+  const setSnap = (s: Snap) => {
+    setSnapState(s);
+    try {
+      localStorage.setItem(SNAP_KEY, s);
+    } catch {
+      // Not remembered: this session still uses it.
+    }
+  };
+  const length = mixLength(shown, buffers);
 
+  /** Stops playing, the playhead left where it got to (`rewind`: back to the start). */
+  const stop = (rewind = false) => {
+    playing.current?.stop();
+    if (rewind) setPosition(0);
+  };
   const play = () => {
-    if (playing.current) return playing.current.stop();
+    stop();
     const ctx = audioContext();
     void ctx.resume();
+    const from = position >= length ? 0 : position;
     const start = ctx.currentTime;
-    const sources = playMix(ctx, shown, buffers, ctx.destination, start);
-    const length = mixLength(shown, buffers);
+    const { sources, channels: ch } = playMix(ctx, shown, buffers, ctx.destination, start, from);
+    setChannels(ch);
     let frame = 0;
-    const stop = () => {
+    const end = (at: number) => {
       sources.forEach((s) => s.stop());
       cancelAnimationFrame(frame);
-      setHead(null);
+      setChannels(null);
+      setPosition(at);
       playing.current = null;
     };
     const tick = () => {
-      const now = ctx.currentTime - start;
-      if (now >= length) return stop();
-      setHead(now);
+      const now = from + ctx.currentTime - start;
+      if (now >= length) return end(length);
+      setPosition(now);
       frame = requestAnimationFrame(tick);
     };
     frame = requestAnimationFrame(tick);
-    playing.current = { stop };
+    playing.current = { stop: () => end(from + ctx.currentTime - start) };
   };
 
-  const down = (e: React.PointerEvent, i: number) => {
-    setSelected(i);
-    if (readOnly || !buffers[i]) return;
-    const r = e.currentTarget.getBoundingClientRect();
-    const mode = e.clientX - r.left < HANDLE ? "start" : r.right - e.clientX < HANDLE ? "end" : "move";
-    e.currentTarget.setPointerCapture(e.pointerId);
-    setDrag({ i, mode, x: e.clientX, clip: mix.clips[i] });
+  const tracks = Math.max(shown.tracks?.length ?? 0, ...shown.clips.map((c) => (c.track ?? 0) + 1), 1);
+  const stripEffects = strip === "master" ? mix.effects : strip !== null ? mix.tracks?.[strip]?.effects : undefined;
+  const setStripEffects = (effects: Mix["effects"]) => {
+    const fx = effects?.length ? effects : undefined;
+    onChange(strip === "master" ? { ...mix, effects: fx } : withTrack(mix, strip as number, { effects: fx }));
   };
-  const move = (e: React.PointerEvent) => {
-    const b = drag && buffers[drag.i];
-    if (!drag || !b) return;
-    setDraft(dragged(drag.clip, shown.clips[drag.i], b, drag.mode, (e.clientX - drag.x) / pps));
-  };
-  const up = () => {
-    if (drag && draft) setClip(drag.i, draft);
-    setDrag(null);
-    setDraft(null);
-  };
+  const setClipAt = (i: number, next: Mix["clips"][number] | null) => onChange({ ...mix, clips: next ? mix.clips.map((c, j) => (j === i ? next : c)) : mix.clips.filter((_, j) => j !== i) });
 
-  const add = () => {
-    const s = adding.trim();
-    if (!s) return;
-    const at = round(mixLength(shown, buffers));
-    onChange({ ...mix, clips: [...mix.clips, s.startsWith("@") ? { sound: s, at } : { file: s, at }] });
-    setAdding("");
-  };
-
-  const length = Math.max(mixLength(shown, buffers), 1);
-  const ticks = Array.from({ length: Math.ceil(length / TICK) + 1 }, (_, k) => k * TICK);
-  const sel = selected !== null && selected < shown.clips.length ? selected : null;
   return (
-    <div className="mix-editor">
-      <div className="mix-toolbar">
-        <button onClick={play} title={t(head === null ? "Play" : "Stop")}>
-          <Icon name={head === null ? "play" : "stop"} />
-        </button>
-        <button onClick={() => setPps(Math.max(MIN_PPS, pps / ZOOM))} title={t("Zoom out")}>−</button>
-        <button onClick={() => setPps(Math.min(MAX_PPS, pps * ZOOM))} title={t("Zoom in")}>+</button>
-        <span className="mix-length">{t("{s} s", { s: mixLength(shown, buffers).toFixed(2) })}</span>
-        {!readOnly && (
-          <>
-            <input value={adding} placeholder={t("@Sounds.name, or the game's minecraft:dig/sand1")} onChange={(e) => setAdding(e.target.value)} onKeyDown={(e) => e.key === "Enter" && add()} />
-            <button onClick={add}>{t("Add a clip")}</button>
-          </>
-        )}
+    <div className="daw">
+      <Transport
+        playing={!!channels}
+        position={position}
+        length={length}
+        tempo={shown.tempo ?? 0}
+        beatsPerBar={shown.beats_per_bar ?? 0}
+        snap={snap}
+        readOnly={readOnly}
+        onPlay={play}
+        onStop={() => (channels ? stop() : stop(true))}
+        onTempo={(tempo, beats) => onChange({ ...mix, tempo, beats_per_bar: beats })}
+        onSnap={setSnap}
+        onZoom={(f) => setPps(Math.min(MAX_PPS, Math.max(MIN_PPS, pps * f)))}
+      />
+      <div className="daw-middle">
+        <Browser path={path} />
+        <Playlist
+          mix={mix}
+          shown={shown}
+          buffers={buffers}
+          pps={pps}
+          snap={snap}
+          position={position}
+          selected={clip}
+          readOnly={readOnly}
+          onSelect={(i) => (setClip(i), i !== null && setStrip(null))}
+          onChange={onChange}
+          onSeek={(at) => (stop(), setPosition(at))}
+        />
       </div>
-      <div className="mix-body">
-        <div className="mix-timeline" onPointerMove={move} onPointerUp={up}>
-          <div className="mix-ruler" style={{ width: length * pps }}>
-            {ticks.map((s) => (
-              <span key={s} style={{ left: s * pps }}>
-                {s.toFixed(1)}
-              </span>
-            ))}
-          </div>
-          {shown.clips.map((_, i) => {
-            const c = clipAt(i), b = buffers[i];
-            const width = b ? clipLength(b, c) * pps : HANDLE * 4;
-            return (
-              <div className="mix-lane" key={i} style={{ width: length * pps }}>
-                <div className={`mix-clip${sel === i ? " selected" : ""}`} style={{ left: (c.at ?? 0) * pps, width }} onPointerDown={(e) => down(e, i)}>
-                  <Waveform buffer={b ? clipBuffer(audioContext(), b, c) : null} at={null} />
-                  <span className="mix-clip-name">{clipSound(c)}</span>
-                </div>
-              </div>
-            );
-          })}
-          {head !== null && <div className="mix-head" style={{ left: head * pps }} />}
-        </div>
-        <div className="mix-inspector">
-          {sel !== null ? (
+      <div className="daw-bottom">
+        <Mixer mix={mix} shown={shown} tracks={tracks} channels={channels} selected={strip} readOnly={readOnly} onSelect={(s) => (setStrip(s), setClip(null))} onChange={onChange} />
+        <div className="daw-inspector">
+          {clip !== null && mix.clips[clip] ? (
             <>
-              <ClipInspector clip={mix.clips[sel]} shown={shown.clips[sel]} readOnly={readOnly} onChange={(next) => setClip(sel, next)} />
-              {!readOnly && <button onClick={() => (setClip(sel, null), setSelected(null))}>{t("Remove the clip")}</button>}
+              <ClipInspector clip={mix.clips[clip]} shown={shown.clips[clip] ?? mix.clips[clip]} readOnly={readOnly} onChange={(next) => setClipAt(clip, next)} />
+              {!readOnly && <button onClick={() => (setClipAt(clip, null), setClip(null))}>{t("Remove the clip")}</button>}
+            </>
+          ) : strip !== null ? (
+            <>
+              <div className="sound-clip-subtitle">{strip === "master" ? t("Master's effects") : t("Track {n}'s effects", { n: strip + 1 })}</div>
+              <EffectsEditor effects={stripEffects ?? []} readOnly={readOnly} onChange={setStripEffects} />
             </>
           ) : (
-            <>
-              <div className="sound-clip-subtitle">{t("The mix's effects")}</div>
-              <EffectsEditor effects={mix.effects ?? []} readOnly={readOnly} onChange={(effects) => onChange({ ...mix, effects: effects.length ? effects : undefined })} />
-            </>
+            <div className="daw-hint">{t("Drag a sound from the browser onto a track; select a clip or a mixer channel to edit it.")}</div>
           )}
         </div>
       </div>

@@ -8,6 +8,7 @@ export type SoundEffect = { fx: "echo"; delay: number; decay: number } | { fx: "
 
 /** A part of a sound placed in a mix (`SoundClip`). */
 export interface SoundClip {
+  track?: number;
   sound?: string;
   file?: string;
   at?: number;
@@ -21,10 +22,32 @@ export interface SoundClip {
   effects?: SoundEffect[];
 }
 
-/** A sound made of clips (`Mix`). */
-export interface Mix {
-  clips: SoundClip[];
+/** A track and its mixer channel (`Track`). */
+export interface Track {
+  name?: string;
+  color?: number;
+  gain?: number;
+  mute?: boolean;
+  solo?: boolean;
   effects?: SoundEffect[];
+}
+
+/** A sound made of clips on tracks (`Mix`). */
+export interface Mix {
+  tempo?: number;
+  beats_per_bar?: number;
+  tracks?: Track[];
+  clips: SoundClip[];
+  gain?: number;
+  effects?: SoundEffect[];
+}
+
+/** Whether track `n` is heard: not muted, and soloed when any track is (`Mix::heard`). */
+export function heard(mix: Mix, n: number): boolean {
+  const tracks = mix.tracks ?? [];
+  const soloed = tracks.some((t) => t.solo);
+  const t = tracks[n];
+  return t ? !t.mute && (!!t.solo || !soloed) : !soloed;
 }
 
 /** An echo's loudness in and out, as ffmpeg's `aecho` the build uses. */
@@ -82,33 +105,71 @@ function effectChain(ctx: BaseAudioContext, input: AudioNode, effects: SoundEffe
   return at;
 }
 
+/** What a mix plays through: each track's channel and the master, each with a level meter. */
+export interface Channels {
+  tracks: Map<number, AnalyserNode>;
+  master: AnalyserNode;
+}
+
+/** A channel: `gain`, then `effects`, metered, into `out`; its input. */
+function channel(ctx: BaseAudioContext, gain: number, effects: SoundEffect[] | undefined, out: AudioNode): { input: GainNode; meter: AnalyserNode } {
+  const input = ctx.createGain();
+  input.gain.value = gain;
+  const meter = ctx.createAnalyser();
+  effectChain(ctx, input, effects).connect(meter).connect(out);
+  return { input, meter };
+}
+
 /**
  * `mix` played into `out` from `start` (the context's time), its clips'
- * sounds `buffers` (in order; a missing one is left out): its sources, to stop it.
+ * sounds `buffers` (in order; a missing one is left out): its sources (to
+ * stop it) and channels (to meter it) — clips through their tracks'
+ * channels, the heard tracks through the master, as the build mixes.
  */
-export function playMix(ctx: BaseAudioContext, mix: Mix, buffers: (AudioBuffer | null)[], out: AudioNode, start: number): AudioBufferSourceNode[] {
-  const bus = ctx.createGain();
-  effectChain(ctx, bus, mix.effects).connect(out);
+export function playMix(
+  ctx: BaseAudioContext,
+  mix: Mix,
+  buffers: (AudioBuffer | null)[],
+  out: AudioNode,
+  start: number,
+  /** Seconds into the mix it starts from. */
+  offset = 0,
+): { sources: AudioBufferSourceNode[]; channels: Channels } {
+  const master = channel(ctx, mix.gain ?? 1, mix.effects, out);
+  const tracks = new Map<number, { input: GainNode; meter: AnalyserNode }>();
+  const trackIn = (n: number) => {
+    let t = tracks.get(n);
+    if (!t) {
+      const def = mix.tracks?.[n];
+      t = channel(ctx, def?.gain ?? 1, def?.effects, master.input);
+      tracks.set(n, t);
+    }
+    return t.input;
+  };
   const sources: AudioBufferSourceNode[] = [];
   mix.clips.forEach((c, i) => {
     const b = buffers[i];
-    if (!b) return;
+    const n = c.track ?? 0;
+    if (!b || !heard(mix, n)) return;
     const src = ctx.createBufferSource();
     src.buffer = clipBuffer(ctx, b, c);
     src.playbackRate.value = c.speed ?? 1;
     const gain = ctx.createGain();
-    const at = start + (c.at ?? 0), length = clipLength(b, c), level = c.gain ?? 1;
+    const at = start + (c.at ?? 0) - offset, length = clipLength(b, c), level = c.gain ?? 1;
+    // Over before the offset: not heard.
+    if (at + length <= start) return;
     gain.gain.setValueAtTime(c.fade_in ? 0 : level, at);
     if (c.fade_in) gain.gain.linearRampToValueAtTime(level, at + c.fade_in);
     if (c.fade_out) {
       gain.gain.setValueAtTime(level, Math.max(at, at + length - c.fade_out));
       gain.gain.linearRampToValueAtTime(0, at + length);
     }
-    effectChain(ctx, src.connect(gain), c.effects).connect(bus);
-    src.start(at);
+    effectChain(ctx, src.connect(gain), c.effects).connect(trackIn(n));
+    // Started before the offset: from where it is by then.
+    src.start(Math.max(start, at), Math.max(0, start - at) * (c.speed ?? 1));
     sources.push(src);
   });
-  return sources;
+  return { sources, channels: { tracks: new Map([...tracks].map(([n, t]) => [n, t.meter])), master: master.meter } };
 }
 
 /** How long `mix` lasts, seconds (its last clip's end). */

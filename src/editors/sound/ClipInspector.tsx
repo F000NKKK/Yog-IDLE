@@ -1,6 +1,7 @@
 import { useT } from "substrate-platform-ui";
 import { EffectsEditor } from "./EffectsEditor";
 import { clipSound, type SoundClip } from "./montage";
+import { soundLabel } from "./names";
 
 // The selected clip's settings: where it is, which part, how loud, its
 // fades, its speed (its pitch with it), backwards or not, its effects.
@@ -29,7 +30,7 @@ export function ClipInspector({ clip, shown, readOnly, onChange }: Props) {
   const value = (k: keyof SoundClip) => (shown[k] as number | null | undefined) ?? "";
   return (
     <div className="sound-clip-inspector">
-      <div className="sound-clip-title">{clipSound(clip)}</div>
+      <div className="sound-clip-title">{soundLabel(clipSound(clip))}</div>
       {FIELDS.map(([k, label, step]) => (
         <label key={k}>
           {t(label)}

@@ -3,6 +3,8 @@ import { type EditorProps, Toolbar, ToolbarButton, ToolbarGroup, ToolbarLabel, u
 import { useDataFile, type DataFormat } from "../data/useDataFile";
 import { useComplete } from "../data/useComplete";
 import { formats } from "../yogFileTypes";
+import { designText, useDesignResources } from "../lang/designResources";
+import { modRootOf } from "../paths";
 import { MixEditor } from "./sound/MixEditor";
 import { MixRow } from "./sound/MixRow";
 import type { Mix } from "./sound/montage";
@@ -33,6 +35,7 @@ function pick(variants: Variant[]): Variant | undefined {
 export function SoundEditor({ path, content, onChange, readOnly }: EditorProps) {
   const t = useT();
   const { parsed, update } = useDataFile(content, onChange, FORMAT, readOnly);
+  useDesignResources(modRootOf(path));
   const [adding, setAdding] = useState("");
   const [editing, setEditing] = useState<number | null>(null);
   const file = parsed?.ok ? parsed.file : null;
@@ -64,6 +67,26 @@ export function SoundEditor({ path, content, onChange, readOnly }: EditorProps) 
 
   if (!parsed) return null;
   if (!parsed.ok) return <div className="designer-error">{t("This file has a mistake: {error}", { error: parsed.error })}</div>;
+  // A montage being edited takes the whole editor, as a music program's window.
+  if (editing !== null && variants[editing]?.mix) {
+    return (
+      <div className="sound-editor">
+        <Toolbar>
+          <ToolbarGroup>
+            <ToolbarButton icon="arrowLeft" label="Back to the sounds" showLabel onClick={() => setEditing(null)} />
+          </ToolbarGroup>
+          <ToolbarLabel>{t("Montage — sound {n} of the event", { n: editing + 1 })}</ToolbarLabel>
+        </Toolbar>
+        <MixEditor
+          path={path}
+          mix={variants[editing].mix as Mix}
+          shown={shown[editing]?.mix ?? (variants[editing].mix as Mix)}
+          readOnly={!!readOnly}
+          onChange={(mix) => setVariant(editing, { ...variants[editing], mix })}
+        />
+      </div>
+    );
+  }
   return (
     <div className="sound-editor">
       <Toolbar>
@@ -71,7 +94,7 @@ export function SoundEditor({ path, content, onChange, readOnly }: EditorProps) 
           <ToolbarButton icon="play" label="Play the event" showLabel onClick={() => void playEvent()} disabled={!variants.length} />
           <ToolbarButton icon="refresh" label="Reload the sounds" onClick={forgetSounds} />
         </ToolbarGroup>
-        {file?.subtitle ? <ToolbarLabel>{t("Subtitle: {subtitle}", { subtitle: file.subtitle })}</ToolbarLabel> : null}
+        {file?.subtitle ? <ToolbarLabel>{t("Subtitle: {subtitle}", { subtitle: designText(file.subtitle) })}</ToolbarLabel> : null}
       </Toolbar>
       <div className="sound-editor-body">
         {variants.map((v, i) =>
@@ -88,15 +111,6 @@ export function SoundEditor({ path, content, onChange, readOnly }: EditorProps) 
           ) : (
             <VariantRow key={i} path={path} variant={v} readOnly={!!readOnly} onChange={(next) => setVariant(i, next)} onRemove={() => setVariant(i, null)} />
           ),
-        )}
-        {editing !== null && variants[editing]?.mix && (
-          <MixEditor
-            path={path}
-            mix={variants[editing].mix as Mix}
-            shown={shown[editing]?.mix ?? (variants[editing].mix as Mix)}
-            readOnly={!!readOnly}
-            onChange={(mix) => setVariant(editing, { ...variants[editing], mix })}
-          />
         )}
         {!readOnly && (
           <div className="sound-add">

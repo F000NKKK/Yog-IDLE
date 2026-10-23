@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Icon, useT } from "substrate-platform-ui";
 import { loadSound, play, type Playing } from "./audio";
 import { Waveform } from "./Waveform";
+import { soundLabel, soundName } from "./names";
 
 // One sound an event may play: what it is, its waveform, played as the
 // game plays it (its volume and pitch), and its volume, pitch and weight.
@@ -91,8 +92,8 @@ export function VariantRow({ path, variant, readOnly, onChange, onRemove }: Prop
       </button>
       <div className="sound-variant-main">
         <div className="sound-variant-name">
-          {variant.file ? <span className="sound-game">{t("game")}</span> : null}
-          {sound}
+          {variant.file ? <span className="sound-game">{t("game")}</span> : <span className="sound-game">{soundName(sound).set}</span>}
+          {soundLabel(sound)}
           {buffer ? <span className="sound-length">{buffer.duration.toFixed(2)} s</span> : null}
         </div>
         {error ? <div className="sound-error">{error}</div> : <Waveform buffer={buffer} at={at} />}
