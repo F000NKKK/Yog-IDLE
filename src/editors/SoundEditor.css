@@ -89,3 +89,175 @@
 .sound-add input {
   flex: 1;
 }
+
+.sound-variant.editing {
+  border-color: var(--accent, #9d7bea);
+}
+
+/* The montage's timeline */
+
+.mix-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 260px;
+  border: 1px solid var(--border, #3a3a3a);
+  border-radius: 4px;
+  padding: 6px;
+}
+
+.mix-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.mix-toolbar input {
+  flex: 1;
+}
+
+.mix-length {
+  opacity: 0.7;
+  font-variant-numeric: tabular-nums;
+}
+
+.mix-body {
+  display: flex;
+  gap: 8px;
+  min-height: 0;
+  flex: 1;
+}
+
+.mix-timeline {
+  position: relative;
+  flex: 1;
+  overflow-x: auto;
+  user-select: none;
+}
+
+.mix-ruler {
+  position: relative;
+  height: 16px;
+  border-bottom: 1px solid var(--border, #3a3a3a);
+  font-size: 10px;
+  opacity: 0.7;
+}
+
+.mix-ruler span {
+  position: absolute;
+  top: 0;
+  padding-left: 2px;
+  border-left: 1px solid currentColor;
+}
+
+.mix-lane {
+  position: relative;
+  height: 52px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.mix-clip {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  background: rgba(157, 123, 234, 0.15);
+  border: 1px solid rgba(157, 123, 234, 0.6);
+  border-left-width: 6px;
+  border-right-width: 6px;
+  border-radius: 3px;
+  cursor: grab;
+  overflow: hidden;
+}
+
+.mix-clip.selected {
+  border-color: var(--accent, #c9b3ff);
+  background: rgba(157, 123, 234, 0.3);
+}
+
+.mix-clip .sound-wave {
+  height: 100%;
+  background: none;
+}
+
+.mix-clip-name {
+  position: absolute;
+  left: 4px;
+  top: 2px;
+  font-size: 10px;
+  opacity: 0.8;
+  pointer-events: none;
+}
+
+.mix-head {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: #fff;
+  pointer-events: none;
+}
+
+.mix-inspector {
+  width: 240px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+  overflow-y: auto;
+}
+
+.sound-clip-inspector label,
+.sound-effect label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 6px;
+}
+
+.sound-clip-inspector input[type="number"],
+.sound-effect input[type="number"] {
+  width: 70px;
+}
+
+.sound-clip-inspector {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sound-clip-title,
+.sound-clip-subtitle {
+  font-weight: 600;
+  opacity: 0.85;
+}
+
+.sound-clip-check {
+  justify-content: flex-start !important;
+}
+
+.sound-effects {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sound-effect {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 4px;
+  border: 1px solid var(--border, #3a3a3a);
+  border-radius: 3px;
+}
+
+.sound-effect-name {
+  font-weight: 600;
+}
+
+.sound-effect-add {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}

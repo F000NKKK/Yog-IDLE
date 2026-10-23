@@ -3,6 +3,7 @@ import { serveMethod } from "../data/yogIds.generated";
 import { type EditorProps, Toolbar, ToolbarButton, ToolbarCheck, ToolbarGroup, usePropertyContext, useT } from "substrate-platform-ui";
 import { cli } from "../cli";
 import { useDataFile, type DataFormat } from "../data/useDataFile";
+import { useComplete } from "../data/useComplete";
 import { readObject } from "../data/yogData";
 import { shapeProperties, type Described } from "../data/shapeGrid";
 import { formatShape } from "./DataEditor";
@@ -40,23 +41,6 @@ function image(url: string): Promise<HTMLImageElement> {
   });
 }
 
-/** The file with every default (what the game draws by), as the CLI reads it. */
-function useLook(file: ParticleFile | null): { look: ParticleLook | null; error: string | null } {
-  const [out, setOut] = useState<{ look: ParticleLook | null; error: string | null }>({ look: null, error: null });
-  useEffect(() => {
-    if (!file) return;
-    let live = true;
-    cli<ParticleLook>(serveMethod.FORMAT_COMPLETE, { format: formats.particle.ext, value: file }).then(
-      (look) => live && setOut({ look, error: null }),
-      (e) => live && setOut((o) => ({ look: o.look, error: String((e as { message?: string })?.message ?? e) })),
-    );
-    return () => {
-      live = false;
-    };
-  }, [file]);
-  return out;
-}
-
 /** The particle's pictures, from the mod's textures. */
 function useFrames(path: string, textures: string[] | undefined): Frames | null {
   const [frames, setFrames] = useState<Frames | null>(null);
@@ -79,7 +63,7 @@ export function ParticleEditor({ path, content, onChange, readOnly }: EditorProp
   const t = useT();
   const { parsed, update } = useDataFile(content, onChange, FORMAT, readOnly);
   const file = parsed?.ok ? parsed.file : null;
-  const { look, error } = useLook(file);
+  const { complete: look, error } = useComplete<ParticleLook>(file, formats.particle.ext);
   const frames = useFrames(path, look?.textures);
   const [shape, setShape] = useState<Described | null>(null);
   const [playing, setPlaying] = useState(true);
