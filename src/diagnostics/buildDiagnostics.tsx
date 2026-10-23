@@ -3,7 +3,7 @@ import { addDiagnostics, clearDiagnostics, setDiagnostics, type Diagnostic } fro
 import { unframe } from "../data/binary";
 import type { Diagnostic as YogDiagnostic } from "../data/yogDataBinary.generated";
 import { program } from "../data/yogIds.generated";
-import { EVENT, listenAll, listenTo } from "../events";
+import { EVENT, listenAll, listenTo } from "../app/events";
 import { hasLiveProblems } from "./liveCheck";
 import { yogDiagnostic } from "./yogDiagnostic";
 

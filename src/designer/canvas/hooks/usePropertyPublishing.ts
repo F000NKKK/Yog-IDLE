@@ -3,11 +3,11 @@
 import { useEffect, useRef, useSyncExternalStore } from "react";
 import { activatePropertyContext, type PropertySet, setPropertyContext, tn } from "substrate-platform-ui";
 import { designText } from "../../../lang/designResources";
-import type { ScreenDesignerProps } from "../../ScreenDesigner";
-import { findComponent } from "../../components";
-import { imageSourcesVersion, subscribeImageSources } from "../../imageSources";
-import { widgetProperties } from "../../properties";
-import { findNode, findParent, isGrid, KIND_INFO, mapNode, type YuiKind, type YuiNode } from "../../yui";
+import type { ScreenDesignerProps } from "../../view/ScreenDesigner";
+import { findComponent } from "../../model/components";
+import { imageSourcesVersion, subscribeImageSources } from "../../resources/imageSources";
+import { widgetProperties } from "../../model/properties";
+import { findNode, findParent, isGrid, KIND_INFO, mapNode, type YuiKind, type YuiNode } from "../../model/yui";
 import { newEventName } from "../designerModel";
 import type { DesignerDocument } from "../useDesignerDocument";
 import type { DesignerEdits } from "../useDesignerEdits";

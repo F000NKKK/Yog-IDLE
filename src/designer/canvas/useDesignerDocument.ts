@@ -1,6 +1,6 @@
 // The designer's document: its tree, the edit session, selection, history and view settings.
 
-import type { ScreenDesignerProps } from "../ScreenDesigner";
+import type { ScreenDesignerProps } from "../view/ScreenDesigner";
 import { useDesignerState } from "./hooks/useDesignerState";
 import { useDocumentLoading } from "./hooks/useDocumentLoading";
 import { useDocumentEdits } from "./hooks/useDocumentEdits";

@@ -1,8 +1,8 @@
 // A node's context menu.
 
 import { type FileTreeMenuItem, type FileTreeNode, openFile } from "substrate-platform-ui";
-import { openWithItems } from "../../../openFiles/tabViews";
-import { parentOf } from "../../../paths";
+import { openWithItems } from "../../../openFiles/tabs/tabViews";
+import { parentOf } from "../../../project/paths";
 import type { ExplorerTreeProps } from "../../ProjectExplorer";
 import { codeBehindPair, explorerClipboard } from "../explorerModel";
 import { placeholderId } from "../projectTree";

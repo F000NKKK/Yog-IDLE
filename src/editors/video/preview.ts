@@ -4,7 +4,7 @@
 // WebAudio.
 
 import { serveMethod } from "../../data/yogIds.generated";
-import { cli } from "../../cli";
+import { cli } from "../../toolchain/cli";
 import { audioContext, bytesOf, decodeSound } from "../sound/audio";
 
 /** What `video_preview` answers. */

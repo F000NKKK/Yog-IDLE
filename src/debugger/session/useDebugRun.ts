@@ -2,7 +2,7 @@
 
 import { useCallback } from "react";
 import { invokeCommand } from "substrate-platform-ui";
-import { EVENT, listenTo } from "../../events";
+import { EVENT, listenTo } from "../../app/events";
 import { yog } from "../../host.generated";
 import type { DebugState } from "./useDebugState";
 

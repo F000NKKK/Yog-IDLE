@@ -1,6 +1,6 @@
 import type { ComponentType } from "react";
 import { useT, type EditorProps } from "substrate-platform-ui";
-import { DataEditor } from "../DataEditor";
+import { DataEditor } from "../data/DataEditor";
 import { AdvancementDesigner } from "./AdvancementDesigner";
 import { EffectDesigner } from "./EffectDesigner";
 import { LootDesigner } from "./LootDesigner";
@@ -8,7 +8,7 @@ import { TagDesigner } from "./TagDesigner";
 import type { DefProps } from "./DefLayout";
 import { DEF_FORMAT } from "./defModel";
 import { useDataFile } from "../../data/useDataFile";
-import { formats } from "../../yogFileTypes";
+import { formats } from "../../project/yogFileTypes";
 
 export const DEF_SOURCE_VIEW = "yog.ydef.source";
 

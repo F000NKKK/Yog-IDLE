@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { type EditorProps, reportError } from "substrate-platform-ui";
-import { cli } from "../../../cli";
+import { cli } from "../../../toolchain/cli";
 import type { Kind } from "../../../content/model";
 import { kind as KIND, serveMethod } from "../../../data/yogIds.generated";
 import { MODEL, type ModelKey, modelOf, resolve } from "../contentModel";

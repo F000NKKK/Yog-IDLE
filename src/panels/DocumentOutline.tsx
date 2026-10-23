@@ -1,9 +1,9 @@
 import { useMemo } from "react";
 import { yui } from "../data/yogIds.generated";
 import { Tree, useT, type TreeNode } from "substrate-platform-ui";
-import { useActiveDesigner } from "../designer/activeDesigner";
-import { isComponentDoc } from "../designer/components";
-import { isContainer, isPropertyElement, type YuiNode } from "../designer/yui";
+import { useActiveDesigner } from "../designer/view/activeDesigner";
+import { isComponentDoc } from "../designer/model/components";
+import { isContainer, isPropertyElement, type YuiNode } from "../designer/model/yui";
 
 /** Has children in the outline: containers, and a component document's root (declarations + body). */
 const branches = (n: YuiNode) => isContainer(n) || isComponentDoc(n);

@@ -2,8 +2,8 @@
 
 import { useRef, useState } from "react";
 import { type ContextMenuItem, useContextMenu, useT } from "substrate-platform-ui";
-import { useActiveFileTab } from "../../../OpenFilesContext";
-import type { ScreenDesignerProps } from "../../ScreenDesigner";
+import { useActiveFileTab } from "../../../openFiles/OpenFilesContext";
+import type { ScreenDesignerProps } from "../../view/ScreenDesigner";
 import { type Session, settings, type ViewSettings } from "../designerModel";
 
 /** The designer's own state: view settings, error, the session, menus. */

@@ -1,10 +1,10 @@
 // Adding a widget: placed at a point, or into the selection's container.
 
 import type { DesignPoint } from "substrate-platform-ui";
-import { cellAt } from "../../GridAdorner";
-import { findComponent } from "../../components";
-import { cellAttrs } from "../../grid";
-import { findNode, insertNodes, isCanvas, isGrid, mapNode, newNode, withAttrs, type YuiDoc, type YuiNode } from "../../yui";
+import { cellAt } from "../../view/GridAdorner";
+import { findComponent } from "../../model/components";
+import { cellAttrs } from "../../model/grid";
+import { findNode, insertNodes, isCanvas, isGrid, mapNode, newNode, withAttrs, type YuiDoc, type YuiNode } from "../../model/yui";
 import { clampCells, fitParent, round } from "../designerModel";
 import type { DesignerDocument } from "../useDesignerDocument";
 import type { DesignerPicture } from "../useDesignerPicture";

@@ -6,7 +6,7 @@
 // it's in (`useTyped`).
 import { useSyncExternalStore } from "react";
 import { serveMethod } from "../data/yogIds.generated";
-import { cli } from "../cli";
+import { cli } from "../toolchain/cli";
 import { sep } from "./yogIds.generated";
 
 /** A typed value's string form, read; `pending` until the CLI has answered. */

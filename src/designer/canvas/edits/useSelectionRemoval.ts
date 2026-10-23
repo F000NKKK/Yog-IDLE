@@ -1,7 +1,7 @@
 // The selection's widgets that can move, deleted or copied.
 
 import { notifyDocumentCommands } from "substrate-platform-ui";
-import { findNode, findParent, isDescendant, removeNodes, serializeNodes, type YuiDoc } from "../../yui";
+import { findNode, findParent, isDescendant, removeNodes, serializeNodes, type YuiDoc } from "../../model/yui";
 import { setClipboard } from "../designerModel";
 import type { DesignerDocument } from "../useDesignerDocument";
 

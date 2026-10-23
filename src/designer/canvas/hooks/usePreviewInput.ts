@@ -3,7 +3,7 @@
 import type { KeyboardEvent as ReactKeyboardEvent } from "react";
 import { eventKey } from "substrate-platform-ui";
 import { yui } from "../../../data/yogIds.generated";
-import { findNode, type YuiNode } from "../../yui";
+import { findNode, type YuiNode } from "../../model/yui";
 import type { DesignerDocument } from "../useDesignerDocument";
 import type { DesignerPicture } from "../useDesignerPicture";
 import type { PreviewEvents } from "./usePreviewEvents";

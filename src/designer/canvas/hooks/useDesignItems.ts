@@ -2,8 +2,8 @@
 
 import { useMemo } from "react";
 import type { DesignItem } from "substrate-platform-ui";
-import { isComponentDoc } from "../../components";
-import { isContainer, type YuiNode } from "../../yui";
+import { isComponentDoc } from "../../model/components";
+import { isContainer, type YuiNode } from "../../model/yui";
 import { nodeLabel, positioned } from "../designerModel";
 import type { DesignerDocument } from "../useDesignerDocument";
 import type { DesignerLayout } from "./useDesignerLayout";

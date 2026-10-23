@@ -2,8 +2,8 @@
 
 import { useEffect } from "react";
 import { errorText, type FileTreeNode, openPath, openTerminalIn, reportError, revealPath } from "substrate-platform-ui";
-import { selectPath } from "../../../ideSelection";
-import { isWithin } from "../../../paths";
+import { selectPath } from "../../../app/ideSelection";
+import { isWithin } from "../../../project/paths";
 import { openProjectProperties } from "../../../projectProperties/bus";
 import type { ExplorerTreeProps } from "../../ProjectExplorer";
 import { pathTo } from "../projectTree";

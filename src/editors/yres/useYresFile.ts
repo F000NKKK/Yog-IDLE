@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { type DataGridHandle, type EditorProps, useLocale, useT } from "substrate-platform-ui";
-import { useOpenFiles } from "../../OpenFilesContext";
+import { useOpenFiles } from "../../openFiles/OpenFilesContext";
 import { parseYres, serializeYres, splitYresPath, type YresEntry, type YresParse } from "../../lang/yres";
 import { type Row, SHOW_ALL_KEY, type Sibling } from "./yresModel";
 

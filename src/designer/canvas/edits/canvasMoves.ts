@@ -2,10 +2,10 @@
 // into a grid's cells, freely onto a canvas, or into a flow.
 
 import type { DesignChange } from "substrate-platform-ui";
-import { cellAt } from "../../GridAdorner";
-import { isComponentDoc } from "../../components";
-import { cellAttrs } from "../../grid";
-import { findNode, findParent, insertNodes, isCanvas, isDescendant, isGrid, mapNode, removeNodes, withAttrs, type YuiDoc, type YuiNode } from "../../yui";
+import { cellAt } from "../../view/GridAdorner";
+import { isComponentDoc } from "../../model/components";
+import { cellAttrs } from "../../model/grid";
+import { findNode, findParent, insertNodes, isCanvas, isDescendant, isGrid, mapNode, removeNodes, withAttrs, type YuiDoc, type YuiNode } from "../../model/yui";
 import type { DesignerPicture } from "../useDesignerPicture";
 import { clampCells, fitParent, positioned, round } from "../designerModel";
 import type { Insertion } from "./useInsertion";

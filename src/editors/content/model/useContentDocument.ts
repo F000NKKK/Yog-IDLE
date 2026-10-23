@@ -2,8 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { type EditorProps, reportError, useContextMenu, useT } from "substrate-platform-ui";
-import { useOpenFiles } from "../../../OpenFilesContext";
-import { cli } from "../../../cli";
+import { useOpenFiles } from "../../../openFiles/OpenFilesContext";
+import { cli } from "../../../toolchain/cli";
 import type { GizmoMode, ViewName } from "../../../content/Viewport";
 import { CONTENT_FORMAT, type ContentFile, type Dir, type DisplaySlot, kindOf } from "../../../content/model";
 import type { BlockState } from "../../../content/states";

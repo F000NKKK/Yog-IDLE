@@ -1,8 +1,8 @@
 // The designer's keys: delete, cut/copy/paste, duplicate, reorder, nudge.
 
 import { useKeybinding } from "substrate-platform-ui";
-import type { ScreenDesignerProps } from "../../ScreenDesigner";
-import { findParent } from "../../yui";
+import type { ScreenDesignerProps } from "../../view/ScreenDesigner";
+import { findParent } from "../../model/yui";
 import type { DesignerCommands } from "../useDesignerCommands";
 import type { DesignerDocument } from "../useDesignerDocument";
 

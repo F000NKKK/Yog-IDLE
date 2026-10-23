@@ -3,7 +3,7 @@ import ReactDOM from "react-dom/client";
 import { ThemeProvider } from "substrate-platform-ui";
 import App from "./App";
 import "./editors";
-import "./markdownLinks";
+import "./project/markdownLinks";
 import "./locales/ru";
 
 // The webview's own menu (Back / Reload / Inspect) is no IDE's — every

@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { Icon, fileNameOf, joinPath, textMatchRanges, type FileTreeMatch, type FileTreeNode } from "substrate-platform-ui";
-import { generatedCodePath, isWithin, parentOf } from "../../paths";
+import { generatedCodePath, isWithin, parentOf } from "../../project/paths";
 
 // What Project Explorer shows of a Yog project, as pure transforms over the
 // tree: Visual Studio's file nesting, generated code under its source, the

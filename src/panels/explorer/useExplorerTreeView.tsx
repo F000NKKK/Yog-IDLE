@@ -2,10 +2,10 @@
 
 import { type FocusEvent, useEffect, useMemo, useRef, useState } from "react";
 import { type ChangeKind, changeKindLabel, changeLetter, fileNameOf, fileTreeFromEntries, type FileTreeNode, filterFileTree, joinPath, nestFiles, t, useContextMenu, useDirectoryTree, useFilesChanged, useGit, useShell, useStoredState, useT, useWatchedFolders } from "substrate-platform-ui";
-import { useActiveFileTab, useOpenFiles } from "../../OpenFilesContext";
-import { files } from "../../files";
-import { registerExplorerRename, selectMultiple, selectPath } from "../../ideSelection";
-import { isWithin, renamedPath } from "../../paths";
+import { useActiveFileTab, useOpenFiles } from "../../openFiles/OpenFilesContext";
+import { files } from "../../project/files";
+import { registerExplorerRename, selectMultiple, selectPath } from "../../app/ideSelection";
+import { isWithin, renamedPath } from "../../project/paths";
 import { changedFiles, type Editing, explorerClipboard, type ListFilter, type ScopeHistory, useGeneratedCode } from "./explorerModel";
 import { reportListError } from "./listError";
 import { useContentMatches, useProjectItems } from "./projectItems";

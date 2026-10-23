@@ -2,10 +2,10 @@
 
 import { useRef } from "react";
 import { serveMethod } from "../../../data/yogIds.generated";
-import { cli } from "../../../cli";
-import { emitTo, EVENT } from "../../../events";
+import { cli } from "../../../toolchain/cli";
+import { emitTo, EVENT } from "../../../app/events";
 import { withDesignResources } from "../../../lang/designResources";
-import type { ScreenDesignerProps } from "../../ScreenDesigner";
+import type { ScreenDesignerProps } from "../../view/ScreenDesigner";
 import type { EventReply } from "../designerModel";
 import type { DesignerPicture } from "../useDesignerPicture";
 

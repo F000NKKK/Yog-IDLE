@@ -1,9 +1,9 @@
 // Renaming and deleting items.
 
 import { confirmDialog, type FileTreeNode, reportError, t } from "substrate-platform-ui";
-import { files } from "../../../files";
-import { renamePath, selectionPathRemoved } from "../../../ideSelection";
-import { isWithin, parentOf, validateEntryName as validateName } from "../../../paths";
+import { files } from "../../../project/files";
+import { renamePath, selectionPathRemoved } from "../../../app/ideSelection";
+import { isWithin, parentOf, validateEntryName as validateName } from "../../../project/paths";
 import { attempt } from "../explorerModel";
 import { findNode } from "../projectTree";
 import type { ExplorerTreeView } from "../useExplorerTreeView";

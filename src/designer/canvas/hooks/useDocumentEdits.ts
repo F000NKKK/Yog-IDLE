@@ -2,9 +2,9 @@
 
 import { useCallback } from "react";
 import { notifyDocumentCommands } from "substrate-platform-ui";
-import type { ScreenDesignerProps } from "../../ScreenDesigner";
-import { findNode, type YuiDoc } from "../../yui";
-import { patchYui } from "../../yuiText";
+import type { ScreenDesignerProps } from "../../view/ScreenDesigner";
+import { findNode, type YuiDoc } from "../../model/yui";
+import { patchYui } from "../../model/yuiText";
 import { rememberSelection } from "../designerModel";
 import type { DesignerState } from "./useDesignerState";
 

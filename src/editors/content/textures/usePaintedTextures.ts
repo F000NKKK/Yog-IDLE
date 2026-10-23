@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { serveMethod } from "../../../data/yogIds.generated";
 import type { EditorProps } from "substrate-platform-ui";
-import { cli } from "../../../cli";
+import { cli } from "../../../toolchain/cli";
 import { sameAnimation, type TextureAnimation } from "../../../content/animation";
 import { decodeImage, type PixelImage, sameImage } from "../../../content/paint/pixels";
 import { type Edited, namedTextures } from "../contentModel";

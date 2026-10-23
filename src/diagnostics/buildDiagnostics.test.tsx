@@ -7,8 +7,8 @@ import { severity, type Diagnostic as YogDiagnostic } from "../data/yogDataBinar
 import { yogEvents } from "../host.generated";
 
 const handlers = new Map<string, ((payload: unknown) => void)[]>();
-vi.mock("../events", async (original) => ({
-  ...(await original<typeof import("../events")>()),
+vi.mock("../app/events", async (original) => ({
+  ...(await original<typeof import("../app/events")>()),
   listenTo: (event: string, handler: (payload: unknown) => void) => {
     handlers.set(event, [...(handlers.get(event) ?? []), handler]);
     return Promise.resolve(() => {});

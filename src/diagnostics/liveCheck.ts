@@ -4,10 +4,10 @@
 
 import { useEffect, useRef, useState } from "react";
 import { setDiagnostics } from "substrate-platform-ui";
-import { cli, problemDiagnostics, serviceTool, type ServiceProblem } from "../cli";
+import { cli, problemDiagnostics, serviceTool, type ServiceProblem } from "../toolchain/cli";
 import { serveMethod } from "../data/yogIds.generated";
-import { isDataFile } from "../files";
-import { EVENT, listenAll, listenTo } from "../events";
+import { isDataFile } from "../project/files";
+import { EVENT, listenAll, listenTo } from "../app/events";
 import type { FileTab } from "../openFiles/openFilesContext";
 
 /** How long typing pauses before the file is checked again, ms. */

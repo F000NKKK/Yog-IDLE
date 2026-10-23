@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { DirEntry } from "substrate-platform-ui";
-import { files } from "../../files";
+import { files } from "../../project/files";
 import { useFilesChanged } from "substrate-platform-ui";
 
 /** Outside changes this close together are one re-listing. */

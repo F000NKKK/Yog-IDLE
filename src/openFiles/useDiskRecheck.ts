@@ -2,10 +2,10 @@
 
 import { useCallback, useEffect, useRef } from "react";
 import { forgetDocumentHistory, notify, t, useFilesChanged, useWatchedFolders } from "substrate-platform-ui";
-import { files } from "../files";
-import { parentOf } from "../paths";
-import type { OpenTabs } from "./useOpenTabs";
-import type { TabPaths } from "./useTabPaths";
+import { files } from "../project/files";
+import { parentOf } from "../project/paths";
+import type { OpenTabs } from "./tabs/useOpenTabs";
+import type { TabPaths } from "./tabs/useTabPaths";
 
 /** Tabs kept in step with the disk: reloaded when their files change, unless they have edits. */
 export function useDiskRecheck(openTabs: OpenTabs, tabPaths: TabPaths) {

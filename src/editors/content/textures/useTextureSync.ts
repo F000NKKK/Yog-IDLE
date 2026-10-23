@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { serveMethod } from "../../../data/yogIds.generated";
 import type { EditorProps } from "substrate-platform-ui";
-import { cli } from "../../../cli";
+import { cli } from "../../../toolchain/cli";
 import type { LoadedTexture } from "../contentModel";
 import type { ContentModel } from "../useContentModel";
 import type { PaintedTextures } from "./usePaintedTextures";

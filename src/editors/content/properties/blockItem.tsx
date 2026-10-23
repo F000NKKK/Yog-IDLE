@@ -3,8 +3,8 @@
 import { PROPERTY_KIND, type PropertyDescriptor, pt, t } from "substrate-platform-ui";
 import { ARMOR_SLOTS, type ArmorSlot, BLOCK_PIXELS, type ContentFile, RENDER_LAYERS, TOOL_KINDS, TOOL_LEVELS, TOOLS } from "../../../content/model";
 import { refProblem, refSuggestions } from "../../../data/contentRefs";
-import { RowsEditor } from "../../RowsEditor";
-import { refMessage } from "../../inspector";
+import { RowsEditor } from "../../shared/RowsEditor";
+import { refMessage } from "../../shared/inspector";
 import type { PotionEffectRow } from "../contentModel";
 import { parseVec, vecText } from "../fieldText";
 import type { PropertiesContext } from "./context";

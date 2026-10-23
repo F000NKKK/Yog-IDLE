@@ -2,9 +2,9 @@
 
 import { useEffect } from "react";
 import { notifyDocumentCommands } from "substrate-platform-ui";
-import type { ScreenDesignerProps } from "../../ScreenDesigner";
-import { clearActiveDesigner, setActiveDesigner } from "../../activeDesigner";
-import { adoptUids, findNode, nodeAtPath, pathOf } from "../../yui";
+import type { ScreenDesignerProps } from "../../view/ScreenDesigner";
+import { clearActiveDesigner, setActiveDesigner } from "../../view/activeDesigner";
+import { adoptUids, findNode, nodeAtPath, pathOf } from "../../model/yui";
 import { type Session, sessions } from "../designerModel";
 import type { DesignerDocument } from "../useDesignerDocument";
 import type { CommandRegistry } from "./useCommandRegistry";

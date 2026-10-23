@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTyped } from "../../data/typed";
-import { cli } from "../../cli";
+import { cli } from "../../toolchain/cli";
 import { useT, type PropertyDescriptor } from "substrate-platform-ui";
 import { NO_REFS, refId, refProblem, refSuggestions, useContentRefs } from "../../data/contentRefs";
 import { designText, useDesignResources } from "../../lang/designResources";
-import { modRootOf } from "../../paths";
-import { colorText, inspectorRows, refMessage } from "../inspector";
-import { RowsEditor } from "../RowsEditor";
+import { modRootOf } from "../../project/paths";
+import { colorText, inspectorRows, refMessage } from "../shared/inspector";
+import { RowsEditor } from "../shared/RowsEditor";
 import { asList, EFFECT_CATEGORIES, modifierText, OPERATIONS, type Operation } from "./defModel";
 import { DefLayout, type DefProps } from "./DefLayout";
 import { GameStage } from "./GamePanel";

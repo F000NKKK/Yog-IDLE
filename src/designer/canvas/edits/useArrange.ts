@@ -1,7 +1,7 @@
 // Bringing the selection to the front or back, and nudging it.
 
-import { cellAttrs, cellOf, gridDefs } from "../../grid";
-import { findNode, findParent, insertNodes, isGrid, mapNode, removeNodes, withAttrs } from "../../yui";
+import { cellAttrs, cellOf, gridDefs } from "../../model/grid";
+import { findNode, findParent, insertNodes, isGrid, mapNode, removeNodes, withAttrs } from "../../model/yui";
 import { positioned, round } from "../designerModel";
 import type { DesignerDocument } from "../useDesignerDocument";
 import type { DesignerPicture } from "../useDesignerPicture";

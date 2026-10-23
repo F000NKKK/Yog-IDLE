@@ -6,7 +6,7 @@
  */
 import { errorText } from "substrate-platform-ui";
 import { serveMethod } from "../data/yogIds.generated";
-import { cli } from "../cli";
+import { cli } from "../toolchain/cli";
 import { prefetchTyped, stringsOf } from "./typed";
 
 /** A file read: its value, or what's wrong with it (`line:col: message`). */

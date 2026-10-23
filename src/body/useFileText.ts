@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import { useOpenFilesIfAny } from "../OpenFilesContext";
+import { useOpenFilesIfAny } from "../openFiles/OpenFilesContext";
 import { useFilesChanged } from "substrate-platform-ui";
-import { files } from "../files";
+import { files } from "../project/files";
 
 /**
  * The text of another file a designer shows (an entity's model, a clip's

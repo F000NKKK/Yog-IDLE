@@ -2,10 +2,10 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { serveMethod } from "../../../data/yogIds.generated";
-import { cli } from "../../../cli";
+import { cli } from "../../../toolchain/cli";
 import { withDesignResources } from "../../../lang/designResources";
-import type { ScreenDesignerProps } from "../../ScreenDesigner";
-import { mapNode, withAttrs } from "../../yui";
+import type { ScreenDesignerProps } from "../../view/ScreenDesigner";
+import { mapNode, withAttrs } from "../../model/yui";
 import { type Geo, type Rendered, type RenderReply, toRect } from "../designerModel";
 import type { DesignerDocument } from "../useDesignerDocument";
 import type { DesignerLayout } from "./useDesignerLayout";

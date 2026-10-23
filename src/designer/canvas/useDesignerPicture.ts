@@ -1,7 +1,7 @@
 // How the screen lays out, and the real picture the game draws of it.
 
 import type { DesignerDocument } from "./useDesignerDocument";
-import type { ScreenDesignerProps } from "../ScreenDesigner";
+import type { ScreenDesignerProps } from "../view/ScreenDesigner";
 import { useDesignerLayout } from "./hooks/useDesignerLayout";
 import { useRenderedPicture } from "./hooks/useRenderedPicture";
 import { useDesignItems } from "./hooks/useDesignItems";

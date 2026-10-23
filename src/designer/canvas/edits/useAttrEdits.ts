@@ -1,6 +1,6 @@
 // An attribute set from Properties.
 
-import { mapNode, withAttrs, type YuiNode } from "../../yui";
+import { mapNode, withAttrs, type YuiNode } from "../../model/yui";
 import type { DesignerDocument } from "../useDesignerDocument";
 
 /** An attribute set from Properties. */

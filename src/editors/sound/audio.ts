@@ -4,7 +4,7 @@
 // the game, is its speed too); its waveform's peaks for drawing.
 
 import { serveMethod } from "../../data/yogIds.generated";
-import { cli } from "../../cli";
+import { cli } from "../../toolchain/cli";
 
 /** What `sound_data` answers. */
 interface SoundData {

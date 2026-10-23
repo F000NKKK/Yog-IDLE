@@ -2,12 +2,12 @@ import { useState, useSyncExternalStore } from "react";
 import { yui } from "../data/yogIds.generated";
 import { useTyped } from "../data/typed";
 import { SearchField, beginItemDrag, useT } from "substrate-platform-ui";
-import { TOOLBOX_MIME, useActiveDesigner } from "../designer/activeDesigner";
-import { useComponents } from "../designer/components";
-import { KIND_INFO, KINDS } from "../designer/yui";
-import { imagePreview, imageSourcesVersion, subscribeImageSources } from "../designer/imageSources";
+import { TOOLBOX_MIME, useActiveDesigner } from "../designer/view/activeDesigner";
+import { useComponents } from "../designer/model/components";
+import { KIND_INFO, KINDS } from "../designer/model/yui";
+import { imagePreview, imageSourcesVersion, subscribeImageSources } from "../designer/resources/imageSources";
 import { designImage, designText, useDesignResources } from "../lang/designResources";
-import { useProject } from "../ProjectContext";
+import { useProject } from "../project/ProjectContext";
 import "./Toolbox.css";
 
 const GROUPS = ["Containers", "Common Controls", "Minecraft", "Recipe Layout"] as const;

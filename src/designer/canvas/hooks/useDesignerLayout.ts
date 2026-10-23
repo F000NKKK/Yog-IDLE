@@ -2,11 +2,11 @@
 
 import { useMemo } from "react";
 import { useDesignResources } from "../../../lang/designResources";
-import { modRootOf } from "../../../paths";
-import type { ScreenDesignerProps } from "../../ScreenDesigner";
-import { designRoot, useComponents } from "../../components";
-import { compute } from "../../layout";
-import { screenWidget } from "../../layoutWidget";
+import { modRootOf } from "../../../project/paths";
+import type { ScreenDesignerProps } from "../../view/ScreenDesigner";
+import { designRoot, useComponents } from "../../model/components";
+import { compute } from "../../model/layout";
+import { screenWidget } from "../../model/layoutWidget";
 import { collect, type Geo, RESOLUTIONS } from "../designerModel";
 import type { DesignerDocument } from "../useDesignerDocument";
 

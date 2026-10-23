@@ -6,10 +6,10 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { serveMethod } from "../data/yogIds.generated";
-import { cli } from "../cli";
+import { cli } from "../toolchain/cli";
 import { fileTypeOf, useFilesChanged } from "substrate-platform-ui";
 import { classify } from "./typed";
-import { fileTypeId, formats } from "../yogFileTypes";
+import { fileTypeId, formats } from "../project/yogFileTypes";
 import { gameId, TYPED_WORDS } from "./yogFormat";
 import { sep } from "./yogIds.generated";
 

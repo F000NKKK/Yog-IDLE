@@ -4,7 +4,7 @@
  * Read and written by the CLI service (`yog serve`), never here.
  */
 
-import { cli, ServiceError } from "../cli";
+import { cli, ServiceError } from "../toolchain/cli";
 import { resKind, serveMethod } from "../data/yogIds.generated";
 
 /** A `.yres` entry's type (yog-ids' `res_kind`). */

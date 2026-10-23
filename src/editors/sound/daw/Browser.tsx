@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Icon, useT } from "substrate-platform-ui";
 import { serveMethod } from "../../../data/yogIds.generated";
-import { cli } from "../../../cli";
+import { cli } from "../../../toolchain/cli";
 import { loadSound, play } from "../audio";
 import { soundLabel, soundName } from "../names";
 

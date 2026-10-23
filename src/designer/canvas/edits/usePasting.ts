@@ -1,7 +1,7 @@
 // Pasting widgets, and duplicating the selection.
 
-import { componentBody, isComponentDoc } from "../../components";
-import { cloneFresh, findNode, findParent, insertNodes, isCanvas, parseNodes, withAttrs } from "../../yui";
+import { componentBody, isComponentDoc } from "../../model/components";
+import { cloneFresh, findNode, findParent, insertNodes, isCanvas, parseNodes, withAttrs } from "../../model/yui";
 import { clipboard, fitParent, positioned, round } from "../designerModel";
 import type { DesignerDocument } from "../useDesignerDocument";
 import type { Insertion } from "./useInsertion";

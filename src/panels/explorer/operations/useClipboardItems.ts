@@ -1,9 +1,9 @@
 // Copying, cutting, pasting and duplicating items.
 
 import { fileNameOf, type FileTreeNode, joinPath, t } from "substrate-platform-ui";
-import { files } from "../../../files";
-import { selectionPathRenamed } from "../../../ideSelection";
-import { isWithin, parentOf } from "../../../paths";
+import { files } from "../../../project/files";
+import { selectionPathRenamed } from "../../../app/ideSelection";
+import { isWithin, parentOf } from "../../../project/paths";
 import { attempt, copyName, explorerClipboard, setExplorerClipboard } from "../explorerModel";
 import type { ExplorerTreeView } from "../useExplorerTreeView";
 import type { ExplorerTargets } from "./useExplorerTargets";

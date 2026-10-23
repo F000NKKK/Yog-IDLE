@@ -1,24 +1,24 @@
 import { JsonEditor, registerEditorProvider, EDITOR_KIND } from "substrate-platform-ui";
-import "../fileTypes";
-import { ScreenDesigner } from "../designer/ScreenDesigner";
-import { YuiSourceEditor, YuiSplitEditor } from "../designer/YuiSplitEditor";
-import { CONTENT_SOURCE_VIEW, ContentEditor } from "./ContentEditor";
-import { LangFileEditor } from "./LangFileEditor";
-import { BOOK_SOURCE_VIEW, BookEditor } from "./BookEditor";
-import { RECIPE_SOURCE_VIEW, RecipeEditor } from "./RecipeEditor";
-import { YresEditor } from "./YresEditor";
+import "../project/fileTypes";
+import { ScreenDesigner } from "../designer/view/ScreenDesigner";
+import { YuiSourceEditor, YuiSplitEditor } from "../designer/view/YuiSplitEditor";
+import { CONTENT_SOURCE_VIEW, ContentEditor } from "./content/ContentEditor";
+import { LangFileEditor } from "./lang/LangFileEditor";
+import { BOOK_SOURCE_VIEW, BookEditor } from "./book/BookEditor";
+import { RECIPE_SOURCE_VIEW, RecipeEditor } from "./recipe/RecipeEditor";
+import { YresEditor } from "./yres/YresEditor";
 import { YRES_SOURCE_VIEW } from "./yres/yresModel";
 import { DEF_SOURCE_VIEW, DefEditor } from "./defs/DefEditor";
 
-import { MODEL_SOURCE_VIEW, ModelEditor } from "./ModelEditor";
-import { ENTITY_SOURCE_VIEW, EntityEditor } from "./EntityEditor";
-import { ANIM_SOURCE_VIEW, AnimEditor } from "./AnimEditor";
-import { TEXTURE_SOURCE_VIEW, TextureEditor } from "./TextureEditor";
-import { PARTICLE_SOURCE_VIEW, ParticleEditor } from "./ParticleEditor";
-import { VIDEO_SOURCE_VIEW, VideoEditor } from "./VideoEditor";
-import { SOUND_SOURCE_VIEW, SoundEditor } from "./SoundEditor";
-import { fileTypeId, formats } from "../yogFileTypes";
-import { LANG_FILE_TYPE } from "../fileTypes";
+import { MODEL_SOURCE_VIEW, ModelEditor } from "./body/ModelEditor";
+import { ENTITY_SOURCE_VIEW, EntityEditor } from "./body/EntityEditor";
+import { ANIM_SOURCE_VIEW, AnimEditor } from "./body/AnimEditor";
+import { TEXTURE_SOURCE_VIEW, TextureEditor } from "./texture/TextureEditor";
+import { PARTICLE_SOURCE_VIEW, ParticleEditor } from "./particle/ParticleEditor";
+import { VIDEO_SOURCE_VIEW, VideoEditor } from "./video/VideoEditor";
+import { SOUND_SOURCE_VIEW, SoundEditor } from "./sound/SoundEditor";
+import { fileTypeId, formats } from "../project/yogFileTypes";
+import { LANG_FILE_TYPE } from "../project/fileTypes";
 
 // Yog-specific editors, on top of the platform's built-in ones — imported
 // once for its side effect, before any file opens.

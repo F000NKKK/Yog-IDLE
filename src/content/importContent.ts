@@ -1,4 +1,4 @@
-import { cli } from "../cli";
+import { cli } from "../toolchain/cli";
 import { open } from "@tauri-apps/plugin-dialog";
 import { confirmDialog, notify, promptDialog, reportError, showDialog, t } from "substrate-platform-ui";
 import { kind as KIND, serveMethod } from "../data/yogIds.generated";

@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { fileNameOf, InfoBar, openFile, t, useLocale } from "substrate-platform-ui";
-import { generatedSource } from "../paths";
+import { generatedSource } from "../project/paths";
 
 /** The read-only notice over a generated file: what it's generated from, with a link to open that source when it's one file. */
 export function GeneratedFileBar({ path, content, children }: { path: string; content: string; children: ReactNode }) {

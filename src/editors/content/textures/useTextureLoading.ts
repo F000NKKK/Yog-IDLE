@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef } from "react";
 import { type EditorProps, reportError } from "substrate-platform-ui";
-import { cli } from "../../../cli";
+import { cli } from "../../../toolchain/cli";
 import { kindOf, templateOf } from "../../../content/model";
 import { GAME_NAMESPACE } from "../../../data/yogFormat";
 import { kind as KIND, serveMethod } from "../../../data/yogIds.generated";

@@ -3,9 +3,9 @@
 
 import { type DesignRect, stemOf } from "substrate-platform-ui";
 import { yui, yuiAttr } from "../../data/yogIds.generated";
-import { cellAttrs, cellOf, gridDefs } from "../grid";
-import type { LNode, LWidget } from "../layoutWidget";
-import { formatNumber, isCanvas, isGrid, pathOf, withAttrs, type YuiDoc, type YuiNode } from "../yui";
+import { cellAttrs, cellOf, gridDefs } from "../model/grid";
+import type { LNode, LWidget } from "../model/layoutWidget";
+import { formatNumber, isCanvas, isGrid, pathOf, withAttrs, type YuiDoc, type YuiNode } from "../model/yui";
 
 /** Common GUI sizes — the game window divided by its GUI scale. */
 export const RESOLUTIONS: { w: number; h: number; label: string }[] = [

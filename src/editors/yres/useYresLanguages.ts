@@ -2,11 +2,11 @@
 
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import { promptDialog, reportError } from "substrate-platform-ui";
-import { cli } from "../../cli";
+import { cli } from "../../toolchain/cli";
 import { resKind, serveMethod } from "../../data/yogIds.generated";
-import { files } from "../../files";
+import { files } from "../../project/files";
 import { isLocaleName, NEUTRAL_LOCALE, serializeYres, type YresEntry, yresFileName } from "../../lang/yres";
-import { IMAGE_EXTENSIONS, VIDEO_EXTENSIONS } from "../MediaValue";
+import { IMAGE_EXTENSIONS, VIDEO_EXTENSIONS } from "../shared/MediaValue";
 import type { YresFile } from "./useYresFile";
 import type { YresSiblings } from "./useYresSiblings";
 import { type Row, SHOW_ALL_KEY } from "./yresModel";

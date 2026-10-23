@@ -3,10 +3,10 @@
 import { useRef } from "react";
 import { serveMethod } from "../../../data/yogIds.generated";
 import { openFile, reportError } from "substrate-platform-ui";
-import { cli } from "../../../cli";
-import { emitTo, EVENT } from "../../../events";
-import type { ScreenDesignerProps } from "../../ScreenDesigner";
-import { findNode, mapNode, withAttrs } from "../../yui";
+import { cli } from "../../../toolchain/cli";
+import { emitTo, EVENT } from "../../../app/events";
+import type { ScreenDesignerProps } from "../../view/ScreenDesigner";
+import { findNode, mapNode, withAttrs } from "../../model/yui";
 import { type HandlerLocation, newEventName } from "../designerModel";
 import type { DesignerDocument } from "../useDesignerDocument";
 

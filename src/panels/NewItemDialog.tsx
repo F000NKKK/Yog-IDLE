@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useRef, useState, type SyntheticEvent } from "react";
 import { Button, FloatingWindow, Icon, SearchField, TextField, useT } from "substrate-platform-ui";
 import { newBlockFile, newBlockWithItemFile, newBookFile, newItemFile, newRecipeFile, titleOf } from "../content/model";
-import { validateEntryName } from "../paths";
-import { pascalName } from "../designer/components";
+import { validateEntryName } from "../project/paths";
+import { pascalName } from "../designer/model/components";
 import "./NewItemDialog.css";
-import { files } from "../files";
-import { dotExt, formats } from "../yogFileTypes";
+import { files } from "../project/files";
+import { dotExt, formats } from "../project/yogFileTypes";
 
 /** One entry of Add > New Item — what file(s) it makes and what goes in them. */
 export interface ItemTemplate {

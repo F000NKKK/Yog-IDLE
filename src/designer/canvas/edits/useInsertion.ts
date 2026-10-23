@@ -2,9 +2,9 @@
 
 import type { DesignPoint } from "substrate-platform-ui";
 import { yui } from "../../../data/yogIds.generated";
-import type { GridGeo } from "../../GridAdorner";
-import { componentBody, findComponent, isComponentDoc } from "../../components";
-import { findNode, findParent, isContainer, KINDS, type YuiDoc, type YuiNode } from "../../yui";
+import type { GridGeo } from "../../view/GridAdorner";
+import { componentBody, findComponent, isComponentDoc } from "../../model/components";
+import { findNode, findParent, isContainer, KINDS, type YuiDoc, type YuiNode } from "../../model/yui";
 import type { DesignerDocument } from "../useDesignerDocument";
 import type { DesignerPicture } from "../useDesignerPicture";
 

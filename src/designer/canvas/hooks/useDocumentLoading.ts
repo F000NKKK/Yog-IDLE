@@ -3,9 +3,9 @@
 import { useCallback, useRef } from "react";
 import { invokeCommand } from "substrate-platform-ui";
 import { yog } from "../../../host.generated";
-import { modRootOf } from "../../../paths";
-import type { ScreenDesignerProps } from "../../ScreenDesigner";
-import { adoptUids, findNode, newScreen, nodeAtPath, parseYui, serializeYui, withAttrs } from "../../yui";
+import { modRootOf } from "../../../project/paths";
+import type { ScreenDesignerProps } from "../../view/ScreenDesigner";
+import { adoptUids, findNode, newScreen, nodeAtPath, parseYui, serializeYui, withAttrs } from "../../model/yui";
 import { screenIdOf, type Session, sessions } from "../designerModel";
 import type { DesignerState } from "./useDesignerState";
 

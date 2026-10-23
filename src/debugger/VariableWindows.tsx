@@ -1,11 +1,11 @@
 import { useEffect, useState, type Dispatch, type SetStateAction } from "react";
 import { useT } from "substrate-platform-ui";
-import { useOpenFiles } from "../OpenFilesContext";
-import { samePath } from "../paths";
+import { useOpenFiles } from "../openFiles/OpenFilesContext";
+import { samePath } from "../project/paths";
 import { evaluate, fetchLocals, identifiers, type Variable, type WatchResult } from "./variables";
 import { VariablesTree, type RootRow } from "./VariablesTree";
 import { useWatches } from "./WatchesContext";
-import { files } from "../files";
+import { files } from "../project/files";
 
 type Expanded = [ReadonlySet<string>, Dispatch<SetStateAction<ReadonlySet<string>>>];
 

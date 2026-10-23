@@ -21,11 +21,11 @@ import {
   useLocale,
   useSelection,
 } from "substrate-platform-ui";
-import { useActiveFileTab, useOpenFiles } from "../OpenFilesContext";
-import { useProject } from "../ProjectContext";
-import { renamePath, selectDocument, type IdeSelectionData } from "../ideSelection";
-import { samePath, validateEntryName } from "../paths";
-import { files } from "../files";
+import { useActiveFileTab, useOpenFiles } from "../openFiles/OpenFilesContext";
+import { useProject } from "../project/ProjectContext";
+import { renamePath, selectDocument, type IdeSelectionData } from "../app/ideSelection";
+import { samePath, validateEntryName } from "../project/paths";
+import { files } from "../project/files";
 import { editManifest } from "../projectProperties/manifestHistory";
 import "./Properties.css";
 import { yog } from "../host.generated";

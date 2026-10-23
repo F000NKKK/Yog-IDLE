@@ -3,7 +3,7 @@
 import type { DesignerDocument } from "./useDesignerDocument";
 import type { DesignerEdits } from "./useDesignerEdits";
 import type { DesignerPicture } from "./useDesignerPicture";
-import type { ScreenDesignerProps } from "../ScreenDesigner";
+import type { ScreenDesignerProps } from "../view/ScreenDesigner";
 import { useHandlerOpening } from "./hooks/useHandlerOpening";
 import { usePropertyPublishing } from "./hooks/usePropertyPublishing";
 import { useCommandRegistry } from "./hooks/useCommandRegistry";

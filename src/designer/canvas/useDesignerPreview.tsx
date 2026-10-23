@@ -3,7 +3,7 @@
 import type { DesignerCommands } from "./useDesignerCommands";
 import type { DesignerDocument } from "./useDesignerDocument";
 import type { DesignerPicture } from "./useDesignerPicture";
-import type { ScreenDesignerProps } from "../ScreenDesigner";
+import type { ScreenDesignerProps } from "../view/ScreenDesigner";
 import { usePreviewEvents } from "./hooks/usePreviewEvents";
 import { usePreviewInput } from "./hooks/usePreviewInput";
 import { useDesignerKeys } from "./hooks/useDesignerKeys";

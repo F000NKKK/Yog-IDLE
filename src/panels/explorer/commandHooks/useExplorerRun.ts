@@ -3,7 +3,7 @@
 import { type FileTreeMenuItem, type FileTreeNode, type HostCommand, openFile, t } from "substrate-platform-ui";
 import { commandLabel, explorerCommand, type ExplorerCommandId } from "../commands";
 import { yog } from "../../../host.generated";
-import { runModCommand } from "../../../runModCommand";
+import { runModCommand } from "../../../running/runModCommand";
 import type { ExplorerTreeProps } from "../../ProjectExplorer";
 import { openExplorerView, PROJECT_EXPLORER_VIEW_PANEL, useExplorerRequests } from "../explorerBus";
 import { copyText } from "../explorerModel";

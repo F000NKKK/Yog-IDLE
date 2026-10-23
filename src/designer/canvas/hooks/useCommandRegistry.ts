@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { registerDocumentCommands } from "substrate-platform-ui";
-import type { ScreenDesignerProps } from "../../ScreenDesigner";
+import type { ScreenDesignerProps } from "../../view/ScreenDesigner";
 import { clipboard } from "../designerModel";
 import type { DesignerDocument } from "../useDesignerDocument";
 import type { DesignerEdits } from "../useDesignerEdits";

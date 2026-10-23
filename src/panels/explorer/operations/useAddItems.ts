@@ -2,8 +2,8 @@
 
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import { fileNameOf, joinPath, openFile, t } from "substrate-platform-ui";
-import { files } from "../../../files";
-import { isWithin } from "../../../paths";
+import { files } from "../../../project/files";
+import { isWithin } from "../../../project/paths";
 import { type ItemTemplate, templateFiles } from "../../NewItemDialog";
 import type { ExplorerTreeProps } from "../../ProjectExplorer";
 import { attempt, copyName, modIdOf } from "../explorerModel";

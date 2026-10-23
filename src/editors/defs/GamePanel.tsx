@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
-import { iconSource, imagePreview, imageSourcesVersion, subscribeImageSources } from "../../designer/imageSources";
+import { iconSource, imagePreview, imageSourcesVersion, subscribeImageSources } from "../../designer/resources/imageSources";
 import "./GamePanel.css";
 
 /** Room around the panel, pixels. */

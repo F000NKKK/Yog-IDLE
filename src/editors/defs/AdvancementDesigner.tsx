@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTyped } from "../../data/typed";
-import { cli } from "../../cli";
+import { cli } from "../../toolchain/cli";
 import { Icon, IconButton, openFile, type PropertyDescriptor, SelectField, TextField, ToolbarCheck, ToolbarGroup, ToolbarSelect, useT } from "substrate-platform-ui";
 import { qualify, refProblem, refSuggestions, useContentDefs, useContentRefs, type RefChoices } from "../../data/contentRefs";
 import { designText, useDesignResources } from "../../lang/designResources";
-import { modRootOf } from "../../paths";
-import { inspectorRows, refMessage } from "../inspector";
+import { modRootOf } from "../../project/paths";
+import { inspectorRows, refMessage } from "../shared/inspector";
 import { asList, CRITERIA, criterionKind, FRAMES, type Criterion } from "./defModel";
 import { DefLayout, type DefProps } from "./DefLayout";
 import { GameStage } from "./GamePanel";

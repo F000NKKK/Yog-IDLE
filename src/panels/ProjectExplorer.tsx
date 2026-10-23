@@ -10,8 +10,8 @@ import {
   useT,
   withShortcut,
 } from "substrate-platform-ui";
-import { useProject, type ProjectInfo } from "../ProjectContext";
-import { isWithin } from "../paths";
+import { useProject, type ProjectInfo } from "../project/ProjectContext";
+import { isWithin } from "../project/paths";
 import { NewItemDialog } from "./NewItemDialog";
 import { commandLabel } from "./explorer/commands";
 import { useExplorerView } from "./explorer/explorerBus";

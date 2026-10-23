@@ -13,15 +13,15 @@ import {
   useKeybinding,
   useShell,
 } from "substrate-platform-ui";
-import { useBreakpoints } from "../BreakpointsContext";
-import { useDebugSessionContext } from "../DebugSessionContext";
+import { useBreakpoints } from "../debugger/BreakpointsContext";
+import { useDebugSessionContext } from "../debugger/DebugSessionContext";
 import { addWatchItem, dataTipProvider } from "../debugger/DataTip";
 import { useWatches } from "../debugger/WatchesContext";
-import { selectDocument } from "../ideSelection";
-import { isGeneratedCode, samePath } from "../paths";
+import { selectDocument } from "../app/ideSelection";
+import { isGeneratedCode, samePath } from "../project/paths";
 import { GeneratedFileBar } from "./GeneratedFileBar";
 import { type FileTab, useOpenFiles } from "./openFilesContext";
-import { PREVIEW_SIDE_ICON, PREVIEW_SIDE_KEYS, tabViews, TOGGLE_PREVIEW_KEYS } from "./tabViews";
+import { PREVIEW_SIDE_ICON, PREVIEW_SIDE_KEYS, tabViews, TOGGLE_PREVIEW_KEYS } from "./tabs/tabViews";
 
 /** Only Rust source is debuggable: the debugger resolves breakpoints against a mod's own compiled native. */
 const DEBUGGABLE_EXTENSION = "rs";

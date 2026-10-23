@@ -1,8 +1,8 @@
 import { useEffect } from "react";
 import { RunBar, type RunMode, useWorkflowRunner, useWorkspaceState } from "substrate-platform-ui";
-import { useProject } from "../ProjectContext";
-import { useModRunTargets } from "../useModRunTargets";
-import { useDebugSessionContext } from "../DebugSessionContext";
+import { useProject } from "../project/ProjectContext";
+import { useModRunTargets } from "../running/useModRunTargets";
+import { useDebugSessionContext } from "../debugger/DebugSessionContext";
 
 export interface RunToolbarProps {
   /** Reports the run-target source's live `running` state up to the shell, so it can conditionally show Restart/Stop instead of leaving them permanently visible-but-disabled. */

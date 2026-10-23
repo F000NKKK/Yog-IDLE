@@ -1,6 +1,6 @@
 import { useState, type CSSProperties, type ReactNode } from "react";
 import { Button, formatShortcut, invokeCommand, t, useT } from "substrate-platform-ui";
-import { useDebugSessionContext } from "../DebugSessionContext";
+import { useDebugSessionContext } from "../debugger/DebugSessionContext";
 import { AutosView, LocalsView, useLocals, WatchView } from "../debugger/VariableWindows";
 import { yog } from "../host.generated";
 

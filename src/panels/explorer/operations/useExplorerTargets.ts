@@ -1,8 +1,8 @@
 // What an operation acts on: the root, a node's folder, the selection, names already taken.
 
 import { fileNameOf, type FileTreeNode } from "substrate-platform-ui";
-import { files } from "../../../files";
-import { parentOf } from "../../../paths";
+import { files } from "../../../project/files";
+import { parentOf } from "../../../project/paths";
 import { findNode } from "../projectTree";
 import type { ExplorerTreeView } from "../useExplorerTreeView";
 

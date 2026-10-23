@@ -2,7 +2,7 @@
 
 import type { EditorProps } from "substrate-platform-ui";
 import { resKind } from "../../data/yogIds.generated";
-import { MediaValue } from "../MediaValue";
+import { MediaValue } from "../shared/MediaValue";
 import { CellInput, ColorEdit, ImmediateCommit } from "./cellEditors";
 import type { YresCellEdits } from "./useYresCellEdits";
 import type { YresFile } from "./useYresFile";

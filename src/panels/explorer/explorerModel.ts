@@ -3,9 +3,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { type ChangeKind, type FileTreeNode, reportError, type RepoStatus, t, useFilesChanged } from "substrate-platform-ui";
-import type { ProjectInfo } from "../../ProjectContext";
-import { files, readModId } from "../../files";
-import { generatedCodePath } from "../../paths";
+import type { ProjectInfo } from "../../project/ProjectContext";
+import { files, readModId } from "../../project/files";
+import { generatedCodePath } from "../../project/paths";
 
 export async function attempt(what: string, op: () => Promise<void>) {
   try {

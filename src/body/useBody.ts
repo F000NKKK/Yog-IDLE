@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { serveMethod } from "../data/yogIds.generated";
-import { cli } from "../cli";
+import { cli } from "../toolchain/cli";
 import { useContentRefs, type OwnRef } from "../data/contentRefs";
 import { parseAnim, type Clip } from "./yanim";
 import { readModel, type ModelFile } from "./ymodel";
 import { useRead } from "../data/useDataFile";
 import { useFileText } from "./useFileText";
-import { formats } from "../yogFileTypes";
+import { formats } from "../project/yogFileTypes";
 
 /** A `.ymodel`'s texture as a data URL, by the format's rules (`body_texture`), and why not when it can't be. */
 export function useBodyTexture(path: string | null, texture: string | undefined): { url: string | null; error: string | null } {

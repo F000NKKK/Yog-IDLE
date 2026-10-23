@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { serveMethod } from "./yogIds.generated";
-import { cli } from "../cli";
+import { cli } from "../toolchain/cli";
 
 // A file's data with every field it leaves out at its default — what the
 // game takes, read through the format's schema by the CLI

@@ -1026,6 +1026,8 @@ export const gameDir = {
 export const program = {
   CLI: "yog",
   SERVE: "serve",
+  SCRIPT: "yog-script",
+  SCRIPT_COMMAND: "script",
 } as const;
 
 export const codeSet = {

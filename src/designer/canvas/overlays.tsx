@@ -4,11 +4,11 @@
 import type { CSSProperties, ReactNode } from "react";
 import type { DesignRect } from "substrate-platform-ui";
 import { yui } from "../../data/yogIds.generated";
-import { charWidth, LINE_GAP, LINE_H, strWidth, textLines } from "../layoutText";
-import type { LNode, LWidget } from "../layoutWidget";
-import { cssColor, isContainer, type YuiNode } from "../yui";
+import { charWidth, LINE_GAP, LINE_H, strWidth, textLines } from "../model/layoutText";
+import type { LNode, LWidget } from "../model/layoutWidget";
+import { cssColor, isContainer, type YuiNode } from "../model/yui";
 import type { Geo } from "./designerModel";
-import { ALPHA_SHIFT, OPAQUE, SLOT_COUNT } from "../colors";
+import { ALPHA_SHIFT, OPAQUE, SLOT_COUNT } from "../resources/colors";
 
 /** Designer-only dashed outlines of containers and spacers — invisible in game, so drawn over the real picture. */
 export function DesignOutlines({ root, geo, zoom }: { root: YuiNode; geo: Map<string, Geo>; zoom: number }) {

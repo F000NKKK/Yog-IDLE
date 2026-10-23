@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button, type CommitResult, errorText, Icon, openFile, type SettingsSection, SettingsWindow, useLocale, useT } from "substrate-platform-ui";
-import { useOpenFiles } from "../OpenFilesContext";
+import { useOpenFiles } from "../openFiles/OpenFilesContext";
 import { projectApi, type ProjectProps } from "./api";
 import type { ProjectPropertiesPage } from "./bus";
 import { ApplicationPage, BuildPage } from "./ApplicationPages";

@@ -1,7 +1,7 @@
 // The backend's debug events, kept in the state.
 
 import { useEffect } from "react";
-import { EVENT, listenAll, listenTo } from "../../events";
+import { EVENT, listenAll, listenTo } from "../../app/events";
 import type { DebugState } from "./useDebugState";
 
 /** The backend's debug events, kept in the state. */

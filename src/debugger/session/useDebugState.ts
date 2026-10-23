@@ -2,7 +2,7 @@
 
 import { useCallback, useRef, useState } from "react";
 import { openFile, t } from "substrate-platform-ui";
-import type { DebugStackFrame, DebugStoppedEvent } from "../../events";
+import type { DebugStackFrame, DebugStoppedEvent } from "../../app/events";
 import { missingRustSrc } from "./debugModel";
 
 /** The session's state: attaching, debugging, the stop, the selected frame and thread. */

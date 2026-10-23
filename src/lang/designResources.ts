@@ -5,14 +5,14 @@
  * and `texture="@Icons.logo"` the image's source, as `yog build` would
  * resolve them (see docs/yres.md).
  */
-import { cli } from "../cli";
+import { cli } from "../toolchain/cli";
 import { file, resKind, serveMethod } from "../data/yogIds.generated";
 import { classify, prefetchTyped, type Typed } from "../data/typed";
 import { useEffect, useSyncExternalStore } from "react";
 import { resolvedLocale, type DirEntry } from "substrate-platform-ui";
-import type { YuiNode } from "../designer/yui";
+import type { YuiNode } from "../designer/model/yui";
 import { parseYres, serializeYres, splitYresPath, type YresEntry } from "./yres";
-import { files, readModId } from "../files";
+import { files, readModId } from "../project/files";
 
 interface ResourceSet {
   /** The set's folder relative to `resources/`, `/`-separated (`""` = `resources/` itself). */

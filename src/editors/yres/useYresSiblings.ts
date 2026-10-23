@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef } from "react";
 import { type DirEntry, type EditorProps, reportError } from "substrate-platform-ui";
-import { files } from "../../files";
+import { files } from "../../project/files";
 import { parseYres, serializeYres, splitYresPath, textMap, type YresEntry } from "../../lang/yres";
 import type { YresFile } from "./useYresFile";
 import type { Sibling } from "./yresModel";
