@@ -332,7 +332,6 @@ pub(super) fn apply_reload(
     let debug_state = app.state::<DebugState>();
     let mut guard = debug_state.0.locked();
     if let Some(session) = guard.as_mut().filter(|s| s.id == session_id) {
-        #[cfg(target_os = "linux")]
         if let Some(tracer) = &session.tracer {
             tracer.send(TracerCmd::Rebind);
         }

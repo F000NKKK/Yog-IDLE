@@ -1,9 +1,8 @@
-import { useEffect, useState } from "react";
-import { invokeCommand, RunBar, type RunMode, useWorkflowRunner, useWorkspaceState } from "substrate-platform-ui";
+import { useEffect } from "react";
+import { RunBar, type RunMode, useWorkflowRunner, useWorkspaceState } from "substrate-platform-ui";
 import { useProject } from "../ProjectContext";
 import { useModRunTargets } from "../useModRunTargets";
 import { useDebugSessionContext } from "../DebugSessionContext";
-import { yog } from "../host.generated";
 
 export interface RunToolbarProps {
   /** Reports the run-target source's live `running` state up to the shell, so it can conditionally show Restart/Stop instead of leaving them permanently visible-but-disabled. */
@@ -34,26 +33,13 @@ const MOD_RUN_MODES: RunMode[] = [
   { name: "debug", label: "Debug" },
 ];
 
-/** Native debugging (`ptrace`) is Linux-only so far — elsewhere the Debug mode isn't offered at all. */
-function useDebugSupported(): boolean {
-  const [supported, setSupported] = useState(false);
-  useEffect(() => {
-    invokeCommand<boolean>(yog.debug.debugSupported)
-      .then(setSupported)
-      .catch(() => setSupported(false));
-  }, []);
-  return supported;
-}
-
 function ModRunToolbar({ root, onRunningChange }: { root: string } & RunToolbarProps) {
   const { targets, running, run } = useModRunTargets(root);
   const { notifyRun } = useDebugSessionContext();
-  const debugSupported = useDebugSupported();
   // Remembered per project, like the target itself (see `RunBar`).
   const [mode, setMode] = useWorkspaceState("run.mode", "release", (v) => typeof v === "string");
   useEffect(() => onRunningChange?.(running), [running, onRunningChange]);
-  const modes = debugSupported ? MOD_RUN_MODES : MOD_RUN_MODES.filter((m) => m.name !== "debug");
-  const effectiveMode = modes.some((m) => m.name === mode) ? mode : "release";
+  const effectiveMode = MOD_RUN_MODES.some((m) => m.name === mode) ? mode : "release";
   return (
     <RunBar
       targets={targets}
@@ -62,7 +48,7 @@ function ModRunToolbar({ root, onRunningChange }: { root: string } & RunToolbarP
         notifyRun(() => run(name, effectiveMode));
         run(name, effectiveMode);
       }}
-      modes={modes}
+      modes={MOD_RUN_MODES}
       selectedMode={effectiveMode}
       onModeChange={setMode}
     />

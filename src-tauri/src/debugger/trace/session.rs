@@ -6,7 +6,7 @@ use substrate_platform::sync::Locked;
 /// An attached session's tracer gave up mid-session — reported as
 /// `debug-failed` (not `debug-attach-failed`: the attach itself worked),
 /// unless the session it belonged to is already over (Stop, the game
-/// exiting, a newer run), where a late `ptrace` error from the dying
+/// exiting, a newer run), where a late error from the dying
 /// process is just noise — or the game itself is what went away, which
 /// is an exit, not a failure.
 pub(super) fn emit_session_failed(
@@ -24,7 +24,7 @@ pub(super) fn emit_session_failed(
     if !current {
         return;
     }
-    if process_gone(real_pid) {
+    if yog_debugger::process_ended(real_pid as u32) {
         let _ = app.emit(crate::events::DEBUG_STOPPED, DebugStoppedEvent::exited());
         return;
     }
@@ -33,15 +33,6 @@ pub(super) fn emit_session_failed(
         crate::events::OUTPUT_DEBUG,
         format!("[error] debugger: {message}"),
     );
-}
-
-/// Whether `pid` has exited (or is only a zombie left to be reaped).
-pub(super) fn process_gone(pid: i32) -> bool {
-    std::fs::read_to_string(format!("/proc/{pid}/stat")).map_or(true, |stat| {
-        stat.rsplit_once(')')
-            .and_then(|(_, rest)| rest.trim_start().chars().next())
-            .is_none_or(|state| matches!(state, 'Z' | 'X'))
-    })
 }
 
 /// Registers a `TracerHandle` on the session (so breakpoint toggles made

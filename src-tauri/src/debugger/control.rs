@@ -64,7 +64,6 @@ pub fn run_with_mode(
     let root = PathBuf::from(&project_root);
     let mod_id = mod_id(&root)?;
     let debug = mode == "debug";
-    #[cfg(target_os = "linux")]
     let native_path = local_native_path(&root, &mod_id);
     let (control_addr, control_token) = control_endpoint()?;
 
@@ -99,7 +98,6 @@ pub fn run_with_mode(
         debug_mode: debug,
         control: None,
         reply_waiter: None,
-        #[cfg(target_os = "linux")]
         tracer: None,
     });
     let _ = app.emit(
@@ -115,7 +113,6 @@ pub fn run_with_mode(
     let attach = Attach {
         mod_id,
         debug,
-        #[cfg(target_os = "linux")]
         native_path,
     };
     std::thread::spawn(move || connect_and_watch(app, id, control_addr, control_token, attach));
@@ -136,10 +133,8 @@ pub(super) struct GameStatus {
 /// the rest of the session, translating each into a `game-status` event.
 /// What a Debug run attaches the debugger to, once the game reports in.
 pub(super) struct Attach {
-    #[cfg_attr(not(target_os = "linux"), allow(dead_code))]
     pub(super) mod_id: String,
     pub(super) debug: bool,
-    #[cfg(target_os = "linux")]
     pub(super) native_path: PathBuf,
 }
 
@@ -218,7 +213,6 @@ pub(super) fn connect_and_watch(
         },
     );
 
-    #[cfg(target_os = "linux")]
     if debug {
         start_tracer(
             &app,

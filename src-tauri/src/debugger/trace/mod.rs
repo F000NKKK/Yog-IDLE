@@ -15,6 +15,8 @@ mod process;
 pub(crate) use process::*;
 mod session;
 pub(crate) use session::*;
+mod access;
+pub use access::*;
 mod commands;
 mod tracer;
 pub use commands::*;

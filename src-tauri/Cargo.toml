@@ -50,6 +50,9 @@ yog-home = "0.5.0"
 yog-hot-reload = "0.5.0"
 # What the CLI service (`yog serve`) and the backend say: binary Yog Data.
 yog-data = "0.9.1"
+# The native debugger (Linux, Windows, macOS) and the natives' debug info.
+yog-symbols = "0.8.0"
+yog-debugger = "0.13.0"
 
 [features]
 # The benches' entry points into the backend (`src/bench.rs`).
@@ -63,11 +66,6 @@ name = "backend"
 harness = false
 required-features = ["bench"]
 
-# Debugger integration (Linux-only, matching yog-debugger's own scope) —
-# ordinary crates.io deps, no path/git coupling to the Yog-Mod-Loader repo.
-[target.'cfg(target_os = "linux")'.dependencies]
-yog-symbols = "0.7.0"
-yog-debugger = "0.12.0"
 
 # The loader's crates from the sibling checkout (as Substrate-Platform is):
 # the IDE always builds against the loader it ships with, published or not.

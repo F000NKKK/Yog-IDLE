@@ -7,7 +7,6 @@ use tauri::plugin::{Builder, TauriPlugin};
 pub fn plugin() -> TauriPlugin<Wry> {
     Builder::new(DOMAIN.plugin)
         .invoke_handler(tauri::generate_handler![
-            crate::mod_commands::debug_supported,
             crate::debugger::debug_stop,
             crate::debugger::debug_set_breakpoint,
             crate::debugger::debug_clear_breakpoint,

@@ -6,7 +6,6 @@ pub const DOMAIN: Domain = Domain {
     key: "debug",
     plugin: "yog-debug",
     commands: &[
-        "debug_supported",
         "debug_stop",
         "debug_set_breakpoint",
         "debug_clear_breakpoint",

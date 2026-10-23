@@ -78,13 +78,6 @@ pub(super) fn mod_run(
     debugger::run_with_mode(app, project_root, name, mode)
 }
 
-/// Whether the Debug run mode (and everything behind it) is available on
-/// this platform — the frontend hides it when it isn't.
-#[tauri::command]
-pub(super) fn debug_supported() -> bool {
-    cfg!(target_os = "linux")
-}
-
 /// The answer to a hot reload that needs a restart for part of it (the
 /// dialog the `confirm` stage opens): `"apply"`, `"restart"` or `"cancel"`.
 #[tauri::command]

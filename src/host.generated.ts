@@ -33,7 +33,6 @@ export const yog = {
     publishRun: { plugin: "yog-run", command: "publish_run" },
   },
   debug: {
-    debugSupported: { plugin: "yog-debug", command: "debug_supported" },
     debugStop: { plugin: "yog-debug", command: "debug_stop" },
     debugSetBreakpoint: { plugin: "yog-debug", command: "debug_set_breakpoint" },
     debugClearBreakpoint: { plugin: "yog-debug", command: "debug_clear_breakpoint" },

@@ -14,15 +14,17 @@ impl Tracer {
         let symbols = SymbolTable::load(native_path)
             .map_err(|e| format!("loading symbols from {}: {e}", native_path.display()))?;
         let mut debugger = Debugger::attach(real_pid as u32).map_err(|e| {
-            let raw = e.to_string();
-            if raw.contains("EPERM") {
-                permission_denied_message(real_pid)
+            if e.denied() {
+                access::denied_message(real_pid)
             } else {
-                format!("attaching to pid {real_pid}: {raw}")
+                format!("attaching to pid {real_pid}: {e}")
             }
         })?;
         debugger.set_pause_filter(is_game_thread);
-        let Some(module_base) = find_latest_module_base(&debugger, mod_id) else {
+        // The bias the symbols' addresses are off by (a PE's or Mach-O's
+        // addresses aren't relative to where it loaded).
+        let found = find_latest_module_base(&debugger, mod_id).map(|b| symbols.load_bias(b));
+        let Some(module_base) = found else {
             // Attached but unusable — let the game go rather than leaving
             // it stopped.
             let _ = debugger.detach();
@@ -88,6 +90,7 @@ impl Tracer {
         let symbols = SymbolTable::load(&self.native_path)
             .map_err(|e| format!("loading symbols from {}: {e}", self.native_path.display()))?;
         let module_base = find_latest_module_base(&self.debugger, &self.mod_id)
+            .map(|b| symbols.load_bias(b))
             .ok_or_else(|| format!("couldn't locate {}'s reloaded native", self.mod_id))?;
         let generation = self.generations.next();
         let m = LoadedMod {

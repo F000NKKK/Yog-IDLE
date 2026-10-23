@@ -34,11 +34,7 @@ pub use control::*;
 mod hot_reload;
 pub use hot_reload::*;
 
-#[cfg(target_os = "linux")]
 mod trace;
-#[cfg(not(target_os = "linux"))]
-pub use no_trace::*;
-#[cfg(target_os = "linux")]
 pub use trace::*;
 
 /// A request waiting for the game's answer: which event answers it, and where that goes.
@@ -69,8 +65,7 @@ pub struct RunSession {
     /// Set while a request waits for the runtime's answer: the event it
     /// waits for (`hot-reload-done`, `hot-reload-check`) and where it goes.
     reply_waiter: Option<ReplyWaiter>,
-    #[cfg(target_os = "linux")]
-    tracer: Option<TracerHandle>,
+        tracer: Option<TracerHandle>,
 }
 
 static NEXT_SESSION_ID: AtomicU64 = AtomicU64::new(1);
@@ -223,8 +218,7 @@ pub fn debug_stop(app: AppHandle, state: State<DebugState>) -> Result<(), String
     if let Some(pid) = session.real_pid {
         kill_pid(pid);
     }
-    #[cfg(target_os = "linux")]
-    drop(session.tracer.take());
+        drop(session.tracer.take());
     kill_tree(&mut session.wrapper);
 
     let _ = app.emit(
@@ -272,7 +266,6 @@ fn kill_tree(child: &mut Child) {
 /// `crate::spawn_yog_run`), so a debug session detaches from it first —
 /// otherwise its breakpoints would stay armed with nobody left to handle
 /// the trap. Waits briefly; the game itself is never stopped here.
-#[cfg(target_os = "linux")]
 pub fn detach_on_exit(app: &AppHandle) {
     let (done, finished) = mpsc::channel();
     let sent = app
@@ -287,70 +280,3 @@ pub fn detach_on_exit(app: &AppHandle) {
     }
 }
 
-#[cfg(not(target_os = "linux"))]
-pub fn detach_on_exit(_app: &AppHandle) {}
-
-/// The debug commands where there's no native debugger yet (it's `ptrace`,
-/// Linux): the same command surface, each saying so.
-#[cfg(not(target_os = "linux"))]
-mod no_trace {
-    const UNSUPPORTED: &str =
-        "debugging native code needs Linux so far — a Debug run still hot-reloads";
-
-    #[tauri::command]
-    pub fn debug_set_breakpoint(file: String, line: u32) -> Result<(), String> {
-        let _ = (file, line);
-        Ok(())
-    }
-
-    #[tauri::command]
-    pub fn debug_clear_breakpoint(file: String, line: u32) -> Result<(), String> {
-        let _ = (file, line);
-        Ok(())
-    }
-
-    #[tauri::command]
-    pub fn debug_continue() -> Result<(), String> {
-        Err(UNSUPPORTED.into())
-    }
-
-    #[tauri::command]
-    pub fn debug_step(kind: Option<String>) -> Result<(), String> {
-        let _ = kind;
-        Err(UNSUPPORTED.into())
-    }
-
-    #[tauri::command]
-    pub fn debug_pause() -> Result<(), String> {
-        Err(UNSUPPORTED.into())
-    }
-
-    #[tauri::command]
-    pub fn debug_select_thread(thread: u64) -> Result<(), String> {
-        let _ = thread;
-        Err(UNSUPPORTED.into())
-    }
-
-    #[tauri::command]
-    pub fn debug_variables(frame: usize) -> Result<Vec<()>, String> {
-        let _ = frame;
-        Err(UNSUPPORTED.into())
-    }
-
-    #[tauri::command]
-    pub fn debug_evaluate(frame: usize, exprs: Vec<String>) -> Result<Vec<()>, String> {
-        let _ = (frame, exprs);
-        Err(UNSUPPORTED.into())
-    }
-
-    #[tauri::command]
-    pub fn debug_children(handle: u64) -> Result<Vec<()>, String> {
-        let _ = handle;
-        Err(UNSUPPORTED.into())
-    }
-
-    #[tauri::command]
-    pub fn debug_grant_ptrace_capability() -> Result<(), String> {
-        Err(UNSUPPORTED.into())
-    }
-}

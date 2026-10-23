@@ -1,4 +1,4 @@
-//! The debugger's commands: breakpoints, continue, step, pause, threads, the ptrace capability.
+//! The debugger's commands: breakpoints, continue, step, pause, threads.
 
 use super::*;
 use substrate_platform::sync::Locked;
@@ -227,58 +227,4 @@ pub fn debug_step(state: State<DebugState>, kind: Option<String>) -> Result<(), 
         Some(other) => return Err(format!("unknown step kind {other:?}")),
     };
     tracer_resume(&state, TracerCmd::Step(kind))
-}
-
-/// Why an attach got `EPERM`, and the one thing that fixes it here. Yama
-/// (`kernel.yama.ptrace_scope`) only lets a process trace its descendants,
-/// and the game isn't one of ours — Gradle's daemon launches it. The
-/// runtime lifts that for us when we connect (`PR_SET_PTRACER`); when that
-/// wasn't enough, the messages start with a stable tag the Debug panel
-/// keys its actions on.
-pub(super) fn permission_denied_message(pid: i32) -> String {
-    let scope = std::fs::read_to_string("/proc/sys/kernel/yama/ptrace_scope")
-        .ok()
-        .and_then(|s| s.trim().parse::<u8>().ok());
-    match scope {
-        Some(3) => format!(
-            "[ptrace-disabled] attaching to pid {pid}: permission denied — ptrace is disabled on this system \
-             (kernel.yama.ptrace_scope = 3) until the next reboot; no debugger can attach."
-        ),
-        _ => format!(
-            "[needs-capability] attaching to pid {pid}: permission denied — kernel.yama.ptrace_scope = {} here, \
-             which only lets privileged processes trace. Grant Yog-IDLE the ptrace capability (once), restart it, \
-             and launch again.",
-            scope.map_or_else(|| "?".to_string(), |s| s.to_string())
-        ),
-    }
-}
-
-/// A capability can only be granted to a binary's on-disk file (checked at
-/// `exec()` time) by something already privileged — a running process can
-/// never grant *itself* one. So this is the one-time, user-initiated setup
-/// step for attaching without needing `ptrace_scope` set to 0 system-wide:
-/// `pkexec` (Polkit's graphical sudo-equivalent, standard on GNOME/KDE)
-/// prompts for elevation once, then `setcap` stamps `cap_sys_ptrace+ep`
-/// onto Yog-IDLE's own executable so every future launch already has it,
-/// no repeated prompts. Never called implicitly — only in direct response
-/// to the user asking for it (e.g. a "Grant ptrace access" action shown
-/// after an `EPERM` attach failure).
-#[tauri::command]
-pub fn debug_grant_ptrace_capability() -> Result<(), String> {
-    let exe = std::env::current_exe()
-        .map_err(|e| format!("couldn't determine Yog-IDLE's own executable path: {e}"))?;
-    let status = substrate_platform::process::command("pkexec")
-        .arg("setcap")
-        .arg("cap_sys_ptrace+ep")
-        .arg(&exe)
-        .status()
-        .map_err(|e| format!("failed to run pkexec (is Polkit installed?): {e}"))?;
-    if status.success() {
-        Ok(())
-    } else {
-        Err(format!(
-            "setcap exited with {status} — cancelled, or `setcap`/`pkexec` isn't available. You can also run this manually: sudo setcap cap_sys_ptrace+ep {}",
-            exe.display()
-        ))
-    }
 }
