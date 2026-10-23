@@ -35,11 +35,37 @@ export function barBeat(t: number, tempo: number, beatsPerBar: number): string {
   return `${bar}:${beat}:${step}`;
 }
 
-/** Tracks' colours when a track has none: a music program's pastels. */
-const PALETTE = [0x5fb2e8, 0x8cd06a, 0xe8b45f, 0xe8738c, 0xb08ce8, 0x5fd6c2, 0xe8d65f, 0xc28a6a];
+/** Tracks' colours when a track has none: the theme's symbol colours. */
+const PALETTE = [
+  "--sp-symbol-function",
+  "--sp-symbol-type",
+  "--sp-symbol-constant",
+  "--sp-symbol-field",
+  "--sp-symbol-module",
+  "--sp-symbol-interface",
+  "--sp-git-added",
+  "--sp-accent",
+];
+/** A colour channel's largest value; a colour's hex digits. */
+const CHANNEL = 255;
+const HEX = 16;
+const HEX_DIGITS = 6;
 
-/** Track `n`'s colour (`0xRRGGBB`), its own or the palette's. */
-export const trackColor = (color: number | undefined, n: number) => color ?? PALETTE[n % PALETTE.length];
+/** Track `n`'s colour as CSS: its own (`0xRRGGBB`), else the theme's for it. */
+export function trackColor(color: number | undefined, n: number): string {
+  return color !== undefined ? css(color) : `var(${PALETTE[n % PALETTE.length]})`;
+}
 
 /** `0xRRGGBB` as CSS. */
-export const css = (c: number) => `#${c.toString(16).padStart(6, "0")}`;
+export const css = (c: number) => `#${c.toString(HEX).padStart(HEX_DIGITS, "0")}`;
+
+/** CSS colour `value` (a theme's variable too) as `#rrggbb`, as a colour picker takes it. */
+export function hexOf(value: string): string {
+  const probe = document.createElement("span");
+  probe.style.color = value;
+  document.body.appendChild(probe);
+  const rgb = getComputedStyle(probe).color.match(/[\d.]+/g)?.map(Number) ?? [];
+  probe.remove();
+  const [r = 0, g = 0, b = 0] = rgb;
+  return css((Math.round(r) << 16) | (Math.round(g) << 8) | Math.min(CHANNEL, Math.round(b)));
+}

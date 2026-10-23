@@ -55,6 +55,8 @@ const ECHO_IN = 0.8;
 const ECHO_OUT = 0.9;
 /** ffmpeg's `lowpass`/`highpass`: two poles, Butterworth. */
 const BUTTERWORTH_Q = Math.SQRT1_2;
+/** A track's or the master's volume left unset: as recorded. */
+export const UNITY_GAIN = 1;
 
 /** The sound a clip plays, as `sound_data` takes it. */
 export const clipSound = (c: SoundClip) => c.sound ?? c.file ?? "";
@@ -135,13 +137,13 @@ export function playMix(
   /** Seconds into the mix it starts from. */
   offset = 0,
 ): { sources: AudioBufferSourceNode[]; channels: Channels } {
-  const master = channel(ctx, mix.gain ?? 1, mix.effects, out);
+  const master = channel(ctx, mix.gain ?? UNITY_GAIN, mix.effects, out);
   const tracks = new Map<number, { input: GainNode; meter: AnalyserNode }>();
   const trackIn = (n: number) => {
     let t = tracks.get(n);
     if (!t) {
       const def = mix.tracks?.[n];
-      t = channel(ctx, def?.gain ?? 1, def?.effects, master.input);
+      t = channel(ctx, def?.gain ?? UNITY_GAIN, def?.effects, master.input);
       tracks.set(n, t);
     }
     return t.input;
@@ -155,7 +157,7 @@ export function playMix(
     src.buffer = clipBuffer(ctx, b, c);
     src.playbackRate.value = c.speed ?? 1;
     const gain = ctx.createGain();
-    const at = start + (c.at ?? 0) - offset, length = clipLength(b, c), level = c.gain ?? 1;
+    const at = start + (c.at ?? 0) - offset, length = clipLength(b, c), level = c.gain ?? UNITY_GAIN;
     // Over before the offset: not heard.
     if (at + length <= start) return;
     gain.gain.setValueAtTime(c.fade_in ? 0 : level, at);

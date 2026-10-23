@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useT } from "substrate-platform-ui";
-import type { Mix, Track } from "../montage";
-import { css, trackColor } from "./grid";
+import { type Mix, type Track, UNITY_GAIN } from "../montage";
+import { hexOf, trackColor } from "./grid";
 
 // A track's header, left of its lane: its colour (clicked to change), its
 // name (double-clicked to rename), mute and solo, and its volume.
@@ -34,9 +34,9 @@ export function TrackHeader({ n, mix, shown, readOnly, onChange }: Props) {
   const set = (patch: Partial<Track>) => !readOnly && onChange(withTrack(mix, n, patch));
   const name = track.name || t("Track {n}", { n: n + 1 });
   return (
-    <div className="daw-track-header" style={{ "--clip": css(color) } as React.CSSProperties}>
+    <div className="daw-track-header" style={{ "--clip": color } as React.CSSProperties}>
       <label className="daw-track-color" title={t("Colour")}>
-        <input type="color" value={css(color)} disabled={readOnly} onChange={(e) => set({ color: parseInt(e.target.value.slice(1), 16) })} />
+        <input type="color" value={hexOf(color)} disabled={readOnly} onChange={(e) => set({ color: parseInt(e.target.value.slice(1), 16) })} />
       </label>
       <div className="daw-track-main">
         {renaming ? (
@@ -64,10 +64,10 @@ export function TrackHeader({ n, mix, shown, readOnly, onChange }: Props) {
             min={0}
             max={GAIN.max}
             step={GAIN.step}
-            value={track.gain ?? 1}
+            value={track.gain ?? UNITY_GAIN}
             disabled={readOnly}
             onChange={(e) => set({ gain: Number(e.target.value) })}
-            title={t("Volume {v}", { v: (track.gain ?? 1).toFixed(2) })}
+            title={t("Volume {v}", { v: (track.gain ?? UNITY_GAIN).toFixed(2) })}
           />
         </div>
       </div>

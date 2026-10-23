@@ -1,46 +1,50 @@
-/* The montage designer, dressed as a music program: blue-grey panels, an
-   LCD position display, orange accents, track-coloured clips. */
+/* The montage designer laid out as a music program, in the IDE's theme:
+   its surfaces, borders, accent and type; tracks coloured as its symbols. */
 
 .daw {
-  --daw-bg: #2b3238;
-  --daw-panel: #343d44;
-  --daw-panel-hi: #3f4a52;
-  --daw-line: #232a2f;
-  --daw-text: #c9d3da;
-  --daw-dim: #8a98a3;
-  --daw-accent: #f39c33;
-  --daw-lcd: #12171a;
-  --daw-lcd-text: #9fe3ff;
-  --daw-lane: #30383e;
-  --daw-lane-alt: #2d3439;
-  --daw-bar: rgba(0, 0, 0, 0.45);
-  --daw-beat: rgba(0, 0, 0, 0.2);
+  --daw-bg: var(--sp-surface-0);
+  --daw-panel: var(--sp-surface-1);
+  --daw-panel-hi: var(--sp-surface-2);
+  --daw-line: var(--sp-border);
+  --daw-text: var(--sp-text);
+  --daw-dim: var(--sp-text-muted);
+  --daw-accent: var(--sp-accent);
+  --daw-lcd: var(--sp-surface-0);
+  --daw-lcd-text: var(--sp-accent);
+  --daw-lane: var(--sp-surface-1);
+  --daw-bar: var(--sp-border-strong);
+  --daw-beat: var(--sp-border);
   display: flex;
   flex-direction: column;
   flex: 1;
   min-height: 0;
   background: var(--daw-bg);
   color: var(--daw-text);
-  border: 1px solid var(--daw-line);
-  border-radius: 4px;
+  border-top: 1px solid var(--daw-line);
   overflow: hidden;
-  font-size: 12px;
+  font-size: var(--sp-font-size-sm);
+  font-family: var(--sp-font-ui);
   user-select: none;
 }
 
 .daw button {
-  background: var(--daw-panel-hi);
+  background: var(--sp-surface-2);
   color: var(--daw-text);
-  border: 1px solid var(--daw-line);
-  border-radius: 3px;
+  border: 1px solid var(--sp-control-border);
+  border-radius: var(--sp-control-radius);
+}
+
+.daw button:hover {
+  background: var(--sp-hover);
 }
 
 .daw input,
 .daw select {
-  background: var(--daw-lcd);
+  height: var(--sp-control-height-sm);
+  background: var(--sp-surface-0);
   color: var(--daw-text);
-  border: 1px solid var(--daw-line);
-  border-radius: 3px;
+  border: 1px solid var(--sp-control-border);
+  border-radius: var(--sp-control-radius);
 }
 
 /* Transport */
@@ -49,22 +53,23 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 8px;
-  background: linear-gradient(#46525a, #39434a);
+  height: var(--sp-toolbar-height);
+  padding: 0 var(--sp-toolbar-padding-x);
+  background: var(--sp-surface-1);
   border-bottom: 1px solid var(--daw-line);
 }
 
 .daw-btn {
-  width: 30px;
-  height: 26px;
+  width: var(--sp-icon-btn-size);
+  height: var(--sp-icon-btn-size);
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .daw-play.on {
-  background: var(--daw-accent);
-  color: #1b1f22;
+  background: var(--sp-accent);
+  color: var(--sp-accent-contrast);
 }
 
 .daw-lcd {
@@ -72,23 +77,22 @@
   flex-direction: column;
   align-items: flex-end;
   min-width: 130px;
-  padding: 2px 10px;
-  background: var(--daw-lcd);
-  border: 1px solid #000;
-  border-radius: 3px;
-  font-family: var(--mono-font, monospace);
+  padding: 0 var(--sp-space-sm);
+  background: var(--sp-surface-0);
+  border: 1px solid var(--sp-border);
+  border-radius: var(--sp-radius-sm);
+  font-family: var(--sp-font-mono);
   color: var(--daw-lcd-text);
-  text-shadow: 0 0 6px rgba(159, 227, 255, 0.5);
 }
 
 .daw-lcd-big {
-  font-size: 18px;
-  line-height: 1.1;
+  font-size: var(--sp-font-size);
+  line-height: 1.2;
 }
 
 .daw-lcd-small {
-  font-size: 10px;
-  opacity: 0.8;
+  font-size: var(--sp-font-size-xs);
+  color: var(--sp-text-muted);
 }
 
 .daw-field {
@@ -199,7 +203,7 @@
 .daw-ruler {
   height: 20px;
   border-bottom: 1px solid var(--daw-line);
-  background: linear-gradient(#3f4a52, #353e45);
+  background: var(--sp-surface-2);
 }
 
 .daw-ruler-corner {
@@ -269,12 +273,12 @@
 }
 
 .daw-ms.on {
-  background: #e05b4b;
-  color: #fff;
+  background: var(--sp-danger);
+  color: var(--sp-accent-contrast);
 }
 
 .daw-ms.solo.on {
-  background: #6cc24a;
+  background: var(--sp-git-added);
 }
 
 .daw-lanes {
@@ -308,9 +312,9 @@
   position: absolute;
   box-sizing: border-box;
   padding-top: 14px;
-  background: color-mix(in srgb, var(--clip) 35%, #1d2327);
-  border: 1px solid color-mix(in srgb, var(--clip) 80%, #000);
-  border-radius: 3px;
+  background: color-mix(in srgb, var(--clip) 30%, var(--sp-surface-0));
+  border: 1px solid color-mix(in srgb, var(--clip) 80%, var(--sp-border-strong));
+  border-radius: var(--sp-radius-sm);
   cursor: grab;
   overflow: hidden;
 }
@@ -328,8 +332,8 @@
   height: 14px;
   padding: 0 4px;
   background: var(--clip);
-  color: #12171a;
-  font-size: 10px;
+  color: var(--sp-surface-0);
+  font-size: var(--sp-font-size-xs);
   font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
@@ -351,7 +355,8 @@
 }
 
 .daw-clip-fades polygon {
-  fill: rgba(0, 0, 0, 0.45);
+  fill: var(--sp-surface-0);
+  opacity: 0.55;
 }
 
 .daw-fade-handle {
@@ -359,7 +364,7 @@
   top: 0;
   width: 10px;
   height: 10px;
-  background: #fff;
+  background: var(--sp-text);
   opacity: 0;
 }
 
@@ -385,7 +390,6 @@
   bottom: 0;
   width: 1px;
   background: var(--daw-accent);
-  box-shadow: 0 0 4px var(--daw-accent);
   pointer-events: none;
   z-index: 2;
 }
@@ -415,10 +419,10 @@
   flex-direction: column;
   gap: 3px;
   padding: 4px;
-  background: #2a3136;
+  background: var(--sp-surface-0);
   border: 1px solid var(--daw-line);
   border-top: 3px solid var(--clip);
-  border-radius: 3px;
+  border-radius: var(--sp-radius-sm);
   cursor: pointer;
 }
 
@@ -445,10 +449,10 @@
 }
 
 .daw-fx-slot {
-  padding: 1px 3px;
-  font-size: 10px;
-  background: var(--daw-lcd);
-  border-radius: 2px;
+  padding: 1px var(--sp-space-2xs);
+  font-size: var(--sp-font-size-xs);
+  background: var(--sp-surface-2);
+  border-radius: var(--sp-radius-xs);
   color: var(--daw-dim);
   white-space: nowrap;
   overflow: hidden;
@@ -456,7 +460,7 @@
 }
 
 .daw-fx-slot.on {
-  color: var(--daw-lcd-text);
+  color: var(--sp-text);
 }
 
 .daw-strip-body {
@@ -470,8 +474,8 @@
 .daw-meter {
   width: 8px;
   height: 100%;
-  background: #12171a;
-  border-radius: 2px;
+  background: var(--sp-surface-2);
+  border-radius: var(--sp-radius-xs);
   display: flex;
   align-items: flex-end;
   overflow: hidden;
@@ -480,12 +484,11 @@
 .daw-meter-bar {
   width: 100%;
   height: 0%;
-  background: linear-gradient(to top, #4fd06a 0%, #c8e04a 70%, #f39c33 90%, #e05b4b 100%);
-  background-size: 100% 100%;
+  background: linear-gradient(to top, var(--sp-git-added) 0%, var(--sp-git-added) 65%, var(--sp-warning) 85%, var(--sp-danger) 100%);
 }
 
 .daw-meter-bar.clip {
-  box-shadow: 0 0 6px #e05b4b;
+  outline: 1px solid var(--sp-danger);
 }
 
 .daw-fader {
@@ -498,22 +501,30 @@
 
 .daw-strip-gain {
   text-align: center;
-  font-family: var(--mono-font, monospace);
-  color: var(--daw-lcd-text);
+  font-family: var(--sp-font-mono);
+  color: var(--sp-text-muted);
 }
 
-.daw-inspector {
-  width: 260px;
-  flex-shrink: 0;
-  overflow-y: auto;
-  padding: 8px;
-  border-left: 1px solid var(--daw-line);
+
+
+/* The effects row in Properties: one button removes an effect, one adds. */
+.daw-fx-edit {
   display: flex;
-  flex-direction: column;
-  gap: 6px;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 2px 0;
 }
 
-.daw-hint {
-  color: var(--daw-dim);
-  line-height: 1.4;
+.daw-fx-edit button {
+  padding: 1px 6px;
+  border: 1px solid var(--sp-border);
+  border-radius: var(--sp-radius-sm);
+  background: var(--sp-surface-2);
+  color: var(--sp-text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.daw-fx-edit button:hover:not(:disabled) {
+  border-color: var(--sp-accent);
 }

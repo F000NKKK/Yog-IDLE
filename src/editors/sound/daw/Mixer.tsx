@@ -1,6 +1,7 @@
 import { useT } from "substrate-platform-ui";
-import type { Channels, Mix, SoundEffect } from "../montage";
-import { css, trackColor } from "./grid";
+import { type Channels, type Mix, UNITY_GAIN } from "../montage";
+import { FX_LABEL } from "./montageProperties";
+import { trackColor } from "./grid";
 import { Meter } from "./Meter";
 import { withTrack } from "./TrackHeader";
 
@@ -9,10 +10,10 @@ import { withTrack } from "./TrackHeader";
 // while playing; a strip clicked to edit its effects.
 
 /** The master strip's colour. */
-const MASTER_COLOR = "#d08a3a";
+const MASTER_COLOR = "var(--sp-accent)";
 /** A fader's range and step. */
 const GAIN = { max: 2, step: 0.01 };
-const FX_LABEL: Record<SoundEffect["fx"], string> = { echo: "Echo", low_pass: "Low pass", high_pass: "High pass" };
+
 
 /** The strip selected: the master, or track `n`. */
 export type Strip = "master" | number;
@@ -33,10 +34,10 @@ export function Mixer({ mix, shown, tracks, channels, selected, readOnly, onSele
   const strip = (s: Strip) => {
     const master = s === "master";
     const track = master ? null : (shown.tracks?.[s] ?? {});
-    const gain = master ? (shown.gain ?? 1) : (track?.gain ?? 1);
+    const gain = master ? (shown.gain ?? UNITY_GAIN) : (track?.gain ?? UNITY_GAIN);
     const effects = (master ? shown.effects : track?.effects) ?? [];
     const setGain = (v: number) => !readOnly && onChange(master ? { ...mix, gain: v } : withTrack(mix, s, { gain: v }));
-    const color = master ? MASTER_COLOR : css(trackColor(track?.color, s));
+    const color = master ? MASTER_COLOR : trackColor(track?.color, s);
     return (
       <div key={String(s)} className={`daw-strip${selected === s ? " selected" : ""}${master ? " master" : ""}`} style={{ "--clip": color } as React.CSSProperties} onClick={() => onSelect(s)}>
         <div className="daw-strip-name">{master ? t("Master") : track?.name || t("Track {n}", { n: s + 1 })}</div>

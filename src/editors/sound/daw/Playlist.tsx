@@ -1,11 +1,9 @@
 import { useRef, useState } from "react";
-import { useT } from "substrate-platform-ui";
-import { audioContext } from "../audio";
-import { clipBuffer, clipLength, clipSound, type Mix, type SoundClip } from "../montage";
-import { Waveform } from "../Waveform";
-import { soundLabel } from "../names";
+import { clipLength, type Mix, type SoundClip } from "../montage";
 import { SOUND_DRAG } from "./Browser";
-import { beatSeconds, css, type Snap, snapped, trackColor } from "./grid";
+import { Clip } from "./Clip";
+import { type Mode, moved, round } from "./drag";
+import { beatSeconds, type Snap, snapped, trackColor } from "./grid";
 import { TrackHeader } from "./TrackHeader";
 
 // The playlist, as a music program has it: a lane a track, its header on
@@ -16,16 +14,12 @@ import { TrackHeader } from "./TrackHeader";
 
 /** A lane's height, pixels; a clip's edge and fade handles'. */
 export const LANE = 56;
-const EDGE = 6;
+export const EDGE = 6;
 const FADE = 10;
-/** The shortest a clip is cut to, seconds; times kept to milliseconds. */
-const MIN_CLIP = 0.01;
-const MS = 1000;
 /** Empty lanes below the last track, to drop onto; the fewest lanes shown. */
 const SPARE_LANES = 1;
 const MIN_LANES = 8;
 
-type Mode = "move" | "start" | "end" | "fade_in" | "fade_out";
 type Drag = { i: number; mode: Mode; x: number; y: number; clip: SoundClip };
 
 interface Props {
@@ -42,13 +36,23 @@ interface Props {
   onSeek: (t: number) => void;
 }
 
-const round = (v: number) => Math.round(v * MS) / MS;
-
 /** A clip without what's left unset. */
 const tidy = (c: SoundClip): SoundClip => Object.fromEntries(Object.entries(c).filter(([, v]) => v !== undefined && v !== null && v !== false)) as SoundClip;
 
+/** The bars' numbers along the top; clicked, the playhead moves there. */
+function Ruler({ width, bar, pps, onSeek }: { width: number; bar: number; pps: number; onSeek: (t: number) => void }) {
+  return (
+    <div className="daw-ruler" style={{ width }} onPointerDown={(e) => (e.stopPropagation(), onSeek(Math.max(0, (e.clientX - e.currentTarget.getBoundingClientRect().left) / pps)))}>
+      {Array.from({ length: Math.ceil(width / bar) }, (_, k) => (
+        <span key={k} style={{ left: k * bar }}>
+          {k + 1}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 export function Playlist({ mix, shown, buffers, pps, snap, position, selected, readOnly, onSelect, onChange, onSeek }: Props) {
-  const t = useT();
   const [drag, setDrag] = useState<Drag | null>(null);
   const [draft, setDraft] = useState<SoundClip | null>(null);
   const area = useRef<HTMLDivElement>(null);
@@ -61,28 +65,6 @@ export function Playlist({ mix, shown, buffers, pps, snap, position, selected, r
 
   const setClips = (clips: SoundClip[]) => onChange({ ...mix, clips });
   const clipAt = (i: number) => (drag?.i === i && draft ? { ...shown.clips[i], ...draft } : shown.clips[i]);
-
-  /** `s` (shown), `b` its sound, dragged `dx` seconds and `dl` lanes as `mode` says. */
-  const moved = (c: SoundClip, s: SoundClip, b: AudioBuffer, mode: Mode, dx: number, dl: number): SoundClip => {
-    const speed = s.speed ?? 1, from = s.from ?? 0, to = Math.min(s.to ?? b.duration, b.duration), len = clipLength(b, s);
-    switch (mode) {
-      case "move":
-        return { ...c, at: round(Math.max(0, snap1((s.at ?? 0) + dx))), track: Math.max(0, (s.track ?? 0) + dl) };
-      case "start": {
-        const at = Math.max(0, snap1((s.at ?? 0) + dx));
-        const next = Math.min(Math.max(0, from + (at - (s.at ?? 0)) * speed), to - MIN_CLIP);
-        return { ...c, from: round(next), at: round((s.at ?? 0) + (next - from) / speed) };
-      }
-      case "end": {
-        const stop = snap1((s.at ?? 0) + len + dx);
-        return { ...c, to: round(Math.max(from + MIN_CLIP, Math.min(b.duration, from + (stop - (s.at ?? 0)) * speed))) };
-      }
-      case "fade_in":
-        return { ...c, fade_in: round(Math.min(len, Math.max(0, (s.fade_in ?? 0) + dx))) };
-      case "fade_out":
-        return { ...c, fade_out: round(Math.min(len, Math.max(0, (s.fade_out ?? 0) - dx))) };
-    }
-  };
 
   const down = (e: React.PointerEvent, i: number) => {
     e.stopPropagation();
@@ -97,7 +79,7 @@ export function Playlist({ mix, shown, buffers, pps, snap, position, selected, r
   const move = (e: React.PointerEvent) => {
     const b = drag && buffers[drag.i];
     if (!drag || !b) return;
-    setDraft(moved(drag.clip, shown.clips[drag.i], b, drag.mode, (e.clientX - drag.x) / pps, Math.round((e.clientY - drag.y) / LANE)));
+    setDraft(moved({ clip: drag.clip, shown: shown.clips[drag.i], buffer: b, mode: drag.mode, dx: (e.clientX - drag.x) / pps, lanes: Math.round((e.clientY - drag.y) / LANE) }, snap1));
   };
   const up = () => {
     if (drag && draft) setClips(mix.clips.map((c, j) => (j === drag.i ? tidy(draft) : c)));
@@ -134,36 +116,11 @@ export function Playlist({ mix, shown, buffers, pps, snap, position, selected, r
         ))}
       </div>
       <div className="daw-lanes" ref={area} onPointerMove={move} onPointerUp={up} onPointerDown={() => onSelect(null)}>
-        <div className="daw-ruler" style={{ width }} onPointerDown={(e) => (e.stopPropagation(), onSeek(Math.max(0, (e.clientX - e.currentTarget.getBoundingClientRect().left) / pps)))}>
-          {Array.from({ length: Math.ceil(width / bar) }, (_, k) => (
-            <span key={k} style={{ left: k * bar }}>
-              {k + 1}
-            </span>
-          ))}
-        </div>
+        <Ruler width={width} bar={bar} pps={pps} onSeek={onSeek} />
         <div className="daw-tracks" style={{ width, height: lanes * LANE, ...grid }} onDragOver={(e) => e.preventDefault()} onDrop={drop}>
           {shown.clips.map((_, i) => {
-            const c = clipAt(i), b = buffers[i];
-            const color = css(trackColor(shown.tracks?.[c.track ?? 0]?.color, c.track ?? 0));
-            const len = b ? clipLength(b, c) : 0;
-            const w = Math.max(EDGE * 2, len * pps);
-            return (
-              <div
-                key={i}
-                className={`daw-clip${selected === i ? " selected" : ""}`}
-                style={{ left: (c.at ?? 0) * pps, top: (c.track ?? 0) * LANE, width: w, height: LANE, "--clip": color } as React.CSSProperties}
-                onPointerDown={(e) => down(e, i)}
-              >
-                <div className="daw-clip-title">{soundLabel(clipSound(c))}</div>
-                <Waveform buffer={b ? clipBuffer(audioContext(), b, c) : null} at={null} />
-                <svg className="daw-clip-fades" viewBox={`0 0 ${w} ${LANE}`} preserveAspectRatio="none">
-                  {c.fade_in ? <polygon points={`0,0 ${(c.fade_in ?? 0) * pps},0 0,${LANE}`} /> : null}
-                  {c.fade_out ? <polygon points={`${w},0 ${w - (c.fade_out ?? 0) * pps},0 ${w},${LANE}`} /> : null}
-                </svg>
-                <span className="daw-fade-handle in" title={t("Drag to fade in")} />
-                <span className="daw-fade-handle out" title={t("Drag to fade out")} />
-              </div>
-            );
+            const c = clipAt(i);
+            return <Clip key={i} clip={c} buffer={buffers[i]} color={trackColor(shown.tracks?.[c.track ?? 0]?.color, c.track ?? 0)} pps={pps} selected={selected === i} onPointerDown={(e) => down(e, i)} />;
           })}
           <div className="daw-playhead" style={{ left: position * pps }} />
         </div>

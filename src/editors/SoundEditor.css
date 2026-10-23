@@ -19,7 +19,7 @@
   align-items: center;
   gap: 10px;
   padding: 6px 8px;
-  border: 1px solid var(--border, #3a3a3a);
+  border: 1px solid var(--sp-border);
   border-radius: 4px;
   font-size: 12px;
 }
@@ -36,32 +36,32 @@
   display: flex;
   gap: 8px;
   align-items: baseline;
-  font-family: var(--mono-font, monospace);
+  font-family: var(--sp-font-mono);
 }
 
 .sound-length {
-  opacity: 0.6;
+  color: var(--sp-text-muted);
 }
 
 .sound-game {
   padding: 0 4px;
-  border-radius: 3px;
-  background: rgba(255, 255, 255, 0.1);
+  border-radius: var(--sp-radius-sm);
+  background: var(--sp-surface-3);
   font-family: inherit;
 }
 
 .sound-wave {
   width: 100%;
   height: 40px;
-  background: rgba(0, 0, 0, 0.25);
-  border-radius: 3px;
+  background: var(--sp-surface-0);
+  border-radius: var(--sp-radius-sm);
 }
 
 .sound-variant label {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  opacity: 0.9;
+  color: var(--sp-text-muted);
 }
 
 .sound-variant input[type="number"] {
@@ -78,7 +78,7 @@
 }
 
 .sound-error {
-  color: var(--error, #f48771);
+  color: var(--sp-danger);
 }
 
 .sound-add {
@@ -91,62 +91,5 @@
 }
 
 .sound-variant.editing {
-  border-color: var(--accent, #9d7bea);
-}
-
-
-
-.sound-clip-inspector label,
-.sound-effect label {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 6px;
-}
-
-.sound-clip-inspector input[type="number"],
-.sound-effect input[type="number"] {
-  width: 70px;
-}
-
-.sound-clip-inspector {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.sound-clip-title,
-.sound-clip-subtitle {
-  font-weight: 600;
-  opacity: 0.85;
-}
-
-.sound-clip-check {
-  justify-content: flex-start !important;
-}
-
-.sound-effects {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.sound-effect {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
-  padding: 4px;
-  border: 1px solid var(--border, #3a3a3a);
-  border-radius: 3px;
-}
-
-.sound-effect-name {
-  font-weight: 600;
-}
-
-.sound-effect-add {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
+  border-color: var(--sp-accent);
 }

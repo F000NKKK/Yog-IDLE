@@ -13,7 +13,7 @@ import { soundLabel, soundName } from "../names";
 export const SOUND_DRAG = "application/x-yog-sound";
 
 /** What `sound_list` answers. */
-interface SoundList {
+export interface SoundList {
   own: string[];
   game: string[];
 }
@@ -29,11 +29,9 @@ function folders(game: string[]): [string, string[]][] {
   return [...by].sort(([a], [b]) => a.localeCompare(b));
 }
 
-export function Browser({ path }: { path: string }) {
-  const t = useT();
+/** The sounds the mod at `path` can use: its own and the game's. */
+export function useSoundList(path: string): SoundList {
   const [list, setList] = useState<SoundList>({ own: [], game: [] });
-  const [query, setQuery] = useState("");
-  const [open, setOpen] = useState<Set<string>>(new Set(["own/Sounds"]));
   useEffect(() => {
     let live = true;
     cli<SoundList>(serveMethod.SOUND_LIST, { path }).then(
@@ -44,7 +42,13 @@ export function Browser({ path }: { path: string }) {
       live = false;
     };
   }, [path]);
+  return list;
+}
 
+export function Browser({ path, list }: { path: string; list: SoundList }) {
+  const t = useT();
+  const [query, setQuery] = useState("");
+  const [open, setOpen] = useState<Set<string>>(new Set(["own/Sounds"]));
   const q = query.trim().toLowerCase();
   const groups = useMemo(() => folders(list.game.filter((s) => !q || s.toLowerCase().includes(q))), [list.game, q]);
   const own = useMemo(() => {
