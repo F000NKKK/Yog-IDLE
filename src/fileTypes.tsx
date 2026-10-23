@@ -28,6 +28,8 @@ registerFileTypes([
   { id: fileTypeId(formats.anim), name: "Yog Animations", extensions: [formats.anim.ext], icon: "yogAnim", language: jsonLanguage },
   { id: fileTypeId(formats.entity), name: "Yog Entity", extensions: [formats.entity.ext], icon: "yogEntity", language: jsonLanguage },
   { id: fileTypeId(formats.texture), name: "Yog Texture", extensions: [formats.texture.ext], icon: "yogTexture", language: jsonLanguage },
+  { id: fileTypeId(formats.particle), name: "Yog Particle", extensions: [formats.particle.ext], icon: "yogParticle", language: jsonLanguage },
+  { id: fileTypeId(formats.sound), name: "Yog Sound Event", extensions: [formats.sound.ext], icon: "yogSound", language: jsonLanguage },
   { id: fileTypeId(formats.data), name: "Compiled Yog Data", extensions: [formats.data.ext] },
 ]);
 

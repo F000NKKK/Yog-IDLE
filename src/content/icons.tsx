@@ -30,6 +30,24 @@ const IconYogTexture = createIcon(
   </>
 );
 
+/** Sparks — a particle. */
+const IconYogParticle = createIcon(
+  <>
+    <path d="M12 3v4M12 17v4M3 12h4M17 12h4" />
+    <path d="M6 6l2 2M16 16l2 2M6 18l2-2M16 8l2-2" />
+    <circle cx="12" cy="12" r="1.5" />
+  </>
+);
+
+/** A note — a sound. */
+const IconYogSound = createIcon(
+  <>
+    <path d="M9 18V5l11-2v13" />
+    <circle cx="6" cy="18" r="3" />
+    <circle cx="17" cy="16" r="3" />
+  </>
+);
+
 // The texture paint tools.
 
 const IconPaintPencil = createIcon(
@@ -120,6 +138,8 @@ const IconSkipBack = createIcon(
 registerIcons({
   yogBlock: IconYogBlock,
   yogTexture: IconYogTexture,
+  yogParticle: IconYogParticle,
+  yogSound: IconYogSound,
   yogEntity: IconYogEntity,
   yogAnim: IconYogAnim,
   yogDef: IconYogDef,

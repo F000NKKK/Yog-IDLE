@@ -14,6 +14,7 @@ import { MODEL_SOURCE_VIEW, ModelEditor } from "./ModelEditor";
 import { ENTITY_SOURCE_VIEW, EntityEditor } from "./EntityEditor";
 import { ANIM_SOURCE_VIEW, AnimEditor } from "./AnimEditor";
 import { TEXTURE_SOURCE_VIEW, TextureEditor } from "./TextureEditor";
+import { PARTICLE_SOURCE_VIEW, ParticleEditor } from "./ParticleEditor";
 import { fileTypeId, formats } from "../yogFileTypes";
 import { LANG_FILE_TYPE } from "../fileTypes";
 
@@ -292,6 +293,30 @@ registerEditorProvider({
   label: "Code",
   name: "Texture Source Editor",
   fileTypes: [fileTypeId(formats.texture)],
+  component: JsonEditor,
+  priority: 0,
+  kind: EDITOR_KIND.text,
+  strict: true,
+});
+
+// `.yparticle` particles: sprayed in 3D as the game draws them, every
+// setting in Properties; the file's text a click (or F7) away.
+registerEditorProvider({
+  id: fileTypeId(formats.particle),
+  label: "Particle",
+  name: "Particle Designer",
+  icon: "yogParticle",
+  fileTypes: [fileTypeId(formats.particle)],
+  component: ParticleEditor,
+  priority: 20,
+  kind: EDITOR_KIND.designer,
+});
+
+registerEditorProvider({
+  id: PARTICLE_SOURCE_VIEW,
+  label: "Code",
+  name: "Particle Source Editor",
+  fileTypes: [fileTypeId(formats.particle)],
   component: JsonEditor,
   priority: 0,
   kind: EDITOR_KIND.text,
