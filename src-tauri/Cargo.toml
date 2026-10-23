@@ -46,6 +46,8 @@ proc-macro2 = { version = "1.0.107", features = ["span-locations"] }
 yog-ids = "0.5.2"
 # Yog's home on the machine (~/.yog): where its local patch is.
 yog-home = "0.5.0"
+# The running game's control channel (hot reload, the mods it runs): every platform.
+yog-hot-reload = "0.5.0"
 # What the CLI service (`yog serve`) and the backend say: binary Yog Data.
 yog-data = "0.9.1"
 
@@ -66,7 +68,6 @@ required-features = ["bench"]
 [target.'cfg(target_os = "linux")'.dependencies]
 yog-symbols = "0.7.0"
 yog-debugger = "0.12.0"
-yog-hot-reload = "0.5.0"
 nix = { version = "0.31", features = ["ptrace", "signal", "process"] }
 
 # The loader's crates from the sibling checkout (as Substrate-Platform is):
