@@ -1,6 +1,6 @@
 [package]
 name = "yog-idle-tauri"
-version = "2.2.0"
+version = "2.2.1"
 description = "Visual UI editor for Yog mods — live preview into a running Minecraft client."
 authors = ["F000NK"]
 edition = "2024"
@@ -59,10 +59,6 @@ criterion = { version = "0.8", default-features = false, features = ["cargo_benc
 [[bench]]
 name = "backend"
 harness = false
-required-features = ["bench"]
-
-[[example]]
-name = "designer_bridge"
 required-features = ["bench"]
 
 # Debugger integration (Linux-only, matching yog-debugger's own scope) —
