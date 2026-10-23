@@ -217,6 +217,11 @@ export const scriptProblem = {
   ASSIGN_TO_CONSTANT: "YS0012",
   NAMING: "YS0013",
   AWAIT_OUTSIDE_ASYNC: "YS0014",
+  TYPE_MISMATCH: "YS0015",
+  NULLABLE: "YS0016",
+  UNKNOWN_MEMBER: "YS0017",
+  WRONG_SIDE: "YS0018",
+  WRONG_ARGS: "YS0019",
 } as const;
 
 export const storage = {

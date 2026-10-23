@@ -1,0 +1,3 @@
+# Cargo's output under the repository's obj/ (as .NET's), not target/.
+[build]
+target-dir = "../obj/target"
