@@ -148,6 +148,7 @@ export const kind = {
   TEXTURE: "texture",
   MATERIAL: "material",
   SOUND: "sound",
+  PARTICLE: "particle",
 } as const;
 
 export const reference = {
@@ -1040,6 +1041,7 @@ export const res = {
   SOUNDS: "sounds/",
   SOUNDS_JSON: "sounds.json",
   SOUNDS_WORD: "sounds",
+  PARTICLES: "particles/",
   OGG: ".ogg",
   PNG: ".png",
   SVG: ".svg",
@@ -1709,6 +1711,7 @@ export const formats = {
   font: { ext: "yfont", noun: "font", isData: true },
   texture: { ext: "ytexture", noun: "texture", isData: true },
   sound: { ext: "ysound", noun: "sound", isData: true },
+  particle: { ext: "yparticle", noun: "particle", isData: true },
   material: { ext: "ymaterial", noun: "material", isData: true },
   data: { ext: "ydata", noun: "compiled data", isData: true },
   mod: { ext: "yog", noun: "mod", isData: false },
