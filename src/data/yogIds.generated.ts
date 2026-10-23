@@ -167,6 +167,7 @@ export const reference = {
   BLOCK: "@block:",
   CATEGORY: "@category:",
   TEXTURE: "@texture:",
+  VIDEO: "@video:",
   TAG: "@tag:",
 } as const;
 
