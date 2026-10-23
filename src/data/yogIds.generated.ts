@@ -230,6 +230,10 @@ export const scriptProblem = {
   NO_VERSION: "YS0021",
   AMBIGUOUS: "YS0022",
   DIRECTIVE: "YS0023",
+  LIFETIME: "YS0024",
+  MOVED: "YS0025",
+  BORROW: "YS0026",
+  PASS: "YS0027",
 } as const;
 
 export const storage = {
