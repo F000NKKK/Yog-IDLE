@@ -222,6 +222,8 @@ export const scriptProblem = {
   UNKNOWN_MEMBER: "YS0017",
   WRONG_SIDE: "YS0018",
   WRONG_ARGS: "YS0019",
+  TARGETS: "YS0020",
+  NO_VERSION: "YS0021",
 } as const;
 
 export const storage = {
@@ -1027,6 +1029,12 @@ export const project = {
   TARGET: "obj/target",
   GENERATED: "obj/generated",
   BIN: "bin",
+} as const;
+
+export const gameVersion = {
+  V1_20_1: "1.20.1",
+  V1_21_1: "1.21.1",
+  V26_2: "26.2",
 } as const;
 
 export const gameDir = {
