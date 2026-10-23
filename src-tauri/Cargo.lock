@@ -5002,6 +5002,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "yog-codegen"
+version = "0.1.0"
+
+[[package]]
 name = "yog-data"
 version = "0.9.1"
 dependencies = [
@@ -5023,6 +5027,7 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 3.0.9",
+ "yog-codegen",
  "yog-ids",
 ]
 
@@ -5093,6 +5098,7 @@ name = "yog-ids"
 version = "0.5.2"
 dependencies = [
  "const_format",
+ "yog-codegen",
 ]
 
 [[package]]

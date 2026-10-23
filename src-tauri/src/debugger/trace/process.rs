@@ -1,6 +1,8 @@
 //! The debugged game process: its threads, where the mod's native is loaded.
 
-use super::*;
+use std::path::{Path, PathBuf};
+
+use yog_debugger::Debugger;
 
 /// The threads Break All stops: the ones mod code runs on — the client's
 /// render thread and the integrated server's tick thread. Everything else
@@ -8,28 +10,6 @@ use super::*;
 /// stall the system's audio or drop the connection.
 pub(super) fn is_game_thread(name: &str) -> bool {
     matches!(name, "Render thread" | "Server thread")
-}
-
-pub(super) fn to_snake_name(id: &str) -> String {
-    // Mirrors yog-cli's own `to_snake_name` exactly — the native's lib name
-    // (and therefore its filename) is derived this way, and Yog-IDLE has to
-    // agree with yog-cli's convention to find the same file on disk.
-    let mut out = String::with_capacity(id.len());
-    for c in id.chars() {
-        if c == '-' || c == '_' {
-            if !out.ends_with('_') {
-                out.push('_');
-            }
-        } else if c.is_uppercase() {
-            if !out.is_empty() && !out.ends_with('_') {
-                out.push('_');
-            }
-            out.extend(c.to_lowercase());
-        } else {
-            out.push(c);
-        }
-    }
-    out
 }
 
 /// The local, just-built unstripped native's path — `target/<triple>/
@@ -47,7 +27,7 @@ pub(crate) fn local_native_path(project_root: &Path, mod_id: &str) -> PathBuf {
     let lib = format!(
         "{}{}{}",
         std::env::consts::DLL_PREFIX,
-        to_snake_name(mod_id),
+        yog_ids::mod_lib_name(mod_id),
         std::env::consts::DLL_SUFFIX
     );
     project_root
