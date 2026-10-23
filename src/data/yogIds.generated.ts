@@ -224,6 +224,7 @@ export const scriptProblem = {
   WRONG_ARGS: "YS0019",
   TARGETS: "YS0020",
   NO_VERSION: "YS0021",
+  AMBIGUOUS: "YS0022",
 } as const;
 
 export const storage = {
