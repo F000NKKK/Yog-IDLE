@@ -238,6 +238,7 @@ export const scriptProblem = {
   NOT_EXHAUSTIVE: "YS0029",
   MACRO: "YS0030",
   ATTRIBUTE: "YS0031",
+  NOT_COMPILED: "YS0032",
 } as const;
 
 export const storage = {
