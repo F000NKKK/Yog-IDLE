@@ -12,7 +12,7 @@ pub(super) fn is_game_thread(name: &str) -> bool {
     matches!(name, "Render thread" | "Server thread")
 }
 
-/// The local, just-built unstripped native's path — `target/<triple>/
+/// The local, just-built unstripped native's path — `obj/target/<triple>/
 /// release/<lib>`, exactly how `yog-cli`'s `Builder`/`package()` name it for
 /// the host platform. Not the runtime-extracted temp copy (unpredictable —
 /// see `find_latest_module_base`) — this is only used for
@@ -31,7 +31,7 @@ pub(crate) fn local_native_path(project_root: &Path, mod_id: &str) -> PathBuf {
         std::env::consts::DLL_SUFFIX
     );
     project_root
-        .join("target")
+        .join(yog_ids::project::TARGET)
         .join(triple)
         .join("release")
         .join(lib)

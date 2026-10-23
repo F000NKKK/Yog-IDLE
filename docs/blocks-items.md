@@ -121,7 +121,7 @@ For each block: `models/block/<name>.json` (+ `_arm`), `blockstates/<name>.json`
 the item model and the 1.21.4+ item definition (`items/<name>.json`), a loot
 table, the mining tags; for each item its model and definition; names and
 tooltips into the lang files (`block.<ns>.<name>` / `item.<ns>.<name>`,
-tooltip under `.desc`); and `.yog-build/generated/yog-content.g.rs`.
+tooltip under `.desc`); and `obj/generated/yog-content.g.rs`.
 
 Blocks and items no longer come from anything else: a texture in `assets/`
 alone doesn't make a block or item model.

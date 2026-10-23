@@ -42,7 +42,7 @@ const ITEM_TEMPLATES: ItemTemplate[] = [
     id: "yui",
     category: "Yog",
     name: "Yog UI Screen",
-    description: "A screen for the designer (.yui) and its code-behind module (.rs); the code between them is generated into .yog-build on save.",
+    description: "A screen for the designer (.yui) and its code-behind module (.rs); the code between them is generated into obj/ on save.",
     extension: dotExt(formats.ui),
     baseName: "screen",
     files: (stem, { modId, srcDir }) => [
@@ -52,7 +52,7 @@ const ITEM_TEMPLATES: ItemTemplate[] = [
       ],
       [
         `${stem}.rs`,
-        `// Code-behind of ${stem}.yui; its generated half (ID, ids, events, build, render, click, open, close, ...)\n// is pulled in from .yog-build/generated/ by ui_include!.\nyog_api::ui_include!("${srcDir ? `${srcDir}/` : ""}${stem}");\n\npub fn register(registry: &mut yog_api::Registry) {\n    registry.on_ui_render(ID, |gfx| render(gfx));\n    registry.register_ui(ID, |_ui_id, event| {\n        let _ = click(event);\n    });\n}\n`,
+        `// Code-behind of ${stem}.yui; its generated half (ID, ids, events, build, render, click, open, close, ...)\n// is pulled in from obj/generated/ by ui_include!.\nyog_api::ui_include!("${srcDir ? `${srcDir}/` : ""}${stem}");\n\npub fn register(registry: &mut yog_api::Registry) {\n    registry.on_ui_render(ID, |gfx| render(gfx));\n    registry.register_ui(ID, |_ui_id, event| {\n        let _ = click(event);\n    });\n}\n`,
       ],
     ],
   },

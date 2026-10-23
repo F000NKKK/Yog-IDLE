@@ -120,7 +120,7 @@ export async function askToSave(names: string[]): Promise<string> {
 
 /**
  * A saved `.yui` screen, `.yres` resource file or `.yblock`/`.yitem`: regenerate its
- * `.yog-build/generated/**` code (`yog ui gen` / `yog res check` / `yog content check`),
+ * `obj/generated/**` code (`yog ui gen` / `yog res check` / `yog content check`),
  * so the code-behind sees it without a build.
  */
 export function regenerateScreen(path: string) {

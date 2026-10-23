@@ -7,7 +7,7 @@ use crate::*;
 pub(crate) struct PublishProfile {
     pub(crate) id: String,
     pub(crate) name: String,
-    /// "package" — `yog build` (produces `artifacts/<id>.yog`); "exports" — `yog publish exports`.
+    /// "package" — `yog build` (produces `bin/<id>.yog`); "exports" — `yog publish exports`.
     pub(crate) mode: String,
     /// Only meaningful for `mode: "exports"`.
     pub(crate) dry_run: bool,

@@ -41,7 +41,7 @@ export function FileEditorPanel({ tabId }: { tabId: string }) {
   const debuggable = extensionOf(tab.name) === DEBUGGABLE_EXTENSION;
   const renderView = (provider: EditorProvider, props: EditorProps) =>
     provider.kind === EDITOR_KIND.text && debuggable ? <DebuggableCode provider={provider} props={props} path={tab.path} /> : <provider.component {...props} />;
-  // Generated code (`.yog-build/generated/**.g.rs`) is shown read-only
+  // Generated code (`obj/generated/**.g.rs`) is shown read-only
   // under a notice naming its source, like Visual Studio's auto-generated files.
   const generated = isGeneratedCode(tab.path);
   const editor = (

@@ -127,7 +127,7 @@ pub(crate) fn mod_build(
 
 /// Build > Clean for a `yog-mod` project. `yog-cli` has no clean command of
 /// its own, so this removes what its builds produce: cargo's `target/`, the
-/// generated `.yog-build/` crate, and the packaged `artifacts/`. Reports
+/// generated `obj/` crate, and the packaged `bin/`. Reports
 /// through the same `workflow-output`/`workflow-start`/`workflow-exit`
 /// events as a Build.
 #[tauri::command]
@@ -142,7 +142,7 @@ pub(crate) async fn mod_clean(
     let out_app = app.clone();
     let success = tauri::async_runtime::spawn_blocking(move || {
         let mut success = true;
-        for dir in ["target", crate::project::manifest::BUILD_DIR, "artifacts"] {
+        for dir in [crate::project::manifest::OBJ_DIR, crate::project::manifest::BIN_DIR] {
             let path = root.join(dir);
             if !path.exists() {
                 continue;

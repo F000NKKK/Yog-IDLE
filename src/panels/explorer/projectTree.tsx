@@ -39,9 +39,9 @@ export function mapNodes(nodes: FileTreeNode[], fn: (node: FileTreeNode) => File
 }
 
 /**
- * Adds each screen's generated code (`.yog-build/generated/<path>.g.rs`, not
+ * Adds each screen's generated code (`obj/generated/<path>.g.rs`, not
  * in the tree's folders) under its `.yui`, and each resource set's
- * (`.yog-build/generated/resources/<Set>.g.rs`) under its neutral `.yres`,
+ * (`obj/generated/resources/<Set>.g.rs`) under its neutral `.yres`,
  * greyed, when the build has made it — like Visual Studio showing `MainWindow.g.cs` under a XAML window
  * and `Resources.Designer.cs` under a `.resx`. Opens read-only.
  */

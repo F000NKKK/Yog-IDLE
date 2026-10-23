@@ -224,7 +224,7 @@ mod tests {
 `TestHost` runs the real view without the game: `click_id`, `click_path`,
 `key`, `type_into`, `scroll`, `move_to`, `vm`/`vm_mut`, `text`, `state`,
 `is_visible`, `rect`, `closed()`... Run the tests with `cargo test` in
-`.yog-build/`.
+`obj/`.
 
 Yog-Modlist (`src/mod_list.yui` + `src/mod_list.rs`) is a complete example:
 a two-way search box, filter toggles, a virtualized selectable list with an

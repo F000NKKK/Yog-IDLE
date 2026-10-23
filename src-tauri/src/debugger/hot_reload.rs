@@ -4,7 +4,7 @@ use super::*;
 use substrate_platform::sync::Locked;
 
 /// Only one hot reload at a time — a second click while the first is still
-/// building would otherwise race it for `artifacts/<id>.yog`.
+/// building would otherwise race it for `bin/<id>.yog`.
 pub(super) static HOT_RELOAD_BUSY: AtomicBool = AtomicBool::new(false);
 
 #[derive(Clone, Serialize)]
@@ -278,7 +278,7 @@ pub(super) fn build_and_check(
         ));
     }
 
-    let yog_path = root.join("artifacts").join(format!("{mod_id}.yog"));
+    let yog_path = root.join(yog_ids::project::BIN).join(format!("{mod_id}.yog"));
     let yog_path = yog_path
         .canonicalize()
         .map_err(|e| format!("{}: {e}", yog_path.display()))?;

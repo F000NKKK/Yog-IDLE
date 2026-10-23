@@ -6,13 +6,13 @@ use std::path::{Path, PathBuf};
 
 /// The mod manifest, at a mod project's root.
 pub const MANIFEST: &str = yog_ids::file::MANIFEST;
-/// Where `yog build` writes (the generated crate, generated code).
-pub const BUILD_DIR: &str = yog_ids::project::BUILD;
+/// What `yog build` makes on the way (the generated crate, generated code,
+/// cargo's target) and what it makes (the `.yog`).
+pub const OBJ_DIR: &str = yog_ids::project::OBJ;
+pub const BIN_DIR: &str = yog_ids::project::BIN;
 /// Yog-IDLE's own per-project data (publish profiles, workspace state).
 pub const IDLE_DIR: &str = ".yog-idle";
 
-/// Where `yog` generates screen code (`.yui` → `.g.rs`), in the build folder.
-const GENERATED_DIR: &str = "generated";
 /// The generated code's files.
 const GENERATED_EXTENSION: &str = "rs";
 
@@ -20,9 +20,9 @@ const GENERATED_EXTENSION: &str = "rs";
 /// skipped, the generated screen code searchable on request.
 pub static SEARCH_LAYOUT: std::sync::LazyLock<substrate_platform::search::Layout> =
     std::sync::LazyLock::new(|| substrate_platform::search::Layout {
-        skip_dirs: vec![BUILD_DIR.to_string(), IDLE_DIR.to_string()],
+        skip_dirs: vec![OBJ_DIR.to_string(), BIN_DIR.to_string(), IDLE_DIR.to_string()],
         generated: vec![substrate_platform::search::Generated {
-            dir: std::path::Path::new(BUILD_DIR).join(GENERATED_DIR),
+            dir: std::path::PathBuf::from(yog_ids::project::GENERATED),
             extension: GENERATED_EXTENSION.to_string(),
         }],
     });
