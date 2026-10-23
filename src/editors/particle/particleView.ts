@@ -10,9 +10,14 @@ import type { Live, ParticleLook } from "./particleSim";
 const GROUND = 16;
 const GROUND_COLOR = 0x4a4a4a;
 const GROUND_SUB_COLOR = 0x3a3a3a;
+/** The ground under the grid (stone), by day and at night. */
+const DAY_GROUND = 0x7f7f7f;
+const NIGHT_GROUND = 0x141414;
 /** The sky behind, by day and at night (the game's clear sky and its night). */
 const DAY_SKY = 0x78a7ff;
 const NIGHT_SKY = 0x0b0d1a;
+/** The ground sits this far under the grid. */
+const FLOOR_BELOW_GRID = 0.001;
 /** A particle that doesn't glow, at night: this much of its colour. */
 const NIGHT_LIGHT = 0.15;
 /** The game drops an opaque particle's pixels below this alpha. */
@@ -54,7 +59,8 @@ export function framesOf(images: HTMLImageElement[]): Frames {
   const texture = new THREE.CanvasTexture(canvas);
   texture.magFilter = THREE.NearestFilter;
   texture.minFilter = THREE.NearestFilter;
-  texture.colorSpace = THREE.SRGBColorSpace;
+  // Colours as they are, as the game blends them (no sRGB conversion).
+  texture.colorSpace = THREE.NoColorSpace;
   return { texture, count: Math.max(images.length, 1) };
 }
 
@@ -77,13 +83,19 @@ export class ParticleView {
   private readonly uvs = new Float32Array(MAX_PARTICLES * QUAD_VERTICES * 2);
   private readonly colors = new Float32Array(MAX_PARTICLES * QUAD_VERTICES * 4);
   private readonly orbit: Orbit;
+  private readonly ground = new THREE.MeshBasicMaterial({ color: DAY_GROUND });
   private frames = 1;
 
   constructor(canvas: HTMLCanvasElement, target: THREE.Vector3) {
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+    // Colours as they are, as the game draws them.
+    this.renderer.outputColorSpace = THREE.LinearSRGBColorSpace;
     this.orbit = { theta: START_THETA, phi: START_PHI, dist: START_DISTANCE, target };
     const grid = new THREE.GridHelper(GROUND, GROUND, GROUND_COLOR, GROUND_SUB_COLOR);
-    this.scene.add(grid);
+    const floor = new THREE.Mesh(new THREE.PlaneGeometry(GROUND, GROUND).rotateX(-Math.PI / 2), this.ground);
+    // Under the grid's lines, not fighting them.
+    floor.position.y = -FLOOR_BELOW_GRID;
+    this.scene.add(floor, grid);
     this.geometry.setAttribute("position", new THREE.BufferAttribute(this.positions, 3).setUsage(THREE.DynamicDrawUsage));
     this.geometry.setAttribute("uv", new THREE.BufferAttribute(this.uvs, 2).setUsage(THREE.DynamicDrawUsage));
     this.geometry.setAttribute("color", new THREE.BufferAttribute(this.colors, 4).setUsage(THREE.DynamicDrawUsage));
@@ -129,7 +141,9 @@ export class ParticleView {
   /** Draws `particles` `partial` of a tick past their last, by day or `night`. */
   draw(particles: readonly Live[], partial: number, night: boolean, glow: boolean) {
     this.place();
-    this.scene.background = new THREE.Color(night ? NIGHT_SKY : DAY_SKY);
+    // The game's colours as they are (no sRGB to linear conversion).
+    this.scene.background = new THREE.Color().setHex(night ? NIGHT_SKY : DAY_SKY, THREE.LinearSRGBColorSpace);
+    this.ground.color.setHex(night ? NIGHT_GROUND : DAY_GROUND, THREE.LinearSRGBColorSpace);
     const light = night && !glow ? NIGHT_LIGHT : 1;
     const right = new THREE.Vector3().setFromMatrixColumn(this.camera.matrixWorld, 0);
     const up = new THREE.Vector3().setFromMatrixColumn(this.camera.matrixWorld, 1);
@@ -173,6 +187,7 @@ export class ParticleView {
   dispose() {
     this.material.map?.dispose();
     this.material.dispose();
+    this.ground.dispose();
     this.geometry.dispose();
     this.renderer.dispose();
   }
