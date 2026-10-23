@@ -17,6 +17,7 @@ mod app_commands;
 mod format;
 mod project_commands;
 mod workflow;
+mod webview_audio;
 use workflow::*;
 mod mod_commands;
 use mod_commands::*;
@@ -44,6 +45,7 @@ pub mod bench;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() -> tauri::Result<()> {
+    webview_audio::prefer_pipewire();
     let context = tauri::generate_context!();
     // Before any thread exists: the Build options go into this process's
     // own environment, for every `yog`/`cargo` it starts.
