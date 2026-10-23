@@ -1077,6 +1077,10 @@ export const gameFont = {
   ILLAGERALT: "illageralt",
 } as const;
 
+export const attribute = {
+  MAX_HEALTH: "max_health",
+} as const;
+
 export const gamemode = {
   SURVIVAL: "survival",
   CREATIVE: "creative",
