@@ -236,6 +236,7 @@ export const scriptProblem = {
   PASS: "YS0027",
   INHERIT: "YS0028",
   NOT_EXHAUSTIVE: "YS0029",
+  MACRO: "YS0030",
 } as const;
 
 export const storage = {
