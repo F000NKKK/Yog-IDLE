@@ -234,6 +234,7 @@ export const scriptProblem = {
   MOVED: "YS0025",
   BORROW: "YS0026",
   PASS: "YS0027",
+  INHERIT: "YS0028",
 } as const;
 
 export const storage = {
