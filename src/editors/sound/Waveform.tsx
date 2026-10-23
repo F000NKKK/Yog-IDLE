@@ -7,6 +7,17 @@ import { peaks } from "./audio";
 const WAVE = "#9d7bea";
 const HEAD = "#ffffff";
 
+/** Each buffer's peaks, per width drawn: a moving playhead only redraws. */
+const peakCache = new WeakMap<AudioBuffer, Map<number, Float32Array>>();
+
+function cachedPeaks(buffer: AudioBuffer, width: number): Float32Array {
+  let byWidth = peakCache.get(buffer);
+  if (!byWidth) peakCache.set(buffer, (byWidth = new Map()));
+  let p = byWidth.get(width);
+  if (!p) byWidth.set(width, (p = peaks(buffer, width)));
+  return p;
+}
+
 export function Waveform({ buffer, at }: { buffer: AudioBuffer | null; at: number | null }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
@@ -17,7 +28,7 @@ export function Waveform({ buffer, at }: { buffer: AudioBuffer | null; at: numbe
     const h = (c.height = c.clientHeight * devicePixelRatio);
     g.clearRect(0, 0, w, h);
     if (!buffer) return;
-    const p = peaks(buffer, w);
+    const p = cachedPeaks(buffer, w);
     g.fillStyle = WAVE;
     for (let x = 0; x < w; x++) {
       const half = (p[x] * h) / 2;

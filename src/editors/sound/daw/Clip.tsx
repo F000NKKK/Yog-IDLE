@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { useT } from "substrate-platform-ui";
 import { audioContext } from "../audio";
 import { clipBuffer, clipLength, clipSound, type SoundClip } from "../montage";
@@ -20,6 +21,9 @@ interface Props {
 export function Clip({ clip: c, buffer: b, color, pps, selected, onPointerDown }: Props) {
   const t = useT();
   const w = Math.max(EDGE * 2, (b ? clipLength(b, c) : 0) * pps);
+  // Cut once per change of its part: the playhead re-renders every frame.
+  const { from, to, reverse } = c;
+  const part = useMemo(() => (b ? clipBuffer(audioContext(), b, { from, to, reverse }) : null), [b, from, to, reverse]);
   return (
     <div
       className={`daw-clip${selected ? " selected" : ""}`}
@@ -27,7 +31,7 @@ export function Clip({ clip: c, buffer: b, color, pps, selected, onPointerDown }
       onPointerDown={onPointerDown}
     >
       <div className="daw-clip-title">{soundLabel(clipSound(c))}</div>
-      <Waveform buffer={b ? clipBuffer(audioContext(), b, c) : null} at={null} />
+      <Waveform buffer={part} at={null} />
       <svg className="daw-clip-fades" viewBox={`0 0 ${w} ${LANE}`} preserveAspectRatio="none">
         {c.fade_in ? <polygon points={`0,0 ${c.fade_in * pps},0 0,${LANE}`} /> : null}
         {c.fade_out ? <polygon points={`${w},0 ${w - c.fade_out * pps},0 ${w},${LANE}`} /> : null}
