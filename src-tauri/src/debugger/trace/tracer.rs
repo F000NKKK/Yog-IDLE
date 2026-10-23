@@ -13,7 +13,7 @@ impl Tracer {
     ) -> Result<Self, String> {
         let symbols = SymbolTable::load(native_path)
             .map_err(|e| format!("loading symbols from {}: {e}", native_path.display()))?;
-        let mut debugger = Debugger::attach(real_pid).map_err(|e| {
+        let mut debugger = Debugger::attach(real_pid as u32).map_err(|e| {
             let raw = e.to_string();
             if raw.contains("EPERM") {
                 permission_denied_message(real_pid)
@@ -22,7 +22,7 @@ impl Tracer {
             }
         })?;
         debugger.set_pause_filter(is_game_thread);
-        let Some(module_base) = find_latest_module_base(debugger.pid(), mod_id) else {
+        let Some(module_base) = find_latest_module_base(&debugger, mod_id) else {
             // Attached but unusable — let the game go rather than leaving
             // it stopped.
             let _ = debugger.detach();
@@ -41,7 +41,7 @@ impl Tracer {
             generation: generations.next(),
             generations,
             breakpoints: SourceBreakpoints::new(),
-            last_stop: StopReason::Signal(Signal::SIGSTOP),
+            last_stop: StopReason::Interrupted,
             values: HashMap::new(),
             next_value: 1,
         };
@@ -69,7 +69,7 @@ impl Tracer {
             }
             // Only meaningful while paused, where `tracer_main` handles
             // them itself — one arriving mid-run is a stale double-click.
-            TracerCmd::SelectThread(tid) => match self.debugger.select_thread(Pid::from_raw(tid)) {
+            TracerCmd::SelectThread(tid) => match self.debugger.select_thread(tid) {
                 Ok(()) => self.emit_stop(app, self.last_stop.clone()),
                 Err(e) => warn(app, format!("selecting thread {tid}: {e}")),
             },
@@ -87,7 +87,7 @@ impl Tracer {
     pub(super) fn rebind(&mut self) -> Result<(), String> {
         let symbols = SymbolTable::load(&self.native_path)
             .map_err(|e| format!("loading symbols from {}: {e}", self.native_path.display()))?;
-        let module_base = find_latest_module_base(self.debugger.pid(), &self.mod_id)
+        let module_base = find_latest_module_base(&self.debugger, &self.mod_id)
             .ok_or_else(|| format!("couldn't locate {}'s reloaded native", self.mod_id))?;
         let generation = self.generations.next();
         let m = LoadedMod {
@@ -158,7 +158,10 @@ impl Tracer {
                 return;
             }
         }
-        let _ = self.debugger.select_thread(self.debugger.pid());
+        let leader = self.debugger.threads().first().copied();
+        if let Some(leader) = leader {
+            let _ = self.debugger.select_thread(leader);
+        }
     }
 
     /// The selected thread's physical frames, unwound by CFI — through
@@ -198,8 +201,8 @@ impl Tracer {
     /// `stack_trace` id) and the index of the function instance at its pc
     /// the id names — an inlined call's caller shows its own variables,
     /// not the callee's. The innermost frame has every register; outer
-    /// ones have what CFI recovered (`rsp`, `rip` and the callee-saved
-    /// registers), so variables kept in other registers read as
+    /// ones have what CFI recovered (the stack pointer, the pc and the
+    /// callee-saved registers), so variables kept in other registers read as
     /// `<unavailable>`.
     pub(super) fn frame_regs(&self, frame: usize) -> Result<(FrameRegs, usize), String> {
         let frames = self.frames();
@@ -229,11 +232,10 @@ impl Tracer {
 
     /// Locals of the selected thread's frame `frame`, one level at a time.
     pub(super) fn variables(&mut self, frame: usize) -> Result<Vec<VariableOut>, String> {
-        let mem = ProcMem::open(self.debugger.pid())?;
         let (regs, inline) = self.frame_regs(frame)?;
-        let nodes = self
-            .symbols
-            .local_nodes(&regs, self.module_base, &mem, inline);
+        let nodes =
+            self.symbols
+                .local_nodes(&regs, self.module_base, &self.debugger.memory(), inline);
         Ok(nodes.into_iter().map(|n| self.row(n)).collect())
     }
 
@@ -243,24 +245,28 @@ impl Tracer {
         frame: usize,
         exprs: &[String],
     ) -> Result<Vec<WatchOut>, String> {
-        let mem = ProcMem::open(self.debugger.pid())?;
         let (regs, inline) = self.frame_regs(frame)?;
-        Ok(exprs
-            .iter()
-            .map(|expr| {
-                match self
-                    .symbols
-                    .evaluate(expr, &regs, self.module_base, &mem, inline)
-                {
-                    Ok(node) => WatchOut {
-                        value: Some(self.row(node)),
-                        error: None,
-                    },
-                    Err(e) => WatchOut {
-                        value: None,
-                        error: Some(e.to_string()),
-                    },
-                }
+        let results: Vec<_> = {
+            let mem = self.debugger.memory();
+            exprs
+                .iter()
+                .map(|expr| {
+                    self.symbols
+                        .evaluate(expr, &regs, self.module_base, &mem, inline)
+                })
+                .collect()
+        };
+        Ok(results
+            .into_iter()
+            .map(|result| match result {
+                Ok(node) => WatchOut {
+                    value: Some(self.row(node)),
+                    error: None,
+                },
+                Err(e) => WatchOut {
+                    value: None,
+                    error: Some(e.to_string()),
+                },
             })
             .collect())
     }
@@ -272,21 +278,18 @@ impl Tracer {
             .get(&handle)
             .cloned()
             .ok_or("the value is no longer available — the game has run since")?;
-        let mem = ProcMem::open(self.debugger.pid())?;
-        let nodes = self.symbols.expand(&value, &mem);
+        let nodes = self.symbols.expand(&value, &self.debugger.memory());
         Ok(nodes.into_iter().map(|n| self.row(n)).collect())
     }
 
     pub(super) fn emit_stop(&self, app: &AppHandle, reason: StopReason) {
         let reason_str = match reason {
             StopReason::Breakpoint(_) => "breakpoint",
-            StopReason::Signal(Signal::SIGTRAP) => "step",
+            StopReason::Step => "step",
             StopReason::Interrupted => "pause",
-            StopReason::Signal(_) => "signal",
             StopReason::Exited(_) | StopReason::Killed(_) => "exited",
         };
         let exited = reason_str == "exited";
-        let pid = self.debugger.pid();
         let thread = self.debugger.current_thread();
         let threads = if exited {
             Vec::new()
@@ -295,36 +298,18 @@ impl Tracer {
                 .threads()
                 .into_iter()
                 .map(|tid| ThreadOut {
-                    id: tid.as_raw(),
-                    name: yog_debugger::thread_name(pid, tid),
+                    id: tid,
+                    name: self.debugger.thread_name(tid),
                     stopped: self.debugger.is_stopped(tid),
                 })
                 .collect()
         };
         let registers = match self.debugger.registers() {
-            Ok(r) if !exited => [
-                ("rip", r.rip),
-                ("rsp", r.rsp),
-                ("rbp", r.rbp),
-                ("rax", r.rax),
-                ("rbx", r.rbx),
-                ("rcx", r.rcx),
-                ("rdx", r.rdx),
-                ("rsi", r.rsi),
-                ("rdi", r.rdi),
-                ("r8", r.r8),
-                ("r9", r.r9),
-                ("r10", r.r10),
-                ("r11", r.r11),
-                ("r12", r.r12),
-                ("r13", r.r13),
-                ("r14", r.r14),
-                ("r15", r.r15),
-                ("eflags", r.eflags),
-            ]
-            .into_iter()
-            .map(|(name, value)| (name.to_string(), format!("{value:#018x}")))
-            .collect(),
+            Ok(r) if !exited => r
+                .named
+                .into_iter()
+                .map(|(name, value)| (name.to_string(), format!("{value:#018x}")))
+                .collect(),
             _ => Vec::new(),
         };
         let _ = app.emit(
@@ -337,7 +322,7 @@ impl Tracer {
                     self.stack_trace()
                 },
                 threads,
-                thread: thread.as_raw(),
+                thread,
                 registers,
             },
         );

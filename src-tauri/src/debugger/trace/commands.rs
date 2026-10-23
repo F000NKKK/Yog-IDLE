@@ -125,7 +125,7 @@ pub fn debug_pause(state: State<DebugState>) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub fn debug_select_thread(state: State<DebugState>, thread: i32) -> Result<(), String> {
+pub fn debug_select_thread(state: State<DebugState>, thread: Tid) -> Result<(), String> {
     if tracer_send(&state, TracerCmd::SelectThread(thread)) {
         Ok(())
     } else {

@@ -93,7 +93,7 @@ pub struct StackFrameOut {
 #[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ThreadOut {
-    pub id: i32,
+    pub id: u64,
     /// `/proc/<pid>/task/<tid>/comm` — the JVM names its threads
     /// ("Server thread", "Render thread", ...).
     pub name: String,
@@ -112,7 +112,7 @@ pub struct DebugStoppedEvent {
     pub threads: Vec<ThreadOut>,
     /// The thread `stack_trace`/`registers` describe — the one that hit the
     /// breakpoint, or whichever the user picked with `debug_select_thread`.
-    pub thread: i32,
+    pub thread: u64,
     /// General-purpose registers of `thread`, as `(name, hex value)`.
     pub registers: Vec<(String, String)>,
 }
@@ -326,7 +326,7 @@ mod no_trace {
     }
 
     #[tauri::command]
-    pub fn debug_select_thread(thread: i32) -> Result<(), String> {
+    pub fn debug_select_thread(thread: u64) -> Result<(), String> {
         let _ = thread;
         Err(UNSUPPORTED.into())
     }

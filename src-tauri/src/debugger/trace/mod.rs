@@ -1,15 +1,13 @@
-//! The native debugger (Linux: `ptrace`): attaching to the game a
-//! Debug run started, breakpoints, stepping, variables.
+//! The native debugger (`yog-debugger`): attaching to the game a Debug run
+//! started, breakpoints, stepping, variables.
 
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::mpsc::Receiver;
 
-use nix::sys::signal::Signal;
-use nix::unistd::Pid;
-use yog_debugger::{Debugger, SourceBreakpoints, StepKind, StopReason, is_library_source};
+use yog_debugger::{Debugger, SourceBreakpoints, StepKind, StopReason, Tid, is_library_source};
 use yog_hot_reload::{GenerationAllocator, ModuleGeneration};
-use yog_symbols::{FrameRegs, SymbolTable, TargetMemory, ValueNode, ValueRef};
+use yog_symbols::{FrameRegs, SymbolTable, ValueNode, ValueRef};
 
 use super::*;
 
@@ -64,7 +62,7 @@ pub(super) enum TracerCmd {
     Pause,
     /// Inspect another (stopped) thread: re-emits `debug-stopped` with its
     /// stack and registers.
-    SelectThread(i32),
+    SelectThread(Tid),
     /// The runtime just hot-reloaded the mod: reload symbols from the
     /// freshly built native and re-resolve every breakpoint against them.
     Rebind,
@@ -96,7 +94,7 @@ pub(super) struct TracerHandle {
     tx: Sender<TracerCmd>,
     pid: i32,
     /// `true` while the tracee is executing a Continue or a step and the
-    /// tracer thread is blocked in `waitpid` — the only state in which it
+    /// tracer thread is blocked waiting on it — the only state in which it
     /// can't pick up a command on its own.
     running: Arc<AtomicBool>,
     /// `true` while the tracer is parked waiting for the user — the only
@@ -131,7 +129,7 @@ impl TracerHandle {
             if pause {
                 self.pause_request.store(true, Ordering::SeqCst);
             }
-            yog_debugger::ptrace_debugger::interrupt(self.pid);
+            yog_debugger::interrupt(self.pid as u32);
         }
         true
     }

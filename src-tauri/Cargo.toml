@@ -68,7 +68,6 @@ required-features = ["bench"]
 [target.'cfg(target_os = "linux")'.dependencies]
 yog-symbols = "0.7.0"
 yog-debugger = "0.12.0"
-nix = { version = "0.31", features = ["ptrace", "signal", "process"] }
 
 # The loader's crates from the sibling checkout (as Substrate-Platform is):
 # the IDE always builds against the loader it ships with, published or not.

@@ -5058,7 +5058,6 @@ version = "2.3.0"
 dependencies = [
  "criterion",
  "dirs",
- "nix 0.31.3",
  "proc-macro2",
  "regex",
  "serde",
