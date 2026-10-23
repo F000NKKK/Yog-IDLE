@@ -90,7 +90,14 @@ function summary(v: unknown): string {
  * The rows for `value` of format `desc`; `set` gets the whole new value
  * after an edit. `t` translates the grid's own words.
  */
-export function shapeProperties(desc: Described, value: Obj, set: (next: Obj) => void, t: (s: string, p?: Record<string, string | number>) => string): PropertyDescriptor[] {
+export function shapeProperties(
+  desc: Described,
+  value: Obj,
+  set: (next: Obj) => void,
+  t: (s: string, p?: Record<string, string | number>) => string,
+  /** The file with its defaults (`format.complete`): shown where it leaves a field out. */
+  shown?: Obj | null,
+): PropertyDescriptor[] {
   const out: PropertyDescriptor[] = [];
   const general = t("General");
 
@@ -103,7 +110,7 @@ export function shapeProperties(desc: Described, value: Obj, set: (next: Obj) =>
   const field = (f: FieldD, path: string[], category: string) => {
     const shape = unwrap(f.shape);
     const id = path.join(".");
-    const current = getAt(value, path);
+    const current = getAt(value, path) ?? (shown ? getAt(shown, path) : undefined);
     const base = { id, name: t(humanize(f.name)), category, description: f.doc };
     const commit = (v: unknown) => set(setAt(value, path, v));
     const d = def(shape);

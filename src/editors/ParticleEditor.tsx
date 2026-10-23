@@ -80,9 +80,9 @@ export function ParticleEditor({ path, content, onChange, readOnly }: EditorProp
 
   const properties = useMemo(() => {
     if (!shape || !file) return [];
-    const rows = shapeProperties(shape, file, (next) => void update(() => next as ParticleFile), t);
+    const rows = shapeProperties(shape, file, (next) => void update(() => next as ParticleFile), t, look as unknown as Record<string, unknown> | null);
     return readOnly ? rows.map((r) => ({ ...r, readOnly: true })) : rows;
-  }, [shape, file, update, readOnly, t]);
+  }, [shape, file, update, readOnly, t, look]);
   usePropertyContext(path, file ? { objectName: path.split(/[\\/]/).pop(), objectType: t("Particle"), objectKey: path, properties } : null);
 
   if (!parsed) return null;
