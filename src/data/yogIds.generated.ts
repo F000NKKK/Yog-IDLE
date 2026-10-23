@@ -31,6 +31,7 @@ export const direction = {
 } as const;
 
 export const word = {
+  VIDEO: "video",
   DISPLAY: "display",
   MESSAGE: "message",
   PARTICLE: "particle",
@@ -155,6 +156,7 @@ export const kind = {
   MATERIAL: "material",
   SOUND: "sound",
   PARTICLE: "particle",
+  VIDEO: "video",
 } as const;
 
 export const reference = {
@@ -948,6 +950,7 @@ export const resKind = {
   COLOR: "color",
   NUMBER: "number",
   BOOL: "bool",
+  VIDEO: "video",
 } as const;
 
 export const imageScheme = {
@@ -1735,6 +1738,7 @@ export const formats = {
   texture: { ext: "ytexture", noun: "texture", isData: true },
   sound: { ext: "ysound", noun: "sound", isData: true },
   particle: { ext: "yparticle", noun: "particle", isData: true },
+  video: { ext: "yvideo", noun: "video", isData: true },
   material: { ext: "ymaterial", noun: "material", isData: true },
   data: { ext: "ydata", noun: "compiled data", isData: true },
   mod: { ext: "yog", noun: "mod", isData: false },
