@@ -1711,7 +1711,7 @@ export const tagTable = {
   BASE: "base",
   HAS: "has",
   EVERYWHERE: "*",
-  LOADERS: "# loaders:",
+  HOSTS: "# hosts:",
 } as const;
 
 export const advancement = {
