@@ -25,7 +25,8 @@ Yog IDLE is a desktop IDE for mods made with the
 [Yog mod loader](https://github.com/F000NKKK/Yog-Mod-Loader). It looks and
 works like Visual Studio — Project Explorer, tabs, Properties, Toolbox, Output,
 Terminal — and adds a visual editor for every kind of file a Yog mod has:
-screens, blocks, items, recipes, guide books, translations and data tables.
+screens, blocks, items, recipes, guide books, models and animations, sounds,
+particles, videos, terrain, translations and data tables.
 What you see in an editor is drawn by the same code the game runs.
 
 <p align="center"><img src="docs/images/screen-designer.png" alt="The screen designer with Yog-Modlist's mod list" width="900"></p>
@@ -87,6 +88,26 @@ the property grid, and switch the language to read every translation.
 
 <p align="center"><img src="docs/images/book-designer.png" alt="The book designer with HexMod's Hex Notebook" width="900"></p>
 
+### Models, animations and entities
+
+`.ymodel` skeletons, `.yanim` animations and a mod's entities have their own
+editors: pose the bones, key the timeline, and see the entity as the game
+draws it (yog-body).
+
+### Sounds, particles and video
+
+- **Sounds**: a small DAW for `.ysound` — variants, waveforms, a mixer and
+  montage, played as the game plays them.
+- **Particles**: `.yparticle` look, behaviour and rendering with a live preview.
+- **Video**: `.yvideo` with a montage designer — clips, picture lanes and a
+  player — for screens, the world, cutscenes and entities.
+- **Textures**: pictures in any format, edited and written as the game takes them.
+
+### Terrain
+
+Declarative terrain (yog-worldgen) — noise, layers, caves and ores — is
+previewed as the game generates it, while its table is edited.
+
 ### Texts, translations and data tables
 
 Resources are a table of names and values: texts, colors, numbers, images and
@@ -105,10 +126,12 @@ code editor; a mod gets typed access to their rows.
 - **Build** packages the mod for all five platforms at once.
 - **Run** starts Minecraft with your mod on Fabric, NeoForge or Forge, in
   Release or Debug.
-- **Hot reload** rebuilds the mod and swaps it into the running game.
+- **Hot reload** rebuilds the mod and swaps it (and, if asked, its
+  resources) into the running game over the game's control channel.
 - The **debugger** stops at breakpoints in the mod's Rust code while the game
-  runs: step, call stack, locals, watch expressions and values on hover
-  (Linux for now, like hot reload).
+  runs: step, call stack, locals, watch expressions and values on hover.
+- Every format is read, written and checked through the Yog CLI
+  (`yog serve`), so IDLE shows the same problems `yog check` reports.
 
 <p align="center"><img src="docs/images/debugger.png" alt="The debugger stopped at a breakpoint" width="900"></p>
 
