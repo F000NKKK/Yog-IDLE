@@ -20,7 +20,7 @@ import { useWatches } from "../debugger/WatchesContext";
 import { selectDocument } from "../app/ideSelection";
 import { isGeneratedCode, samePath } from "../project/paths";
 import { GeneratedFileBar } from "./GeneratedFileBar";
-import { type FileTab, useOpenFiles } from "./openFilesContext";
+import { type FileTab, useOpenFiles } from "./openFilesValue";
 import { PREVIEW_SIDE_ICON, PREVIEW_SIDE_KEYS, tabViews, TOGGLE_PREVIEW_KEYS } from "./tabs/tabViews";
 
 /** Only Rust source is debuggable: the debugger resolves breakpoints against a mod's own compiled native. */

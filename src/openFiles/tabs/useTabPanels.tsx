@@ -3,7 +3,7 @@
 import type { ComponentType } from "react";
 import { EDITOR_KIND, editorProviderIcon, extensionOf, formatShortcut, type PanelAction, type PanelDef, t } from "substrate-platform-ui";
 import { FileEditorPanel } from "../FileEditorPanel";
-import type { FileTab } from "../openFilesContext";
+import type { FileTab } from "../openFilesValue";
 import { tabMenu } from "./tabMenu";
 import { isViewMap, PREVIEW_SIDE_ICON, PREVIEW_SIDE_KEYS, tabViews, TOGGLE_PREVIEW_KEYS, VIEWS_KEY } from "./tabViews";
 import type { OpenTabs } from "./useOpenTabs";

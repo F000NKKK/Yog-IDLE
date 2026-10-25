@@ -3,7 +3,7 @@
 import { type ComponentType, useCallback, useEffect, useRef, useState } from "react";
 import { EDITOR_KIND, editorProviderById, fileNameOf, type FileOpenRequest, isBinaryFile, onOpenFileRequest, reportError, t, useGlobalStateStore, useLocale } from "substrate-platform-ui";
 import { files } from "../../project/files";
-import type { FileTab, OpenOptions } from "../openFilesContext";
+import type { FileTab, OpenOptions } from "../openFilesValue";
 import { newTabId, nextRevealSeq } from "./tabViews";
 
 /** The open tabs, and opening a file into one (or revealing its tab). */

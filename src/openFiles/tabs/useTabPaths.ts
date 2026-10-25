@@ -4,7 +4,7 @@ import { useCallback, useEffect } from "react";
 import { addCloseGuard, EDITOR_KIND, editorProviderById, fileNameOf, notify, reportError, t } from "substrate-platform-ui";
 import { files } from "../../project/files";
 import { isWithin } from "../../project/paths";
-import type { FileTab } from "../openFilesContext";
+import type { FileTab } from "../openFilesValue";
 import type { OpenTabs } from "./useOpenTabs";
 import type { TabClosing } from "./useTabClosing";
 

@@ -1,5 +1,5 @@
 import { type ContextMenuItem, reportError, t, type TabMenuContext } from "substrate-platform-ui";
-import type { FileTab } from "../openFilesContext";
+import type { FileTab } from "../openFilesValue";
 import { openWithItems } from "./tabViews";
 import type { TabClosing } from "./useTabClosing";
 

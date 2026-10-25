@@ -8,7 +8,7 @@ import { cli, problemDiagnostics, serviceTool, type ServiceProblem } from "../to
 import { serveMethod } from "../data/yogIds.generated";
 import { isDataFile } from "../project/files";
 import { EVENT, listenAll, listenTo } from "../app/events";
-import type { FileTab } from "../openFiles/openFilesContext";
+import type { FileTab } from "../openFiles/openFilesValue";
 
 /** How long typing pauses before the file is checked again, ms. */
 export const LIVE_CHECK_DELAY_MS = 300;

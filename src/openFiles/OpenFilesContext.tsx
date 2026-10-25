@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { OpenFilesContext } from "./openFilesContext";
+import { OpenFilesContext } from "./openFilesValue";
 import { useOpenTabs } from "./tabs/useOpenTabs";
 import { useTabSaving } from "./tabs/useTabSaving";
 import { useTabClosing } from "./tabs/useTabClosing";
@@ -56,5 +56,5 @@ export function OpenFilesProvider(props: { children: ReactNode }) {
   );
 }
 
-export { OpenFilesContext, useActiveFileTab, useOpenFiles, useOpenFilesIfAny } from "./openFilesContext";
-export type { FileTab, OpenFilesContextValue, SideState } from "./openFilesContext";
+export { OpenFilesContext, useActiveFileTab, useOpenFiles, useOpenFilesIfAny } from "./openFilesValue";
+export type { FileTab, OpenFilesContextValue, SideState } from "./openFilesValue";

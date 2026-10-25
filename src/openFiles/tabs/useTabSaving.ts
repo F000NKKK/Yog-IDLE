@@ -4,7 +4,7 @@ import { useCallback, useRef } from "react";
 import { fileNameOf, reportError, t } from "substrate-platform-ui";
 import { files } from "../../project/files";
 import { invalidateDesignResources } from "../../lang/designResources";
-import type { SideState } from "../openFilesContext";
+import type { SideState } from "../openFilesValue";
 import { regenerateScreen } from "./tabViews";
 import type { OpenTabs } from "./useOpenTabs";
 
