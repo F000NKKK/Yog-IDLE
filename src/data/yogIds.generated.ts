@@ -1049,6 +1049,7 @@ export const project = {
 } as const;
 
 export const gameVersion = {
+  V1_19_2: "1.19.2",
   V1_20_1: "1.20.1",
   V1_21_1: "1.21.1",
   V26_2: "26.2",
