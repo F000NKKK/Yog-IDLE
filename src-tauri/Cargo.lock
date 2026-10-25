@@ -5064,7 +5064,7 @@ dependencies = [
 
 [[package]]
 name = "yog-home"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "dirs",
  "semver",
@@ -5113,7 +5113,7 @@ dependencies = [
 
 [[package]]
 name = "yog-ids"
-version = "0.6.2"
+version = "0.6.3"
 dependencies = [
  "const_format",
  "yog-codegen",
