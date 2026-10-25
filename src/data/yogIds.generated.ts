@@ -239,6 +239,7 @@ export const scriptProblem = {
   MACRO: "YS0030",
   ATTRIBUTE: "YS0031",
   NOT_COMPILED: "YS0032",
+  UNDECLARED: "YS0033",
 } as const;
 
 export const storage = {
@@ -1079,6 +1080,7 @@ export const rustCrate = {
   API: "yog-api",
   API_RUST_NAME: "yog_api",
   API_VERSION_KEY: "yog_api_version",
+  API_TO_SERVER: "to-server",
   ABI: "yog-abi",
   UI: "yog-ui",
   KIT: "yog-kit",
