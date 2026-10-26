@@ -261,6 +261,10 @@ export const scriptProblem = {
   NO_CONTENT_FILE: "YS0038",
 } as const;
 
+export const scriptJvm = {
+  PACKAGE_ROOT: "yogscript",
+} as const;
+
 export const storage = {
   DIR: "yog-data",
   GAME: "game",
