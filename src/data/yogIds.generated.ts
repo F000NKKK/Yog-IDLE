@@ -259,6 +259,7 @@ export const scriptProblem = {
   UNASSIGNED: "YS0036",
   CONTENT_PROPERTY: "YS0037",
   NO_CONTENT_FILE: "YS0038",
+  ITERATOR: "YS0039",
 } as const;
 
 export const scriptJvm = {
