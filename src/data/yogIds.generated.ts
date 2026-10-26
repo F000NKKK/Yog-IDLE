@@ -31,6 +31,10 @@ export const direction = {
 } as const;
 
 export const word = {
+  WRITE: "write",
+  REMOVE: "remove",
+  SESSION: "session",
+  STORAGE: "storage",
   VIDEO: "video",
   DISPLAY: "display",
   MESSAGE: "message",
@@ -253,6 +257,8 @@ export const scriptProblem = {
   OPERATOR: "YS0034",
   UNKNOWN_TYPE: "YS0035",
   UNASSIGNED: "YS0036",
+  CONTENT_PROPERTY: "YS0037",
+  NO_CONTENT_FILE: "YS0038",
 } as const;
 
 export const storage = {
@@ -263,6 +269,7 @@ export const storage = {
   PLAYER: "player",
   ENTITY: "entity",
   CHUNK: "chunk",
+  SESSION: "session",
   SEP: "_",
 } as const;
 
@@ -758,6 +765,14 @@ export const serviceBus = {
   DESCRIBE: "yog:bus/describe",
   LIST: "yog:bus/list",
   FIND: "yog:bus/find",
+} as const;
+
+export const serviceStorage = {
+  DOMAIN: "yog:storage/",
+  READ: "yog:storage/read",
+  WRITE: "yog:storage/write",
+  REMOVE: "yog:storage/remove",
+  KEYS: "yog:storage/keys",
 } as const;
 
 export const serviceContent = {
