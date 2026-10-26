@@ -240,6 +240,9 @@ export const scriptProblem = {
   ATTRIBUTE: "YS0031",
   NOT_COMPILED: "YS0032",
   UNDECLARED: "YS0033",
+  OPERATOR: "YS0034",
+  UNKNOWN_TYPE: "YS0035",
+  UNASSIGNED: "YS0036",
 } as const;
 
 export const storage = {
@@ -516,6 +519,7 @@ export const serviceItem = {
   ENTITY_STACK: "yog:item/entity_stack",
   SET_ENTITY_STACK: "yog:item/set_entity_stack",
   BLOCK: "yog:item/block",
+  FOOD: "yog:item/food",
 } as const;
 
 export const serviceWorld = {
@@ -691,6 +695,7 @@ export const serviceClient = {
   STOP_SOUND: "yog:client/stop_sound",
   HELD_ITEM: "yog:client/held_item",
   SET_BLOCK_TINT: "yog:client/set_block_tint",
+  ONLY_BLOCKS: "yog:client/only_blocks",
   KEY_DOWN: "yog:client/key_down",
   KEY_NAME: "yog:client/key_name",
   ATTRIBUTE_VALUE: "yog:client/attribute_value",
