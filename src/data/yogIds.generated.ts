@@ -48,6 +48,7 @@ export const word = {
   DIMENSION: "dimension",
   EQUIPMENT: "equipment",
   EVENT: "event",
+  FLOAT: "float",
   FRAME: "frame",
   FUNCTION: "function",
   GENERIC: "generic",
@@ -121,6 +122,15 @@ export const word = {
   WIDTH: "width",
   X: "x",
   Y: "y",
+} as const;
+
+export const commandArg = {
+  INT: "int",
+  FLOAT: "float",
+  WORD: "word",
+  STRING: "string",
+  PLAYER: "player",
+  BLOCKPOS: "blockpos",
 } as const;
 
 export const kind = {
