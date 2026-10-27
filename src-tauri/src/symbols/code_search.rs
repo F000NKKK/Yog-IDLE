@@ -179,7 +179,7 @@ pub(super) fn text_items(
         max_lines: limit,
         layout: &crate::project::manifest::SEARCH_LAYOUT,
     };
-    search::run_search(&search, &|| true, &mut |file| {
+    search::find(&search, &|| true, &mut |file| {
         for hit in file.hits {
             items.push(CodeSearchItem {
                 kind: "text",
@@ -187,7 +187,7 @@ pub(super) fn text_items(
                 name: hit.text,
                 container: None,
                 path: file.path.clone(),
-                rel_path: file.rel_path.clone(),
+                rel_path: file.relative_path.clone(),
                 line: Some(hit.line),
                 column: Some(hit.column),
                 score: 0,

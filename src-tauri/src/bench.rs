@@ -56,13 +56,13 @@ pub fn find_in_documents(documents: &[OpenDocument], pattern: &str) -> String {
         layout: &crate::project::manifest::SEARCH_LAYOUT,
     };
     let mut files = Vec::new();
-    let _ = substrate_platform::search::run_search(&search, &|| true, &mut |file| files.push(file));
+    let _ = substrate_platform::search::find(&search, &|| true, &mut |file| files.push(file));
     serde_json::to_string(&files).unwrap_or_default()
 }
 
 /// `git status` output parsed into Git Changes' model, as sent to the frontend.
 pub fn git_status(top: &Path, raw: &str) -> String {
-    let mut status = substrate_platform::git::status::parse_status(raw);
-    substrate_platform::git::status::set_abs_paths(&mut status, top);
+    let mut status = substrate_platform::git::status::parse(raw);
+    status.set_absolute_paths(top);
     serde_json::to_string(&status).unwrap_or_default()
 }

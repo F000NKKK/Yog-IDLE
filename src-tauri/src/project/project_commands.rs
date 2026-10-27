@@ -134,7 +134,7 @@ pub(crate) struct ProjectOut {
 #[tauri::command]
 pub(crate) fn project_open(state: State<Workspace>, path: String) -> Result<ProjectOut, String> {
     let canonical = state.open(Path::new(&path)).map_err(|m| m.to_string())?;
-    let files: Vec<String> = substrate_platform::fs::dir::list_dir(&canonical)
+    let files: Vec<String> = substrate_platform::fs::dir::list(&canonical)
         .map(|entries| entries.into_iter().map(|e| e.name).collect())
         .unwrap_or_default();
     let kind = ProjectStandard::detect(&files, &built_in_standards());

@@ -44,7 +44,7 @@ impl RootIndex {
                 _ => IndexedFile {
                     modified,
                     symbols: Arc::new(
-                        search::read_text(path, false)
+                        search::read_text(path, search::Decoding::Lossy)
                             .map(|text| extract_symbols(&text))
                             .unwrap_or_default(),
                     ),

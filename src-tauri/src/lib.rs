@@ -13,7 +13,8 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use serde::{Deserialize, Serialize};
 use substrate_platform::project::ProjectStandard;
 use substrate_platform::run::{
-    Level, LogLine, LogSink, WorkflowFile, WorkflowHandle, WorkflowResult,
+    Level, LogLine, LogSink,
+    workflow::{File as WorkflowFile, Handle as WorkflowHandle, Outcome as WorkflowOutcome},
 };
 use tauri::{AppHandle, Emitter, Manager, State};
 

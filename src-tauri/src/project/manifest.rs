@@ -20,9 +20,9 @@ const GENERATED_EXTENSION: &str = "rs";
 /// skipped, the generated screen code searchable on request.
 pub static SEARCH_LAYOUT: std::sync::LazyLock<substrate_platform::search::Layout> =
     std::sync::LazyLock::new(|| substrate_platform::search::Layout {
-        skip_dirs: vec![OBJ_DIR.to_string(), BIN_DIR.to_string(), IDLE_DIR.to_string()],
+        skipped_directories: vec![OBJ_DIR.to_string(), BIN_DIR.to_string(), IDLE_DIR.to_string()],
         generated: vec![substrate_platform::search::Generated {
-            dir: std::path::PathBuf::from(yog_ids::project::GENERATED),
+            directory: std::path::PathBuf::from(yog_ids::project::GENERATED),
             extension: GENERATED_EXTENSION.to_string(),
         }],
     });

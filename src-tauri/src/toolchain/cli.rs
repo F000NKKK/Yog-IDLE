@@ -152,7 +152,7 @@ pub fn register_text_views() {
         write: write_source,
     };
     for format in yog_ids::Format::ALL.iter().filter(|f| f.is_data()) {
-        substrate_platform::text_view::register_text_view(format.ext(), view);
+        substrate_platform::text_view::register(format.ext(), view);
     }
 }
 
