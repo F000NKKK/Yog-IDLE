@@ -1,7 +1,8 @@
 //! Code Search: files, symbols and text matching a query, ranked.
 
+use substrate_lock::Locked;
+
 use super::*;
-use substrate_platform::sync::Locked;
 
 /// Per project root, built on first use.
 #[derive(Default)]

@@ -1,7 +1,8 @@
 //! The debugger's commands: breakpoints, continue, step, pause, threads.
 
+use substrate_lock::Locked;
+
 use super::*;
-use substrate_platform::sync::Locked;
 
 pub(super) fn warn(app: &AppHandle, message: String) {
     let _ = app.emit(

@@ -1,7 +1,8 @@
 //! A tracing session: started on the game, its thread, the failures it reports.
 
+use substrate_lock::Locked;
+
 use super::*;
-use substrate_platform::sync::Locked;
 
 /// An attached session's tracer gave up mid-session — reported as
 /// `debug-failed` (not `debug-attach-failed`: the attach itself worked),

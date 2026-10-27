@@ -1,8 +1,9 @@
 //! Building, running, hot-reloading and publishing the mod; workflows.
 
-use super::commands::run::DOMAIN;
 use tauri::Wry;
 use tauri::plugin::{Builder, TauriPlugin};
+
+use super::commands::run::DOMAIN;
 
 pub fn plugin() -> TauriPlugin<Wry> {
     Builder::new(DOMAIN.plugin)

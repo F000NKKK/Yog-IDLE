@@ -1,7 +1,8 @@
 //! Running the game under the IDE: the mod's id, the control connection, its events and the session's status.
 
+use substrate_lock::Locked;
+
 use super::*;
-use substrate_platform::sync::Locked;
 
 /// `[mod] id` of the mod at `root`.
 pub(super) fn mod_id(root: &Path) -> Result<String, String> {

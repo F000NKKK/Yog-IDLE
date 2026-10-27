@@ -1,8 +1,9 @@
 //! A mod project: its manifest, Project Properties, a path's properties, opening it.
 
-use super::commands::project::DOMAIN;
 use tauri::Wry;
 use tauri::plugin::{Builder, TauriPlugin};
+
+use super::commands::project::DOMAIN;
 
 pub fn plugin() -> TauriPlugin<Wry> {
     Builder::new(DOMAIN.plugin)

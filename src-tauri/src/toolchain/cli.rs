@@ -146,8 +146,8 @@ pub fn mod_id(root: &Path) -> Option<String> {
 
 /// Every Yog format's files (binary on disk) are searched and replaced in
 /// as their text: the platform reads and writes them through the service.
-pub fn text_views() -> substrate_platform::text_view::TextViews {
-    let view = substrate_platform::text_view::TextView {
+pub fn text_views() -> substrate_workspace_domain::TextViews {
+    let view = substrate_workspace_domain::TextView {
         read: read_source,
         write: write_source,
     };

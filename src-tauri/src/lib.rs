@@ -3,15 +3,14 @@ mod project;
 mod running;
 mod toolchain;
 
-pub use app::events;
-
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use std::sync::atomic::{AtomicU64, Ordering};
 
+pub use app::events;
 use serde::{Deserialize, Serialize};
-use substrate_platform::project::ProjectStandard;
+use substrate_project_domain::ProjectStandard;
 use substrate_run_app::LogSink;
 use substrate_run_app::workflow::Handle as WorkflowHandle;
 use substrate_run_domain::workflow::{File as WorkflowFile, Outcome as WorkflowOutcome};

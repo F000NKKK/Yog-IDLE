@@ -99,22 +99,15 @@ pub(crate) async fn crates_search(
 }
 
 /// Yog-IDLE's own recognized project standards, loaded from data
-/// (`standards.toml`) rather than hardcoded here — `substrate-platform`
-/// ships none of these itself, only the generic `ProjectStandard`/detection
-/// machinery (it already derives `Serialize`/`Deserialize` for exactly this),
+/// (`standards.toml`) rather than hardcoded here — Substrate's project
+/// crates ship none of these themselves, only the generic `ProjectStandard`/detection
+/// machinery and `substrate_project_toml::parse_standards` for this file's shape,
 /// so a fork or a different product can swap in its own detection rules
 /// without touching any Rust logic.
 pub(crate) const BUILT_IN_STANDARDS_TOML: &str = include_str!("standards.toml");
 
-#[derive(Deserialize)]
-pub(crate) struct StandardsFile {
-    pub(crate) standard: Vec<ProjectStandard>,
-}
-
 pub(crate) fn built_in_standards() -> Vec<ProjectStandard> {
-    toml::from_str::<StandardsFile>(BUILT_IN_STANDARDS_TOML)
-        .map(|f| f.standard)
-        .unwrap_or_default()
+    substrate_project_toml::parse_standards(BUILT_IN_STANDARDS_TOML).unwrap_or_default()
 }
 
 #[derive(Clone, Serialize)]
@@ -134,7 +127,7 @@ pub(crate) struct ProjectOut {
 #[tauri::command]
 pub(crate) fn project_open(state: State<Workspace>, path: String) -> Result<ProjectOut, String> {
     let canonical = state.open(Path::new(&path)).map_err(|m| m.to_string())?;
-    let files: Vec<String> = substrate_platform::fs::dir::list(&canonical)
+    let files: Vec<String> = substrate_workspace_fs::dir::list(&canonical)
         .map(|entries| entries.into_iter().map(|e| e.name).collect())
         .unwrap_or_default();
     let kind = ProjectStandard::detect(&files, &built_in_standards());

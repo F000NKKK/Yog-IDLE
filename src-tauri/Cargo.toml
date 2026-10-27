@@ -35,7 +35,12 @@ toml = "1"
 toml_edit = "0.25"
 # Where the Environment options and IDE-installed tools live.
 dirs = "7"
-substrate-platform = { path = "../../../Substrate-Platform", features = ["fs", "project", "state"] }
+substrate-lock = { path = "../../../Substrate-Platform/crates/substrate-lock" }
+substrate-project-domain = { path = "../../../Substrate-Platform/crates/substrate-project-domain" }
+substrate-project-toml = { path = "../../../Substrate-Platform/crates/substrate-project-toml" }
+substrate-state-json = { path = "../../../Substrate-Platform/crates/substrate-state-json" }
+substrate-workspace-domain = { path = "../../../Substrate-Platform/crates/substrate-workspace-domain" }
+substrate-workspace-fs = { path = "../../../Substrate-Platform/crates/substrate-workspace-fs" }
 # Substrate's split contexts: the host contract (commands, events), searching,
 # running workflows, git.
 substrate-host-contract = { path = "../../../Substrate-Platform/crates/substrate-host-contract" }
