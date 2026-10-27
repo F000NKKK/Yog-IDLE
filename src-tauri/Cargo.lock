@@ -5197,6 +5197,7 @@ dependencies = [
  "substrate-data",
  "yog-data",
  "yog-ids",
+ "yog-logging",
 ]
 
 [[package]]
