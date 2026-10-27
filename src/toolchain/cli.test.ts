@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { getDiagnostics } from "substrate-platform-ui";
 import { cli, ServiceError } from "./cli";
-import { dataProblem, serveMethod } from "../data/yogIds.generated";
+import { serveMethod } from "../data/yogIds.generated";
+import { dataProblem } from "../data/yogDataBinary.generated";
 import { pathText } from "../diagnostics/yogDiagnostic";
 
 describe("the CLI service's errors", () => {

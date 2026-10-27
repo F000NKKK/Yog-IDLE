@@ -16,7 +16,7 @@ import "../SoundEditor.css";
 // A `.ysound` sound event, as a sound designer shows it: each sound it may
 // play — its waveform, played as the game plays it, its volume, pitch and
 // weight — and the event played as the game picks it (by weight). A
-// sound is the mod's (`@Sounds.x`, its `.yres`) or one the game has.
+// sound is the mod's (`@res:Sounds.x`, its `.yres`) or one the game has.
 
 type SoundFile = Record<string, unknown> & { sounds?: (Variant & { mix?: Mix })[]; subtitle?: string };
 
@@ -57,7 +57,7 @@ export function SoundEditor({ path, content, onChange, readOnly }: EditorProps) 
     play(await loadSound(path, soundOf(v)), v.volume ?? GAME_VOLUME, v.pitch ?? GAME_PITCH);
   };
 
-  /** A sound added: `@Set.name` the mod's, else a file the game has. */
+  /** A sound added: `@res:Set.name` the mod's, else a file the game has. */
   const add = () => {
     const s = adding.trim();
     if (!s) return;
@@ -114,7 +114,7 @@ export function SoundEditor({ path, content, onChange, readOnly }: EditorProps) 
         )}
         {!readOnly && (
           <div className="sound-add">
-            <input value={adding} placeholder={t("@Sounds.name, or the game's minecraft:dig/sand1")} onChange={(e) => setAdding(e.target.value)} onKeyDown={(e) => e.key === "Enter" && add()} />
+            <input value={adding} placeholder={t("@res:Sounds.name, or the game's minecraft:dig/sand1")} onChange={(e) => setAdding(e.target.value)} onKeyDown={(e) => e.key === "Enter" && add()} />
             <button onClick={add}>{t("Add a sound")}</button>
             <button onClick={() => (setVariant(variants.length, { mix: { clips: [] } }), setEditing(variants.length))}>{t("Add a montage")}</button>
           </div>

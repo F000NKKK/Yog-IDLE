@@ -278,7 +278,9 @@ pub(super) fn build_and_check(
         ));
     }
 
-    let yog_path = root.join(yog_ids::project::BIN).join(format!("{mod_id}.yog"));
+    let yog_path = root
+        .join(yog_ids::project::BIN)
+        .join(format!("{mod_id}.yog"));
     let yog_path = yog_path
         .canonicalize()
         .map_err(|e| format!("{}: {e}", yog_path.display()))?;

@@ -183,19 +183,8 @@ export const reference = {
   TEXTURE: "@texture:",
   VIDEO: "@video:",
   TAG: "@tag:",
-} as const;
-
-export const dataProblem = {
-  INVALID: "YD0000",
-  SYNTAX: "YD0001",
-  EXPECTED: "YD0002",
-  NOT_A_REFERENCE: "YD0003",
-  WRONG_KIND: "YD0004",
-  UNKNOWN_FIELD: "YD0005",
-  MISSING_FIELD: "YD0006",
-  OUT_OF_RANGE: "YD0007",
-  BAD_TYPED: "YD0008",
-  BAD_BINARY: "YD0009",
+  RES: "@res:",
+  LANG: "@lang:",
 } as const;
 
 export const requestProblem = {
@@ -308,6 +297,9 @@ export const dataAttr = {
 export const typed = {
   TAG: "tag",
   LANG: "lang",
+  RES: "res",
+  TEXT: "text",
+  COLOR: "color",
   IMAGE: "image",
   BYTES: "bytes",
 } as const;
@@ -967,7 +959,7 @@ export const serviceNanite = {
 } as const;
 
 export const naniteRef = {
-  OBJECT: "yog:object",
+  OBJECT: "yog_object",
 } as const;
 
 export const naniteWord = {

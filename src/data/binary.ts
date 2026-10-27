@@ -1,5 +1,5 @@
 /**
- * Yog Data's binary form (Rust `yog_data::binary`), what the IDE and the
+ * Yog Data's binary form, Substrate Data's (Rust `substrate_data::binary`), what the IDE and the
  * CLI say to each other (`yog serve`): plain values only — the CLI sends
  * typed ones (`@item:…`) as their strings. The tags and rules are
  * generated from Rust (`yogDataBinary.generated.ts`).
@@ -14,6 +14,11 @@ import {
   VERSION,
   tag,
 } from "./yogDataBinary.generated";
+import { sep } from "./yogIds.generated";
+
+/** What a reference's spelling starts with, and what ends its kind (`@item:x`). */
+const TYPED = sep.TYPED;
+const KIND_END = sep.NAMESPACE;
 
 /** A plain Yog Data value as JS holds it. */
 export type Value = null | boolean | number | string | Uint8Array | Value[] | { [key: string]: Value } | Map<string, Value>;
@@ -84,7 +89,7 @@ class Decoder {
 
   header(): void {
     const magic = toUtf8.encode(MAGIC);
-    if (!magic.every((m, k) => this.b[k] === m)) throw this.error("not Yog Data (no `YOGD` header)");
+    if (!magic.every((m, k) => this.b[k] === m)) throw this.error("not Yog Data (no `" + MAGIC + "` header)");
     this.i = magic.length;
     const version = this.byte();
     if (version !== VERSION) throw this.error(`Yog Data version ${version}, this reads version ${VERSION}`);
@@ -175,6 +180,9 @@ class Decoder {
         return this.floats(F32_BYTES, (at) => this.view.getFloat32(at, LITTLE_ENDIAN));
       case tag.STREAM:
         return this.stream(depth);
+      case tag.REF:
+        // A reference as its spelling, `@kind:id`: what the text form writes.
+        return `${TYPED}${this.string()}${KIND_END}${this.string()}`;
       default:
         this.i -= 1;
         throw this.error(`tag ${t} isn't a plain value`);

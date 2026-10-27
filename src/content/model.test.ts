@@ -22,7 +22,7 @@ describe("parseContent", () => {
 
   it("reads the bench fixture", async () => {
     const file = (await parsed(contentText(20))) as { name: string; model: { textures: Record<string, string>; elements: { faces: object }[] } };
-    expect(file.name).toBe("@Strings.block.bench");
+    expect(file.name).toBe("@res:Strings.block.bench");
     expect(file.model.textures.note).toBe("a // not a comment, ]");
     expect(file.model.elements).toHaveLength(20);
     expect(Object.keys(file.model.elements[19].faces)).toEqual(["north", "south", "up"]);

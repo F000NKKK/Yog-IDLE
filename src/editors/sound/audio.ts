@@ -1,5 +1,5 @@
 // Sounds for the sound designer: a `.ysound` variant's sound (the mod's
-// `@Sounds.x`, or a file the game has) fetched through the CLI and decoded
+// `@res:Sounds.x`, or a file the game has) fetched through the CLI and decoded
 // once; played as the game plays it — its volume, its pitch (which, as in
 // the game, is its speed too); its waveform's peaks for drawing.
 

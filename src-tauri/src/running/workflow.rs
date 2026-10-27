@@ -209,16 +209,14 @@ pub(crate) fn run_and_stream(
     let _ = app.emit(crate::app::events::WORKFLOW_START, WorkflowStart::of(&root));
     let feed = crate::toolchain::diagnostics_feed::Feed::open(&app);
     let file = reporting_to(file, &feed);
-    let handle = substrate_run_app::workflow::run(
-        std::sync::Arc::new(substrate_run_process::SystemLauncher),
-        substrate_run_app::workflow::Request {
-            file,
-            name,
-            vars,
-            cwd: root,
-        },
-        sink,
-    );
+    let request = substrate_run_app::workflow::Request {
+        file,
+        name,
+        vars,
+        cwd: root,
+    };
+    let launcher = std::sync::Arc::new(substrate_run_process::SystemLauncher);
+    let handle = substrate_run_app::workflow::run(launcher, request, sink);
     let state = app.state::<WorkflowState>();
     let id = state.next_id.fetch_add(1, Ordering::Relaxed);
     state.running.locked().insert(id, handle.clone());

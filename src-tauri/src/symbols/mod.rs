@@ -23,14 +23,16 @@ use tauri::State;
 use crate::Workspace;
 use substrate_platform::text_view::TextViews;
 use substrate_search_app::ports::{Decoding, DocumentSource, FileWalker};
-use substrate_search_app::{Search, find};
+use substrate_search_app::{self as search, Search};
 use substrate_search_domain::pattern::FileMask;
-use substrate_search_domain::project::{Layout, OpenDocument, Scope, relative};
+use substrate_search_domain::project::{OpenDocument, Scope, relative};
 use substrate_search_domain::query::SearchQuery;
 use substrate_search_ignore::{DiskDocuments, IgnoreWalker};
 
 mod extract;
+mod open_document_dto;
 pub use extract::*;
+pub use open_document_dto::OpenDocumentDto;
 mod fuzzy;
 pub use fuzzy::*;
 mod index;

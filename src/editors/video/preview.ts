@@ -33,7 +33,7 @@ export const NO_MEDIA: VideoList = { own: [], seconds: [], images: [] };
 /** Frames kept per render, the oldest let go first. */
 const KEPT_FRAMES = 240;
 
-/** The videos and pictures a `.yvideo` of the mod at `path` can show (`@Videos.intro`). */
+/** The videos and pictures a `.yvideo` of the mod at `path` can show (`@res:Videos.intro`). */
 export function videoList(path: string): Promise<VideoList> {
   return cli<VideoList>(serveMethod.VIDEO_LIST, { path });
 }

@@ -101,7 +101,7 @@ function clipRows(i: number, a: Args): PropertyDescriptor[] {
       category: cat,
       value: sound,
       displayValue: soundLabel(sound),
-      description: t("The mod's sound (@Set.name) or a sound file the game has (minecraft:dig/sand1)."),
+      description: t("The mod's sound (@res:Set.name) or a sound file the game has (minecraft:dig/sand1)."),
       suggestions: a.sounds,
       onCommit: (v) => {
         const next = String(v).trim();

@@ -1,4 +1,4 @@
-// Typed values (`@item:minecraft:stick`, `@tag:item:…`, `@Set.key`,
+// Typed values (`@item:minecraft:stick`, `@tag:item:…`, `@res:Set.key`,
 // `@image:…`, `@lang:…`) as the CLI reads them (`typed.classify`, Rust
 // `yog_data::typed`) — the IDE has no rules of its own. Reading is
 // synchronous from a cache: a file's values are classified when it's read

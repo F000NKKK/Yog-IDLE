@@ -41,7 +41,7 @@ impl CodeIndex {
 pub fn find_in_documents(documents: &[OpenDocument], pattern: &str) -> String {
     let query = substrate_search_domain::query::SearchQuery {
         pattern: pattern.to_string(),
-        ..substrate_search_domain::query::SearchQuery::default()
+        ..Default::default()
     };
     let search = substrate_search_app::Search {
         root: Some(BENCH_ROOT),
@@ -52,17 +52,19 @@ pub fn find_in_documents(documents: &[OpenDocument], pattern: &str) -> String {
         layout: &crate::project::manifest::SEARCH_LAYOUT,
     };
     let mut files = Vec::new();
-    let adapters = (
+    let sources = (
         &substrate_search_ignore::IgnoreWalker,
-        &substrate_search_ignore::DiskDocuments::default(),
+        &substrate_search_ignore::DiskDocuments::new(
+            substrate_platform::text_view::TextViews::default(),
+        ),
     );
-    let _ = substrate_search_app::find(&search, adapters, &|| true, &mut |file| files.push(file));
-    format!("{files:?}")
+    let _ = substrate_search_app::find(&search, sources, &|| true, &mut |file| files.push(file));
+    serde_json::to_string(&files).unwrap_or_default()
 }
 
 /// `git status` output parsed into Git Changes' model, as sent to the frontend.
 pub fn git_status(top: &Path, raw: &str) -> String {
     let mut status = substrate_git_gitcli::porcelain::parse_status(raw);
     status.set_absolute_paths(top);
-    format!("{status:?}")
+    serde_json::to_string(&status).unwrap_or_default()
 }

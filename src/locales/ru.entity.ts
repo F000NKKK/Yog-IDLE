@@ -9,7 +9,7 @@ registerTranslations(RU, {
   "Living": "Живое",
   "Mob": "Моб",
   "Hanging": "Висящее",
-  "Its name — a literal English text or a `@Set.name` text of a .yres file (translated). Default: the id's translation key.": "Имя — текст на английском или текст `@Set.name` из файла .yres (переводится). По умолчанию — ключ перевода по идентификатору.",
+  "Its name — a literal English text or a `@res:Set.name` text of a .yres file (translated). Default: the id's translation key.": "Имя — текст на английском или текст `@res:Set.name` из файла .yres (переводится). По умолчанию — ключ перевода по идентификатору.",
   "object: a thing with no health or AI; living: health and attributes; mob: a creature with AI goals; hanging: hangs on a wall, as a painting.": "object — вещь без здоровья и ИИ; living — здоровье и атрибуты; mob — существо с целями ИИ; hanging — висит на стене, как картина.",
   "Spawn Group": "Группа появления",
   "Its spawn group (the game's MobCategory): how many of it the world spawns and where. Default: misc.": "Группа появления (MobCategory игры): сколько и где их появляется в мире. По умолчанию — misc.",

@@ -3,7 +3,7 @@ import { entriesOf, freshId, moved, newPage, readBook, withField, refId } from "
 
 describe("bookModel", () => {
   it("reads a book and keeps unknown fields", async () => {
-    const b = (await readBook(`{ "id": "m:g", "name": "@Book.t", "extra": 1, "entries": [{ "id": "e", "name": "E", "category": "c", "pages": [{ "type": "text", "text": "x" }] }] }`))!;
+    const b = (await readBook(`{ "id": "m:g", "name": "@res:Book.t", "extra": 1, "entries": [{ "id": "e", "name": "E", "category": "c", "pages": [{ "type": "text", "text": "x" }] }] }`))!;
     expect(b.categories).toEqual([]);
     expect(b.entries[0].pages[0]).toEqual({ type: "text", text: "x" });
     expect(b.extra).toBe(1);

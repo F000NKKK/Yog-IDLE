@@ -31,23 +31,7 @@ pub struct CodeSearchRequest {
     pub limit: Option<usize>,
     /// Open buffers, searched instead of their files in text mode.
     #[serde(default)]
-    pub documents: Vec<OpenBuffer>,
-}
-
-/// An open editor's buffer, as the popup sends it.
-#[derive(Deserialize)]
-pub struct OpenBuffer {
-    path: String,
-    text: String,
-}
-
-impl From<OpenBuffer> for OpenDocument {
-    fn from(buffer: OpenBuffer) -> Self {
-        Self {
-            path: buffer.path,
-            text: buffer.text,
-        }
-    }
+    pub documents: Vec<OpenDocumentDto>,
 }
 
 #[derive(Clone, Serialize, Debug)]
@@ -175,7 +159,7 @@ pub(super) fn search_index(
 pub(super) fn text_items(
     root: &str,
     query: &str,
-    documents: Vec<OpenBuffer>,
+    documents: &[OpenDocument],
     limit: usize,
     views: &TextViews,
 ) -> Result<Vec<CodeSearchItem>, String> {
@@ -183,18 +167,17 @@ pub(super) fn text_items(
         pattern: query.to_string(),
         ..SearchQuery::default()
     };
-    let documents: Vec<OpenDocument> = documents.into_iter().map(OpenDocument::from).collect();
     let mut items = Vec::new();
     let search = Search {
         root: Some(root),
         scope: Scope::Project,
         query: &q,
-        documents: &documents,
+        documents,
         max_lines: limit,
         layout: &crate::project::manifest::SEARCH_LAYOUT,
     };
-    let files = DiskDocuments::new(views.clone());
-    find(&search, (&IgnoreWalker, &files), &|| true, &mut |file| {
+    let sources = (&IgnoreWalker, &DiskDocuments::new(views.clone()));
+    search::find(&search, sources, &|| true, &mut |file| {
         for hit in file.hits {
             items.push(CodeSearchItem {
                 kind: "text",
@@ -229,13 +212,12 @@ pub async fn code_search(
             return Ok(Vec::new());
         }
         return tauri::async_runtime::spawn_blocking(move || {
-            text_items(
-                &request.root,
-                &request.query,
-                request.documents,
-                limit,
-                &views,
-            )
+            let documents: Vec<OpenDocument> = request
+                .documents
+                .into_iter()
+                .map(OpenDocument::from)
+                .collect();
+            text_items(&request.root, &request.query, &documents, limit, &views)
         })
         .await
         .map_err(|err| err.to_string())?;
