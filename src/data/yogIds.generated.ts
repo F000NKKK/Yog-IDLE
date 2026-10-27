@@ -260,6 +260,14 @@ export const scriptProblem = {
   CONTENT_PROPERTY: "YS0037",
   NO_CONTENT_FILE: "YS0038",
   ITERATOR: "YS0039",
+  THREADS: "YS0040",
+  UNSAFE: "YS0041",
+  CONSTRAINT: "YS0042",
+  LOGGER_MESSAGE: "YS0043",
+  LOG_BY_METHOD: "YS0044",
+  UNKNOWN_NAME: "YS0045",
+  GOTO: "YS0046",
+  REQUIRED: "YS0047",
 } as const;
 
 export const scriptJvm = {
