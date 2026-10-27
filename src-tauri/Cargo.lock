@@ -5146,25 +5146,25 @@ dependencies = [
 
 [[package]]
 name = "yog-codegen"
-version = "0.1.1"
+version = "0.3.0"
 
 [[package]]
 name = "yog-codegen-java"
-version = "0.1.1"
+version = "0.3.0"
 dependencies = [
  "yog-codegen",
 ]
 
 [[package]]
 name = "yog-codegen-typescript"
-version = "0.1.1"
+version = "0.3.0"
 dependencies = [
  "yog-codegen",
 ]
 
 [[package]]
 name = "yog-data"
-version = "0.10.2"
+version = "0.12.0"
 dependencies = [
  "substrate-data",
  "yog-codegen",
@@ -5175,7 +5175,7 @@ dependencies = [
 
 [[package]]
 name = "yog-debugger"
-version = "0.14.1"
+version = "0.16.0"
 dependencies = [
  "iced-x86",
  "libc",
@@ -5190,7 +5190,7 @@ dependencies = [
 
 [[package]]
 name = "yog-home"
-version = "0.6.1"
+version = "0.8.0"
 dependencies = [
  "dirs",
  "semver",
@@ -5202,7 +5202,7 @@ dependencies = [
 
 [[package]]
 name = "yog-hot-reload"
-version = "0.6.0"
+version = "0.8.0"
 dependencies = [
  "libloading 0.9.0",
  "serde",
@@ -5253,7 +5253,7 @@ dependencies = [
 
 [[package]]
 name = "yog-ids"
-version = "0.6.9"
+version = "0.8.0"
 dependencies = [
  "const_format",
  "yog-codegen",
@@ -5263,14 +5263,14 @@ dependencies = [
 
 [[package]]
 name = "yog-logging"
-version = "0.3.0"
+version = "0.5.0"
 dependencies = [
  "yog-sync",
 ]
 
 [[package]]
 name = "yog-symbols"
-version = "0.9.1"
+version = "0.11.0"
 dependencies = [
  "addr2line",
  "gimli",
@@ -5281,7 +5281,7 @@ dependencies = [
 
 [[package]]
 name = "yog-sync"
-version = "0.4.0"
+version = "0.6.0"
 
 [[package]]
 name = "yoke"
