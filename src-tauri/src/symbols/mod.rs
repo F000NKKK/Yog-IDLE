@@ -22,6 +22,7 @@ use tauri::State;
 
 use crate::Workspace;
 use substrate_platform::search::{self, FileMask, OpenDocument, Scope, Search, SearchQuery};
+use substrate_platform::text_view::TextViews;
 
 mod extract;
 pub use extract::*;

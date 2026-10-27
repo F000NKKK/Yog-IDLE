@@ -15,7 +15,7 @@ pub(crate) struct RootIndex {
 }
 
 impl RootIndex {
-    pub(super) fn refresh(&mut self, root: &Path) {
+    pub(super) fn refresh(&mut self, root: &Path, views: &TextViews) {
         let all = FileMask::all();
         // Generated screen code (`.g.rs`) too, so its `ids`/`events`/`render`
         // show up in Code Search as in VS (`MainWindow.g.cs`).
@@ -44,7 +44,7 @@ impl RootIndex {
                 _ => IndexedFile {
                     modified,
                     symbols: Arc::new(
-                        search::read_text(path, search::Decoding::Lossy)
+                        search::read_text(path, search::Decoding::Lossy, views)
                             .map(|text| extract_symbols(&text))
                             .unwrap_or_default(),
                     ),

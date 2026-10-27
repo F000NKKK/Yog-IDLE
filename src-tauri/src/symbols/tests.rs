@@ -160,7 +160,7 @@ fn index_ranks_files_and_symbols() {
     .unwrap();
     std::fs::write(dir.join("README.md"), "# readme\n").unwrap();
     let mut index = RootIndex::default();
-    index.refresh(&dir);
+    index.refresh(&dir, &TextViews::default());
     assert_eq!(
         names(&index, CodeSearchMode::Types, "cli"),
         [("struct", "Client".to_string())]
@@ -187,16 +187,17 @@ fn index_ranks_files_and_symbols() {
         .unwrap()
         .set_modified(later)
         .unwrap();
-    index.refresh(&dir);
+    index.refresh(&dir, &TextViews::default());
     assert_eq!(
         names(&index, CodeSearchMode::Types, "srv"),
         [("enum", "Server".to_string())]
     );
     assert!(names(&index, CodeSearchMode::Types, "cli").is_empty());
 
-    let items = text_items(&dir.to_string_lossy(), "fn connect", &[], 10).unwrap();
+    let views = TextViews::default();
+    let items = text_items(&dir.to_string_lossy(), "fn connect", &[], 10, &views).unwrap();
     assert!(items.is_empty());
-    let items = text_items(&dir.to_string_lossy(), "enum", &[], 10).unwrap();
+    let items = text_items(&dir.to_string_lossy(), "enum", &[], 10, &views).unwrap();
     assert_eq!(items.len(), 1);
     assert_eq!(items[0].line, Some(1));
     std::fs::remove_dir_all(dir).unwrap();

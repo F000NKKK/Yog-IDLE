@@ -146,14 +146,17 @@ pub fn mod_id(root: &Path) -> Option<String> {
 
 /// Every Yog format's files (binary on disk) are searched and replaced in
 /// as their text: the platform reads and writes them through the service.
-pub fn register_text_views() {
+pub fn text_views() -> substrate_platform::text_view::TextViews {
     let view = substrate_platform::text_view::TextView {
         read: read_source,
         write: write_source,
     };
-    for format in yog_ids::Format::ALL.iter().filter(|f| f.is_data()) {
-        substrate_platform::text_view::register(format.ext(), view);
-    }
+    yog_ids::Format::ALL
+        .iter()
+        .filter(|f| f.is_data())
+        .fold(Default::default(), |views, format| {
+            views.with(format.ext(), view)
+        })
 }
 
 /// A Yog format's file as the editor shows it.
@@ -165,14 +168,14 @@ fn read_source(path: &Path) -> Option<String> {
 }
 
 /// `text` saved as a Yog format's file.
-fn write_source(path: &Path, text: &str) -> Result<(), String> {
+fn write_source(path: &Path, text: &str) -> std::io::Result<()> {
     let mut params = path_param(path);
     if let Value::Map(m) = &mut params {
         m.insert(serve_param::TEXT, Value::from(text));
     }
     call(serve_method::SOURCE_WRITE, params)
         .map(|_| ())
-        .map_err(|e| yog_data::text::to_string(&e))
+        .map_err(|e| std::io::Error::other(yog_data::text::to_string(&e)))
 }
 
 /// The `path` parameter, alone.

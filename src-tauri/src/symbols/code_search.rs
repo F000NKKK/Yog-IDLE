@@ -161,6 +161,7 @@ pub(super) fn text_items(
     query: &str,
     documents: &[OpenDocument],
     limit: usize,
+    views: &TextViews,
 ) -> Result<Vec<CodeSearchItem>, String> {
     let q = SearchQuery {
         pattern: query.to_string(),
@@ -178,6 +179,7 @@ pub(super) fn text_items(
         documents,
         max_lines: limit,
         layout: &crate::project::manifest::SEARCH_LAYOUT,
+        views,
     };
     search::find(&search, &|| true, &mut |file| {
         for hit in file.hits {
@@ -203,16 +205,24 @@ pub(super) fn text_items(
 pub async fn code_search(
     state: State<'_, Workspace>,
     index: State<'_, SymbolIndexState>,
+    views: State<'_, TextViews>,
     request: CodeSearchRequest,
 ) -> Result<Vec<CodeSearchItem>, String> {
     crate::validate_within_roots(&state, Path::new(&request.root))?;
     let limit = request.limit.unwrap_or(200).min(2000);
+    let views = views.inner().clone();
     if request.mode == CodeSearchMode::Text {
         if request.query.trim().is_empty() {
             return Ok(Vec::new());
         }
         return tauri::async_runtime::spawn_blocking(move || {
-            text_items(&request.root, &request.query, &request.documents, limit)
+            text_items(
+                &request.root,
+                &request.query,
+                &request.documents,
+                limit,
+                &views,
+            )
         })
         .await
         .map_err(|err| err.to_string())?;
@@ -225,7 +235,7 @@ pub async fn code_search(
         let built = roots.contains_key(&root);
         let entry = roots.entry(root.clone()).or_default();
         if request.refresh || !built {
-            entry.refresh(&root);
+            entry.refresh(&root, &views);
         }
         search_index(entry, &request.query, request.mode, limit)
     })

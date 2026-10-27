@@ -46,14 +46,14 @@ pub fn run() -> tauri::Result<()> {
         .map(|file| toolchain::tools::load_settings_from(&file))
         .unwrap_or_default();
     toolchain::tools::apply_to_process_at_startup(&build_settings);
-    // Search and replace see Yog formats' files as the editor does.
-    toolchain::cli::register_text_views();
 
     let builder = tauri::Builder::default()
         // Substrate's own commands (the workspace, Source Control): what its UI calls.
         .plugin(tauri_plugin_substrate::init_with(
             tauri_plugin_substrate::Options {
                 search: project::manifest::SEARCH_LAYOUT.clone(),
+                // Search and replace see Yog formats' files as the editor does.
+                text_views: toolchain::cli::text_views(),
                 state: Some(tauri_plugin_substrate::StateOptions {
                     project_dir: project::manifest::IDLE_DIR.to_string(),
                 }),

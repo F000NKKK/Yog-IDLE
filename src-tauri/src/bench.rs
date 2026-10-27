@@ -54,6 +54,7 @@ pub fn find_in_documents(documents: &[OpenDocument], pattern: &str) -> String {
         documents,
         max_lines: substrate_platform::search::DEFAULT_MAX_LINES,
         layout: &crate::project::manifest::SEARCH_LAYOUT,
+        views: &substrate_platform::text_view::TextViews::default(),
     };
     let mut files = Vec::new();
     let _ = substrate_platform::search::find(&search, &|| true, &mut |file| files.push(file));
