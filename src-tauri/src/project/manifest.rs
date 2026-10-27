@@ -18,10 +18,14 @@ const GENERATED_EXTENSION: &str = "rs";
 
 /// A Yog project as a search sees it: the build folder and IDLE's own data
 /// skipped, the generated screen code searchable on request.
-pub static SEARCH_LAYOUT: std::sync::LazyLock<substrate_platform::search::Layout> =
-    std::sync::LazyLock::new(|| substrate_platform::search::Layout {
-        skipped_directories: vec![OBJ_DIR.to_string(), BIN_DIR.to_string(), IDLE_DIR.to_string()],
-        generated: vec![substrate_platform::search::Generated {
+pub static SEARCH_LAYOUT: std::sync::LazyLock<substrate_search_domain::project::Layout> =
+    std::sync::LazyLock::new(|| substrate_search_domain::project::Layout {
+        skipped_directories: vec![
+            OBJ_DIR.to_string(),
+            BIN_DIR.to_string(),
+            IDLE_DIR.to_string(),
+        ],
+        generated: vec![substrate_search_domain::project::Generated {
             directory: std::path::PathBuf::from(yog_ids::project::GENERATED),
             extension: GENERATED_EXTENSION.to_string(),
         }],

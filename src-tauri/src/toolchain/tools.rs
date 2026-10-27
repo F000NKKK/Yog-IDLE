@@ -9,7 +9,7 @@ use std::sync::RwLock;
 use substrate_platform::sync::ReadWrite;
 
 use serde::{Deserialize, Serialize};
-use substrate_platform::process;
+use substrate_process as process;
 use tauri::State;
 use yog_home::Home;
 use yog_home::components::id;
@@ -172,10 +172,12 @@ pub fn tools_status() -> Status {
 /// to download it from.
 #[tauri::command]
 pub fn open_installer() -> Result<(), String> {
-    let installer = Home::locate()?
-        .components()?
-        .newest(id::INSTALLER)
-        .map(|i| i.path.clone());
+    // A store it can't read (another version's) is no reason to stay shut:
+    // the releases page then.
+    let installer = Home::locate()
+        .and_then(|home| home.components())
+        .ok()
+        .and_then(|c| c.newest(id::INSTALLER).map(|i| i.path.clone()));
     match installer.filter(|p| p.exists()) {
         Some(program) => process::start(&program),
         None => process::open_link(INSTALLER_RELEASES),

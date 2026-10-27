@@ -68,7 +68,7 @@ export function BookEditor({ path, content, onChange, readOnly }: EditorProps) {
   useTyped();
   const t = useT();
   useSyncExternalStore(subscribeImageSources, imageSourcesVersion);
-  // `@Book.title` texts shown from the mod's .yres files, as the book shows them.
+  // `@res:Book.title` texts shown from the mod's .yres files, as the book shows them.
   useDesignResources(modRootOf(path));
   const { parsed: read, update: edit } = useDataFile(content, onChange, BOOK_FORMAT, readOnly);
   const parsed = read?.ok ? read.file : null;
@@ -290,7 +290,7 @@ export function BookEditor({ path, content, onChange, readOnly }: EditorProps) {
               ? imagePreview(path, id) ?? undefined
               : undefined
         : undefined;
-    // `@Book.title`: shown as the book shows it, the reference a click away.
+    // `@res:Book.title`: shown as the book shows it, the reference a click away.
     const shown = typeof v === "string" && v.startsWith("@") && shownText(v) !== v ? `${shownText(v)}  ‹${v}›` : undefined;
     const base = { id: f.key, name: pt("book", f.label), category: t(f.group ?? "Content"), readOnly };
     switch (f.kind) {
@@ -357,7 +357,7 @@ export function BookEditor({ path, content, onChange, readOnly }: EditorProps) {
     order: "declared",
     objectName: target.title,
     objectKey: JSON.stringify(sel),
-    objectDescription: t("Texts may refer to resources: @Strings.key, @item:mymod:ruby, @block:stone."),
+    objectDescription: t("Texts may refer to resources: @res:Strings.key, @item:mymod:ruby, @block:stone."),
     properties,
   };
 
@@ -445,7 +445,7 @@ export function BookEditor({ path, content, onChange, readOnly }: EditorProps) {
   );
 }
 
-/** A text as the book shows it: `@Set.key` from the .yres files, `@item:`/`@block:` as a name. */
+/** A text as the book shows it: `@res:Set.key` from the .yres files, `@item:`/`@block:` as a name. */
 function shownText(v: string): string {
   const id = /^@(?:item|block):(.+)$/.exec(v)?.[1];
   if (id) {

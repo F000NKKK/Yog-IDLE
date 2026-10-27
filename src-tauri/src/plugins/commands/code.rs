@@ -1,6 +1,6 @@
 //! Code: Code Search, formatting, the CLI.
 
-use substrate_platform::commands::Domain;
+use substrate_host_contract::commands::Domain;
 
 pub const DOMAIN: Domain = Domain {
     key: "code",

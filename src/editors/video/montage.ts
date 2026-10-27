@@ -49,5 +49,5 @@ export function withPictureTrack(m: Montage, n: number, patch: Partial<PictureTr
   return { ...m, tracks };
 }
 
-/** What a clip shows, for its label: `@Media.intro`. */
+/** What a clip shows, for its label: `@res:Media.intro`. */
 export const clipMedia = (c: PictureClip): string => c.video ?? c.image ?? "";

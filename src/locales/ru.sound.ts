@@ -12,7 +12,7 @@ registerTranslations(RU, {
   "Reload the sounds": "Перечитать звуки",
   "Subtitle: {subtitle}": "Субтитр: {subtitle}",
   "Add a sound": "Добавить звук",
-  "@Sounds.name, or the game's minecraft:dig/sand1": "@Sounds.имя или звук игры minecraft:dig/sand1",
+  "@res:Sounds.name, or the game's minecraft:dig/sand1": "@Sounds.имя или звук игры minecraft:dig/sand1",
   // The montage
   "Montage of {n} clips": "Монтаж: фрагментов {n}",
   "Edit the montage": "Монтаж",
@@ -69,5 +69,5 @@ registerTranslations(RU, {
   "Fragment": "Фрагмент",
   "Fragment's effects": "Эффекты фрагмента",
   "Track number": "Номер дорожки",
-  "The mod's sound (@Set.name) or a sound file the game has (minecraft:dig/sand1).": "Звук мода (@Набор.имя) или звуковой файл игры (minecraft:dig/sand1).",
+  "The mod's sound (@res:Set.name) or a sound file the game has (minecraft:dig/sand1).": "Звук мода (@Набор.имя) или звуковой файл игры (minecraft:dig/sand1).",
 });

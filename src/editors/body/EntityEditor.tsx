@@ -126,7 +126,7 @@ export function EntityEditor({ path, content, onChange, readOnly }: EditorProps)
       }),
       text("name", t("Name"), general, file.name, (v) => update((d) => void (d.name = v)), {
         suggestions: strings,
-        description: t("Its name — a literal English text or a `@Set.name` text of a .yres file (translated). Default: the id's translation key."),
+        description: t("Its name — a literal English text or a `@res:Set.name` text of a .yres file (translated). Default: the id's translation key."),
       }),
       {
         id: "kind",

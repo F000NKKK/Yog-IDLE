@@ -71,7 +71,7 @@ export function Toolbox() {
   /** Inside the mod: where its texts and icons resolve from. */
   const modRoot = project?.root ?? null;
   const iconBase = designer?.path ?? (modRoot ? `${modRoot}/src` : null);
-  // Display names, descriptions and icons may be @Strings.key / @Icons.key; previews load in the background.
+  // Display names, descriptions and icons may be @res:Strings.key / @res:Icons.key; previews load in the background.
   useDesignResources(modRoot);
   useSyncExternalStore(subscribeImageSources, imageSourcesVersion);
   const [query, setQuery] = useState("");

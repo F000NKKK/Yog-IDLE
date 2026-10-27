@@ -31,12 +31,12 @@ fn main() {
         regenerate: Regenerate::EveryBuild,
     }
     .comment::<TypeScript>();
-    let commands_ts = substrate_platform::commands::typescript(
+    let commands_ts = substrate_host_contract::commands::typescript(
         "yog",
         "Yog IDLE's commands by domain: `yog.<domain>.<command>`, for `invokeCommand`.",
         commands::ALL,
     );
-    let events_ts = substrate_platform::events::typescript(
+    let events_ts = substrate_host_contract::events::typescript(
         "yogEvents",
         "The events Yog IDLE's backend sends its front end.",
         events::ALL,

@@ -60,7 +60,7 @@ pub(super) fn rust_src_library(commit: &str) -> Option<PathBuf> {
         .collect();
     toolchains.sort();
     let built_from = |toolchain: &Path| {
-        substrate_platform::process::command(toolchain.join("bin/rustc"))
+        substrate_process::command(toolchain.join("bin/rustc"))
             .arg("-vV")
             .stdin(Stdio::null())
             .stderr(Stdio::null())

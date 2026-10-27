@@ -46,7 +46,7 @@ pub(crate) async fn format_supported(path: String) -> bool {
         return false;
     };
     tauri::async_runtime::spawn_blocking(move || {
-        substrate_platform::process::command(program)
+        substrate_process::command(program)
             .arg("--version")
             .stdin(std::process::Stdio::null())
             .stdout(std::process::Stdio::null())
@@ -86,7 +86,7 @@ pub(crate) async fn format_document(path: String, contents: String) -> Result<St
     tauri::async_runtime::spawn_blocking(move || {
         use std::io::Write;
         use std::process::Stdio;
-        let mut command = substrate_platform::process::command(program);
+        let mut command = substrate_process::command(program);
         command
             .args(args)
             .stdin(Stdio::piped())

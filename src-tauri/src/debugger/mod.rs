@@ -247,11 +247,11 @@ pub fn debug_stop(app: AppHandle, state: State<DebugState>) -> Result<(), String
 /// daemon launched it).
 fn kill_pid(pid: i32) {
     #[cfg(unix)]
-    let _ = substrate_platform::process::command("kill")
+    let _ = substrate_process::command("kill")
         .args(["-9", &pid.to_string()])
         .status();
     #[cfg(windows)]
-    let _ = substrate_platform::process::command("taskkill")
+    let _ = substrate_process::command("taskkill")
         .args(["/F", "/PID", &pid.to_string()])
         .status();
 }
@@ -260,11 +260,11 @@ fn kill_pid(pid: i32) {
 /// its own child, which a plain `Child::kill` would leave running.
 fn kill_tree(child: &mut Child) {
     #[cfg(windows)]
-    let _ = substrate_platform::process::command("taskkill")
+    let _ = substrate_process::command("taskkill")
         .args(["/T", "/F", "/PID", &child.id().to_string()])
         .status();
     #[cfg(unix)]
-    let _ = substrate_platform::process::command("pkill")
+    let _ = substrate_process::command("pkill")
         .args(["-P", &child.id().to_string()])
         .status();
     let _ = child.kill();

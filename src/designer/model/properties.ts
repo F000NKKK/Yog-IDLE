@@ -116,10 +116,10 @@ const PROP_TYPES = ["text", "number", "int", "bool", "color", "choice", "image"]
 /** The `<Component>` root of a component's own `.yui` — its designer metadata. */
 const COMPONENT_SPECS: AttrSpec[] = [
   { attr: yuiAttr.NAME, name: "Name", category: "Component", kind: "text", description: "The component's name (PascalCase) — its element in other .yui files (<StatBar .../>) and its Rust type." },
-  { attr: yuiComponent.DISPLAY_NAME, name: "Display Name", category: "Toolbox", kind: "text", description: "The Toolbox's label for it (default: Name). @Strings.key for a translated text." },
-  { attr: yuiComponent.DESCRIPTION, name: "Description", category: "Toolbox", kind: "text", description: "What it is — the Toolbox's tooltip and the Properties description of its instances. @Strings.key for a translated text." },
-  { attr: yuiComponent.ICON, name: "Icon", category: "Toolbox", kind: "image", description: "The Toolbox's icon: a Yog image source (item:apple, sprite:button, mod:gui/logo) or @Icons.name." },
-  { attr: yuiComponent.CATEGORY, name: "Category", category: "Toolbox", kind: "text", description: "The Toolbox category it's listed in (default: \"<mod> Components\"). @Strings.key for a translated text." },
+  { attr: yuiComponent.DISPLAY_NAME, name: "Display Name", category: "Toolbox", kind: "text", description: "The Toolbox's label for it (default: Name). @res:Strings.key for a translated text." },
+  { attr: yuiComponent.DESCRIPTION, name: "Description", category: "Toolbox", kind: "text", description: "What it is — the Toolbox's tooltip and the Properties description of its instances. @res:Strings.key for a translated text." },
+  { attr: yuiComponent.ICON, name: "Icon", category: "Toolbox", kind: "image", description: "The Toolbox's icon: a Yog image source (item:apple, sprite:button, mod:gui/logo) or @res:Icons.name." },
+  { attr: yuiComponent.CATEGORY, name: "Category", category: "Toolbox", kind: "text", description: "The Toolbox category it's listed in (default: \"<mod> Components\"). @res:Strings.key for a translated text." },
   { attr: yuiComponent.TOOLBOX, name: "Show in Toolbox", category: "Toolbox", kind: "bool", fallback: "true", description: "Whether the Toolbox offers it — false for parts used only inside the mod's other components." },
   { attr: yuiComponent.DESIGN_W, name: "Design Width", category: "Design", kind: "number", fallback: "120", description: "The canvas width for editing it, and an instance's width when dropped from the Toolbox." },
   { attr: yuiComponent.DESIGN_H, name: "Design Height", category: "Design", kind: "number", fallback: "40", description: "The canvas height for editing it, and an instance's height when dropped from the Toolbox." },
@@ -172,7 +172,7 @@ function specsFor(kind: string, components: ComponentsSnapshot | null): AttrSpec
 function check(kind: AttrKind, value: string, attr = ""): string | null {
   const v = value.trim();
   if (v === "" || /^\{x:Bind[\s}]/.test(v)) return null;
-  // A resource (`@Colors.accent`), and a background image (`sprite:panel`).
+  // A resource (`@res:Colors.accent`), and a background image (`sprite:panel`).
   if (kind === "color" && /^@[A-Za-z_][\w.]*$/.test(v)) return null;
   if (kind === "color" && /(^|:)bg$/.test(attr) && /^[a-z0-9_.-]+:\S+$/.test(v)) return null;
   if (attr === yuiAttr.FONT) return gameFontNamedDirectly(v);

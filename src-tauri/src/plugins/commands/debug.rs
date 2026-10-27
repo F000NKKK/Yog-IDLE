@@ -1,6 +1,6 @@
 //! The debugger.
 
-use substrate_platform::commands::Domain;
+use substrate_host_contract::commands::Domain;
 
 pub const DOMAIN: Domain = Domain {
     key: "debug",

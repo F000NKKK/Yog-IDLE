@@ -21,14 +21,14 @@ export interface ComponentProp {
   options: string[];
 }
 
-/** A component and its designer metadata — texts may be `@Set.key` (resolve with `designText`). */
+/** A component and its designer metadata — texts may be `@res:Set.key` (resolve with `designText`). */
 export interface ComponentInfo {
   name: string;
   /** Toolbox tooltip and property grid description. */
   description: string;
   /** The toolbox label (empty: `name`). */
   display_name: string;
-  /** A Yog image source or `@Icons.x` (empty: a glyph). */
+  /** A Yog image source or `@res:Icons.x` (empty: a glyph). */
   icon: string;
   /** The toolbox category (empty: "<mod> Components"). */
   category: string;

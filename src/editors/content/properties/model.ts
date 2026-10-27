@@ -72,7 +72,7 @@ function textureRows(ctx: PropertiesContext, out: PropertyDescriptor[]) {
       kind: PROPERTY_KIND.string,
       suggestions: [...resolved.slots.filter((s) => s !== slot).map((s) => `#${s}`), ...choices.textures],
       readOnly: ctx.readOnly,
-      description: t("@Set.name (a .yres image), a png path under resources/, a texture id (minecraft:block/stone) or #slot."),
+      description: t("@res:Set.name (a .yres image), a png path under resources/, a texture id (minecraft:block/stone) or #slot."),
       onCommit: (v) =>
         setM((m) => {
           const s = String(v).trim();

@@ -71,7 +71,7 @@ export function contentText(elements: number): string {
       }`);
   }
   return `{
-  "name": "@Strings.block.bench", // the display name
+  "name": "@res:Strings.block.bench", // the display name
   "block": { "hardness": 2, "resistance": 6, "sound": "stone", "connect_groups": ["analog", "digital"] },
   "model": {
     "textures": { "side": "block/side.png", "top": "block/top.png", "note": "a // not a comment, ]" },

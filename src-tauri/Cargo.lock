@@ -3473,19 +3473,153 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7da8b5736845d9f2fcb837ea5d9e2628564b3b043a70948a3f0b778838c5fb4f"
 
 [[package]]
+name = "substrate-data"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a7cd10b1cb74869ec548849b6b9c2e24e7e864c07b76da7301f934759cd21f16"
+dependencies = [
+ "base64 0.23.1",
+ "bumpalo",
+ "memchr",
+ "serde_spanned 1.1.2",
+ "substrate-data-derive",
+ "toml 1.1.8+spec-1.1.0",
+]
+
+[[package]]
+name = "substrate-data-derive"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7252e239386a0bd7ce822d9d317f64ad0537e19f0c47e54b2c7a9034ac6a2e0a"
+dependencies = [
+ "proc-macro-crate 3.5.0",
+ "proc-macro2",
+ "quote",
+ "syn 3.0.9",
+]
+
+[[package]]
+name = "substrate-git-app"
+version = "0.1.0"
+dependencies = [
+ "substrate-git-domain",
+ "substrate-message",
+]
+
+[[package]]
+name = "substrate-git-domain"
+version = "0.1.0"
+dependencies = [
+ "substrate-message",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "substrate-git-gitcli"
+version = "0.1.0"
+dependencies = [
+ "substrate-git-app",
+ "substrate-git-domain",
+ "substrate-message",
+ "substrate-platform",
+ "substrate-process",
+]
+
+[[package]]
+name = "substrate-host-contract"
+version = "0.1.0"
+dependencies = [
+ "substrate-message",
+ "substrate-platform",
+ "substrate-process",
+]
+
+[[package]]
+name = "substrate-message"
+version = "0.1.0"
+dependencies = [
+ "serde",
+]
+
+[[package]]
 name = "substrate-platform"
 version = "0.4.0"
 dependencies = [
  "anyhow",
- "globset",
- "ignore",
- "libc",
  "notify",
  "portable-pty",
- "regex",
  "serde",
  "serde_json",
+ "substrate-message",
+ "substrate-process",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "substrate-process"
+version = "0.1.0"
+dependencies = [
+ "substrate-message",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "substrate-run-app"
+version = "0.1.0"
+dependencies = [
+ "substrate-run-domain",
+]
+
+[[package]]
+name = "substrate-run-domain"
+version = "0.1.0"
+
+[[package]]
+name = "substrate-run-process"
+version = "0.1.0"
+dependencies = [
+ "libc",
+ "substrate-process",
+ "substrate-run-app",
+ "substrate-run-domain",
+]
+
+[[package]]
+name = "substrate-run-toml"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "substrate-run-domain",
+ "thiserror 2.0.21",
  "toml 1.1.8+spec-1.1.0",
+]
+
+[[package]]
+name = "substrate-search-app"
+version = "0.1.0"
+dependencies = [
+ "substrate-message",
+ "substrate-search-domain",
+]
+
+[[package]]
+name = "substrate-search-domain"
+version = "0.1.0"
+dependencies = [
+ "globset",
+ "regex",
+ "substrate-message",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "substrate-search-ignore"
+version = "0.1.0"
+dependencies = [
+ "ignore",
+ "substrate-platform",
+ "substrate-search-app",
+ "substrate-search-domain",
 ]
 
 [[package]]
@@ -3801,7 +3935,16 @@ version = "0.1.0"
 dependencies = [
  "serde",
  "serde_json",
+ "substrate-git-app",
+ "substrate-git-domain",
+ "substrate-git-gitcli",
+ "substrate-host-contract",
+ "substrate-message",
  "substrate-platform",
+ "substrate-process",
+ "substrate-search-app",
+ "substrate-search-domain",
+ "substrate-search-ignore",
  "tauri",
  "tauri-plugin",
 ]
@@ -5023,28 +5166,11 @@ dependencies = [
 name = "yog-data"
 version = "0.10.2"
 dependencies = [
- "base64 0.23.1",
- "bumpalo",
- "serde_spanned 1.1.2",
- "toml 1.1.8+spec-1.1.0",
+ "substrate-data",
  "yog-codegen",
  "yog-codegen-typescript",
- "yog-data-derive",
  "yog-ids",
  "yog-logging",
- "yog-sync",
-]
-
-[[package]]
-name = "yog-data-derive"
-version = "0.8.0"
-dependencies = [
- "proc-macro-crate 3.5.0",
- "proc-macro2",
- "quote",
- "syn 3.0.9",
- "yog-codegen",
- "yog-ids",
 ]
 
 [[package]]
@@ -5068,6 +5194,7 @@ version = "0.6.1"
 dependencies = [
  "dirs",
  "semver",
+ "substrate-data",
  "yog-data",
  "yog-ids",
 ]
@@ -5078,6 +5205,7 @@ version = "0.6.0"
 dependencies = [
  "libloading 0.9.0",
  "serde",
+ "substrate-data",
  "yog-data",
  "yog-sync",
 ]
@@ -5092,7 +5220,18 @@ dependencies = [
  "regex",
  "serde",
  "serde_json",
+ "substrate-data",
+ "substrate-git-gitcli",
+ "substrate-host-contract",
  "substrate-platform",
+ "substrate-process",
+ "substrate-run-app",
+ "substrate-run-domain",
+ "substrate-run-process",
+ "substrate-run-toml",
+ "substrate-search-app",
+ "substrate-search-domain",
+ "substrate-search-ignore",
  "syn 3.0.9",
  "tauri",
  "tauri-build",
@@ -5113,7 +5252,7 @@ dependencies = [
 
 [[package]]
 name = "yog-ids"
-version = "0.6.7"
+version = "0.6.9"
 dependencies = [
  "const_format",
  "yog-codegen",

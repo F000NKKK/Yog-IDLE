@@ -60,7 +60,7 @@ pub(super) fn denied_message(pid: i32) -> String {
 pub fn debug_grant_ptrace_capability() -> Result<(), String> {
     let exe = std::env::current_exe()
         .map_err(|e| format!("couldn't determine Yog-IDLE's own executable path: {e}"))?;
-    let status = substrate_platform::process::command("pkexec")
+    let status = substrate_process::command("pkexec")
         .arg("setcap")
         .arg("cap_sys_ptrace+ep")
         .arg(&exe)

@@ -142,7 +142,10 @@ pub(crate) async fn mod_clean(
     let out_app = app.clone();
     let success = tauri::async_runtime::spawn_blocking(move || {
         let mut success = true;
-        for dir in [crate::project::manifest::OBJ_DIR, crate::project::manifest::BIN_DIR] {
+        for dir in [
+            crate::project::manifest::OBJ_DIR,
+            crate::project::manifest::BIN_DIR,
+        ] {
             let path = root.join(dir);
             if !path.exists() {
                 continue;

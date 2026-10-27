@@ -2,7 +2,7 @@
 // JSON), its categories, entries and their pages. Fields the designer
 // doesn't know stay as they are. What a book names it names by reference
 // (`@item:minecraft:stick`, `@category:mymod:basics`…); texts may be
-// `@Set.key`, `@item:id` (a name) too (docs/books.md).
+// `@res:Set.key`, `@item:id` (a name) too (docs/books.md).
 
 import type { DataFormat } from "../../data/useDataFile";
 import { readObject } from "../../data/yogData";

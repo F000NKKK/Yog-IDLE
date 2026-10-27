@@ -1,6 +1,6 @@
 //! Building, running, hot-reloading and publishing the mod; workflows.
 
-use substrate_platform::commands::Domain;
+use substrate_host_contract::commands::Domain;
 
 pub const DOMAIN: Domain = Domain {
     key: "run",
