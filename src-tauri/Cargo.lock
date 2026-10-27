@@ -3473,6 +3473,47 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7da8b5736845d9f2fcb837ea5d9e2628564b3b043a70948a3f0b778838c5fb4f"
 
 [[package]]
+name = "substrate-git-app"
+version = "0.1.0"
+dependencies = [
+ "substrate-git-domain",
+ "substrate-message",
+]
+
+[[package]]
+name = "substrate-git-domain"
+version = "0.1.0"
+dependencies = [
+ "substrate-message",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "substrate-git-gitcli"
+version = "0.1.0"
+dependencies = [
+ "substrate-git-app",
+ "substrate-git-domain",
+ "substrate-message",
+ "substrate-platform",
+]
+
+[[package]]
+name = "substrate-host-contract"
+version = "0.1.0"
+dependencies = [
+ "substrate-message",
+ "substrate-platform",
+]
+
+[[package]]
+name = "substrate-message"
+version = "0.1.0"
+dependencies = [
+ "serde",
+]
+
+[[package]]
 name = "substrate-platform"
 version = "0.4.0"
 dependencies = [
@@ -3485,6 +3526,8 @@ dependencies = [
  "regex",
  "serde",
  "serde_json",
+ "substrate-message",
+ "thiserror 2.0.21",
  "toml 1.1.8+spec-1.1.0",
 ]
 
@@ -3801,6 +3844,11 @@ version = "0.1.0"
 dependencies = [
  "serde",
  "serde_json",
+ "substrate-git-app",
+ "substrate-git-domain",
+ "substrate-git-gitcli",
+ "substrate-host-contract",
+ "substrate-message",
  "substrate-platform",
  "tauri",
  "tauri-plugin",
@@ -5092,6 +5140,8 @@ dependencies = [
  "regex",
  "serde",
  "serde_json",
+ "substrate-git-gitcli",
+ "substrate-host-contract",
  "substrate-platform",
  "syn 3.0.9",
  "tauri",
@@ -5113,7 +5163,7 @@ dependencies = [
 
 [[package]]
 name = "yog-ids"
-version = "0.6.7"
+version = "0.6.9"
 dependencies = [
  "const_format",
  "yog-codegen",

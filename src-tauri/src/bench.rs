@@ -63,7 +63,7 @@ pub fn find_in_documents(documents: &[OpenDocument], pattern: &str) -> String {
 
 /// `git status` output parsed into Git Changes' model, as sent to the frontend.
 pub fn git_status(top: &Path, raw: &str) -> String {
-    let mut status = substrate_platform::git::status::parse(raw);
+    let mut status = substrate_git_gitcli::porcelain::parse_status(raw);
     status.set_absolute_paths(top);
-    serde_json::to_string(&status).unwrap_or_default()
+    format!("{status:?}")
 }

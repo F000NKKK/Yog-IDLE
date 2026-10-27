@@ -1,6 +1,6 @@
 //! A mod project: its manifest, Project Properties, a path's properties, opening it.
 
-use substrate_platform::commands::Domain;
+use substrate_host_contract::commands::Domain;
 
 pub const DOMAIN: Domain = Domain {
     key: "project",
