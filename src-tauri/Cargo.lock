@@ -3496,6 +3496,7 @@ dependencies = [
  "substrate-git-domain",
  "substrate-message",
  "substrate-platform",
+ "substrate-process",
 ]
 
 [[package]]
@@ -3504,6 +3505,7 @@ version = "0.1.0"
 dependencies = [
  "substrate-message",
  "substrate-platform",
+ "substrate-process",
 ]
 
 [[package]]
@@ -3518,12 +3520,50 @@ name = "substrate-platform"
 version = "0.4.0"
 dependencies = [
  "anyhow",
- "libc",
  "notify",
  "portable-pty",
  "serde",
  "serde_json",
  "substrate-message",
+ "substrate-process",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "substrate-process"
+version = "0.1.0"
+dependencies = [
+ "substrate-message",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "substrate-run-app"
+version = "0.1.0"
+dependencies = [
+ "substrate-run-domain",
+]
+
+[[package]]
+name = "substrate-run-domain"
+version = "0.1.0"
+
+[[package]]
+name = "substrate-run-process"
+version = "0.1.0"
+dependencies = [
+ "libc",
+ "substrate-process",
+ "substrate-run-app",
+ "substrate-run-domain",
+]
+
+[[package]]
+name = "substrate-run-toml"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "substrate-run-domain",
  "thiserror 2.0.21",
  "toml 1.1.8+spec-1.1.0",
 ]
@@ -3875,6 +3915,7 @@ dependencies = [
  "substrate-host-contract",
  "substrate-message",
  "substrate-platform",
+ "substrate-process",
  "substrate-search-app",
  "substrate-search-domain",
  "substrate-search-ignore",
@@ -5171,6 +5212,11 @@ dependencies = [
  "substrate-git-gitcli",
  "substrate-host-contract",
  "substrate-platform",
+ "substrate-process",
+ "substrate-run-app",
+ "substrate-run-domain",
+ "substrate-run-process",
+ "substrate-run-toml",
  "substrate-search-app",
  "substrate-search-domain",
  "substrate-search-ignore",

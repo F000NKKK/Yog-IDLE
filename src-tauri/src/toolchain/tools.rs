@@ -9,7 +9,7 @@ use std::sync::RwLock;
 use substrate_platform::sync::ReadWrite;
 
 use serde::{Deserialize, Serialize};
-use substrate_platform::process;
+use substrate_process as process;
 use tauri::State;
 use yog_home::Home;
 use yog_home::components::id;

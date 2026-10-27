@@ -13,7 +13,7 @@ pub(crate) fn resolve_workflow_file(project_root: &Path) -> Result<WorkflowFile,
         return Err("this project has no workflow.toml".to_string());
     }
     let contents = std::fs::read_to_string(&project_workflow).map_err(|e| e.to_string())?;
-    WorkflowFile::parse(&contents).map_err(|e| e.to_string())
+    substrate_run_toml::parse_workflow(&contents).map_err(|e| e.to_string())
 }
 
 #[derive(Clone, Serialize)]
@@ -209,7 +209,16 @@ pub(crate) fn run_and_stream(
     let _ = app.emit(crate::app::events::WORKFLOW_START, WorkflowStart::of(&root));
     let feed = crate::toolchain::diagnostics_feed::Feed::open(&app);
     let file = reporting_to(file, &feed);
-    let handle = substrate_platform::run::workflow::run(file, name, vars, root, sink);
+    let handle = substrate_run_app::workflow::run(
+        std::sync::Arc::new(substrate_run_process::SystemLauncher),
+        substrate_run_app::workflow::Request {
+            file,
+            name,
+            vars,
+            cwd: root,
+        },
+        sink,
+    );
     let state = app.state::<WorkflowState>();
     let id = state.next_id.fetch_add(1, Ordering::Relaxed);
     state.running.locked().insert(id, handle.clone());
@@ -236,7 +245,7 @@ fn reporting_to(
     let (key, value) = feed.env();
     for def in file.workflow.values_mut() {
         for step in &mut def.steps {
-            if let substrate_platform::run::workflow::Step::Run { env, .. } = step {
+            if let substrate_run_domain::workflow::Step::Run { env, .. } = step {
                 env.insert(key.to_owned(), value.clone());
             }
         }
@@ -286,9 +295,9 @@ pub(crate) fn single_step_workflow(
     let mut workflow = HashMap::new();
     workflow.insert(
         "run".to_string(),
-        substrate_platform::run::workflow::Definition {
+        substrate_run_domain::workflow::Definition {
             description: None,
-            steps: vec![substrate_platform::run::workflow::Step::Run {
+            steps: vec![substrate_run_domain::workflow::Step::Run {
                 run: program.to_string(),
                 args,
                 cwd: None,
