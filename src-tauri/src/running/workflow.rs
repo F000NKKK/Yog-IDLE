@@ -209,7 +209,7 @@ pub(crate) fn run_and_stream(
     let _ = app.emit(crate::app::events::WORKFLOW_START, WorkflowStart::of(&root));
     let feed = crate::toolchain::diagnostics_feed::Feed::open(&app);
     let file = reporting_to(file, &feed);
-    let handle = substrate_platform::run::run_workflow(file, name, vars, root, sink);
+    let handle = substrate_platform::run::workflow::run(file, name, vars, root, sink);
     let state = app.state::<WorkflowState>();
     let id = state.next_id.fetch_add(1, Ordering::Relaxed);
     state.running.locked().insert(id, handle.clone());
@@ -222,7 +222,7 @@ pub(crate) fn run_and_stream(
             crate::app::events::WORKFLOW_EXIT,
             WorkflowExit {
                 success: result.is_success(),
-                cancelled: result == WorkflowResult::Cancelled,
+                cancelled: result == WorkflowOutcome::Cancelled,
             },
         );
     });
@@ -236,7 +236,7 @@ fn reporting_to(
     let (key, value) = feed.env();
     for def in file.workflow.values_mut() {
         for step in &mut def.steps {
-            if let substrate_platform::run::WorkflowStep::Run { env, .. } = step {
+            if let substrate_platform::run::workflow::Step::Run { env, .. } = step {
                 env.insert(key.to_owned(), value.clone());
             }
         }
@@ -286,9 +286,9 @@ pub(crate) fn single_step_workflow(
     let mut workflow = HashMap::new();
     workflow.insert(
         "run".to_string(),
-        substrate_platform::run::WorkflowDef {
+        substrate_platform::run::workflow::Definition {
             description: None,
-            steps: vec![substrate_platform::run::WorkflowStep::Run {
+            steps: vec![substrate_platform::run::workflow::Step::Run {
                 run: program.to_string(),
                 args,
                 cwd: None,
