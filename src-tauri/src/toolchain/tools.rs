@@ -6,9 +6,9 @@
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::RwLock;
-use substrate_platform::sync::ReadWrite;
 
 use serde::{Deserialize, Serialize};
+use substrate_lock::ReadWrite;
 use substrate_process as process;
 use tauri::State;
 use yog_home::Home;
@@ -59,7 +59,7 @@ pub fn default_state_file(identifier: &str) -> Option<PathBuf> {
     Some(
         dirs::config_dir()?
             .join(identifier)
-            .join(substrate_platform::state::APP_STATE_FILE),
+            .join(substrate_state_json::APP_STATE_FILE),
     )
 }
 

@@ -1,8 +1,9 @@
 //! The tracer at work: breakpoints, stops, stepping, frames and values.
 
-use super::*;
-use substrate_platform::sync::Locked;
+use substrate_lock::Locked;
 use yog_debugger::LoadedMod;
+
+use super::*;
 
 impl Tracer {
     pub(super) fn attach(

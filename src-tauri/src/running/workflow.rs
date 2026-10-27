@@ -1,7 +1,8 @@
 //! Running `yog` and workflows, their output streamed to the IDE.
 
+use substrate_lock::Locked;
+
 use crate::*;
-use substrate_platform::sync::Locked;
 
 /// A generic escape hatch open to any project (regardless of `kind`): if it
 /// happens to define its own `workflow.toml`, its named entries can be run —

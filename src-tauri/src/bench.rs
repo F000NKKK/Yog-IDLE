@@ -6,8 +6,9 @@ const BENCH_ROOT: &str = "/bench";
 
 use std::path::{Path, PathBuf};
 
-pub use crate::symbols::{extract_symbols, fuzzy_match};
 pub use substrate_search_domain::project::OpenDocument;
+
+pub use crate::symbols::{extract_symbols, fuzzy_match};
 
 /// A call of the CLI service, as the front end makes it: a request's
 /// binary form in, the answer's out.
@@ -55,7 +56,7 @@ pub fn find_in_documents(documents: &[OpenDocument], pattern: &str) -> String {
     let sources = (
         &substrate_search_ignore::IgnoreWalker,
         &substrate_search_ignore::DiskDocuments::new(
-            substrate_platform::text_view::TextViews::default(),
+            substrate_workspace_domain::TextViews::default(),
         ),
     );
     let _ = substrate_search_app::find(&search, sources, &|| true, &mut |file| files.push(file));

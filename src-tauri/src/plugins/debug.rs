@@ -1,8 +1,9 @@
 //! The debugger.
 
-use super::commands::debug::DOMAIN;
 use tauri::Wry;
 use tauri::plugin::{Builder, TauriPlugin};
+
+use super::commands::debug::DOMAIN;
 
 pub fn plugin() -> TauriPlugin<Wry> {
     Builder::new(DOMAIN.plugin)

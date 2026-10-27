@@ -23,9 +23,9 @@ use std::sync::Mutex;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::mpsc::{self, Sender};
 use std::time::Duration;
-use substrate_platform::sync::Locked;
 
 use serde::Serialize;
+use substrate_lock::Locked;
 use tauri::{AppHandle, Emitter, Manager, State};
 use yog_hot_reload::control::{self as protocol, Changes, Command, Event, ModInfo};
 

@@ -1,7 +1,8 @@
 //! Hot reload: build the mod, ask the game, apply or roll back, and say what changed.
 
+use substrate_lock::Locked;
+
 use super::*;
-use substrate_platform::sync::Locked;
 
 /// Only one hot reload at a time — a second click while the first is still
 /// building would otherwise race it for `bin/<id>.yog`.

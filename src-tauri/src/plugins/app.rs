@@ -1,8 +1,9 @@
 //! The app: tools and Yog Installer, restarting.
 
-use super::commands::app::DOMAIN;
 use tauri::Wry;
 use tauri::plugin::{Builder, TauriPlugin};
+
+use super::commands::app::DOMAIN;
 
 pub fn plugin() -> TauriPlugin<Wry> {
     Builder::new(DOMAIN.plugin)

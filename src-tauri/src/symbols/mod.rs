@@ -17,17 +17,17 @@ use std::time::SystemTime;
 
 use regex::Regex;
 use serde::{Deserialize, Serialize};
-use syn::visit::{self, Visit};
-use tauri::State;
-
-use crate::Workspace;
-use substrate_platform::text_view::TextViews;
 use substrate_search_app::ports::{Decoding, DocumentSource, FileWalker};
 use substrate_search_app::{self as search, Search};
 use substrate_search_domain::pattern::FileMask;
 use substrate_search_domain::project::{OpenDocument, Scope, relative};
 use substrate_search_domain::query::SearchQuery;
 use substrate_search_ignore::{DiskDocuments, IgnoreWalker};
+use substrate_workspace_domain::TextViews;
+use syn::visit::{self, Visit};
+use tauri::State;
+
+use crate::Workspace;
 
 mod extract;
 mod open_document_dto;

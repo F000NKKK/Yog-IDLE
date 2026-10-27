@@ -656,7 +656,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d045de693cb712d0b22c6a64be5b953f67b3ce00ab5ad3dd5d8b441886ab8e1a"
 dependencies = [
  "quote",
- "syn 3.0.9",
+ "syn 2.0.119",
 ]
 
 [[package]]
@@ -799,7 +799,7 @@ dependencies = [
  "libc",
  "option-ext",
  "redox_users",
- "windows-sys 0.61.2",
+ "windows-sys 0.60.2",
 ]
 
 [[package]]
@@ -2212,7 +2212,7 @@ dependencies = [
  "png 0.18.1",
  "serde",
  "thiserror 2.0.21",
- "windows-sys 0.61.2",
+ "windows-sys 0.60.2",
 ]
 
 [[package]]
@@ -2333,7 +2333,7 @@ version = "0.7.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "680998035259dcfcafe653688bf2aa6d3e2dc05e98be6ab46afb089dc84f1df8"
 dependencies = [
- "proc-macro-crate 3.5.0",
+ "proc-macro-crate 1.3.1",
  "proc-macro2",
  "quote",
  "syn 2.0.119",
@@ -3379,7 +3379,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c3d1e2c7f27f8d4cb10542a02c49005dbd6e93095799d6f3be745fae9f8fedd4"
 dependencies = [
  "libc",
- "windows-sys 0.61.2",
+ "windows-sys 0.60.2",
 ]
 
 [[package]]
@@ -3521,8 +3521,8 @@ dependencies = [
  "substrate-git-app",
  "substrate-git-domain",
  "substrate-message",
- "substrate-platform",
  "substrate-process",
+ "substrate-workspace-domain",
 ]
 
 [[package]]
@@ -3530,29 +3530,19 @@ name = "substrate-host-contract"
 version = "0.1.0"
 dependencies = [
  "substrate-message",
- "substrate-platform",
  "substrate-process",
+ "substrate-workspace-domain",
 ]
+
+[[package]]
+name = "substrate-lock"
+version = "0.1.0"
 
 [[package]]
 name = "substrate-message"
 version = "0.1.0"
 dependencies = [
  "serde",
-]
-
-[[package]]
-name = "substrate-platform"
-version = "0.4.0"
-dependencies = [
- "anyhow",
- "notify",
- "portable-pty",
- "serde",
- "serde_json",
- "substrate-message",
- "substrate-process",
- "thiserror 2.0.21",
 ]
 
 [[package]]
@@ -3564,9 +3554,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "substrate-project-domain"
+version = "0.1.0"
+dependencies = [
+ "substrate-message",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "substrate-project-toml"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "substrate-project-domain",
+ "toml 1.1.8+spec-1.1.0",
+]
+
+[[package]]
 name = "substrate-run-app"
 version = "0.1.0"
 dependencies = [
+ "substrate-lock",
  "substrate-run-domain",
 ]
 
@@ -3617,9 +3625,72 @@ name = "substrate-search-ignore"
 version = "0.1.0"
 dependencies = [
  "ignore",
- "substrate-platform",
  "substrate-search-app",
  "substrate-search-domain",
+ "substrate-workspace-domain",
+]
+
+[[package]]
+name = "substrate-state-json"
+version = "0.1.0"
+dependencies = [
+ "serde_json",
+ "substrate-message",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "substrate-terminal-app"
+version = "0.1.0"
+dependencies = [
+ "substrate-lock",
+ "substrate-terminal-domain",
+]
+
+[[package]]
+name = "substrate-terminal-domain"
+version = "0.1.0"
+dependencies = [
+ "substrate-message",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "substrate-terminal-pty"
+version = "0.1.0"
+dependencies = [
+ "portable-pty",
+ "substrate-process",
+ "substrate-terminal-app",
+ "substrate-terminal-domain",
+]
+
+[[package]]
+name = "substrate-workspace-app"
+version = "0.1.0"
+dependencies = [
+ "substrate-lock",
+ "substrate-workspace-domain",
+]
+
+[[package]]
+name = "substrate-workspace-domain"
+version = "0.1.0"
+dependencies = [
+ "substrate-message",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "substrate-workspace-fs"
+version = "0.1.0"
+dependencies = [
+ "notify",
+ "substrate-lock",
+ "substrate-message",
+ "substrate-workspace-app",
+ "substrate-workspace-domain",
+ "thiserror 2.0.21",
 ]
 
 [[package]]
@@ -3939,12 +4010,19 @@ dependencies = [
  "substrate-git-domain",
  "substrate-git-gitcli",
  "substrate-host-contract",
+ "substrate-lock",
  "substrate-message",
- "substrate-platform",
  "substrate-process",
  "substrate-search-app",
  "substrate-search-domain",
  "substrate-search-ignore",
+ "substrate-state-json",
+ "substrate-terminal-app",
+ "substrate-terminal-domain",
+ "substrate-terminal-pty",
+ "substrate-workspace-app",
+ "substrate-workspace-domain",
+ "substrate-workspace-fs",
  "tauri",
  "tauri-plugin",
 ]
@@ -4376,7 +4454,7 @@ dependencies = [
  "png 0.18.1",
  "serde",
  "thiserror 2.0.21",
- "windows-sys 0.61.2",
+ "windows-sys 0.60.2",
 ]
 
 [[package]]
@@ -4737,7 +4815,7 @@ version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c2a7b1c03c876122aa43f3020e6c3c3ee5c05081c9a00739faf7503aeba10d22"
 dependencies = [
- "windows-sys 0.61.2",
+ "windows-sys 0.60.2",
 ]
 
 [[package]]
@@ -4758,7 +4836,7 @@ dependencies = [
  "objc2-foundation",
  "objc2-quartz-core",
  "raw-window-handle",
- "windows-sys 0.61.2",
+ "windows-sys 0.60.2",
  "windows-version",
 ]
 
@@ -5064,7 +5142,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7d6f32a0ff4a9f6f01231eb2059cc85479330739333e0e58cadf03b6af2cca10"
 dependencies = [
  "cfg-if",
- "windows-sys 0.61.2",
+ "windows-sys 0.60.2",
 ]
 
 [[package]]
@@ -5147,10 +5225,14 @@ dependencies = [
 [[package]]
 name = "yog-codegen"
 version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0e996cac0d41741fa0889416c723357a87eb53063bc0c2964ab0dd267105af05"
 
 [[package]]
 name = "yog-codegen-java"
 version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1e1be8632a7edd0facedae6debafd3a9f033addc79df8e00ad675528c732c4b5"
 dependencies = [
  "yog-codegen",
 ]
@@ -5158,6 +5240,8 @@ dependencies = [
 [[package]]
 name = "yog-codegen-typescript"
 version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9c87ceb36af762184e951b3f116a36bae011f7ab5d376f694d36198df7b1698a"
 dependencies = [
  "yog-codegen",
 ]
@@ -5165,6 +5249,8 @@ dependencies = [
 [[package]]
 name = "yog-data"
 version = "0.12.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f7d1187d9bff3a110079f57f6954c0d14952ce88deed21aadda418d58d8a2e37"
 dependencies = [
  "substrate-data",
  "yog-codegen",
@@ -5176,6 +5262,8 @@ dependencies = [
 [[package]]
 name = "yog-debugger"
 version = "0.16.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3a1bd21a538be1872240612c588139723504035417237b3179f363097148eedc"
 dependencies = [
  "iced-x86",
  "libc",
@@ -5191,6 +5279,8 @@ dependencies = [
 [[package]]
 name = "yog-home"
 version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2098d5c2de00d3b1809488143612290f54dcd084491132ff499f158cbe4073ec"
 dependencies = [
  "dirs",
  "semver",
@@ -5203,6 +5293,8 @@ dependencies = [
 [[package]]
 name = "yog-hot-reload"
 version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5f3d86d9c10947d564d4be705162e6944fd52c5db3dfdaf829f2c0a87856ef63"
 dependencies = [
  "libloading 0.9.0",
  "serde",
@@ -5224,8 +5316,10 @@ dependencies = [
  "substrate-data",
  "substrate-git-gitcli",
  "substrate-host-contract",
- "substrate-platform",
+ "substrate-lock",
  "substrate-process",
+ "substrate-project-domain",
+ "substrate-project-toml",
  "substrate-run-app",
  "substrate-run-domain",
  "substrate-run-process",
@@ -5233,6 +5327,9 @@ dependencies = [
  "substrate-search-app",
  "substrate-search-domain",
  "substrate-search-ignore",
+ "substrate-state-json",
+ "substrate-workspace-domain",
+ "substrate-workspace-fs",
  "syn 3.0.9",
  "tauri",
  "tauri-build",
@@ -5254,6 +5351,8 @@ dependencies = [
 [[package]]
 name = "yog-ids"
 version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6b9393d84827e5fb8d57e933b2bfe75b44c875ceae2e49daaea6e4684994232d"
 dependencies = [
  "const_format",
  "yog-codegen",
@@ -5264,6 +5363,8 @@ dependencies = [
 [[package]]
 name = "yog-logging"
 version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "486e4ffd1bca5f4c28d112b544d4aa51868ef9265b91c1b54320c71926a37103"
 dependencies = [
  "yog-sync",
 ]
@@ -5271,6 +5372,8 @@ dependencies = [
 [[package]]
 name = "yog-symbols"
 version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "48e1261925a1cc8715a9fddd0a8839b2ddb91a582d4cca472b8c2bc1b07eebe6"
 dependencies = [
  "addr2line",
  "gimli",
@@ -5282,6 +5385,8 @@ dependencies = [
 [[package]]
 name = "yog-sync"
 version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4f7d7c184fc635df3d6fd50450f2d42cea88f9292e05c94c66db2acbc8316896"
 
 [[package]]
 name = "yoke"
