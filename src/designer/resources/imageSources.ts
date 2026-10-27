@@ -101,7 +101,7 @@ function preview(path: string, source: string, size = PREVIEW_SIZE): Preview | u
 
 /**
  * A 32 px preview of any image reference — `item:`/`block:`/`sprite:`, a
- * texture id, a raw resource path, `@Set.name` — as a data URL
+ * texture id, a raw resource path, `@res:Set.name` — as a data URL
  * (`undefined` until loaded, `null` if it can't be drawn). The one way the
  * IDE previews an image (re-render on `subscribeImageSources`).
  */
@@ -113,7 +113,7 @@ export function imagePreview(path: string, source: string): string | null | unde
 /**
  * The image source for an icon named `id` — the one rule every editor uses:
  * an image reference stays as it is (`item:…`, `block:…`, `sprite:…`,
- * `@Set.name`, a texture path or `ns:textures/….png`); anything else is an
+ * `@res:Set.name`, a texture path or `ns:textures/….png`); anything else is an
  * item, drawn as its icon (`item:<id>`).
  */
 export function iconSource(id: string): string {

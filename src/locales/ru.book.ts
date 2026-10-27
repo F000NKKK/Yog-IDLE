@@ -15,7 +15,7 @@ registerTranslations(RU, {
   "(unnamed)": "(без названия)",
   "Drawing…": "Рисую…",
   "Click the book like a reader would — entries, page arrows, home.": "Кликайте по книге, как читатель: записи, стрелки страниц, домой.",
-  "Texts may refer to resources: @Strings.key, @item:mymod:ruby, @block:stone.": "Тексты могут ссылаться на ресурсы: @Strings.key, @item:mymod:ruby, @block:stone.",
+  "Texts may refer to resources: @res:Strings.key, @item:mymod:ruby, @block:stone.": "Тексты могут ссылаться на ресурсы: @res:Strings.key, @item:mymod:ruby, @block:stone.",
   Content: "Содержимое",
   "Order and visibility": "Порядок и видимость",
   Blasting: "Плавка в доменной печи",

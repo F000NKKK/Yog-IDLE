@@ -1,8 +1,8 @@
 /**
  * A mod's `.yres` resources as the screen designer previews them: a `.yui`
- * attribute `@Strings.title` (or `@<translation key>`) shows the text in the
+ * attribute `@res:Strings.title` (or `@<translation key>`) shows the text in the
  * IDE's language — the culture variant matching it, else the neutral file —
- * and `texture="@Icons.logo"` the image's source, as `yog build` would
+ * and `texture="@res:Icons.logo"` the image's source, as `yog build` would
  * resolve them (see docs/yres.md).
  */
 import { cli } from "../toolchain/cli";
@@ -129,7 +129,7 @@ function cultureFor(cultures: Map<string, Map<string, string>>): Map<string, str
   return undefined;
 }
 
-/** `@Set.name` → the set and entry; `undefined` if it isn't one. */
+/** `@res:Set.name` → the set and entry; `undefined` if it isn't one. */
 function lookup(ref: string): { set: ResourceSet; entry: YresEntry } | undefined {
   if (!loaded) return undefined;
   const dot = ref.indexOf(".");
@@ -155,7 +155,7 @@ function resolveText(ref: string): string | undefined {
 }
 
 /**
- * What a text attribute shows in the designer: `@Set.name` its text,
+ * What a text attribute shows in the designer: `@res:Set.name` its text,
  * `@lang:key` the mod's text with that key (else the key), `@item:id` the
  * id, `@@x` as `@x`.
  */
@@ -181,7 +181,7 @@ export function designText(value: string): string {
   }
 }
 
-/** An image attribute: `@Icons.logo` → `<mod id>:<texture>` (as `yog build` bundles it), else as written. */
+/** An image attribute: `@res:Icons.logo` → `<mod id>:<texture>` (as `yog build` bundles it), else as written. */
 export function designImage(value: string): string {
   if (!value.startsWith("@") || value.startsWith("@@") || !loaded) return value;
   const path = loaded.pictures.get(value.slice(1));
@@ -189,14 +189,14 @@ export function designImage(value: string): string {
   return `${loaded.modId}:${path}`;
 }
 
-/** `@Colors.x` → its `#AARRGGBB`/`#RRGGBB` value; anything else as written. */
+/** `@res:Colors.x` → its `#AARRGGBB`/`#RRGGBB` value; anything else as written. */
 export function designColor(value: string): string {
   if (!value.startsWith("@") || value.startsWith("@@")) return value;
   const found = lookup(value.slice(1));
   return found?.entry.type === resKind.COLOR && typeof found.entry.value === "string" ? found.entry.value : value;
 }
 
-/** Every color resource of the mod as `@Set.name` — what a color property offers. */
+/** Every color resource of the mod as `@res:Set.name` — what a color property offers. */
 export function colorRefs(): string[] {
   if (!loaded) return [];
   const out: string[] = [];

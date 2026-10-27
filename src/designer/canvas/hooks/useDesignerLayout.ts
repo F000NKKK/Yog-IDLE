@@ -17,7 +17,7 @@ export function useDesignerLayout(props: ScreenDesignerProps, designerDocument: 
   // ── Layout ────────────────────────────────────────────────────────────────
 
   const res = RESOLUTIONS[view.res] ?? RESOLUTIONS[0];
-  // `@Strings.title` texts shown from the mod's .yres files (docs/yres.md).
+  // `@res:Strings.title` texts shown from the mod's .yres files (docs/yres.md).
   const resourcesVersion = useDesignResources(modRootOf(path));
   // The mod's components (docs/yui.md, "Components"): what instances draw as, re-drawn when one changes.
   const components = useComponents(path);

@@ -9,7 +9,7 @@ pub mod debug;
 pub mod project;
 pub mod run;
 
-use substrate_platform::commands::Domain;
+use substrate_host_contract::commands::Domain;
 
 /// Every domain.
 pub const ALL: &[&Domain] = &[

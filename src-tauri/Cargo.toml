@@ -17,7 +17,7 @@ name = "yog_idle_tauri_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
-substrate-platform = { path = "../../../Substrate-Platform" }
+substrate-host-contract = { path = "../../../Substrate-Platform/crates/substrate-host-contract" }
 tauri-build = { version = "2", features = [] }
 # The front end's copy of the shared names (`src/data/yogIds.generated.ts`).
 yog-ids = "0.6.9"
@@ -35,7 +35,19 @@ toml = "1"
 toml_edit = "0.25"
 # Where the Environment options and IDE-installed tools live.
 dirs = "7"
-substrate-platform = { path = "../../../Substrate-Platform", features = ["fs", "git", "project", "run", "search", "state"] }
+substrate-platform = { path = "../../../Substrate-Platform", features = ["fs", "project", "state"] }
+# Substrate's split contexts: the host contract (commands, events), searching,
+# running workflows, git.
+substrate-host-contract = { path = "../../../Substrate-Platform/crates/substrate-host-contract" }
+substrate-search-app = { path = "../../../Substrate-Platform/crates/substrate-search-app" }
+substrate-search-domain = { path = "../../../Substrate-Platform/crates/substrate-search-domain" }
+substrate-search-ignore = { path = "../../../Substrate-Platform/crates/substrate-search-ignore" }
+substrate-run-app = { path = "../../../Substrate-Platform/crates/substrate-run-app" }
+substrate-run-domain = { path = "../../../Substrate-Platform/crates/substrate-run-domain" }
+substrate-run-process = { path = "../../../Substrate-Platform/crates/substrate-run-process" }
+substrate-git-gitcli = { path = "../../../Substrate-Platform/crates/substrate-git-gitcli" }
+substrate-process = { path = "../../../Substrate-Platform/crates/substrate-process" }
+substrate-run-toml = { path = "../../../Substrate-Platform/crates/substrate-run-toml" }
 # Substrate's host commands (the workspace, Source Control), as its UI calls them.
 tauri-plugin-substrate = { path = "../../../Substrate-Platform/tauri-plugin", features = ["fs", "git", "search", "state", "terminal"] }
 tauri-plugin-window-state = "2"
@@ -53,6 +65,8 @@ yog-home = "0.6.1"
 yog-hot-reload = "0.6.0"
 # What the CLI service (`yog serve`) and the backend say: binary Yog Data.
 yog-data = "0.10.2"
+# What `#[derive(Schema)]` expands to.
+substrate-data = "0.2.1"
 # The native debugger (Linux, Windows, macOS) and the natives' debug info.
 yog-symbols = "0.9.1"
 yog-debugger = "0.14.1"
@@ -79,6 +93,5 @@ yog-debugger = { path = "../../Yog-Mod-Loader/rust/crates/yog-debugger" }
 yog-ids = { path = "../../Yog-Mod-Loader/rust/crates/yog-ids" }
 yog-home = { path = "../../Yog-Mod-Loader/rust/crates/yog-home" }
 yog-data = { path = "../../Yog-Mod-Loader/rust/crates/yog-data" }
-yog-data-derive = { path = "../../Yog-Mod-Loader/rust/crates/yog-data-derive" }
 yog-hot-reload = { path = "../../Yog-Mod-Loader/rust/crates/yog-hot-reload" }
 yog-symbols = { path = "../../Yog-Mod-Loader/rust/crates/yog-symbols" }

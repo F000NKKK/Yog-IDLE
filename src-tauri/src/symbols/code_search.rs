@@ -31,7 +31,7 @@ pub struct CodeSearchRequest {
     pub limit: Option<usize>,
     /// Open buffers, searched instead of their files in text mode.
     #[serde(default)]
-    pub documents: Vec<OpenDocument>,
+    pub documents: Vec<OpenDocumentDto>,
 }
 
 #[derive(Clone, Serialize, Debug)]
@@ -165,11 +165,7 @@ pub(super) fn text_items(
 ) -> Result<Vec<CodeSearchItem>, String> {
     let q = SearchQuery {
         pattern: query.to_string(),
-        match_case: false,
-        whole_word: false,
-        regex: false,
-        file_mask: String::new(),
-        include_generated: false,
+        ..SearchQuery::default()
     };
     let mut items = Vec::new();
     let search = Search {
@@ -179,9 +175,9 @@ pub(super) fn text_items(
         documents,
         max_lines: limit,
         layout: &crate::project::manifest::SEARCH_LAYOUT,
-        views,
     };
-    search::find(&search, &|| true, &mut |file| {
+    let sources = (&IgnoreWalker, &DiskDocuments::new(views.clone()));
+    search::find(&search, sources, &|| true, &mut |file| {
         for hit in file.hits {
             items.push(CodeSearchItem {
                 kind: "text",
@@ -216,13 +212,12 @@ pub async fn code_search(
             return Ok(Vec::new());
         }
         return tauri::async_runtime::spawn_blocking(move || {
-            text_items(
-                &request.root,
-                &request.query,
-                &request.documents,
-                limit,
-                &views,
-            )
+            let documents: Vec<OpenDocument> = request
+                .documents
+                .into_iter()
+                .map(OpenDocument::from)
+                .collect();
+            text_items(&request.root, &request.query, &documents, limit, &views)
         })
         .await
         .map_err(|err| err.to_string())?;

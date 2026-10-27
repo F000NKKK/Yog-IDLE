@@ -3,13 +3,8 @@ import { registerTranslations, RU } from "substrate-platform-ui";
 /** Debugging in Russian. */
 registerTranslations(RU, {
   // Debug
-  Continue: "Продолжить",
   "Break All": "Прервать все",
-  "Stop Debugging": "Остановить отладку",
   Restart: "Перезапустить",
-  "Step Into": "Шаг с заходом",
-  "Step Over": "Шаг с обходом",
-  "Step Out": "Шаг с выходом",
   "Hot Reload": "Горячая перезагрузка",
   "Hot Reloading…": "Горячая перезагрузка…",
   Stop: "Остановить",
@@ -18,7 +13,6 @@ registerTranslations(RU, {
   Name: "Имя",
   "Can't open {file}: Rust's standard library sources aren't installed — install rust-src (`rustup component add rust-src`).":
     "Не удалось открыть {file}: исходники стандартной библиотеки Rust не установлены — установите rust-src (`rustup component add rust-src`).",
-  Pause: "Приостановить",
   "Attach failed: ": "Не удалось подключиться: ",
   "Debugging stopped — the debugger failed: ": "Отладка остановлена — сбой отладчика: ",
   "Pick Debug mode next to the run target, then press Start.": "Выберите режим Debug рядом с целью запуска и нажмите «Пуск».",
@@ -36,7 +30,6 @@ registerTranslations(RU, {
   "Delete Watch": "Удалить контрольное значение",
   "Copy Value": "Копировать значение",
   "No variables used here.": "Здесь не используются переменные.",
-  "Call Stack": "Стек вызовов",
   "Paused outside mod code — pick another thread.": "Приостановлено вне кода мода — выберите другой поток.",
   "No mod code on this thread's stack.": "В стеке этого потока нет кода мода.",
   "Threads ({stopped} stopped / {count})": "Потоки (остановлено: {stopped} из {count})",

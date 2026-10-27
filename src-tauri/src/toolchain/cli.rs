@@ -23,7 +23,7 @@ const SERVE: &str = yog_ids::program::SERVE;
 
 /// A command running the CLI.
 pub fn command() -> Command {
-    substrate_platform::process::command(binary().unwrap_or_else(|| PathBuf::from(PROGRAM)))
+    substrate_process::command(binary().unwrap_or_else(|| PathBuf::from(PROGRAM)))
 }
 
 /// Where the CLI is: the first `yog` on `PATH`.

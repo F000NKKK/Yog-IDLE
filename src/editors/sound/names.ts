@@ -1,4 +1,4 @@
-// A sound's name as the designers show it: the mod's `@Sounds.cast.spell`
+// A sound's name as the designers show it: the mod's `@res:Sounds.cast.spell`
 // as `cast.spell` in its set `Sounds`; the game's `minecraft:dig/sand1` as
 // `dig/sand1` — not the reference the file writes.
 

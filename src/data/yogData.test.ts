@@ -12,16 +12,17 @@ describe("yog data", () => {
   });
 
   it("classifies typed strings by the CLI", async () => {
-    const good = ["@@me", "@item:stick", "@block:furnace[facing=north]", "@tag:item:minecraft:planks", "@Strings.screen.title", "@image:sprite:button", "@lang:gui.done"];
+    const good = ["@@me", "@item:stick", "@block:furnace[facing=north]", "@tag:item:minecraft:planks", "@res:Strings.screen.title", "@image:sprite:button", "@lang:gui.done"];
     const bad = ["@", "@stick", "@Item:stick", "@item:Stick", "@item:", "@tag:item", "@strings.title", "@Strings.", "@image:", "@lang:", "@gui.done"];
     expect(classify("plain")).toEqual({ t: "str", v: "plain" });
     expect(classify("@item:fresh").t).toBe("pending");
     await prefetchTyped([...good, ...bad]);
-    expect(classify("@@me")).toEqual({ t: "str", v: "@me" });
+    // A string comes as spelled: the text `@me` is `@@me`.
+    expect(classify("@@me")).toEqual({ t: "str", v: "@@me" });
     expect(classify("@item:stick")).toEqual({ t: "ref", kind: "item", id: "minecraft:stick" });
     expect(classify("@block:furnace[facing=north]")).toEqual({ t: "ref", kind: "block", id: "minecraft:furnace[facing=north]" });
     expect(classify("@tag:item:minecraft:planks")).toEqual({ t: "tag", kind: "item", id: "minecraft:planks" });
-    expect(classify("@Strings.screen.title")).toEqual({ t: "res", set: "Strings", key: "screen.title" });
+    expect(classify("@res:Strings.screen.title")).toEqual({ t: "res", set: "Strings", key: "screen.title" });
     expect(classify("@image:sprite:button")).toEqual({ t: "image", source: "sprite:button" });
     expect(classify("@lang:gui.done")).toEqual({ t: "lang", key: "gui.done" });
     for (const b of bad) expect(() => classify(b), b).toThrow();

@@ -183,19 +183,8 @@ export const reference = {
   TEXTURE: "@texture:",
   VIDEO: "@video:",
   TAG: "@tag:",
-} as const;
-
-export const dataProblem = {
-  INVALID: "YD0000",
-  SYNTAX: "YD0001",
-  EXPECTED: "YD0002",
-  NOT_A_REFERENCE: "YD0003",
-  WRONG_KIND: "YD0004",
-  UNKNOWN_FIELD: "YD0005",
-  MISSING_FIELD: "YD0006",
-  OUT_OF_RANGE: "YD0007",
-  BAD_TYPED: "YD0008",
-  BAD_BINARY: "YD0009",
+  RES: "@res:",
+  LANG: "@lang:",
 } as const;
 
 export const requestProblem = {
@@ -270,6 +259,7 @@ export const scriptProblem = {
   REQUIRED: "YS0047",
   STATE_TYPE: "YS0048",
   STATE_OWNER: "YS0049",
+  STATE_WAS: "YS0050",
 } as const;
 
 export const scriptJvm = {
@@ -307,6 +297,9 @@ export const dataAttr = {
 export const typed = {
   TAG: "tag",
   LANG: "lang",
+  RES: "res",
+  TEXT: "text",
+  COLOR: "color",
   IMAGE: "image",
   BYTES: "bytes",
 } as const;
@@ -728,6 +721,7 @@ export const serviceClient = {
   PLAY_SOUND: "yog:client/play_sound",
   STOP_SOUND: "yog:client/stop_sound",
   HELD_ITEM: "yog:client/held_item",
+  HELD_ITEM_DATA: "yog:client/held_item_data",
   SET_BLOCK_TINT: "yog:client/set_block_tint",
   ONLY_BLOCKS: "yog:client/only_blocks",
   KEY_DOWN: "yog:client/key_down",
@@ -965,7 +959,7 @@ export const serviceNanite = {
 } as const;
 
 export const naniteRef = {
-  OBJECT: "yog:object",
+  OBJECT: "yog_object",
 } as const;
 
 export const naniteWord = {
@@ -1169,6 +1163,7 @@ export const yog = {
   STATE: "yog:state",
   HANGING: "yog:hanging",
   ENTITY_NBT: "yog:data",
+  SYNCED: "yog:synced",
   ENTITY_DATA: "yog:entity_data",
   DIMENSIONS: "yog:dimensions",
   SLOT_PREFIX: "yog:slot:",

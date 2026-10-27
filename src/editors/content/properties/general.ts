@@ -16,11 +16,11 @@ export function generalRows(ctx: PropertiesContext, out: PropertyDescriptor[]): 
     }),
     text("name", t("Name"), general, file.name, (v) => update((d) => void (d.name = v)), {
       suggestions: choices.strings,
-      description: t("Display name — a literal English text or a `@Set.name` text of a .yres file (translated)."),
+      description: t("Display name — a literal English text or a `@res:Set.name` text of a .yres file (translated)."),
     }),
     text("tooltip", t("Tooltip"), general, file.tooltip, (v) => update((d) => void (d.tooltip = v)), {
       suggestions: choices.strings,
-      description: t("A line under the name — literal or `@Set.name`."),
+      description: t("A line under the name — literal or `@res:Set.name`."),
     }),
     choice("register", t("Registration"), general, file.register, ["auto", "manual"], (v) => update((d) => void (d.register = v as ContentFile["register"])), {
       description: t("auto: registered by yog_api::content!(); manual: you register Blocks::x() / Items::x() yourself (to add behavior)."),
