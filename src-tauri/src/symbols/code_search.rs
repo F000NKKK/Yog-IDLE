@@ -31,7 +31,23 @@ pub struct CodeSearchRequest {
     pub limit: Option<usize>,
     /// Open buffers, searched instead of their files in text mode.
     #[serde(default)]
-    pub documents: Vec<OpenDocument>,
+    pub documents: Vec<OpenBuffer>,
+}
+
+/// An open editor's buffer, as the popup sends it.
+#[derive(Deserialize)]
+pub struct OpenBuffer {
+    path: String,
+    text: String,
+}
+
+impl From<OpenBuffer> for OpenDocument {
+    fn from(buffer: OpenBuffer) -> Self {
+        Self {
+            path: buffer.path,
+            text: buffer.text,
+        }
+    }
 }
 
 #[derive(Clone, Serialize, Debug)]
@@ -159,29 +175,26 @@ pub(super) fn search_index(
 pub(super) fn text_items(
     root: &str,
     query: &str,
-    documents: &[OpenDocument],
+    documents: Vec<OpenBuffer>,
     limit: usize,
     views: &TextViews,
 ) -> Result<Vec<CodeSearchItem>, String> {
     let q = SearchQuery {
         pattern: query.to_string(),
-        match_case: false,
-        whole_word: false,
-        regex: false,
-        file_mask: String::new(),
-        include_generated: false,
+        ..SearchQuery::default()
     };
+    let documents: Vec<OpenDocument> = documents.into_iter().map(OpenDocument::from).collect();
     let mut items = Vec::new();
     let search = Search {
         root: Some(root),
         scope: Scope::Project,
         query: &q,
-        documents,
+        documents: &documents,
         max_lines: limit,
         layout: &crate::project::manifest::SEARCH_LAYOUT,
-        views,
     };
-    search::find(&search, &|| true, &mut |file| {
+    let files = DiskDocuments::new(views.clone());
+    find(&search, (&IgnoreWalker, &files), &|| true, &mut |file| {
         for hit in file.hits {
             items.push(CodeSearchItem {
                 kind: "text",
@@ -219,7 +232,7 @@ pub async fn code_search(
             text_items(
                 &request.root,
                 &request.query,
-                &request.documents,
+                request.documents,
                 limit,
                 &views,
             )

@@ -195,9 +195,9 @@ fn index_ranks_files_and_symbols() {
     assert!(names(&index, CodeSearchMode::Types, "cli").is_empty());
 
     let views = TextViews::default();
-    let items = text_items(&dir.to_string_lossy(), "fn connect", &[], 10, &views).unwrap();
+    let items = text_items(&dir.to_string_lossy(), "fn connect", Vec::new(), 10, &views).unwrap();
     assert!(items.is_empty());
-    let items = text_items(&dir.to_string_lossy(), "enum", &[], 10, &views).unwrap();
+    let items = text_items(&dir.to_string_lossy(), "enum", Vec::new(), 10, &views).unwrap();
     assert_eq!(items.len(), 1);
     assert_eq!(items[0].line, Some(1));
     std::fs::remove_dir_all(dir).unwrap();

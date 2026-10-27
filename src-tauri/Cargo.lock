@@ -3518,17 +3518,42 @@ name = "substrate-platform"
 version = "0.4.0"
 dependencies = [
  "anyhow",
- "globset",
- "ignore",
  "libc",
  "notify",
  "portable-pty",
- "regex",
  "serde",
  "serde_json",
  "substrate-message",
  "thiserror 2.0.21",
  "toml 1.1.8+spec-1.1.0",
+]
+
+[[package]]
+name = "substrate-search-app"
+version = "0.1.0"
+dependencies = [
+ "substrate-message",
+ "substrate-search-domain",
+]
+
+[[package]]
+name = "substrate-search-domain"
+version = "0.1.0"
+dependencies = [
+ "globset",
+ "regex",
+ "substrate-message",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "substrate-search-ignore"
+version = "0.1.0"
+dependencies = [
+ "ignore",
+ "substrate-platform",
+ "substrate-search-app",
+ "substrate-search-domain",
 ]
 
 [[package]]
@@ -3850,6 +3875,9 @@ dependencies = [
  "substrate-host-contract",
  "substrate-message",
  "substrate-platform",
+ "substrate-search-app",
+ "substrate-search-domain",
+ "substrate-search-ignore",
  "tauri",
  "tauri-plugin",
 ]
@@ -5143,6 +5171,9 @@ dependencies = [
  "substrate-git-gitcli",
  "substrate-host-contract",
  "substrate-platform",
+ "substrate-search-app",
+ "substrate-search-domain",
+ "substrate-search-ignore",
  "syn 3.0.9",
  "tauri",
  "tauri-build",

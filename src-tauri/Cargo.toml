@@ -36,7 +36,11 @@ toml_edit = "0.25"
 # Where the Environment options and IDE-installed tools live.
 dirs = "7"
 substrate-host-contract = { path = "../../Substrate-Platform/crates/substrate-host-contract" }
-substrate-platform = { path = "../../Substrate-Platform", features = ["fs", "project", "run", "search", "state"] }
+substrate-platform = { path = "../../Substrate-Platform", features = ["fs", "project", "run", "state"] }
+# Code Search's text mode and file index walk the project the way Find in Files does.
+substrate-search-app = { path = "../../Substrate-Platform/crates/substrate-search-app" }
+substrate-search-domain = { path = "../../Substrate-Platform/crates/substrate-search-domain" }
+substrate-search-ignore = { path = "../../Substrate-Platform/crates/substrate-search-ignore" }
 # Substrate's host commands (the workspace, Source Control), as its UI calls them.
 tauri-plugin-substrate = { path = "../../Substrate-Platform/tauri-plugin", features = ["fs", "git", "search", "state", "terminal"] }
 # The porcelain parser the benches time.

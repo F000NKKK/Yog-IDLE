@@ -19,19 +19,17 @@ impl RootIndex {
         let all = FileMask::all();
         // Generated screen code (`.g.rs`) too, so its `ids`/`events`/`render`
         // show up in Code Search as in VS (`MainWindow.g.cs`).
-        let mut files = search::project_files(root, &all, &crate::project::manifest::SEARCH_LAYOUT);
-        files.extend(search::generated_files(
-            root,
-            &all,
-            &crate::project::manifest::SEARCH_LAYOUT,
-        ));
+        let layout: &Layout = &crate::project::manifest::SEARCH_LAYOUT;
+        let mut files = IgnoreWalker.project_files(root, &all, layout);
+        files.extend(IgnoreWalker.generated_files(root, &all, layout));
         self.files = files
             .into_iter()
             .map(|path| {
-                let rel = search::relative(root, &path);
+                let rel = relative(root, &path);
                 (path, rel)
             })
             .collect();
+        let documents = DiskDocuments::new(views.clone());
         let mut fresh = HashMap::new();
         for (path, _) in self
             .files
@@ -44,7 +42,8 @@ impl RootIndex {
                 _ => IndexedFile {
                     modified,
                     symbols: Arc::new(
-                        search::read_text(path, search::Decoding::Lossy, views)
+                        documents
+                            .read_text(path, Decoding::Lossy)
                             .map(|text| extract_symbols(&text))
                             .unwrap_or_default(),
                     ),

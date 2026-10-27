@@ -7,7 +7,7 @@ const BENCH_ROOT: &str = "/bench";
 use std::path::{Path, PathBuf};
 
 pub use crate::symbols::{extract_symbols, fuzzy_match};
-pub use substrate_platform::search::OpenDocument;
+pub use substrate_search_domain::project::OpenDocument;
 
 /// A call of the CLI service, as the front end makes it: a request's
 /// binary form in, the answer's out.
@@ -39,26 +39,25 @@ impl CodeIndex {
 
 /// Find in Files over open documents, every batch as sent to the frontend.
 pub fn find_in_documents(documents: &[OpenDocument], pattern: &str) -> String {
-    let query = substrate_platform::search::SearchQuery {
+    let query = substrate_search_domain::query::SearchQuery {
         pattern: pattern.to_string(),
-        match_case: false,
-        whole_word: false,
-        regex: false,
-        file_mask: String::new(),
-        include_generated: false,
+        ..substrate_search_domain::query::SearchQuery::default()
     };
-    let search = substrate_platform::search::Search {
+    let search = substrate_search_app::Search {
         root: Some(BENCH_ROOT),
-        scope: substrate_platform::search::Scope::Documents,
+        scope: substrate_search_domain::project::Scope::Documents,
         query: &query,
         documents,
-        max_lines: substrate_platform::search::DEFAULT_MAX_LINES,
+        max_lines: substrate_search_app::DEFAULT_MAX_LINES,
         layout: &crate::project::manifest::SEARCH_LAYOUT,
-        views: &substrate_platform::text_view::TextViews::default(),
     };
     let mut files = Vec::new();
-    let _ = substrate_platform::search::find(&search, &|| true, &mut |file| files.push(file));
-    serde_json::to_string(&files).unwrap_or_default()
+    let adapters = (
+        &substrate_search_ignore::IgnoreWalker,
+        &substrate_search_ignore::DiskDocuments::default(),
+    );
+    let _ = substrate_search_app::find(&search, adapters, &|| true, &mut |file| files.push(file));
+    format!("{files:?}")
 }
 
 /// `git status` output parsed into Git Changes' model, as sent to the frontend.
