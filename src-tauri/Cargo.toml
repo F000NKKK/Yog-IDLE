@@ -20,7 +20,7 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 substrate-platform = { path = "../../Substrate-Platform" }
 tauri-build = { version = "2", features = [] }
 # The front end's copy of the shared names (`src/data/yogIds.generated.ts`).
-yog-ids = "0.6.6"
+yog-ids = "0.6.7"
 # The generated files' header, as TypeScript.
 yog-codegen = "0.1.1"
 yog-codegen-typescript = "0.1.1"
@@ -46,7 +46,7 @@ regex = "1.13.1"
 syn = { version = "3.0.9", default-features = false, features = ["full", "parsing", "visit"] }
 proc-macro2 = { version = "1.0.107", features = ["span-locations"] }
 # Generated TypeScript of Yog's ids, and the one `yog` program name.
-yog-ids = "0.6.6"
+yog-ids = "0.6.7"
 # Yog's home on the machine (~/.yog): where its local patch is.
 yog-home = "0.6.1"
 # The running game's control channel (hot reload, the mods it runs): every platform.

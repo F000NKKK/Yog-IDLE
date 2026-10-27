@@ -268,6 +268,8 @@ export const scriptProblem = {
   UNKNOWN_NAME: "YS0045",
   GOTO: "YS0046",
   REQUIRED: "YS0047",
+  STATE_TYPE: "YS0048",
+  STATE_OWNER: "YS0049",
 } as const;
 
 export const scriptJvm = {
@@ -595,6 +597,8 @@ export const servicePlayer = {
   SET_HELD_ITEM_NBT: "yog:player/set_held_item_nbt",
   OFFHAND_ITEM_NBT: "yog:player/offhand_item_nbt",
   SET_OFFHAND_ITEM_NBT: "yog:player/set_offhand_item_nbt",
+  HELD_ITEM_DATA: "yog:player/held_item_data",
+  SET_HELD_ITEM_DATA: "yog:player/set_held_item_data",
   SLOT_ITEM: "yog:player/slot_item",
   SET_SLOT_ITEM: "yog:player/set_slot_item",
   ADD_XP: "yog:player/add_xp",
