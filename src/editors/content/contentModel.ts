@@ -100,6 +100,21 @@ export function ensureModel(f: ContentFile, key: ModelKey): Model {
   return (f[key as typeof MODEL.main | typeof MODEL.item] ??= {});
 }
 
+/**
+ * `m`'s parent set to `parent` (empty: none, the model's own elements). A
+ * template (cube_all, …) gives the model its shape, so the model's own
+ * elements go: Yog's models take a template or elements, not both.
+ */
+export function setParent(m: Model, parent: string): void {
+  const name = parent.trim();
+  if (!name) {
+    delete m.parent;
+    return;
+  }
+  m.parent = name;
+  if (templateOf(name)) delete m.elements;
+}
+
 /** Every model of the file: the block's or item's, the item form's, the arm, the state models. */
 export const allModels = (f: ContentFile): (Model | undefined)[] => [f.model, f.item_model, f.states?.connect?.arm, ...Object.values(f.states?.models ?? {})];
 

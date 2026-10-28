@@ -3,7 +3,7 @@
 import { PROPERTY_KIND, type PropertyDescriptor, t } from "substrate-platform-ui";
 import { ANGLES, AXES, type Axis, BLOCK_CENTER, BLOCK_PIXELS, type Dir, DIRS, DISPLAY_LIMITS, type DisplayTransform, type Element, ELEMENT_MAX, ELEMENT_MIN, GUI_LIGHTS, type Model, TEMPLATES, textureRef, type Uv, UV_ROTATIONS, type Vec3 } from "../../../content/model";
 import { kind as KIND } from "../../../data/yogIds.generated";
-import { ensureModel } from "../contentModel";
+import { ensureModel, setParent } from "../contentModel";
 import { vecText } from "../fieldText";
 import type { PropertiesContext } from "./context";
 
@@ -42,7 +42,7 @@ function modelOwnRows(ctx: PropertiesContext, out: PropertyDescriptor[]) {
   const mc = t("Model");
   const setM = modelSetter(ctx);
   out.push(
-    text("parent", t("Parent"), mc, model?.parent, (v) => setM((m) => void (m.parent = v)), {
+    text("parent", t("Parent"), mc, model?.parent, (v) => setM((m) => setParent(m, v ?? "")), {
       suggestions: TEMPLATES.filter((x) => (modelKind === KIND.ITEM ? true : !x.sprite)).map((x) => x.name),
       description: t("A template (cube_all, cube_column, …, generated, handheld for items) or any model id. Empty: the model's own elements."),
     }),
