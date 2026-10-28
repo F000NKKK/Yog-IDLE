@@ -457,9 +457,9 @@ dependencies = [
 
 [[package]]
 name = "const_format"
-version = "0.2.36"
+version = "0.2.37"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4481a617ad9a412be3b97c5d403fef8ed023103368908b9c50af598ff467cc1e"
+checksum = "a3decb4d6965448659923544a634a0571ba44cede4e11ef15a5a317126840454"
 dependencies = [
  "const_format_proc_macros",
  "konst",
@@ -467,9 +467,9 @@ dependencies = [
 
 [[package]]
 name = "const_format_proc_macros"
-version = "0.2.34"
+version = "0.2.37"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1d57c2eccfb16dbac1f4e61e206105db5820c9d26c3c472bc17c774259ef7744"
+checksum = "941b570269a642506f08cb5b688c04bfa6cfd41a26f8bcdc49db8fd00c0ab659"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -3474,9 +3474,9 @@ checksum = "7da8b5736845d9f2fcb837ea5d9e2628564b3b043a70948a3f0b778838c5fb4f"
 
 [[package]]
 name = "substrate-data"
-version = "0.2.1"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a7cd10b1cb74869ec548849b6b9c2e24e7e864c07b76da7301f934759cd21f16"
+checksum = "024165a4cf791e4c12b79e882d11d3654342dff83f32264e420f79ffd8e03857"
 dependencies = [
  "base64 0.23.1",
  "bumpalo",
@@ -3484,13 +3484,14 @@ dependencies = [
  "serde_spanned 1.1.2",
  "substrate-data-derive",
  "toml 1.1.8+spec-1.1.0",
+ "zmij",
 ]
 
 [[package]]
 name = "substrate-data-derive"
-version = "0.2.1"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7252e239386a0bd7ce822d9d317f64ad0537e19f0c47e54b2c7a9034ac6a2e0a"
+checksum = "cab9ed284375907b6e30701cbbf8193aff70eee00713d90745d920930677baa4"
 dependencies = [
  "proc-macro-crate 3.5.0",
  "proc-macro2",
