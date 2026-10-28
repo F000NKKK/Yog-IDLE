@@ -8,6 +8,7 @@ import { refMessage } from "../../shared/inspector";
 import type { PotionEffectRow } from "../contentModel";
 import { parseVec, vecText } from "../fieldText";
 import type { PropertiesContext } from "./context";
+import { setArmorSlot, setDurability, setToolKind, setWearable } from "../itemRoles";
 import { kind as KIND, reference } from "../../../data/yogIds.generated";
 
 /** A box: x1, y1, z1, x2, y2, z2, within a block's pixels. */
@@ -258,7 +259,7 @@ function itemBasicsRows(ctx: PropertiesContext, out: PropertyDescriptor[]) {
   const setI = itemSetter(ctx);
   out.push(
     num("stack_size", t("Stack Size"), c, it.stack_size, (v) => setI((x) => void (x.stack_size = v)), { min: 1, max: 99, int: true }),
-    num("durability", t("Durability"), c, it.durability, (v) => setI((x) => void (x.durability = v)), { min: 1, int: true }),
+    num("durability", t("Durability"), c, it.durability, (v) => setI((x) => setDurability(x, v)), { min: 1, int: true }),
     flag("fire_resistant", t("Fire Resistant"), c, it.fire_resistant, (v) => setI((x) => void (x.fire_resistant = v)), false),
     num("fuel_ticks", t("Fuel Ticks"), c, it.fuel_ticks, (v) => setI((x) => void (x.fuel_ticks = v)), { min: 1, int: true, description: t("Burn time in a furnace (coal: 1600).") }),
     num("nutrition", t("Food: Nutrition"), c, it.food?.nutrition, (v) =>
@@ -278,11 +279,7 @@ function itemGearRows(ctx: PropertiesContext, out: PropertyDescriptor[]) {
   const it = ctx.file.item ?? {};
   const setI = itemSetter(ctx);
   out.push(
-    text("tool_kind", t("Tool: Kind"), c, it.tool?.kind, (v) =>
-      setI((x) => {
-        if (v === undefined) delete x.tool;
-        else x.tool = { material: "iron", ...(x.tool ?? {}), kind: v };
-      }), {
+    text("tool_kind", t("Tool: Kind"), c, it.tool?.kind, (v) => setI((x) => setToolKind(x, v)), {
       suggestions: TOOL_KINDS,
       description: t("pickaxe, axe, shovel, hoe, sword — or a mod's kind by the blocks it mines, @tag:block:mymod:mineable/hammer."),
     }),
@@ -300,11 +297,9 @@ function itemGearRows(ctx: PropertiesContext, out: PropertyDescriptor[]) {
           }),
         ]
       : []),
-    choice("armor_slot", t("Armor: Slot"), c, it.armor?.slot, ARMOR_SLOTS, (v) =>
-      setI((x) => {
-        if (v === undefined) delete x.armor;
-        else x.armor = { material: "iron", ...(x.armor ?? {}), slot: v as ArmorSlot };
-      }), { optionLabel: (o) => (o ? t(o) : "") }),
+    choice("armor_slot", t("Armor: Slot"), c, it.armor?.slot, ARMOR_SLOTS, (v) => setI((x) => setArmorSlot(x, v as ArmorSlot | undefined)), {
+      optionLabel: (o) => (o ? t(o) : ""),
+    }),
     ...(it.armor
       ? [
           text("armor_material", t("Armor: Material"), c, it.armor.material, (v) => setI((x) => void (x.armor && v && (x.armor.material = v))), {
@@ -313,7 +308,7 @@ function itemGearRows(ctx: PropertiesContext, out: PropertyDescriptor[]) {
           }),
         ]
       : []),
-    choice("wearable", t("Wearable"), c, it.wearable, ARMOR_SLOTS, (v) => setI((x) => void (x.wearable = v as ArmorSlot | undefined)), {
+    choice("wearable", t("Wearable"), c, it.wearable, ARMOR_SLOTS, (v) => setI((x) => setWearable(x, v as ArmorSlot | undefined)), {
       optionLabel: (o) => (o ? t(o) : ""),
       description: t("Worn in this slot without being armor (a monocle, a crown): right-click and dispensers put it on."),
     })
