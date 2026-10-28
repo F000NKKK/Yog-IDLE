@@ -2,9 +2,9 @@
 
 import { useCallback, useEffect } from "react";
 import { type EditorProps, notifyDocumentCommands, pushDocumentStep } from "substrate-platform-ui";
-import { clone, type ContentFile, type Element, type Model, templateOf } from "../../../content/model";
+import type { ContentFile, Element, Model } from "../../../content/model";
 import { type PixelImage, toPngDataUrl } from "../../../content/paint/pixels";
-import { type AnimationEdit, ensureModel } from "../contentModel";
+import { type AnimationEdit, editModelElements, ensureModel } from "../contentModel";
 import type { ContentDocument } from "./useContentDocument";
 import type { PaintBuffers } from "./usePaintBuffers";
 import type { ResolvedModel } from "./useResolvedModel";
@@ -73,17 +73,7 @@ export function useContentEdits(props: EditorProps, contentDocument: ContentDocu
   /** Edits the current model's own elements (copying a template's/parent's in first). */
   const editElements = useCallback(
     (edit: (els: Element[], m: Model) => void) =>
-      update((d) => {
-        const m = ensureModel(d, effectiveKey);
-        if (!m.elements?.length) {
-          m.elements = clone(resolved.elements);
-          if (m.parent && (templateOf(m.parent) || parents[m.parent])) {
-            m.textures = { ...(parents[m.parent]?.textures ?? {}), ...(m.textures ?? {}) };
-            delete m.parent;
-          }
-        }
-        edit(m.elements, m);
-      }),
+      update((d) => editModelElements(ensureModel(d, effectiveKey), resolved.elements, parents, edit)),
     [update, effectiveKey, resolved, parents]
   );
 

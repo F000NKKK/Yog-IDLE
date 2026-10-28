@@ -3,7 +3,7 @@
 
 import type { TextureSource } from "../../content/Viewport";
 import type { TextureAnimation } from "../../content/animation";
-import { type ContentFile, defaultDisplay, type Dir, DIRS, type DisplaySlot, type DisplayTransform, type Element, type Model, SLOT_REF, templateElements, templateOf, type Kind } from "../../content/model";
+import { clone, type ContentFile, defaultDisplay, type Dir, DIRS, type DisplaySlot, type DisplayTransform, type Element, type Model, SLOT_REF, templateElements, templateOf, type Kind } from "../../content/model";
 import type { PixelImage } from "../../content/paint/pixels";
 import { GAME_NAMESPACE } from "../../data/yogFormat";
 import { kind as KIND } from "../../data/yogIds.generated";
@@ -98,6 +98,34 @@ export function ensureModel(f: ContentFile, key: ModelKey): Model {
     return (f.states.models[state] ??= {});
   }
   return (f[key as typeof MODEL.main | typeof MODEL.item] ??= {});
+}
+
+/**
+ * `edit` made to model `m`'s elements. A model that has none of its own
+ * shows its parent's or template's (`inherited`): they're copied into it
+ * (its parent's textures with them, the parent gone) only when `edit`
+ * changes them — a click or a drag that moves nothing leaves the model,
+ * and its parent, as they were.
+ */
+export function editModelElements(
+  m: Model,
+  inherited: Element[],
+  parents: Record<string, ParentModel | null>,
+  edit: (els: Element[], m: Model) => void
+): void {
+  if (m.elements?.length) {
+    edit(m.elements, m);
+    return;
+  }
+  const els = clone(inherited);
+  const before = JSON.stringify(els);
+  edit(els, m);
+  if (JSON.stringify(els) === before) return;
+  m.elements = els;
+  if (m.parent && (templateOf(m.parent) || parents[m.parent])) {
+    m.textures = { ...(parents[m.parent]?.textures ?? {}), ...(m.textures ?? {}) };
+    delete m.parent;
+  }
 }
 
 /**
