@@ -35,7 +35,7 @@ toml = "1"
 toml_edit = "0.25"
 # Where the Environment options and IDE-installed tools live.
 dirs = "7"
-substrate-lock = { path = "../../../Substrate-Platform/crates/substrate-lock" }
+substrate-lock = "0.1.0"
 substrate-project-domain = { path = "../../../Substrate-Platform/crates/substrate-project-domain" }
 substrate-project-toml = { path = "../../../Substrate-Platform/crates/substrate-project-toml" }
 substrate-state-json = { path = "../../../Substrate-Platform/crates/substrate-state-json" }
