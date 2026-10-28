@@ -276,6 +276,7 @@ export const storage = {
   CHUNK: "chunk",
   SESSION: "session",
   SEP: "_",
+  SESSION_KEY_SEP: "|",
 } as const;
 
 export const dataAttr = {
@@ -794,6 +795,11 @@ export const serviceContent = {
 export const serviceJvm = {
   DOMAIN: "yog:jvm/",
   CALL: "yog:jvm/call",
+} as const;
+
+export const serviceScript = {
+  DOMAIN: "yog:script/",
+  RELOAD: "yog:script/reload",
 } as const;
 
 export const serviceMenu = {

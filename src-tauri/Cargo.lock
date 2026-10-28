@@ -3626,9 +3626,9 @@ dependencies = [
 
 [[package]]
 name = "substrate-search-domain"
-version = "0.1.0"
+version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "088014a9f216be0786287904ae552e973e8d7c303438a8bd42036595f1e0e77c"
+checksum = "9b36d2994f0c3e453fe332775784feca3b120b71bd0eb3264bdf7d400ad4532b"
 dependencies = [
  "globset",
  "regex",
@@ -3638,9 +3638,9 @@ dependencies = [
 
 [[package]]
 name = "substrate-search-ignore"
-version = "0.1.0"
+version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b12e67e9ce79496e601773518a7e0d7a4d617c8609cc4b543bc25174b4f37e02"
+checksum = "a154ec98eab88084a30ef9349d9c2860b8986078b015c33481da884f5be0e267"
 dependencies = [
  "ignore",
  "substrate-search-app",
