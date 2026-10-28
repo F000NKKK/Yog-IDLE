@@ -10,7 +10,7 @@ import { MAX_STACK_SIZE } from "../../data/yogFormat";
 import { iconSource, imagePreview, imageSources, imageSourcesVersion, ingredientItems, subscribeImageSources } from "../../designer/resources/imageSources";
 import { useDataFile, type DataFormat } from "../../data/useDataFile";
 import { readObject } from "../../data/yogData";
-import { recipeOf, switchedTo, typeOf, withRecipe, type Recipe, type RecipeFields, type RecipeKind, type RecipeSlot } from "./recipeModel";
+import { fixedCount, recipeOf, switchedTo, typeOf, withRecipe, type Recipe, type RecipeFields, type RecipeKind, type RecipeSlot } from "./recipeModel";
 import "../RecipeEditor.css";
 import { fileTypeId, formats } from "../../project/yogFileTypes";
 import { kind as KIND, serveMethod } from "../../data/yogIds.generated";
@@ -347,7 +347,7 @@ export function RecipeEditor({ path, content, onChange, readOnly }: EditorProps)
       name: t("Count"),
       value: recipe.count,
       validate: (v) => (Number(v) >= 1 && Number(v) <= MAX_STACK_SIZE ? null : t("1 to {max}", { max: MAX_STACK_SIZE })),
-      readOnly: ro,
+      readOnly: ro || fixedCount(kind),
       onCommit: (v) => update((r) => (r.count = clampCount(Number(v)))),
     },
     ...kind.values.map(

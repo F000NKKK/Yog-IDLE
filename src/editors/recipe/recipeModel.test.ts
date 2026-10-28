@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { readData } from "../../data/yogData";
-import { parseRecipe, recipeType, serializeRecipe, switchKind, type RecipeFields, type RecipeKind } from "./recipeModel";
+import { switchedTo, parseRecipe, recipeType, serializeRecipe, switchKind, type RecipeFields, type RecipeKind } from "./recipeModel";
 
 // What `recipe_kinds` sends (src-tauri/src/recipe_kinds.rs), for the kinds these tests use.
 const FIELDS: RecipeFields = { type: "type", result: "result", count: "count", slots: "slots", values: "values", pattern: "pattern", key: "key", gridSide: 3 };
@@ -119,5 +119,20 @@ describe("switching kinds", () => {
     expect(j).toMatchObject({ type: "mymod:crusher", result: "@item:minecraft:glass", count: 3, values: { time: 0 } });
     expect(j.ingredient).toBeUndefined();
     expect(j.cook_time).toBeUndefined();
+  });
+});
+
+describe("a brewing recipe", () => {
+  it("drops the count and category switching to it", () => {
+    const was = { type: "shaped", slots: {}, values: {}, result: "minecraft:stone", count: 4 };
+    const o = switchedTo({ type: "shaped", category: "misc", count: 4, result: "@item:minecraft:stone" }, was, BREWING, KINDS, FIELDS);
+    expect(o.count).toBeUndefined();
+    expect(o.category).toBeUndefined();
+  });
+
+  it("keeps a game kind's category, drops a mod kind's", () => {
+    const was = { type: "shaped", slots: {}, values: {}, result: "minecraft:stone", count: 1 };
+    expect(switchedTo({ category: "misc" }, was, SMELTING, KINDS, FIELDS).category).toBe("misc");
+    expect(switchedTo({ category: "misc" }, was, CRUSHER, KINDS, FIELDS).category).toBeUndefined();
   });
 });

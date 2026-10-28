@@ -11,6 +11,7 @@ import { ALTERNATIVES, TAG_MARK, refOf, shownOf, showIngredient, writeIngredient
 import { isObject, num, str } from "../../data/values";
 import { patchData, readObject } from "../../data/yogData";
 import { MAX_STACK_SIZE } from "../../data/yogFormat";
+import { recipeField, recipeKind } from "../../data/yogIds.generated";
 
 /** `recipe_kinds::Slot`. */
 export interface RecipeSlot {
@@ -105,6 +106,12 @@ export async function recipeType(text: string, fields: RecipeFields): Promise<st
 
 /** Whether `kind` is one of the game's (its slots are written in fields of their own). */
 const isGameKind = (kind: RecipeKind) => kind.file === "";
+
+/** A brewing stand's recipe: one potion, so its count is fixed. */
+export const fixedCount = (kind: RecipeKind) => kind.id === recipeKind.BREWING;
+
+/** Whether a recipe of `kind` takes a recipe-book category: the game's kinds but brewing. */
+const takesCategory = (kind: RecipeKind) => isGameKind(kind) && !fixedCount(kind);
 
 /** A grid's places from `pattern` rows and their `key`. */
 function readGrid(o: Record<string, unknown>, fields: RecipeFields): (string | null)[] {
@@ -226,7 +233,8 @@ export function withRecipe(from: Obj, r: Recipe, kind: RecipeKind, fields: Recip
     else delete o[fields.values];
   }
   o[fields.result] = r.result ? refOf(r.result) : "";
-  if (r.count !== 1) o[fields.count] = r.count;
+  if (!takesCategory(kind)) delete o[recipeField.CATEGORY];
+  if (r.count !== 1 && !fixedCount(kind)) o[fields.count] = r.count;
   else delete o[fields.count];
   return o;
 }

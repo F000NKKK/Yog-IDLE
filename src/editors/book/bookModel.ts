@@ -145,7 +145,7 @@ export function newPage(type: string): Page {
     case "spotlight":
       return { type, item: "@item:minecraft:book" };
     case "recipe":
-      return { type, recipe: "@recipe:" };
+      return { type, recipe: "@recipe:minecraft:crafting_table" };
     case "image":
       return { type, texture: "" };
     case "entity":
