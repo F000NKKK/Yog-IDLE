@@ -92,40 +92,6 @@ required-features = ["bench"]
 # The loader's crates from the sibling checkout (as Substrate-Platform is):
 # the IDE always builds against the loader it ships with, published or not.
 [patch.crates-io]
-# Substrate-Platform's crates from the sibling checkout while they go out
-# on crates.io (a new crate every ~10 minutes); dropped once all are.
-substrate-message = { path = "../../../Substrate-Platform/crates/substrate-message" }
-substrate-dap-domain = { path = "../../../Substrate-Platform/crates/substrate-dap-domain" }
-substrate-framing = { path = "../../../Substrate-Platform/crates/substrate-framing" }
-substrate-lock = { path = "../../../Substrate-Platform/crates/substrate-lock" }
-substrate-run-domain = { path = "../../../Substrate-Platform/crates/substrate-run-domain" }
-substrate-run-app = { path = "../../../Substrate-Platform/crates/substrate-run-app" }
-substrate-dap-app = { path = "../../../Substrate-Platform/crates/substrate-dap-app" }
-substrate-dap-toml = { path = "../../../Substrate-Platform/crates/substrate-dap-toml" }
-substrate-git-domain = { path = "../../../Substrate-Platform/crates/substrate-git-domain" }
-substrate-git-app = { path = "../../../Substrate-Platform/crates/substrate-git-app" }
-substrate-process = { path = "../../../Substrate-Platform/crates/substrate-process" }
-substrate-workspace-domain = { path = "../../../Substrate-Platform/crates/substrate-workspace-domain" }
-substrate-git-gitcli = { path = "../../../Substrate-Platform/crates/substrate-git-gitcli" }
-substrate-lsp-domain = { path = "../../../Substrate-Platform/crates/substrate-lsp-domain" }
-substrate-project-domain = { path = "../../../Substrate-Platform/crates/substrate-project-domain" }
-substrate-search-domain = { path = "../../../Substrate-Platform/crates/substrate-search-domain" }
-substrate-state-json = { path = "../../../Substrate-Platform/crates/substrate-state-json" }
-substrate-terminal-domain = { path = "../../../Substrate-Platform/crates/substrate-terminal-domain" }
-substrate-workspace-app = { path = "../../../Substrate-Platform/crates/substrate-workspace-app" }
-substrate-workspace-fs = { path = "../../../Substrate-Platform/crates/substrate-workspace-fs" }
-substrate-host-contract = { path = "../../../Substrate-Platform/crates/substrate-host-contract" }
-substrate-lsp-app = { path = "../../../Substrate-Platform/crates/substrate-lsp-app" }
-substrate-lsp-toml = { path = "../../../Substrate-Platform/crates/substrate-lsp-toml" }
-substrate-project-app = { path = "../../../Substrate-Platform/crates/substrate-project-app" }
-substrate-project-toml = { path = "../../../Substrate-Platform/crates/substrate-project-toml" }
-substrate-run-process = { path = "../../../Substrate-Platform/crates/substrate-run-process" }
-substrate-run-toml = { path = "../../../Substrate-Platform/crates/substrate-run-toml" }
-substrate-search-app = { path = "../../../Substrate-Platform/crates/substrate-search-app" }
-substrate-search-ignore = { path = "../../../Substrate-Platform/crates/substrate-search-ignore" }
-substrate-terminal-app = { path = "../../../Substrate-Platform/crates/substrate-terminal-app" }
-substrate-terminal-pty = { path = "../../../Substrate-Platform/crates/substrate-terminal-pty" }
-tauri-plugin-substrate = { path = "../../../Substrate-Platform/tauri-plugin" }
 yog-codegen = { path = "../../Yog-Mod-Loader/rust/crates/yog-codegen" }
 yog-codegen-typescript = { path = "../../Yog-Mod-Loader/rust/crates/yog-codegen-typescript" }
 yog-debugger = { path = "../../Yog-Mod-Loader/rust/crates/yog-debugger" }

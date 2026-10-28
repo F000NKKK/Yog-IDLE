@@ -3502,6 +3502,8 @@ dependencies = [
 [[package]]
 name = "substrate-git-app"
 version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "37ba5ad6ab1504df0ebdb32d4db17a383f07f549909111be74ac41dc6f5a25af"
 dependencies = [
  "substrate-git-domain",
  "substrate-message",
@@ -3510,6 +3512,8 @@ dependencies = [
 [[package]]
 name = "substrate-git-domain"
 version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b25d2f986280cf787f68956b078164192dcb09bad77ad20d6dffe739270a8e79"
 dependencies = [
  "substrate-message",
  "thiserror 2.0.21",
@@ -3518,6 +3522,8 @@ dependencies = [
 [[package]]
 name = "substrate-git-gitcli"
 version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "011290d905b426f4169029bbd66388b3f3b624a0494eb87dd6a472c88b6e1423"
 dependencies = [
  "substrate-git-app",
  "substrate-git-domain",
@@ -3529,6 +3535,8 @@ dependencies = [
 [[package]]
 name = "substrate-host-contract"
 version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ebabcfb1d39b1733ebc6b4fa91dd21f85fcc548181f4db208fa3cd946ed66844"
 dependencies = [
  "substrate-message",
  "substrate-process",
@@ -3538,10 +3546,14 @@ dependencies = [
 [[package]]
 name = "substrate-lock"
 version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0fbf0e47bc6a1fff99a95208d3c67bc7b5081995153c06844bb47c334f0d2807"
 
 [[package]]
 name = "substrate-message"
 version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "38186fcba0494eac660929aff7bc4f27a50b46d0622a6ad71bd118ad52bf6d00"
 dependencies = [
  "serde",
 ]
@@ -3549,6 +3561,8 @@ dependencies = [
 [[package]]
 name = "substrate-process"
 version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "33afe7d70f24e59d007fcc580b80b75165a9b5ba48ab3fbd70b559c7cca710bd"
 dependencies = [
  "substrate-message",
  "thiserror 2.0.21",
@@ -3557,6 +3571,8 @@ dependencies = [
 [[package]]
 name = "substrate-project-domain"
 version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b941ebc08a79149505a63faa1b679726944d0f0f121912acbb5ad8d3a8becb8a"
 dependencies = [
  "substrate-message",
  "thiserror 2.0.21",
@@ -3565,6 +3581,8 @@ dependencies = [
 [[package]]
 name = "substrate-project-toml"
 version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bfa58c540223b726d1c69ca13560dbe9166bb59a4224b175955cca816f34a4c5"
 dependencies = [
  "serde",
  "substrate-project-domain",
@@ -3574,6 +3592,8 @@ dependencies = [
 [[package]]
 name = "substrate-run-app"
 version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "08d48bb8581c7d0fbb8cf552e38d5e948e95e1637accaf45d31a4a552bed7118"
 dependencies = [
  "substrate-lock",
  "substrate-run-domain",
@@ -3582,10 +3602,14 @@ dependencies = [
 [[package]]
 name = "substrate-run-domain"
 version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "35e77b3fa6faff3b72349f9ea6c014908adcd880cfe9d5a0597bb4da433d5108"
 
 [[package]]
 name = "substrate-run-process"
 version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "acaf701fd78465f0f72384db63987506c9e5ac7db7f5f6a8c081886654e456e1"
 dependencies = [
  "libc",
  "substrate-process",
@@ -3596,6 +3620,8 @@ dependencies = [
 [[package]]
 name = "substrate-run-toml"
 version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2fd35b5b7c89980ba1ffeda9506f804d5187814787a8aa11dff42faa08f1bf34"
 dependencies = [
  "serde",
  "substrate-run-domain",
@@ -3606,6 +3632,8 @@ dependencies = [
 [[package]]
 name = "substrate-search-app"
 version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7f212a864dfa206a07fde0d062f03e07bd59fcec36405e7f0d68a4971f9cd700"
 dependencies = [
  "substrate-message",
  "substrate-search-domain",
@@ -3614,6 +3642,8 @@ dependencies = [
 [[package]]
 name = "substrate-search-domain"
 version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "088014a9f216be0786287904ae552e973e8d7c303438a8bd42036595f1e0e77c"
 dependencies = [
  "globset",
  "regex",
@@ -3624,6 +3654,8 @@ dependencies = [
 [[package]]
 name = "substrate-search-ignore"
 version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b12e67e9ce79496e601773518a7e0d7a4d617c8609cc4b543bc25174b4f37e02"
 dependencies = [
  "ignore",
  "substrate-search-app",
@@ -3634,6 +3666,8 @@ dependencies = [
 [[package]]
 name = "substrate-state-json"
 version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4e48e287a15d3f534bfa64cc70633bf2cf50436cd6847a534d5d4c42eb6815ac"
 dependencies = [
  "serde_json",
  "substrate-message",
@@ -3643,6 +3677,8 @@ dependencies = [
 [[package]]
 name = "substrate-terminal-app"
 version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2c5234b3300ee30c769faba865370862c814232de4da1ea284732a7a73caebb7"
 dependencies = [
  "substrate-lock",
  "substrate-terminal-domain",
@@ -3651,6 +3687,8 @@ dependencies = [
 [[package]]
 name = "substrate-terminal-domain"
 version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "00d7ec64db6abc860bab8413b18fac85495eca80e04f2f111989d07784321a92"
 dependencies = [
  "substrate-message",
  "thiserror 2.0.21",
@@ -3659,6 +3697,8 @@ dependencies = [
 [[package]]
 name = "substrate-terminal-pty"
 version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "424a5ce32c02ee27be1f6fd910d378f92665c37cb3f9c9924ac6facf3206f5b6"
 dependencies = [
  "portable-pty",
  "substrate-process",
@@ -3669,6 +3709,8 @@ dependencies = [
 [[package]]
 name = "substrate-workspace-app"
 version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cfcc11eb34cc16ed3cd3089cfde92f9187f6d6597b7448ad5b793b7b0ee81f35"
 dependencies = [
  "substrate-lock",
  "substrate-workspace-domain",
@@ -3677,6 +3719,8 @@ dependencies = [
 [[package]]
 name = "substrate-workspace-domain"
 version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7b44d257d5cef204b6efcf7e3be6a1f5b70850114a0127967619b912b4664eb5"
 dependencies = [
  "substrate-message",
  "thiserror 2.0.21",
@@ -3685,6 +3729,8 @@ dependencies = [
 [[package]]
 name = "substrate-workspace-fs"
 version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0238bc792de8a6771c87e51b08ee599bb3d8790ef84eeaf9fc7bc291268070d9"
 dependencies = [
  "notify",
  "substrate-lock",
@@ -4004,6 +4050,8 @@ dependencies = [
 [[package]]
 name = "tauri-plugin-substrate"
 version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d598457d03c637d592223857c0839bfabbb79a2a364f9782b5ec75cb55155037"
 dependencies = [
  "serde",
  "serde_json",
@@ -5475,35 +5523,3 @@ name = "zmij"
 version = "1.0.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "29666d0abbfad1e3dc4dcf6144730dd3a3ab225bbbdac83319345b1b44ccfc1b"
-
-[[patch.unused]]
-name = "substrate-dap-app"
-version = "0.1.0"
-
-[[patch.unused]]
-name = "substrate-dap-domain"
-version = "0.1.0"
-
-[[patch.unused]]
-name = "substrate-dap-toml"
-version = "0.1.0"
-
-[[patch.unused]]
-name = "substrate-framing"
-version = "0.1.0"
-
-[[patch.unused]]
-name = "substrate-lsp-app"
-version = "0.1.0"
-
-[[patch.unused]]
-name = "substrate-lsp-domain"
-version = "0.1.0"
-
-[[patch.unused]]
-name = "substrate-lsp-toml"
-version = "0.1.0"
-
-[[patch.unused]]
-name = "substrate-project-app"
-version = "0.1.0"
