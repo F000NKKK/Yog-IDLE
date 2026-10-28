@@ -656,7 +656,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d045de693cb712d0b22c6a64be5b953f67b3ce00ab5ad3dd5d8b441886ab8e1a"
 dependencies = [
  "quote",
- "syn 2.0.119",
+ "syn 3.0.9",
 ]
 
 [[package]]
@@ -2333,7 +2333,7 @@ version = "0.7.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "680998035259dcfcafe653688bf2aa6d3e2dc05e98be6ab46afb089dc84f1df8"
 dependencies = [
- "proc-macro-crate 1.3.1",
+ "proc-macro-crate 3.5.0",
  "proc-macro2",
  "quote",
  "syn 2.0.119",
@@ -3540,6 +3540,12 @@ name = "substrate-lock"
 version = "0.1.0"
 
 [[package]]
+name = "substrate-lock"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0fbf0e47bc6a1fff99a95208d3c67bc7b5081995153c06844bb47c334f0d2807"
+
+[[package]]
 name = "substrate-message"
 version = "0.1.0"
 dependencies = [
@@ -3575,8 +3581,18 @@ dependencies = [
 name = "substrate-run-app"
 version = "0.1.0"
 dependencies = [
- "substrate-lock",
- "substrate-run-domain",
+ "substrate-lock 0.1.0",
+ "substrate-run-domain 0.1.0",
+]
+
+[[package]]
+name = "substrate-run-app"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "08d48bb8581c7d0fbb8cf552e38d5e948e95e1637accaf45d31a4a552bed7118"
+dependencies = [
+ "substrate-lock 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "substrate-run-domain 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -3584,13 +3600,19 @@ name = "substrate-run-domain"
 version = "0.1.0"
 
 [[package]]
+name = "substrate-run-domain"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "35e77b3fa6faff3b72349f9ea6c014908adcd880cfe9d5a0597bb4da433d5108"
+
+[[package]]
 name = "substrate-run-process"
 version = "0.1.0"
 dependencies = [
  "libc",
  "substrate-process",
- "substrate-run-app",
- "substrate-run-domain",
+ "substrate-run-app 0.1.0",
+ "substrate-run-domain 0.1.0",
 ]
 
 [[package]]
@@ -3598,7 +3620,7 @@ name = "substrate-run-toml"
 version = "0.1.0"
 dependencies = [
  "serde",
- "substrate-run-domain",
+ "substrate-run-domain 0.1.0",
  "thiserror 2.0.21",
  "toml 1.1.8+spec-1.1.0",
 ]
@@ -3644,7 +3666,7 @@ dependencies = [
 name = "substrate-terminal-app"
 version = "0.1.0"
 dependencies = [
- "substrate-lock",
+ "substrate-lock 0.1.0",
  "substrate-terminal-domain",
 ]
 
@@ -3670,7 +3692,7 @@ dependencies = [
 name = "substrate-workspace-app"
 version = "0.1.0"
 dependencies = [
- "substrate-lock",
+ "substrate-lock 0.1.0",
  "substrate-workspace-domain",
 ]
 
@@ -3687,7 +3709,7 @@ name = "substrate-workspace-fs"
 version = "0.1.0"
 dependencies = [
  "notify",
- "substrate-lock",
+ "substrate-lock 0.1.0",
  "substrate-message",
  "substrate-workspace-app",
  "substrate-workspace-domain",
@@ -4011,7 +4033,7 @@ dependencies = [
  "substrate-git-domain",
  "substrate-git-gitcli",
  "substrate-host-contract",
- "substrate-lock",
+ "substrate-lock 0.1.0",
  "substrate-message",
  "substrate-process",
  "substrate-search-app",
@@ -5225,25 +5247,25 @@ dependencies = [
 
 [[package]]
 name = "yog-codegen"
-version = "0.3.0"
+version = "0.4.0"
 
 [[package]]
 name = "yog-codegen-java"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "yog-codegen",
 ]
 
 [[package]]
 name = "yog-codegen-typescript"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "yog-codegen",
 ]
 
 [[package]]
 name = "yog-data"
-version = "0.12.0"
+version = "0.13.0"
 dependencies = [
  "substrate-data",
  "yog-codegen",
@@ -5254,7 +5276,7 @@ dependencies = [
 
 [[package]]
 name = "yog-debugger"
-version = "0.16.0"
+version = "0.17.0"
 dependencies = [
  "iced-x86",
  "libc",
@@ -5269,7 +5291,7 @@ dependencies = [
 
 [[package]]
 name = "yog-home"
-version = "0.8.0"
+version = "0.9.0"
 dependencies = [
  "dirs",
  "semver",
@@ -5281,7 +5303,7 @@ dependencies = [
 
 [[package]]
 name = "yog-hot-reload"
-version = "0.8.0"
+version = "0.9.0"
 dependencies = [
  "libloading 0.9.0",
  "serde",
@@ -5303,12 +5325,12 @@ dependencies = [
  "substrate-data",
  "substrate-git-gitcli",
  "substrate-host-contract",
- "substrate-lock",
+ "substrate-lock 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "substrate-process",
  "substrate-project-domain",
  "substrate-project-toml",
- "substrate-run-app",
- "substrate-run-domain",
+ "substrate-run-app 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "substrate-run-domain 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "substrate-run-process",
  "substrate-run-toml",
  "substrate-search-app",
@@ -5337,7 +5359,7 @@ dependencies = [
 
 [[package]]
 name = "yog-ids"
-version = "0.8.0"
+version = "0.9.0"
 dependencies = [
  "const_format",
  "yog-codegen",
@@ -5347,14 +5369,14 @@ dependencies = [
 
 [[package]]
 name = "yog-logging"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "yog-sync",
 ]
 
 [[package]]
 name = "yog-symbols"
-version = "0.11.0"
+version = "0.12.0"
 dependencies = [
  "addr2line",
  "gimli",
@@ -5365,7 +5387,7 @@ dependencies = [
 
 [[package]]
 name = "yog-sync"
-version = "0.6.0"
+version = "0.7.0"
 
 [[package]]
 name = "yoke"
