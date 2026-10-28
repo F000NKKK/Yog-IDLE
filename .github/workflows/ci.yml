@@ -12,23 +12,23 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       # The layout the IDE's `../` and `../../` paths name, as on a developer's machine.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           path: yog/Yog-IDLE
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           repository: F000NKKK/Substrate-Platform
           path: Substrate-Platform
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           repository: F000NKKK/Substrate-Data
           path: Substrate-Data
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           repository: F000NKKK/Yog-Mod-Loader
           path: yog/Yog-Mod-Loader
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
 
