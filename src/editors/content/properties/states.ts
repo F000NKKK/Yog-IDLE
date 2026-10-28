@@ -7,6 +7,7 @@ import { ARM_TEMPLATE, MODEL, STATE_PICK, stateModelKey } from "../contentModel"
 import { parseRotations, rotationsText } from "../fieldText";
 import type { PropertiesContext } from "./context";
 import { kind as KIND } from "../../../data/yogIds.generated";
+import { setAttach, setFacing, setPlacement, setWaterlogged } from "../stateRoles";
 
 /** A picked state item's key, with the context's states (there when it's picked). */
 type Picked = { ctx: PropertiesContext; out: PropertyDescriptor[]; key: string; states: NonNullable<PropertiesContext["states"]> };
@@ -91,18 +92,18 @@ function placementRows(ctx: PropertiesContext, out: PropertyDescriptor[]) {
       if (prune(d.states as Record<string, unknown>)) delete d.states;
     });
   out.push(
-    choice("facing", t("Facing"), c, st.facing, FACINGS, (v) => setS((x) => void (x.facing = v as typeof st.facing)), {
+    choice("facing", t("Facing"), c, st.facing, FACINGS, (v) => setS((x) => setFacing(x, (v || undefined) as typeof st.facing)), {
       optionLabel: (o) => (o ? t(FACING_LABELS[o as keyof typeof FACING_LABELS]) : ""),
       description: t("The block turns when placed (a facing property); its model's north side is its front."),
     }),
-    choice("placement", t("Placement"), c, st.placement, PLACEMENTS, (v) => setS((x) => void (x.placement = v as typeof st.placement)), {
+    choice("placement", t("Placement"), c, st.placement, PLACEMENTS, (v) => setS((x) => setPlacement(x, (v || undefined) as typeof st.placement)), {
       optionLabel: (o) => (o ? t(o) : ""),
       description: t("toward: its front faces the player (a furnace, the default); away: the way they look (an observer)."),
     }),
-    flag("attach", t("Attaches"), c, st.attach, (v) => setS((x) => void (x.attach = v)), false, {
+    flag("attach", t("Attaches"), c, st.attach, (v) => setS((x) => setAttach(x, !!v)), false, {
       description: t("Hangs on a floor, wall or ceiling, as a button does; its model lies on the floor."),
     }),
-    flag("waterlogged", t("Waterloggable"), c, st.waterlogged, (v) => setS((x) => void (x.waterlogged = v)), false, {
+    flag("waterlogged", t("Waterloggable"), c, st.waterlogged, (v) => setS((x) => setWaterlogged(x, !!v)), false, {
       description: t("It can stand in water."),
     }),
     flag("states_uvlock", t("UV Lock"), c, st.uvlock, (v) => setS((x) => void (x.uvlock = v)), false, {

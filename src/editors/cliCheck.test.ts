@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 import { TEMPLATES, type ContentFile, type Model } from "../content/model";
 import { cliProblems, haveCli } from "../test/cliCheck";
 import { editModelElements, setParent } from "./content/contentModel";
+import { setAttach, setFacing, setPlacement, setWaterlogged } from "./content/stateRoles";
 import { setArmorSlot, setDurability, setToolKind, setWearable } from "./content/itemRoles";
 import { newPage, PAGE_TYPES } from "./book/bookModel";
 import { switchedTo, withRecipe, type Recipe, type RecipeFields, type RecipeKind } from "./recipe/recipeModel";
@@ -32,7 +33,7 @@ const STONE = "minecraft:stone";
 const filled = (r: Recipe, kind: RecipeKind): Recipe => ({ ...r, slots: Object.fromEntries(kind.slots.map((s) => [s.name, [STONE]])) });
 
 const TEXTURE = "@texture:minecraft:block/stone";
-const block = (model: Model): ContentFile => ({ name: "X", model });
+const block = (model: Model, states?: unknown): ContentFile => ({ name: "X", model, ...(states ? { states } : {}) }) as ContentFile;
 const texturesFor = (slots: readonly string[]) => Object.fromEntries(slots.map((s) => [s, TEXTURE]));
 const box = () => ({ from: [0, 0, 0], to: [16, 16, 16], faces: { north: { texture: "#all" } } });
 
@@ -106,5 +107,26 @@ describe.skipIf(!haveCli)("editors' files pass the CLI's check", () => {
     }
     expect(found).toEqual([]);
     expect(checked).toBeGreaterThan(4);
+  });
+
+  it("a block's placement edits keep its states valid", () => {
+    const states: Record<string, unknown> = { rotations: [{ y: 90 }] };
+    const s = states as never;
+    const steps: [string, () => void][] = [
+      ["facing all", () => setFacing(s, "all")],
+      ["placement", () => setPlacement(s, "away")],
+      ["attach", () => setAttach(s, true)],
+      ["waterlogged", () => setWaterlogged(s, true)],
+      ["no attach", () => setAttach(s, false)],
+      ["facing again", () => setFacing(s, "horizontal")],
+      ["no facing", () => setFacing(s, undefined)],
+      ["no water", () => setWaterlogged(s, false)],
+    ];
+    const found: string[] = [];
+    for (const [name, step] of steps) {
+      step();
+      found.push(...cliProblems("x.yblock", block({ parent: "cube_all", textures: { all: TEXTURE } } as Model, states)).map((m) => `${name}: ${m}`));
+    }
+    expect(found).toEqual([]);
   });
 });
