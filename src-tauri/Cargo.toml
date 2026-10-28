@@ -47,7 +47,7 @@ substrate-host-contract = { path = "../../../Substrate-Platform/crates/substrate
 substrate-search-app = { path = "../../../Substrate-Platform/crates/substrate-search-app" }
 substrate-search-domain = { path = "../../../Substrate-Platform/crates/substrate-search-domain" }
 substrate-search-ignore = { path = "../../../Substrate-Platform/crates/substrate-search-ignore" }
-substrate-run-app = { path = "../../../Substrate-Platform/crates/substrate-run-app" }
+substrate-run-app = "0.1.0"
 substrate-run-domain = "0.1.0"
 substrate-run-process = { path = "../../../Substrate-Platform/crates/substrate-run-process" }
 substrate-git-gitcli = { path = "../../../Substrate-Platform/crates/substrate-git-gitcli" }
