@@ -18,16 +18,16 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
 substrate-host-contract = { path = "../../../Substrate-Platform/crates/substrate-host-contract" }
-tauri-build = { version = "2", features = [] }
+tauri-build = { version = "2.7", features = [] }
 # The front end's copy of the shared names (`src/data/yogIds.generated.ts`).
-yog-ids = "0.8.0"
+yog-ids = "0.9.0"
 # The generated files' header, as TypeScript.
-yog-codegen = "0.3.0"
-yog-codegen-typescript = "0.3.0"
+yog-codegen = "0.4.0"
+yog-codegen-typescript = "0.4.0"
 
 [dependencies]
-tauri = { version = "2", features = ["protocol-asset"] }
-tauri-plugin-dialog = "2"
+tauri = { version = "2.12", features = ["protocol-asset"] }
+tauri-plugin-dialog = "2.8"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 toml = "1"
@@ -63,18 +63,18 @@ regex = "1.13.1"
 syn = { version = "3.0.9", default-features = false, features = ["full", "parsing", "visit"] }
 proc-macro2 = { version = "1.0.107", features = ["span-locations"] }
 # Generated TypeScript of Yog's ids, and the one `yog` program name.
-yog-ids = "0.8.0"
+yog-ids = "0.9.0"
 # Yog's home on the machine (~/.yog): where its local patch is.
-yog-home = "0.8.0"
+yog-home = "0.9.0"
 # The running game's control channel (hot reload, the mods it runs): every platform.
-yog-hot-reload = "0.8.0"
+yog-hot-reload = "0.9.0"
 # What the CLI service (`yog serve`) and the backend say: binary Yog Data.
-yog-data = "0.12.0"
+yog-data = "0.13.0"
 # What `#[derive(Schema)]` expands to.
 substrate-data = "0.3.1"
 # The native debugger (Linux, Windows, macOS) and the natives' debug info.
-yog-symbols = "0.11.0"
-yog-debugger = "0.16.0"
+yog-symbols = "0.12.0"
+yog-debugger = "0.17.0"
 
 [features]
 # The benches' entry points into the backend (`src/bench.rs`).
