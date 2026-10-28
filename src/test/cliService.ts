@@ -5,6 +5,7 @@
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { afterAll, vi } from "vitest";
 import { program } from "../data/yogIds.generated";
+import { CLI } from "./cliProgram";
 import { FRAME_LEN_BYTES } from "../data/yogDataBinary.generated";
 import { yog } from "../host.generated";
 
@@ -14,7 +15,7 @@ const waiting: ((frame: Uint8Array) => void)[] = [];
 let buffered = new Uint8Array(0);
 
 function start(): ChildProcessWithoutNullStreams {
-  const child = spawn(program.CLI, [program.SERVE]);
+  const child = spawn(CLI, [program.SERVE]);
   child.stdout.on("data", (chunk: Buffer) => {
     const joined = new Uint8Array(buffered.length + chunk.length);
     joined.set(buffered);

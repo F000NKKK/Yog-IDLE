@@ -1,20 +1,19 @@
 /**
  * Tests' way to the CLI's live check (`yog data check`, what `source.check`
  * says): a file an editor wrote, checked the way the IDE shows it. The CLI is
- * `YOG_CLI`, else the loader's debug build next to this checkout; without it
- * the tests that need it are skipped, unless `YOG_REQUIRE_CLI` asks for it.
+ * `cliProgram`'s; without it the tests that need it are skipped, unless
+ * `YOG_REQUIRE_CLI` asks for it.
  */
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { join } from "node:path";
+import { CLI } from "./cliProgram";
 
-const LOCAL_CLI = resolve(__dirname, "../../../Yog-Mod-Loader/rust/target/debug/yog");
-const CLI = process.env.YOG_CLI ?? LOCAL_CLI;
 const DIR = mkdtempSync(join(tmpdir(), "yog-idle-check-"));
 
 /** Whether the CLI is there to check with; CI (`YOG_REQUIRE_CLI`) fails without it. */
-export const haveCli = existsSync(CLI);
+export const haveCli = existsSync(CLI) || spawnSync(CLI, ["--version"]).status === 0;
 if (!haveCli && process.env.YOG_REQUIRE_CLI) throw new Error(`no CLI at ${CLI} (YOG_REQUIRE_CLI is set)`);
 
 /** What the live check finds in `value` written as a file named `name` (`x.yblock`): one problem a line. */

@@ -55,4 +55,5 @@ jobs:
         env:
           # Here the CLI's checks must run, not be skipped.
           YOG_REQUIRE_CLI: "1"
+          YOG_CLI: ${{ github.workspace }}/yog/Yog-Mod-Loader/rust/target/debug/yog
         run: npx vitest run
