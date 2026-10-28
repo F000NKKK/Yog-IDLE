@@ -2,6 +2,7 @@ import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 import { realpathSync } from "node:fs";
 import path from "node:path";
+import { substrateData } from "./substrate.paths";
 
 /**
  * Edits to the symlinked `substrate-platform-ui` reload like the app's own.
@@ -40,6 +41,7 @@ export default defineConfig(async () => ({
     // a different React module instance than the one actually rendering —
     // "Invalid hook call" despite both copies being the same version.
     dedupe: ["react", "react-dom"],
+    alias: { "substrate-data": substrateData },
   },
   // The Markdown preview's dependencies, reached only through the symlinked
   // `substrate-platform-ui` (and Mermaid only via a dynamic import), so the

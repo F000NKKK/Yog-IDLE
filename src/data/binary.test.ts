@@ -1,8 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { decode, encode, frame, unframe } from "./binary";
 
-// What Rust's `yog_data` writes (captured from `binary::encode` / `to_bytes`).
+// What Rust writes (Substrate Data, version 2: `binary::encode`).
 const RUST_VALUE = [
+  83, 68, 65, 84, 2, 15, 9, 3, 97, 3, 98, 3, 99, 3, 100, 145, 6, 6, 142, 12, 0, 0, 32, 64, 5, 3, 120, 0, 2, 3, 215, 4, 36,
+  15, 3, 0, 5, 3, 121,
+];
+// The same value as version 1 wrote it: still read, never written (a migration's).
+const RUST_VALUE_V1 = [
   83, 68, 65, 84, 1, 7, 4, 3, 97, 3, 2, 3, 98, 6, 6, 3, 3, 4, 0, 0, 0, 0, 0, 0, 4, 64, 5, 3, 120, 0, 2, 3, 215, 4, 3, 99, 5,
   4, 3, 100, 7, 1, 0, 5, 3, 121,
 ];
@@ -13,6 +18,7 @@ const RUST_FLOATS32 = [83, 68, 65, 84, 1, 14, 2, 0, 0, 0, 63, 0, 0, 160, 191];
 describe("binary Yog Data", () => {
   it("reads what Rust writes", () => {
     expect(decode(new Uint8Array(RUST_VALUE))).toEqual(VALUE);
+    expect(decode(new Uint8Array(RUST_VALUE_V1))).toEqual(VALUE);
     expect(decode(new Uint8Array(RUST_INTS))).toEqual([1, -1, 1000]);
     expect(decode(new Uint8Array(RUST_FLOATS32))).toEqual([0.5, -1.25]);
   });

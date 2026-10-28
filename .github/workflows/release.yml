@@ -35,18 +35,25 @@ jobs:
             args: "--target universal-apple-darwin"
     runs-on: ${{ matrix.os }}
     steps:
+      # The Yog repositories in `yog/`, Substrate's beside it: the layout the
+      # IDE's `../` and `../../` paths name, as on a developer's machine.
       - uses: actions/checkout@v4
         with:
-          path: Yog-IDLE
+          path: yog/Yog-IDLE
       - uses: actions/checkout@v4
         with:
           repository: F000NKKK/Substrate-Platform
           path: Substrate-Platform
+      # Substrate Data's TypeScript port (substrate.paths.ts).
+      - uses: actions/checkout@v4
+        with:
+          repository: F000NKKK/Substrate-Data
+          path: Substrate-Data
       # The loader's crates (yog-ids, yog-home, the debugger's) are patched in from its checkout.
       - uses: actions/checkout@v4
         with:
           repository: F000NKKK/Yog-Mod-Loader
-          path: Yog-Mod-Loader
+          path: yog/Yog-Mod-Loader
 
       - name: Linux libraries
         if: runner.os == 'Linux'
@@ -59,7 +66,7 @@ jobs:
           node-version: 22
 
       - name: Rust (the toolchain rust-toolchain.toml pins)
-        working-directory: Yog-IDLE/src-tauri
+        working-directory: yog/Yog-IDLE/src-tauri
         shell: bash
         run: |
           rustup show active-toolchain || rustup toolchain install
@@ -70,14 +77,14 @@ jobs:
         run: npm ci
 
       - name: Yog IDLE's packages
-        working-directory: Yog-IDLE
+        working-directory: yog/Yog-IDLE
         run: npm ci
 
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          projectPath: Yog-IDLE
+          projectPath: yog/Yog-IDLE
           tagName: ${{ github.ref_name }}
           releaseName: "Yog IDLE ${{ github.ref_name }}"
           releaseBody: "Yog IDLE — the editor, launcher and debugger for Yog mods. Download the package for your system below."

@@ -19,7 +19,10 @@
     "strict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
-    "noFallthroughCasesInSwitch": true
+    "noFallthroughCasesInSwitch": true,
+
+    /* Substrate Data's TypeScript port, from its sibling checkout (substrate.paths.ts) */
+    "paths": { "substrate-data": ["../../Substrate-Data/ports/typescript/src/index.ts"] }
   },
   "include": ["src"],
   "references": [{ "path": "./tsconfig.node.json" }]
