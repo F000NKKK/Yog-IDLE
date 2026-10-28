@@ -3474,9 +3474,9 @@ checksum = "7da8b5736845d9f2fcb837ea5d9e2628564b3b043a70948a3f0b778838c5fb4f"
 
 [[package]]
 name = "substrate-data"
-version = "0.3.1"
+version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "47c48ce5e4ea1029e5530b9fd8d3c51c857ef0b77b7a4c74de65e19acc489518"
+checksum = "14895c45697c0f2ee016873a64a15d874bc3ee05a5951eddd7790fc83e7234d7"
 dependencies = [
  "base64 0.23.1",
  "bumpalo",
@@ -3489,9 +3489,9 @@ dependencies = [
 
 [[package]]
 name = "substrate-data-derive"
-version = "0.3.1"
+version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7ee3762d751e6dd8c7851520fb471a05f607495d419f819f7ed9c63ce0b7cbb2"
+checksum = "292106cec0bbb795c0302f481aeafa0a9b0589836a5664daf55aac722eba4cfd"
 dependencies = [
  "proc-macro-crate 3.5.0",
  "proc-macro2",

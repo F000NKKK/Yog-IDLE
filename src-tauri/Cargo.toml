@@ -71,7 +71,7 @@ yog-hot-reload = "0.9.0"
 # What the CLI service (`yog serve`) and the backend say: binary Yog Data.
 yog-data = "0.13.0"
 # What `#[derive(Schema)]` expands to.
-substrate-data = "0.3.1"
+substrate-data = "0.4.0"
 # The native debugger (Linux, Windows, macOS) and the natives' debug info.
 yog-symbols = "0.12.0"
 yog-debugger = "0.17.0"
