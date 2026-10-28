@@ -35,3 +35,34 @@ describe("schema-driven property grids", () => {
     expect(rows.find((r) => r.id === "model.elements")!.readOnly).toBe(true);
   });
 });
+
+const DESC = {
+  root: { kind: "def", name: "File" },
+  defs: {
+    File: {
+      kind: "struct",
+      fields: [
+        { name: "image", required: true, shape: { kind: "ref", of: ["res"] } },
+        { name: "textures", required: false, shape: { kind: "list", of: { kind: "ref", of: ["texture"] } } },
+      ],
+    },
+  },
+} as unknown as Described;
+
+describe("a shape's string rows", () => {
+  const rows = shapeProperties(DESC, { image: "@res:Images.x" }, () => {}, t);
+  const row = (id: string) => rows.find((r) => r.id === id)!;
+
+  it("refuse an empty required field", () => {
+    expect(row("image").validate!("")).not.toBeNull();
+  });
+
+  it("take only a reference of the field's kinds", () => {
+    expect(row("image").validate!("x")).not.toBeNull();
+    expect(row("image").validate!("@texture:a")).not.toBeNull();
+    expect(row("image").validate!("@res:Images.y")).toBeNull();
+    expect(row("textures").validate!("@texture:a, b")).not.toBeNull();
+    expect(row("textures").validate!("@texture:a, @texture:b")).toBeNull();
+    expect(row("textures").validate!("")).toBeNull();
+  });
+});

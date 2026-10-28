@@ -1,0 +1,58 @@
+# Checks Yog IDLE on every push: types and tests, the editors' files checked
+# by the CLI's live check (`yog data check`), built from the loader's checkout.
+name: CI
+
+on:
+  push:
+    branches: ["master"]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-22.04
+    steps:
+      # The layout the IDE's `../` and `../../` paths name, as on a developer's machine.
+      - uses: actions/checkout@v4
+        with:
+          path: yog/Yog-IDLE
+      - uses: actions/checkout@v4
+        with:
+          repository: F000NKKK/Substrate-Platform
+          path: Substrate-Platform
+      - uses: actions/checkout@v4
+        with:
+          repository: F000NKKK/Substrate-Data
+          path: Substrate-Data
+      - uses: actions/checkout@v4
+        with:
+          repository: F000NKKK/Yog-Mod-Loader
+          path: yog/Yog-Mod-Loader
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: The CLI (what the editors' tests check with)
+        working-directory: yog/Yog-Mod-Loader/rust
+        run: |
+          rustup show active-toolchain || rustup toolchain install
+          cargo build -p yog-cli
+
+      - name: Substrate's UI packages
+        working-directory: Substrate-Platform/ui
+        run: npm ci
+
+      - name: Yog IDLE's packages
+        working-directory: yog/Yog-IDLE
+        run: npm ci
+
+      - name: Types
+        working-directory: yog/Yog-IDLE
+        run: npx tsc --noEmit -p .
+
+      - name: Tests
+        working-directory: yog/Yog-IDLE
+        env:
+          # Here the CLI's checks must run, not be skipped.
+          YOG_REQUIRE_CLI: "1"
+        run: npx vitest run

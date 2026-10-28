@@ -9,7 +9,7 @@
  */
 
 import type { PropertyDescriptor, PropertyValue } from "substrate-platform-ui";
-import { shapeKind as K } from "./yogIds.generated";
+import { sep, shapeKind as K } from "./yogIds.generated";
 
 export interface ShapeD {
   kind: string;
@@ -41,6 +41,13 @@ export interface Described {
 type Obj = Record<string, unknown>;
 
 /** Shapes edited as one line of text. */
+/** `text` as a value of `shape`: a reference names one of its kinds (`@texture:…`); null when fine. */
+function referenceProblem(shape: ShapeD, text: string, t: (s: string, p?: Record<string, string | number>) => string): string | null {
+  if (shape.kind !== K.REF || !Array.isArray(shape.of)) return null;
+  const prefixes = shape.of.map((kind) => `${sep.TYPED}${kind}${sep.NAMESPACE}`);
+  return prefixes.some((p) => text.startsWith(p) && text.length > p.length) ? null : t("A reference: {refs}…", { refs: prefixes.join(", ") });
+}
+
 const PLAIN = new Set<string>([K.STRING, K.ATOM, K.TEXT, K.IMAGE, K.COLOR, K.RES, K.REF, K.TAG, K.REF_OR_TAG, K.REF_OR_IMAGE]);
 
 /** `tool_level` → `Tool Level`. */
@@ -154,7 +161,17 @@ export function shapeProperties(
       return;
     }
     if (PLAIN.has(shape.kind)) {
-      out.push({ ...base, value: typeof current === "string" ? current : "", kind: "string", onCommit: (v) => commit(String(v) === "" && !f.required ? undefined : String(v)) });
+      out.push({
+        ...base,
+        value: typeof current === "string" ? current : "",
+        kind: "string",
+        validate: (v: PropertyValue) => {
+          const text = String(v);
+          if (text === "") return f.required ? t("Required.") : null;
+          return referenceProblem(shape, text, t);
+        },
+        onCommit: (v) => commit(String(v) === "" && !f.required ? undefined : String(v)),
+      });
       return;
     }
     const item = shape.of && !Array.isArray(shape.of) ? unwrap(shape.of) : undefined;
@@ -165,6 +182,11 @@ export function shapeProperties(
         value: list.join(", "),
         kind: "string",
         description: [f.doc, t("Comma-separated.")].filter(Boolean).join(" "),
+        validate: (v: PropertyValue) => {
+          const items = String(v).split(",").map((s) => s.trim()).filter(Boolean);
+          if (items.length === 0) return f.required ? t("Required.") : null;
+          return items.map((i) => referenceProblem(item, i, t)).find((p) => p !== null) ?? null;
+        },
         onCommit: (v) => {
           const items = String(v).split(",").map((s) => s.trim()).filter(Boolean);
           commit(items.length === 0 && !f.required ? undefined : items);
