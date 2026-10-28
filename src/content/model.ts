@@ -7,6 +7,7 @@ import { formatData, patchData, readObject } from "../data/yogData";
 import { direction, kind as KIND, reference, toolKind } from "../data/yogIds.generated";
 import { gameId } from "../data/yogFormat";
 import { typedRef } from "../data/contentRefs";
+import { RENDER_LAYERS as GENERATED_RENDER_LAYERS, TEMPLATES as GENERATED_TEMPLATES } from "./vocab.generated";
 
 /** A block's face: one of the game's directions. */
 export type Dir = (typeof direction)[keyof typeof direction];
@@ -158,7 +159,7 @@ export const FACINGS = ["horizontal", "all"] as const;
 export const FACING_LABELS: Record<(typeof FACINGS)[number], string> = { horizontal: "Horizontal (4 sides)", all: "Any of the six sides" };
 export const PLACEMENTS = ["toward", "away"] as const;
 export const TOOL_LEVELS = ["wood", "stone", "iron", "diamond", "netherite"];
-export const RENDER_LAYERS = ["solid", "cutout", "cutout_mipped", "translucent"];
+export const RENDER_LAYERS: string[] = [...GENERATED_RENDER_LAYERS];
 /** Element rotation angles Minecraft allows. */
 export const ANGLES = [-45, -22.5, 0, 22.5, 45];
 /** Minecraft's limits on an element: each corner within these pixels on every axis. */
@@ -196,16 +197,7 @@ export const ITEM_MODEL_PRESETS: ItemModelPreset[] = [
   { id: "cube", label: "3D Cube Item", parent: gameId("block/cube_all") },
 ];
 
-export const TEMPLATES: Template[] = [
-  { name: "cube_all", slots: ["all"] },
-  { name: "cube_column", slots: ["end", "side"] },
-  { name: "cube_bottom_top", slots: ["top", "bottom", "side"] },
-  { name: "cube", slots: DIRS },
-  { name: "orientable", slots: ["front", "side", "top"] },
-  { name: "cross", slots: ["cross"] },
-  { name: "generated", slots: ["layer0"], sprite: true },
-  { name: "handheld", slots: ["layer0"], sprite: true },
-];
+export const TEMPLATES: Template[] = GENERATED_TEMPLATES.map((t) => ({ name: t.name, slots: [...t.slots], ...(t.sprite ? { sprite: true } : {}) }));
 export const templateOf = (parent?: string) => TEMPLATES.find((t) => t.name === parent);
 
 const full = (faces: Partial<Record<Dir, string>>, cull = true): Element => ({
